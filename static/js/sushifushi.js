@@ -163,3 +163,79 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Language Switching Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const langButtons = document.querySelectorAll('.lang-btn');
+    
+    if (langButtons.length > 0) {
+        langButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all buttons
+                langButtons.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                const selectedLang = this.dataset.lang;
+                
+                // Store language preference
+                localStorage.setItem('language', selectedLang);
+                
+                // Here you can add translation logic
+                if (selectedLang === 'en') {
+                    translateToEnglish();
+                } else {
+                    translateToHebrew();
+                }
+            });
+        });
+        
+        // Load saved language preference
+        const savedLang = localStorage.getItem('language') || 'he';
+        const savedBtn = document.querySelector(`.lang-btn[data-lang="${savedLang}"]`);
+        if (savedBtn) {
+            langButtons.forEach(b => b.classList.remove('active'));
+            savedBtn.classList.add('active');
+        }
+    }
+});
+
+function translateToEnglish() {
+    // Translate navbar items
+    const translations = {
+        'אודות': 'About',
+        'תפריט': 'Menu',
+        'הזמנות': 'Reservations',
+        'צור קשר': 'Contact'
+    };
+    
+    document.querySelectorAll('.navbar-menu a').forEach(link => {
+        const text = link.textContent.trim();
+        if (translations[text]) {
+            link.textContent = translations[text];
+        }
+    });
+    
+    // Change page direction for English
+    document.documentElement.setAttribute('dir', 'ltr');
+}
+
+function translateToHebrew() {
+    // Restore Hebrew text
+    const translations = {
+        'About': 'אודות',
+        'Menu': 'תפריט',
+        'Reservations': 'הזמנות',
+        'Contact': 'צור קשר'
+    };
+    
+    document.querySelectorAll('.navbar-menu a').forEach(link => {
+        const text = link.textContent.trim();
+        if (translations[text]) {
+            link.textContent = translations[text];
+        }
+    });
+    
+    // Restore RTL direction for Hebrew
+    document.documentElement.setAttribute('dir', 'rtl');
+}

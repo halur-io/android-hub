@@ -1,3 +1,9 @@
+// Toggle Mobile Menu
+function toggleMobileMenu() {
+    const menu = document.getElementById('navbar-menu');
+    menu.classList.toggle('active');
+}
+
 // SushiFushi Inspired JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     
@@ -15,6 +21,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     top: offsetTop,
                     behavior: 'smooth'
                 });
+                
+                // Close mobile menu if open
+                const menu = document.getElementById('navbar-menu');
+                if (menu && menu.classList.contains('active')) {
+                    menu.classList.remove('active');
+                }
             }
         });
     });

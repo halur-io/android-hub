@@ -1,16 +1,20 @@
-from flask import render_template, request, flash, redirect, url_for, jsonify
+from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory
 from flask_mail import Message
 from app import app, mail
 from forms import ContactForm, ReservationForm
 import logging
+import os
 
 @app.route('/')
 def index():
-    contact_form = ContactForm()
-    reservation_form = ReservationForm()
-    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form)
+    # Serve the React app
+    return send_from_directory('static/dist', 'index.html')
 
-@app.route('/contact', methods=['POST'])
+@app.route('/assets/<path:path>')
+def serve_assets(path):
+    return send_from_directory('static/dist/assets', path)
+
+@app.route('/api/contact', methods=['POST'])
 def contact():
     form = ContactForm()
     if form.validate_on_submit():
@@ -40,7 +44,7 @@ def contact():
     
     return redirect(url_for('index') + '#contact')
 
-@app.route('/reservation', methods=['POST'])
+@app.route('/api/reservation', methods=['POST'])
 def reservation():
     form = ReservationForm()
     if form.validate_on_submit():

@@ -1,0 +1,42 @@
+import React from 'react'
+import './Hero.css'
+
+const Hero = ({ language }) => {
+  const translations = {
+    he: {
+      title: 'סומו',
+      subtitle: 'מטבח אסייתי אותנטי',
+      description: 'חוויה קולינרית ייחודית של טעמי אסיה',
+      orderBtn: 'הזמן עכשיו',
+      reserveBtn: 'שריין שולחן'
+    },
+    en: {
+      title: 'SUMO',
+      subtitle: 'Authentic Asian Kitchen',
+      description: 'A unique culinary experience of Asian flavors',
+      orderBtn: 'Order Now',
+      reserveBtn: 'Reserve Table'
+    }
+  }
+
+  const t = translations[language]
+
+  return (
+    <section id="hero" className="hero-section">
+      <div className="hero-background">
+        <div className="hero-overlay"></div>
+      </div>
+      <div className="hero-content">
+        <h1 className="hero-title fade-in-up">{t.title}</h1>
+        <h2 className="hero-subtitle fade-in-up">{t.subtitle}</h2>
+        <p className="hero-description fade-in-up">{t.description}</p>
+        <div className="hero-buttons fade-in-up">
+          <a href="#menu" className="btn btn-primary">{t.orderBtn}</a>
+          <a href="#reservations" className="btn btn-secondary">{t.reserveBtn}</a>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export default Hero

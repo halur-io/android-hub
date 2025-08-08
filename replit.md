@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Flask-based website for Sumo, an Asian restaurant featuring multiple cuisines (Japanese, Thai, Korean, Vietnamese). The application provides a bilingual (Hebrew/English) interface with contact forms, reservation system, menu display, and gallery sections. The site is built with a focus on user experience and includes email notifications for customer inquiries and reservations.
+This is a modern restaurant website for Sumo Asian Kitchen, featuring a React frontend with Flask backend API. The application provides a bilingual (Hebrew/English) interface with full RTL support, WhatsApp/phone integration, dynamic menu display, and reservation system. The React frontend offers a smooth, interactive user experience with real-time language switching and mobile-responsive design.
 
 ## User Preferences
 
@@ -11,12 +11,14 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Template Engine**: Jinja2 templates with Flask
-- **UI Framework**: Bootstrap 5 with RTL (Right-to-Left) support for Hebrew
-- **CSS Framework**: Custom CSS with CSS variables for theming
-- **Typography**: Google Fonts (Heebo and Assistant) optimized for Hebrew text
-- **JavaScript**: Vanilla JavaScript for interactive features including smooth scrolling, form validation, and navbar effects
-- **Responsive Design**: Mobile-first approach with Bootstrap grid system
+- **Framework**: React 18 with functional components and hooks
+- **Build Tool**: Vite for fast development and optimized production builds
+- **Styling**: CSS Modules with CSS variables for consistent theming
+- **Typography**: Google Fonts (Heebo) optimized for Hebrew/English text
+- **Icons**: Font Awesome 6.4.0 for UI icons
+- **Responsive Design**: Mobile-first approach with CSS Grid and Flexbox
+- **Language Support**: Real-time language switching with localStorage persistence
+- **RTL Support**: Full right-to-left support for Hebrew with dynamic direction switching
 
 ### Backend Architecture
 - **Web Framework**: Flask with modular structure

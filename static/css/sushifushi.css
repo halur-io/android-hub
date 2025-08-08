@@ -50,15 +50,17 @@ body {
     width: 100%;
     top: 0;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
+    border-bottom: 2px solid var(--sumo-coral);
 }
 
 .navbar.scrolled {
-    background: rgba(255, 255, 255, 0.98);
-    padding: 0.5rem 0;
+    background: rgba(255, 255, 255, 1);
+    padding: 0.3rem 0;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 }
 
 .navbar .container {
@@ -82,13 +84,19 @@ body {
 
 .navbar-brand img {
     transition: transform 0.3s ease;
-    height: 60px;
-    width: auto;
+    height: 65px;
+    width: 65px;
     display: block;
+    object-fit: contain;
+    border-radius: 50%;
+    padding: 3px;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-brand a:hover img {
-    transform: scale(1.05);
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(199, 84, 80, 0.3);
 }
 
 .navbar-menu {
@@ -102,31 +110,24 @@ body {
 .navbar-menu a {
     color: var(--sumo-navy);
     text-decoration: none;
-    font-weight: 400;
+    font-weight: 500;
     font-size: 1rem;
     letter-spacing: 1px;
     text-transform: uppercase;
     position: relative;
-    transition: color 0.3s;
+    transition: all 0.3s;
+    padding: 5px 10px;
+    border-radius: 20px;
 }
 
 .navbar-menu a::before {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background-color: var(--sumo-coral);
-    transition: width 0.3s ease;
-}
-
-.navbar-menu a:hover::before {
-    width: 100%;
+    display: none;
 }
 
 .navbar-menu a:hover {
-    color: var(--sumo-coral);
+    color: var(--pure-white);
+    background-color: var(--sumo-coral);
+    transform: translateY(-2px);
 }
 
 /* Hero Section */
@@ -702,20 +703,28 @@ textarea.form-control {
 /* Mobile Menu Button */
 .mobile-menu-btn {
     display: none;
-    background: none;
+    background: var(--sumo-coral);
     border: none;
     font-size: 1.5rem;
-    color: var(--sumo-navy);
+    color: var(--pure-white);
     cursor: pointer;
-    padding: 5px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-btn:hover {
+    background: var(--sumo-navy);
+    transform: scale(1.05);
 }
 
 .mobile-menu-btn span {
     display: block;
     width: 25px;
     height: 3px;
-    background-color: var(--sumo-navy);
-    margin: 5px 0;
+    background-color: var(--pure-white);
+    margin: 4px 0;
     transition: 0.3s;
 }
 
@@ -742,8 +751,9 @@ textarea.form-control {
     }
     
     .navbar-brand img {
-        height: 45px;
-        width: auto;
+        height: 50px;
+        width: 50px;
+        padding: 2px;
     }
     
     .mobile-menu-btn {

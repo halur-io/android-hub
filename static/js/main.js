@@ -27,14 +27,10 @@ function initNavbarScroll() {
     const navbar = document.getElementById('mainNav');
     
     window.addEventListener('scroll', function() {
-        if (window.scrollY > 100) {
+        if (window.scrollY > 50) {
             navbar.classList.add('navbar-scrolled');
-            navbar.style.background = 'linear-gradient(135deg, rgba(30, 58, 138, 0.95), rgba(220, 38, 38, 0.95))';
-            navbar.style.backdropFilter = 'blur(10px)';
         } else {
             navbar.classList.remove('navbar-scrolled');
-            navbar.style.background = 'linear-gradient(135deg, var(--primary-blue), var(--primary-red))';
-            navbar.style.backdropFilter = 'none';
         }
     });
 }
@@ -312,12 +308,15 @@ function clearFieldError(field) {
  * Initialize gallery effects
  */
 function initGalleryEffects() {
-    const galleryItems = document.querySelectorAll('.gallery-item img');
+    const galleryItems = document.querySelectorAll('.gallery-item');
     
     galleryItems.forEach(item => {
-        item.addEventListener('click', function() {
-            createLightbox(this.src, this.alt);
-        });
+        const img = item.querySelector('img');
+        if (img) {
+            item.addEventListener('click', function() {
+                createLightbox(img.src, img.alt);
+            });
+        }
     });
 }
 
@@ -468,13 +467,14 @@ function initFormSubmissionStates() {
         form.addEventListener('submit', function() {
             const submitBtn = form.querySelector('button[type="submit"]');
             if (submitBtn) {
+                submitBtn.setAttribute('data-original-text', submitBtn.innerHTML);
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח...';
                 
                 // Re-enable after 3 seconds as fallback
                 setTimeout(() => {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = submitBtn.textContent.includes('הזמנה') ? 'שליחת הזמנה' : 'שליחת הודעה';
+                    submitBtn.innerHTML = submitBtn.getAttribute('data-original-text') || 'שליחה';
                 }, 3000);
             }
         });

@@ -2,8 +2,20 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}סומו - מטבח אסייתי{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{% block title %}סומו - מטבח אסייתי אותנטי | סושי ומנות אסייתיות בחולון{% endblock %}</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="מסעדת סומו בחולון - מטבח אסייתי אותנטי, סושי טרי, ראמן, מנות יפניות ותאילנדיות. הזמנת מקומות אונליין, משלוחים. גולדה מאיר 6, חולון">
+    <meta name="keywords" content="סושי חולון, מסעדה אסייתית, ראמן, סומו, מטבח יפני, מטבח תאילנדי, משלוחים חולון">
+    <meta name="author" content="סומו - מטבח אסייתי">
+    <meta property="og:title" content="סומו - מטבח אסייתי אותנטי בחולון">
+    <meta property="og:description" content="חוויה קולינרית אסייתית אותנטית. סושי טרי, ראמן, מנות יפניות ותאילנדיות">
+    <meta property="og:image" content="{{ url_for('static', filename='images/sumo-logo.svg', _external=True) }}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:type" content="restaurant">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url_root }}">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,6 +24,26 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sushifushi.css') }}">
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "סומו - מטבח אסייתי",
+        "image": "{{ url_for('static', filename='images/sumo-logo.svg', _external=True) }}",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "גולדה מאיר 6",
+            "addressLocality": "חולון",
+            "addressCountry": "IL"
+        },
+        "telephone": "077-806-6300",
+        "servesCuisine": ["Japanese", "Thai", "Asian"],
+        "priceRange": "$$",
+        "openingHours": ["Su-Th 12:00-23:00", "Fr-Sa 12:00-01:00"]
+    }
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -19,7 +51,7 @@
         <div class="container">
             <div class="navbar-brand">
                 <a href="#hero">
-                    <img src="{{ url_for('static', filename='images/sumo-logo.svg') }}" alt="סומו" style="height: 60px; width: auto;">
+                    <img src="{{ url_for('static', filename='images/sumo-logo.svg') }}" alt="סומו - מטבח אסייתי">
                 </a>
             </div>
             <button class="mobile-menu-btn" onclick="toggleMobileMenu()">

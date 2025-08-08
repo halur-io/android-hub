@@ -34,7 +34,7 @@ const Gallery = ({ language }) => {
           {galleryImages.map(image => (
             <div key={image.id} className="gallery-item">
               <div className="gallery-image-placeholder">
-                <i className="fas fa-utensils"></i>
+                <i className="fas fa-image"></i>
                 <span>{image.alt}</span>
               </div>
             </div>

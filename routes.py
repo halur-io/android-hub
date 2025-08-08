@@ -6,9 +6,7 @@ import logging
 
 @app.route('/')
 def index():
-    contact_form = ContactForm()
-    reservation_form = ReservationForm()
-    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form)
+    return render_template('modern.html')
 
 @app.route('/contact', methods=['POST'])
 def contact():

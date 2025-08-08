@@ -1,138 +1,200 @@
 {% extends "base.html" %}
 
-{% block title %}סומו - מטבח אסייתי{% endblock %}
+{% block title %}סומו - מטבח אסייתי אותנטי{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->
 <section id="hero" class="hero-section">
-    <div class="container">
-        <div class="hero-content">
-            <h1 class="hero-title">סומו</h1>
-            <p class="hero-subtitle">מטבח אסייתי אותנטי</p>
-            <div class="hero-buttons">
-                <a href="#menu" class="btn btn-primary">תפריט</a>
-                <a href="#reservation" class="btn btn-secondary">הזמן שולחן</a>
-            </div>
+    <div class="hero-background"></div>
+    <div class="hero-content">
+        <h1 class="hero-title">סומו</h1>
+        <p class="hero-subtitle">מטבח אסייתי אותנטי</p>
+        <div class="hero-buttons">
+            <a href="#menu" class="btn btn-primary">תפריט שלנו</a>
+            <a href="#reservation" class="btn btn-secondary">הזמן שולחן</a>
         </div>
     </div>
 </section>
 
 <!-- About Section -->
-<section id="about" class="about-section">
+<section id="about" class="about-section fade-in">
     <div class="container">
-        <h2 class="section-title">אודות המסעדה</h2>
+        <h2 class="section-title">אודות</h2>
+        <p class="section-subtitle">חוויה קולינרית יפנית אותנטית</p>
+        
         <div class="about-content">
-            <p>ברוכים הבאים לסומו - המקום בו המזרח פוגש את המערב בהרמוניה מושלמת.</p>
-            <p>אנו מגישים מנות אסייתיות אותנטיות מהמטבח היפני, התאילנדי, הקוריאני והווייטנאמי.</p>
-            <p>כל מנה מוכנת בקפידה מחומרי גלם טריים ואיכותיים במיוחד.</p>
+            <p>ברוכים הבאים לסומו - המקום בו המסורת היפנית פוגשת את החדשנות הקולינרית.</p>
+            <p>אנו מתמחים במטבח אסייתי אותנטי עם דגש על סושי טרי, ראמן עשיר ומנות יפניות מסורתיות.</p>
+            <p>כל מנה מוכנת בקפידה על ידי השפים המומחים שלנו מחומרי הגלם הטריים והאיכותיים ביותר.</p>
+        </div>
+        
+        <div class="about-features">
+            <div class="feature-item">
+                <div class="feature-icon">🍣</div>
+                <h3 class="feature-title">סושי טרי</h3>
+                <p class="feature-desc">דגים טריים המגיעים מדי יום</p>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">👨‍🍳</div>
+                <h3 class="feature-title">שפים מומחים</h3>
+                <p class="feature-desc">צוות מקצועי עם ניסיון רב שנים</p>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🌿</div>
+                <h3 class="feature-title">חומרים איכותיים</h3>
+                <p class="feature-desc">רק המרכיבים הטובים ביותר</p>
+            </div>
         </div>
     </div>
 </section>
 
 <!-- Menu Section -->
-<section id="menu" class="menu-section">
-    <div class="container">
-        <h2 class="section-title">התפריט שלנו</h2>
+<section id="menu" class="menu-section fade-in">
+    <div class="container menu-container">
+        <h2 class="section-title">תפריט</h2>
+        <p class="section-subtitle">מבחר המנות שלנו</p>
         
-        <div class="menu-categories">
-            <div class="menu-category">
-                <h3>ראשונות</h3>
-                <div class="menu-items">
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">אדממה</span>
-                            <span class="menu-item-price">₪22</span>
-                        </div>
-                        <p class="menu-item-desc">פולי סויה מאודים עם מלח גס</p>
+        <div class="menu-tabs">
+            <button class="menu-tab active" data-category="starters">ראשונות</button>
+            <button class="menu-tab" data-category="sushi">סושי</button>
+            <button class="menu-tab" data-category="mains">עיקריות</button>
+            <button class="menu-tab" data-category="desserts">קינוחים</button>
+        </div>
+        
+        <div class="menu-grid" id="menu-items">
+            <!-- Starters -->
+            <div class="menu-category-items" data-category="starters">
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">אדממה</span>
+                        <span class="menu-item-price">₪22</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">גיוזה</span>
-                            <span class="menu-item-price">₪38</span>
-                        </div>
-                        <p class="menu-item-desc">כיסוני בצק במילוי עוף וירקות</p>
+                    <p class="menu-item-desc">פולי סויה מאודים עם מלח גס יפני</p>
+                    <span class="menu-item-tag">טבעוני</span>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">גיוזה</span>
+                        <span class="menu-item-price">₪38</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">ספרינג רולס</span>
-                            <span class="menu-item-price">₪32</span>
-                        </div>
-                        <p class="menu-item-desc">אגרולי ירקות פריכים</p>
+                    <p class="menu-item-desc">כיסוני בצק במילוי עוף וירקות, מוגשים עם רוטב סויה</p>
+                    <span class="menu-item-tag">מומלץ</span>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">טמפורה ירקות</span>
+                        <span class="menu-item-price">₪42</span>
                     </div>
+                    <p class="menu-item-desc">ירקות בציפוי טמפורה קריספי</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">מיסו</span>
+                        <span class="menu-item-price">₪28</span>
+                    </div>
+                    <p class="menu-item-desc">מרק מיסו מסורתי עם טופו ואצות וואקמה</p>
+                    <span class="menu-item-tag">טבעוני</span>
                 </div>
             </div>
-
-            <div class="menu-category">
-                <h3>סושי ורולים</h3>
-                <div class="menu-items">
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">קומבו סושי</span>
-                            <span class="menu-item-price">₪98</span>
-                        </div>
-                        <p class="menu-item-desc">מבחר סושי ורולים של השף</p>
+            
+            <!-- Sushi (Hidden by default) -->
+            <div class="menu-category-items" data-category="sushi" style="display: none;">
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">ספיישל סלמון</span>
+                        <span class="menu-item-price">₪78</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">ספיישל סלמון רול</span>
-                            <span class="menu-item-price">₪62</span>
-                        </div>
-                        <p class="menu-item-desc">רול סלמון עם אבוקדו וספייסי מיונז</p>
+                    <p class="menu-item-desc">8 יחידות - סלמון, אבוקדו, ספייסי מיונז וטוביקו</p>
+                    <span class="menu-item-tag">פופולרי</span>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">דרגון רול</span>
+                        <span class="menu-item-price">₪92</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">קליפורניה רול</span>
-                            <span class="menu-item-price">₪48</span>
-                        </div>
-                        <p class="menu-item-desc">סוריטי, אבוקדו ומלפפון</p>
+                    <p class="menu-item-desc">8 יחידות - טמפורה שרימפס, אבוקדו ואונאגי מעל</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">קומבו סושי</span>
+                        <span class="menu-item-price">₪148</span>
                     </div>
+                    <p class="menu-item-desc">24 יחידות - מבחר רולים של השף</p>
+                    <span class="menu-item-tag">מומלץ</span>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">סשימי מיקס</span>
+                        <span class="menu-item-price">₪118</span>
+                    </div>
+                    <p class="menu-item-desc">12 פרוסות - סלמון, טונה ודניס</p>
                 </div>
             </div>
-
-            <div class="menu-category">
-                <h3>מנות עיקריות</h3>
-                <div class="menu-items">
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">פאד תאי</span>
-                            <span class="menu-item-price">₪68</span>
-                        </div>
-                        <p class="menu-item-desc">אטריות אורז מוקפצות ברוטב תאילנדי</p>
+            
+            <!-- Mains (Hidden by default) -->
+            <div class="menu-category-items" data-category="mains" style="display: none;">
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">ראמן טונקוטסו</span>
+                        <span class="menu-item-price">₪72</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">ראמן</span>
-                            <span class="menu-item-price">₪72</span>
-                        </div>
-                        <p class="menu-item-desc">מרק אטריות יפני עשיר</p>
+                    <p class="menu-item-desc">מרק עצמות חזיר עשיר, אטריות, ביצה רכה וצ'אשו</p>
+                    <span class="menu-item-tag">מומלץ השף</span>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">פאד תאי</span>
+                        <span class="menu-item-price">₪68</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">קארי ירוק</span>
-                            <span class="menu-item-price">₪78</span>
-                        </div>
-                        <p class="menu-item-desc">קארי תאילנדי עם חלב קוקוס וירקות</p>
+                    <p class="menu-item-desc">אטריות אורז מוקפצות ברוטב תאילנדי עם שרימפס</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">טריאקי סלמון</span>
+                        <span class="menu-item-price">₪98</span>
                     </div>
+                    <p class="menu-item-desc">פילה סלמון בגריל עם רוטב טריאקי ואורז לבן</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">קארי ירוק</span>
+                        <span class="menu-item-price">₪78</span>
+                    </div>
+                    <p class="menu-item-desc">קארי תאילנדי עם חלב קוקוס, עוף וירקות</p>
+                    <span class="menu-item-tag">חריף</span>
                 </div>
             </div>
-
-            <div class="menu-category">
-                <h3>קינוחים</h3>
-                <div class="menu-items">
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">מוצ׳י</span>
-                            <span class="menu-item-price">₪28</span>
-                        </div>
-                        <p class="menu-item-desc">כדורי אורז יפניים במילוי גלידה</p>
+            
+            <!-- Desserts (Hidden by default) -->
+            <div class="menu-category-items" data-category="desserts" style="display: none;">
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">מוצ׳י</span>
+                        <span class="menu-item-price">₪32</span>
                     </div>
-                    <div class="menu-item">
-                        <div class="menu-item-header">
-                            <span class="menu-item-name">טמפורה גלידה</span>
-                            <span class="menu-item-price">₪38</span>
-                        </div>
-                        <p class="menu-item-desc">גלידת וניל בציפוי טמפורה פריך</p>
+                    <p class="menu-item-desc">4 יחידות - כדורי אורז יפניים במילוי גלידה</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">דוראיאקי</span>
+                        <span class="menu-item-price">₪28</span>
                     </div>
+                    <p class="menu-item-desc">פנקייק יפני במילוי ממרח שעועית אדומה</p>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">טמפורה גלידה</span>
+                        <span class="menu-item-price">₪42</span>
+                    </div>
+                    <p class="menu-item-desc">גלידת וניל בציפוי טמפורה פריך</p>
+                    <span class="menu-item-tag">מומלץ</span>
+                </div>
+                <div class="menu-item">
+                    <div class="menu-item-header">
+                        <span class="menu-item-name">מאצ׳ה טירמיסו</span>
+                        <span class="menu-item-price">₪38</span>
+                    </div>
+                    <p class="menu-item-desc">טירמיסו יפני עם תה ירוק מאצ׳ה</p>
                 </div>
             </div>
         </div>
@@ -140,23 +202,25 @@
 </section>
 
 <!-- Reservation Section -->
-<section id="reservation" class="reservation-section">
+<section id="reservation" class="reservation-section fade-in">
     <div class="container">
         <h2 class="section-title">הזמנת שולחן</h2>
+        <p class="section-subtitle">הזמינו את השולחן שלכם עכשיו</p>
+        
         <form method="POST" action="{{ url_for('reservation') }}" class="reservation-form">
             {{ reservation_form.hidden_tag() }}
             <div class="form-grid">
                 <div class="form-group">
                     {{ reservation_form.name.label }}
-                    {{ reservation_form.name(class="form-control") }}
+                    {{ reservation_form.name(class="form-control", placeholder="שם מלא") }}
                 </div>
                 <div class="form-group">
                     {{ reservation_form.email.label }}
-                    {{ reservation_form.email(class="form-control") }}
+                    {{ reservation_form.email(class="form-control", placeholder="example@email.com") }}
                 </div>
                 <div class="form-group">
                     {{ reservation_form.phone.label }}
-                    {{ reservation_form.phone(class="form-control") }}
+                    {{ reservation_form.phone(class="form-control", placeholder="050-1234567") }}
                 </div>
                 <div class="form-group">
                     {{ reservation_form.date.label }}
@@ -173,31 +237,37 @@
             </div>
             <div class="form-group">
                 {{ reservation_form.special_requests.label }}
-                {{ reservation_form.special_requests(class="form-control", rows="3") }}
+                {{ reservation_form.special_requests(class="form-control", rows="4", placeholder="בקשות מיוחדות, אלרגיות או הערות...") }}
             </div>
-            <button type="submit" class="btn btn-primary">שלח הזמנה</button>
+            <div style="text-align: center;">
+                <button type="submit" class="btn btn-primary">שלח הזמנה</button>
+            </div>
         </form>
     </div>
 </section>
 
 <!-- Contact Section -->
-<section id="contact" class="contact-section">
+<section id="contact" class="contact-section fade-in">
     <div class="container">
         <h2 class="section-title">צור קשר</h2>
+        <p class="section-subtitle">נשמח לשמוע מכם</p>
+        
         <div class="contact-content">
             <div class="contact-info">
                 <div class="contact-item">
                     <h3>כתובת</h3>
-                    <p>רחוב הרצל 123, תל אביב</p>
+                    <p>גולדה מאיר 6, חולון</p>
+                    <p>מול קניון חולון</p>
                 </div>
                 <div class="contact-item">
                     <h3>טלפון</h3>
-                    <p dir="ltr">03-1234567</p>
+                    <p dir="ltr">077-806-6300</p>
+                    <p>WhatsApp זמין</p>
                 </div>
                 <div class="contact-item">
                     <h3>שעות פתיחה</h3>
-                    <p>ראשון-חמישי: 12:00-23:00</p>
-                    <p>שישי-שבת: 12:00-24:00</p>
+                    <p>ראשון - חמישי: 12:00-23:00</p>
+                    <p>שישי - שבת: 12:00-01:00</p>
                 </div>
             </div>
             
@@ -205,21 +275,21 @@
                 {{ contact_form.hidden_tag() }}
                 <div class="form-group">
                     {{ contact_form.name.label }}
-                    {{ contact_form.name(class="form-control") }}
+                    {{ contact_form.name(class="form-control", placeholder="שם מלא") }}
                 </div>
                 <div class="form-group">
                     {{ contact_form.email.label }}
-                    {{ contact_form.email(class="form-control") }}
+                    {{ contact_form.email(class="form-control", placeholder="example@email.com") }}
                 </div>
                 <div class="form-group">
                     {{ contact_form.phone.label }}
-                    {{ contact_form.phone(class="form-control") }}
+                    {{ contact_form.phone(class="form-control", placeholder="050-1234567") }}
                 </div>
                 <div class="form-group">
                     {{ contact_form.message.label }}
-                    {{ contact_form.message(class="form-control", rows="4") }}
+                    {{ contact_form.message(class="form-control", rows="5", placeholder="ההודעה שלך...") }}
                 </div>
-                <button type="submit" class="btn btn-primary">שלח הודעה</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">שלח הודעה</button>
             </form>
         </div>
     </div>

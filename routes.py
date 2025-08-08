@@ -6,7 +6,9 @@ import logging
 
 @app.route('/')
 def index():
-    return render_template('modern.html')
+    contact_form = ContactForm()
+    reservation_form = ReservationForm()
+    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form)
 
 @app.route('/contact', methods=['POST'])
 def contact():
@@ -73,8 +75,12 @@ def reservation():
 
 @app.errorhandler(404)
 def not_found(error):
-    return render_template('index.html'), 404
+    contact_form = ContactForm()
+    reservation_form = ReservationForm()
+    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('index.html'), 500
+    contact_form = ContactForm()
+    reservation_form = ReservationForm()
+    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form), 500

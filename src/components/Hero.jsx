@@ -31,10 +31,6 @@ const Hero = ({ language }) => {
           <h1 className="hero-title fade-in-up">{t.title}</h1>
           <h2 className="hero-subtitle fade-in-up">{t.subtitle}</h2>
           <p className="hero-description fade-in-up">{t.description}</p>
-          <div className="hero-buttons fade-in-up">
-            <a href="#menu" className="btn btn-primary">{t.orderBtn}</a>
-            <a href="#reservations" className="btn btn-secondary">{t.reserveBtn}</a>
-          </div>
         </div>
       </section>
       

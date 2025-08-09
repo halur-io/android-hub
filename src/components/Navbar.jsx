@@ -73,7 +73,7 @@ const Navbar = ({ language, setLanguage }) => {
           className="call-now-btn"
         >
           <i className="fas fa-phone"></i>
-          <span>{language === 'he' ? 'התקשר עכשיו' : 'Call Now'}</span>
+          <span>{language === 'he' ? 'חייג' : 'Call'}</span>
         </a>
 
         <ul className={`navbar-menu ${mobileMenuOpen ? 'active' : ''}`}>

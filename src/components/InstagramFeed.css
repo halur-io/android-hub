@@ -1,6 +1,34 @@
 .instagram-feed {
   padding: 100px 0;
   background: linear-gradient(135deg, #fef9f3 0%, #ffffff 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.instagram-feed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(ellipse at top left, rgba(131, 58, 180, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(253, 29, 29, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at center, rgba(247, 119, 55, 0.03) 0%, transparent 70%);
+  animation: breathe 15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 }
 
 .instagram-header {

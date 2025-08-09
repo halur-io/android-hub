@@ -1,6 +1,32 @@
 .about-section {
   padding: 100px 0;
   background: linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.about-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(45deg, transparent 48%, rgba(41, 68, 95, 0.01) 49%, rgba(41, 68, 95, 0.01) 51%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(239, 91, 91, 0.01) 49%, rgba(239, 91, 91, 0.01) 51%, transparent 52%);
+  background-size: 30px 30px;
+  animation: meshMove 60s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes meshMove {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(30px, 30px);
+  }
 }
 
 .section-title {

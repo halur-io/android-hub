@@ -43,7 +43,7 @@ const HeroNew = ({ language }) => {
         <div className="hero-actions">
           <a href="tel:077-806-6300" className="hero-card takeaway-card">
             <div className="card-icon">
-              <svg width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 20H4a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v10a2 2 0 01-2 2z"/>
                 <polyline points="7 10 12 15 17 10"/>
               </svg>
@@ -54,7 +54,7 @@ const HeroNew = ({ language }) => {
 
           <a href="https://wa.me/972778066300" className="hero-card delivery-card">
             <div className="card-icon">
-              <svg width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="1" y="3" width="15" height="13"></rect>
                 <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
                 <circle cx="5.5" cy="18.5" r="2.5"></circle>
@@ -67,7 +67,7 @@ const HeroNew = ({ language }) => {
 
           <a href="#reservations" className="hero-card reserve-card">
             <div className="card-icon">
-              <svg width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                 <line x1="16" y1="2" x2="16" y2="6"></line>
                 <line x1="8" y1="2" x2="8" y2="6"></line>

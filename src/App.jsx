@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
-import Hero from './components/Hero'
+import HeroNew from './components/HeroNew'
+import SpecialOffers from './components/SpecialOffers'
 import About from './components/About'
-import Menu from './components/Menu'
-import Gallery from './components/Gallery'
+import MenuNew from './components/MenuNew'
+import InstagramFeed from './components/InstagramFeed'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 import './App.css'
@@ -22,10 +23,11 @@ function App() {
   return (
     <div className="app">
       <Navbar language={language} setLanguage={setLanguage} />
-      <Hero language={language} />
+      <HeroNew language={language} />
+      <SpecialOffers language={language} />
       <About language={language} />
-      <Menu language={language} />
-      <Gallery language={language} />
+      <MenuNew language={language} />
+      <InstagramFeed language={language} />
       <Contact language={language} />
       <Footer language={language} />
     </div>

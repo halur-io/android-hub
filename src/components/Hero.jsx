@@ -38,7 +38,7 @@ const Hero = ({ language }) => {
           </a>
           <a href="tel:077-806-6300" className="action-btn">
             <i className="fas fa-shopping-bag"></i>
-            <span>{language === 'he' ? 'טייק אוויי' : 'Take Away'}</span>
+            <span>TA</span>
           </a>
           <a href="https://wa.me/972778066300?text=שלום, אני רוצה להזמין משלוח" className="action-btn">
             <i className="fas fa-motorcycle"></i>

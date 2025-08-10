@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import HeroNew from './components/HeroNew'
 import About from './components/About'
@@ -9,23 +9,23 @@ import Footer from './components/Footer'
 import MenuPage from './pages/MenuPage'
 import './App.css'
 
-function HomePage({ language, setLanguage }) {
+function HomePage({ language }) {
   return (
-    <div className="app">
-      <Navbar language={language} setLanguage={setLanguage} />
+    <>
       <HeroNew language={language} />
       <About language={language} />
       <PhotoShowcase language={language} />
       <Contact language={language} />
       <Footer language={language} />
-    </div>
+    </>
   )
 }
 
-function App() {
+function AppContent() {
   const [language, setLanguage] = useState(() => {
     return localStorage.getItem('language') || 'he'
   })
+  const location = useLocation()
 
   useEffect(() => {
     localStorage.setItem('language', language)
@@ -33,12 +33,24 @@ function App() {
     document.documentElement.setAttribute('lang', language)
   }, [language])
 
+  // Show navbar only on home page
+  const showNavbar = location.pathname === '/'
+
   return (
-    <Router>
+    <div className="app">
+      {showNavbar && <Navbar language={language} setLanguage={setLanguage} />}
       <Routes>
-        <Route path="/" element={<HomePage language={language} setLanguage={setLanguage} />} />
+        <Route path="/" element={<HomePage language={language} />} />
         <Route path="/menu" element={<MenuPage />} />
       </Routes>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   )
 }

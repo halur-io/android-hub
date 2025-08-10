@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import './Navbar.css'
 
 const Navbar = ({ language, setLanguage }) => {
@@ -78,7 +79,7 @@ const Navbar = ({ language, setLanguage }) => {
 
         <ul className={`navbar-menu ${mobileMenuOpen ? 'active' : ''}`}>
           <li><a href="#about" onClick={(e) => handleNavClick(e, '#about')}>{t.about}</a></li>
-          <li><a href="/menu">{t.menu}</a></li>
+          <li><Link to="/menu" onClick={() => setMobileMenuOpen(false)}>{t.menu}</Link></li>
           <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>{t.gallery}</a></li>
           <li><a href="#reservations" onClick={(e) => handleNavClick(e, '#reservations')}>{t.reservations}</a></li>
           <li><a href="#contact" onClick={(e) => handleNavClick(e, '#contact')}>{t.contact}</a></li>

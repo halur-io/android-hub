@@ -53,6 +53,15 @@ const About = ({ language }) => {
 
   return (
     <section id="about" className="about-section">
+      {/* Interactive particles */}
+      <div className="about-particles">
+        <span className="particle-about"></span>
+        <span className="particle-about"></span>
+        <span className="particle-about"></span>
+        <span className="particle-about"></span>
+        <span className="particle-about"></span>
+      </div>
+      
       <div className="container">
         <div className="about-header">
           <h2 className="section-title">{t.title}</h2>

@@ -78,7 +78,7 @@ const Navbar = ({ language, setLanguage }) => {
 
         <ul className={`navbar-menu ${mobileMenuOpen ? 'active' : ''}`}>
           <li><a href="#about" onClick={(e) => handleNavClick(e, '#about')}>{t.about}</a></li>
-          <li><a href="#menu" onClick={(e) => handleNavClick(e, '#menu')}>{t.menu}</a></li>
+          <li><a href="/menu">{t.menu}</a></li>
           <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>{t.gallery}</a></li>
           <li><a href="#reservations" onClick={(e) => handleNavClick(e, '#reservations')}>{t.reservations}</a></li>
           <li><a href="#contact" onClick={(e) => handleNavClick(e, '#contact')}>{t.contact}</a></li>

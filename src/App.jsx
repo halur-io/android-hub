@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
 import HeroNew from './components/HeroNew'
-import SpecialOffers from './components/SpecialOffers'
 import About from './components/About'
 import MenuNew from './components/MenuNew'
-import InstagramFeed from './components/InstagramFeed'
+import PhotoShowcase from './components/PhotoShowcase'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 import './App.css'
@@ -24,10 +23,9 @@ function App() {
     <div className="app">
       <Navbar language={language} setLanguage={setLanguage} />
       <HeroNew language={language} />
-      <SpecialOffers language={language} />
       <About language={language} />
       <MenuNew language={language} />
-      <InstagramFeed language={language} />
+      <PhotoShowcase language={language} />
       <Contact language={language} />
       <Footer language={language} />
     </div>

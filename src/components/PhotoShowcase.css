@@ -5,7 +5,7 @@
   overflow: hidden;
 }
 
-/* Diagonal line pattern background */
+/* Premium animated mesh gradient */
 .photo-showcase::before {
   content: '';
   position: absolute;
@@ -13,47 +13,27 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: 
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 20px,
-      rgba(239, 91, 91, 0.15) 20px,
-      rgba(239, 91, 91, 0.15) 21px,
-      transparent 21px,
-      transparent 40px,
-      rgba(91, 239, 239, 0.15) 40px,
-      rgba(91, 239, 239, 0.15) 41px,
-      transparent 41px,
-      transparent 60px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 20px,
-      rgba(239, 239, 91, 0.1) 20px,
-      rgba(239, 239, 91, 0.1) 21px,
-      transparent 21px,
-      transparent 40px,
-      rgba(239, 91, 239, 0.1) 40px,
-      rgba(239, 91, 239, 0.1) 41px,
-      transparent 41px,
-      transparent 60px
-    );
-  animation: lineSlide 30s linear infinite;
+  background: 
+    radial-gradient(ellipse 800px 400px at 100% 50%, rgba(239, 91, 91, 0.08), transparent),
+    radial-gradient(ellipse 600px 400px at 0% 50%, rgba(91, 239, 239, 0.08), transparent),
+    radial-gradient(ellipse 400px 300px at 50% 100%, rgba(239, 239, 91, 0.06), transparent);
+  animation: meshFlow 20s ease-in-out infinite;
   pointer-events: none;
 }
 
-@keyframes lineSlide {
-  0% {
-    transform: translate(0, 0);
+@keyframes meshFlow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
   }
-  100% {
-    transform: translate(60px, 60px);
+  33% {
+    transform: translate(-50px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(50px, 30px) scale(0.95);
   }
 }
 
-/* Glowing overlay effect */
+/* Subtle sparkle overlay */
 .photo-showcase::after {
   content: '';
   position: absolute;
@@ -61,20 +41,24 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(239, 91, 91, 0.2) 0%, transparent 40%),
-    radial-gradient(circle at 80% 50%, rgba(91, 239, 239, 0.2) 0%, transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(239, 239, 91, 0.15) 0%, transparent 40%);
-  animation: pulseGlow 4s ease-in-out infinite;
+  background-image: 
+    radial-gradient(1px 1px at 20% 30%, white, transparent),
+    radial-gradient(1px 1px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent);
+  background-size: 300px 300px;
+  background-repeat: repeat;
+  opacity: 0.02;
+  animation: sparkleFloat 30s linear infinite;
   pointer-events: none;
 }
 
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 0.3;
+@keyframes sparkleFloat {
+  0% {
+    transform: translateX(0) translateY(0);
   }
-  50% {
-    opacity: 0.6;
+  100% {
+    transform: translateX(300px) translateY(-300px);
   }
 }
 

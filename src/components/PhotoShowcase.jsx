@@ -17,14 +17,14 @@ const PhotoShowcase = ({ language }) => {
 
   // 8 photos for the showcase - mix of your photos and AI generated
   const photos = [
-    { id: 1, src: '/static/images/photo1.jpg', alt: 'Sumo Restaurant' },
-    { id: 2, src: '/static/images/photo2.jpg', alt: 'Asian Cuisine' },
-    { id: 3, src: '/static/images/photo3.jpg', alt: 'Restaurant Dish' },
-    { id: 4, src: '/static/images/photo4.png', alt: 'Sumo Logo' },
-    { id: 5, src: '/static/images/photo5.png', alt: 'Elegant Sushi Platter' },
-    { id: 6, src: '/static/images/photo6.png', alt: 'Restaurant Interior' },
-    { id: 7, src: '/static/images/photo7.png', alt: 'Ramen Bowl' },
-    { id: 8, src: '/static/images/photo8.png', alt: 'Wok Cooking' }
+    { id: 1, src: '/static/images/photo5.png', alt: 'Elegant Sushi Platter' },
+    { id: 2, src: '/static/images/photo6.png', alt: 'Restaurant Interior' },
+    { id: 3, src: '/static/images/photo7.png', alt: 'Ramen Bowl' },
+    { id: 4, src: '/static/images/photo8.png', alt: 'Wok Cooking' },
+    { id: 5, src: '/static/images/photo9.png', alt: 'Dragon Roll Sushi' },
+    { id: 6, src: '/static/images/photo10.png', alt: 'Restaurant Bar' },
+    { id: 7, src: '/static/images/photo11.png', alt: 'Sashimi Platter' },
+    { id: 8, src: '/static/images/photo12.png', alt: 'Appetizer Platter' }
   ]
 
   return (

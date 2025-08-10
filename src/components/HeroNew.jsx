@@ -1,7 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import './HeroNew.css'
+import BranchModal from './BranchModal'
 
 const HeroNew = ({ language }) => {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedAction, setSelectedAction] = useState(null)
   const translations = {
     he: {
       title: 'סומו',
@@ -37,6 +40,11 @@ const HeroNew = ({ language }) => {
 
   const t = translations[language]
 
+  const handleActionClick = (actionType) => {
+    setSelectedAction(actionType)
+    setModalOpen(true)
+  }
+
   return (
     <section className="hero-new">
       <div className="hero-background">
@@ -59,47 +67,30 @@ const HeroNew = ({ language }) => {
             <p className="quality">{t.quality}</p>
           </div>
 
-          <div className="hero-action-zone">
-            <div className="branches-showcase">
-              <div className="branch-card rama">
-                <div className="branch-card-inner">
-                  <h4>{t.rama}</h4>
-                  <div className="branch-actions">
-                    <a href="tel:077-806-6300" className="branch-action-btn">
-                      <i className="fas fa-phone"></i>
-                      <span>{t.takeaway}</span>
-                    </a>
-                    <a href="https://wa.me/972778066300" className="branch-action-btn whatsapp">
-                      <i className="fab fa-whatsapp"></i>
-                      <span>{t.delivery}</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="branch-card karmiel">
-                <div className="branch-card-inner">
-                  <h4>{t.karmiel}</h4>
-                  <div className="branch-actions">
-                    <a href="tel:077-806-6300" className="branch-action-btn">
-                      <i className="fas fa-phone"></i>
-                      <span>{t.takeaway}</span>
-                    </a>
-                    <a href="https://wa.me/972778066300" className="branch-action-btn whatsapp">
-                      <i className="fab fa-whatsapp"></i>
-                      <span>{t.delivery}</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="hero-main-actions">
+            <button 
+              className="main-action-btn"
+              onClick={() => handleActionClick('takeaway')}
+            >
+              <i className="fas fa-phone"></i>
+              <span>{t.takeaway}</span>
+            </button>
             
-            <div className="central-reservation">
-              <a href="#contact" className="reservation-btn">
-                <i className="fas fa-calendar-check"></i>
-                <span>{t.reservations}</span>
-              </a>
-            </div>
+            <button 
+              className="main-action-btn primary"
+              onClick={() => handleActionClick('delivery')}
+            >
+              <i className="fab fa-whatsapp"></i>
+              <span>{t.delivery}</span>
+            </button>
+            
+            <button 
+              className="main-action-btn"
+              onClick={() => handleActionClick('reservations')}
+            >
+              <i className="fas fa-calendar-check"></i>
+              <span>{t.reservations}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -109,6 +100,13 @@ const HeroNew = ({ language }) => {
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </div>
+
+      <BranchModal 
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        actionType={selectedAction}
+        language={language}
+      />
     </section>
   )
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
-import HeroNew from './components/HeroNew'
+import Hero from './components/Hero'
 import About from './components/About'
 import PhotoShowcase from './components/PhotoShowcase'
 import Contact from './components/Contact'
@@ -12,7 +12,7 @@ import './App.css'
 function HomePage({ language }) {
   return (
     <>
-      <HeroNew language={language} />
+      <Hero language={language} />
       <About language={language} />
       <PhotoShowcase language={language} />
       <Contact language={language} />

@@ -17,14 +17,14 @@ const PhotoShowcase = ({ language }) => {
 
   // 8 photos for the showcase
   const photos = [
-    { id: 1, alt: 'Sushi Selection' },
-    { id: 2, alt: 'Restaurant Interior' },
-    { id: 3, alt: 'Signature Roll' },
-    { id: 4, alt: 'Dining Area' },
-    { id: 5, alt: 'Fresh Sashimi' },
-    { id: 6, alt: 'Bar Counter' },
-    { id: 7, alt: 'Wok Dishes' },
-    { id: 8, alt: 'Dessert Selection' }
+    { id: 1, src: '/static/images/photo1.jpg', alt: 'Sushi Selection' },
+    { id: 2, src: '/static/images/photo2.jpg', alt: 'Restaurant Interior' },
+    { id: 3, src: '/static/images/photo3.jpg', alt: 'Signature Roll' },
+    { id: 4, src: '/static/images/photo4.png', alt: 'Dining Area' },
+    { id: 5, src: '/static/images/photo5.jpg', alt: 'Fresh Sashimi' },
+    { id: 6, src: '/static/images/photo6.jpg', alt: 'Bar Counter' },
+    { id: 7, src: '/static/images/photo7.jpg', alt: 'Wok Dishes' },
+    { id: 8, src: '/static/images/photo8.png', alt: 'Dessert Selection' }
   ]
 
   return (
@@ -33,9 +33,11 @@ const PhotoShowcase = ({ language }) => {
         <div className="photo-grid-2col">
           {photos.map(photo => (
             <div key={photo.id} className="photo-item-simple">
-              <div className="photo-placeholder-simple">
-                <i className="fas fa-image"></i>
-              </div>
+              <img 
+                src={photo.src} 
+                alt={photo.alt} 
+                className="photo-image"
+              />
             </div>
           ))}
         </div>

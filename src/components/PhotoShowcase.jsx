@@ -29,7 +29,7 @@ const PhotoShowcase = ({ language }) => {
 
   return (
     <section className="photo-showcase">
-      <div className="container">
+      <div className="photo-container">
         <div className="photo-grid-2col">
           {photos.map(photo => (
             <div key={photo.id} className="photo-item-simple">
@@ -37,6 +37,10 @@ const PhotoShowcase = ({ language }) => {
                 src={photo.src} 
                 alt={photo.alt} 
                 className="photo-image"
+                onError={(e) => {
+                  e.target.style.background = 'rgba(50, 50, 50, 0.5)';
+                  e.target.style.minHeight = '200px';
+                }}
               />
             </div>
           ))}

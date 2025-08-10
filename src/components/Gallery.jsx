@@ -16,12 +16,54 @@ const Gallery = ({ language }) => {
   const t = translations[language]
 
   const galleryImages = [
-    { id: 1, alt: 'Sushi Platter' },
-    { id: 2, alt: 'Ramen Bowl' },
-    { id: 3, alt: 'Thai Curry' },
-    { id: 4, alt: 'Korean BBQ' },
-    { id: 5, alt: 'Vietnamese Pho' },
-    { id: 6, alt: 'Desserts' }
+    { 
+      id: 1, 
+      alt: 'Premium Sushi Selection',
+      category: 'סושי',
+      description: 'Fresh premium sushi rolls'
+    },
+    { 
+      id: 2, 
+      alt: 'Special Roll Combo',
+      category: 'קומבינציות',
+      description: 'Chef special combination'
+    },
+    { 
+      id: 3, 
+      alt: 'Wok Noodles',
+      category: 'ווק',
+      description: 'Stir-fried noodles with vegetables'
+    },
+    { 
+      id: 4, 
+      alt: 'Tempura Platter',
+      category: 'טמפורה',
+      description: 'Crispy tempura selection'
+    },
+    { 
+      id: 5, 
+      alt: 'Pad Thai',
+      category: 'תאילנדי',
+      description: 'Classic Thai noodles'
+    },
+    { 
+      id: 6, 
+      alt: 'Salmon Teriyaki',
+      category: 'דגים',
+      description: 'Grilled salmon with teriyaki'
+    },
+    { 
+      id: 7, 
+      alt: 'Ramen Bowl',
+      category: 'ראמן',
+      description: 'Traditional Japanese ramen'
+    },
+    { 
+      id: 8, 
+      alt: 'Asian Desserts',
+      category: 'קינוחים',
+      description: 'Sweet treats selection'
+    }
   ]
 
   return (
@@ -33,13 +75,15 @@ const Gallery = ({ language }) => {
         <div className="gallery-grid">
           {galleryImages.map(image => (
             <div key={image.id} className="gallery-item">
-              <div className="gallery-image-placeholder">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                  <polyline points="21 15 16 10 5 21"></polyline>
-                </svg>
-                <span>{image.alt}</span>
+              <div className="gallery-image-wrapper">
+                <div className="gallery-image-placeholder">
+                  <i className="fas fa-utensils"></i>
+                </div>
+                <div className="gallery-overlay">
+                  <span className="gallery-category">{image.category}</span>
+                  <h4 className="gallery-title">{image.alt}</h4>
+                  <p className="gallery-description">{image.description}</p>
+                </div>
               </div>
             </div>
           ))}

@@ -40,17 +40,6 @@ const HeroNew = ({ language }) => {
   return (
     <section className="hero-new">
       <div className="hero-background">
-        <video 
-          className="hero-video"
-          autoPlay 
-          muted 
-          loop 
-          playsInline
-        >
-          <source src="/static/videos/sushi-preparation.mp4" type="video/mp4" />
-          {/* Fallback for browsers that don't support video */}
-          Your browser does not support the video tag.
-        </video>
         <div className="hero-overlay"></div>
       </div>
       
@@ -70,24 +59,47 @@ const HeroNew = ({ language }) => {
             <p className="quality">{t.quality}</p>
           </div>
 
-          <div className="hero-branches">
-            <h3>{t.branches}</h3>
-            <div className="branch-buttons">
-              <button className="branch-btn">{t.rama}</button>
-              <button className="branch-btn">{t.karmiel}</button>
+          <div className="hero-action-zone">
+            <div className="branches-showcase">
+              <div className="branch-card rama">
+                <div className="branch-card-inner">
+                  <h4>{t.rama}</h4>
+                  <div className="branch-actions">
+                    <a href="tel:077-806-6300" className="branch-action-btn">
+                      <i className="fas fa-phone"></i>
+                      <span>{t.takeaway}</span>
+                    </a>
+                    <a href="https://wa.me/972778066300" className="branch-action-btn whatsapp">
+                      <i className="fab fa-whatsapp"></i>
+                      <span>{t.delivery}</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="branch-card karmiel">
+                <div className="branch-card-inner">
+                  <h4>{t.karmiel}</h4>
+                  <div className="branch-actions">
+                    <a href="tel:077-806-6300" className="branch-action-btn">
+                      <i className="fas fa-phone"></i>
+                      <span>{t.takeaway}</span>
+                    </a>
+                    <a href="https://wa.me/972778066300" className="branch-action-btn whatsapp">
+                      <i className="fab fa-whatsapp"></i>
+                      <span>{t.delivery}</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="hero-actions-refined">
-            <a href="tel:077-806-6300" className="action-btn">
-              <span>{t.takeaway}</span>
-            </a>
-            <a href="https://wa.me/972778066300" className="action-btn primary">
-              <span>{t.delivery}</span>
-            </a>
-            <a href="#contact" className="action-btn">
-              <span>{t.reservations}</span>
-            </a>
+            
+            <div className="central-reservation">
+              <a href="#contact" className="reservation-btn">
+                <i className="fas fa-calendar-check"></i>
+                <span>{t.reservations}</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>

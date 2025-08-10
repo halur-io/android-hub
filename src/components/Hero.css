@@ -35,6 +35,33 @@
   z-index: -1;
 }
 
+/* Animated particles overlay */
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.1) 2px, transparent 2px),
+    radial-gradient(circle at 80% 80%, rgba(239, 91, 91, 0.1) 2px, transparent 2px),
+    radial-gradient(circle at 50% 50%, rgba(91, 239, 239, 0.08) 2px, transparent 2px),
+    radial-gradient(circle at 30% 70%, rgba(239, 239, 91, 0.08) 2px, transparent 2px);
+  background-size: 100px 100px, 150px 150px, 200px 200px, 250px 250px;
+  animation: particlesDrift 25s linear infinite;
+  z-index: 0;
+}
+
+@keyframes particlesDrift {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(-100px, -100px);
+  }
+}
+
 .hero-content {
   text-align: center;
   z-index: 1;

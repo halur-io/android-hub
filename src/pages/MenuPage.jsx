@@ -6,6 +6,7 @@ const MenuPage = () => {
   const [language, setLanguage] = useState(() => {
     return localStorage.getItem('language') || 'he'
   })
+  const [selectedBranch, setSelectedBranch] = useState('rama')
 
   useEffect(() => {
     document.documentElement.setAttribute('dir', language === 'he' ? 'rtl' : 'ltr')
@@ -14,8 +15,9 @@ const MenuPage = () => {
 
   const translations = {
     he: {
-      title: 'התפריט שלנו',
-      subtitle: 'מסע קולינרי אסייתי',
+      title: 'תפריט',
+      rama: 'סניף ראמה',
+      karmiel: 'סניף כרמיאל',
       backHome: 'חזרה לדף הבית',
       starters: 'ראשונות',
       sushi: 'סושי ורולים',
@@ -23,6 +25,8 @@ const MenuPage = () => {
       soups: 'מרקים',
       desserts: 'קינוחים',
       drinks: 'משקאות',
+      salads: 'סלטים',
+      mains: 'עיקריות',
       items: {
         starters: [
           { name: 'אדממה', price: '₪25', desc: 'פולי סויה מאודים עם מלח גס' },
@@ -50,8 +54,9 @@ const MenuPage = () => {
       }
     },
     en: {
-      title: 'Our Menu',
-      subtitle: 'An Asian Culinary Journey',
+      title: 'Menu',
+      rama: 'Rama Branch',
+      karmiel: 'Karmiel Branch',
       backHome: 'Back to Home',
       starters: 'Starters',
       sushi: 'Sushi & Rolls',
@@ -59,6 +64,8 @@ const MenuPage = () => {
       soups: 'Soups',
       desserts: 'Desserts',
       drinks: 'Beverages',
+      salads: 'Salads',
+      mains: 'Main Courses',
       items: {
         starters: [
           { name: 'Edamame', price: '₪25', desc: 'Steamed soybeans with coarse salt' },
@@ -90,27 +97,16 @@ const MenuPage = () => {
   const t = translations[language]
 
   const categories = [
-    { id: 'starters', name: t.starters, icon: '🥟' },
-    { id: 'sushi', name: t.sushi, icon: '🍱' },
-    { id: 'wok', name: t.wok, icon: '🥘' },
-    { id: 'soups', name: t.soups, icon: '🍜' }
+    { id: 'starters', name: t.starters },
+    { id: 'sushi', name: t.sushi },
+    { id: 'wok', name: t.wok },
+    { id: 'soups', name: t.soups },
   ]
 
   const [activeCategory, setActiveCategory] = useState('starters')
 
   return (
     <div className="menu-page">
-      {/* Interactive Background */}
-      <div className="interactive-bg">
-        <div className="particle"></div>
-        <div className="particle"></div>
-        <div className="particle"></div>
-        <div className="particle"></div>
-        <div className="particle"></div>
-        <div className="wave"></div>
-        <div className="wave"></div>
-      </div>
-
       {/* Header */}
       <header className="menu-header">
         <Link to="/" className="back-button">
@@ -118,27 +114,46 @@ const MenuPage = () => {
           <span>{t.backHome}</span>
         </Link>
         
-        <div className="language-switch">
-          <button 
-            className={language === 'he' ? 'active' : ''} 
-            onClick={() => setLanguage('he')}
-          >
-            עב
-          </button>
-          <button 
-            className={language === 'en' ? 'active' : ''} 
-            onClick={() => setLanguage('en')}
-          >
-            EN
-          </button>
+        <div className="header-controls">
+          <div className="branch-selector">
+            <button 
+              className={`branch-btn ${selectedBranch === 'rama' ? 'active' : ''}`}
+              onClick={() => setSelectedBranch('rama')}
+            >
+              {t.rama}
+            </button>
+            <button 
+              className={`branch-btn ${selectedBranch === 'karmiel' ? 'active' : ''}`}
+              onClick={() => setSelectedBranch('karmiel')}
+            >
+              {t.karmiel}
+            </button>
+          </div>
+          
+          <div className="language-switch">
+            <button 
+              className={language === 'he' ? 'active' : ''} 
+              onClick={() => setLanguage('he')}
+            >
+              עב
+            </button>
+            <button 
+              className={language === 'en' ? 'active' : ''} 
+              onClick={() => setLanguage('en')}
+            >
+              EN
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="menu-content">
+      <div className="menu-container">
         <div className="menu-title-section">
           <h1 className="menu-title">{t.title}</h1>
-          <p className="menu-subtitle">{t.subtitle}</p>
+          <div className="current-branch">
+            {selectedBranch === 'rama' ? t.rama : t.karmiel}
+          </div>
         </div>
 
         {/* Category Tabs */}
@@ -149,23 +164,26 @@ const MenuPage = () => {
               className={`category-tab ${activeCategory === category.id ? 'active' : ''}`}
               onClick={() => setActiveCategory(category.id)}
             >
-              <span className="category-icon">{category.icon}</span>
-              <span className="category-name">{category.name}</span>
+              {category.name}
             </button>
           ))}
         </div>
 
         {/* Menu Items */}
-        <div className="menu-items">
-          {t.items[activeCategory]?.map((item, index) => (
-            <div key={index} className="menu-item">
-              <div className="item-header">
-                <h3 className="item-name">{item.name}</h3>
-                <span className="item-price">{item.price}</span>
+        <div className="menu-section">
+          <h2 className="category-title">{categories.find(c => c.id === activeCategory)?.name}</h2>
+          <div className="menu-items">
+            {t.items[activeCategory]?.map((item, index) => (
+              <div key={index} className="menu-item">
+                <div className="item-header">
+                  <span className="item-name">{item.name}</span>
+                  <span className="item-dots"></span>
+                  <span className="item-price">{item.price}</span>
+                </div>
+                <p className="item-desc">{item.desc}</p>
               </div>
-              <p className="item-desc">{item.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

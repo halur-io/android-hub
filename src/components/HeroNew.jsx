@@ -40,6 +40,17 @@ const HeroNew = ({ language }) => {
   return (
     <section className="hero-new">
       <div className="hero-background">
+        <video 
+          className="hero-video"
+          autoPlay 
+          muted 
+          loop 
+          playsInline
+        >
+          <source src="/static/videos/sushi-preparation.mp4" type="video/mp4" />
+          {/* Fallback for browsers that don't support video */}
+          Your browser does not support the video tag.
+        </video>
         <div className="hero-overlay"></div>
       </div>
       

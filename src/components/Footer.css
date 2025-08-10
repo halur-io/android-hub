@@ -47,17 +47,19 @@
   display: flex;
   flex-direction: row;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 1rem;
   position: fixed;
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  padding: 1rem 2rem;
+  padding: 0.8rem 1.5rem;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(20px);
   border-radius: 50px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  max-width: calc(100% - 40px);
+  width: auto;
 }
 
 .footer-action-btn {
@@ -101,6 +103,50 @@
 
 .footer-action-btn i {
   font-size: 1.2rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .footer-quick-actions {
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    bottom: 15px;
+  }
+  
+  .footer-action-btn {
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
+  }
+  
+  .footer-action-btn i {
+    font-size: 1rem;
+  }
+  
+  .footer-action-btn span {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-quick-actions {
+    gap: 0.3rem;
+    padding: 0.5rem 0.8rem;
+  }
+  
+  .footer-action-btn {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+  }
+  
+  .footer-action-btn i {
+    font-size: 0.9rem;
+  }
+  
+  .footer-action-btn span {
+    font-size: 0.8rem;
+  }
 }
 
 .footer-content {

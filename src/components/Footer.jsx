@@ -17,14 +17,14 @@ const Footer = ({ language }) => {
 
   const quickActionTranslations = {
     he: {
-      call: 'התקשרו',
-      order: 'הזמינו',
-      directions: 'הגיעו'
+      call: 'טלפון',
+      order: 'הזמנות',
+      directions: 'Waze'
     },
     en: {
-      call: 'Call Us',
-      order: 'Order Now',
-      directions: 'Get Directions'
+      call: 'Phone',
+      order: 'Orders',
+      directions: 'Waze'
     }
   }
 

@@ -15,9 +15,39 @@ const Footer = ({ language }) => {
 
   const t = translations[language]
 
+  const quickActionTranslations = {
+    he: {
+      call: 'התקשרו',
+      order: 'הזמינו',
+      directions: 'הגיעו'
+    },
+    en: {
+      call: 'Call Us',
+      order: 'Order Now',
+      directions: 'Get Directions'
+    }
+  }
+
+  const qt = quickActionTranslations[language]
+
   return (
     <footer className="footer">
       <div className="container">
+        <div className="footer-quick-actions">
+          <a href="tel:+972778066300" className="footer-action-btn">
+            <i className="fas fa-phone"></i>
+            <span>{qt.call}</span>
+          </a>
+          <a href="https://wa.me/972778066300" className="footer-action-btn">
+            <i className="fas fa-shopping-cart"></i>
+            <span>{qt.order}</span>
+          </a>
+          <a href="https://waze.com" className="footer-action-btn">
+            <i className="fas fa-map-marker-alt"></i>
+            <span>{qt.directions}</span>
+          </a>
+        </div>
+        
         <div className="footer-content">
           <div className="footer-logo">
             <img 

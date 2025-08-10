@@ -57,85 +57,11 @@ const About = ({ language }) => {
         <div className="about-header">
           <h2 className="section-title">{t.title}</h2>
           <p className="section-subtitle">{t.subtitle}</p>
-          <div className="intro-line">{t.intro}</div>
         </div>
         
         <div className="about-content">
           <div className="about-story">
-            <p className="story-text">{t.description1}</p>
-            <p className="story-text highlight">{t.description2}</p>
-          </div>
-
-          <div className="why-section">
-            <h3 className="why-title">{t.whyTitle}</h3>
-            <div className="features-grid">
-              <div className="feature-card">
-                <div className="feature-icon">
-                  <i className="fas fa-leaf"></i>
-                </div>
-                <h4>{t.freshIngredients}</h4>
-                <p>{t.freshDesc}</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">
-                  <i className="fas fa-user-tie"></i>
-                </div>
-                <h4>{t.expertChefs}</h4>
-                <p>{t.chefDesc}</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">
-                  <i className="fas fa-star"></i>
-                </div>
-                <h4>{t.uniqueAtmosphere}</h4>
-                <p>{t.atmosphereDesc}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="branches-section">
-            <h3 className="branches-title">{t.branchesTitle}</h3>
-            <div className="branches-grid">
-              <div className="branch-card rama-branch">
-                <div className="branch-card-inner">
-                  <div className="branch-icon">
-                    <i className="fas fa-map-marker-alt"></i>
-                  </div>
-                  <h4>{t.ramaTitle}</h4>
-                  <p className="branch-desc">{t.ramaDesc}</p>
-                  <div className="branch-info">
-                    <p className="branch-address">
-                      <i className="fas fa-location-dot"></i>
-                      {t.ramaAddress}
-                    </p>
-                    <p className="branch-phone">
-                      <i className="fas fa-phone"></i>
-                      077-806-6300
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="branch-card karmiel-branch">
-                <div className="branch-card-inner">
-                  <div className="branch-icon">
-                    <i className="fas fa-map-marker-alt"></i>
-                  </div>
-                  <h4>{t.karmielTitle}</h4>
-                  <p className="branch-desc">{t.karmielDesc}</p>
-                  <div className="branch-info">
-                    <p className="branch-address">
-                      <i className="fas fa-location-dot"></i>
-                      {t.karmielAddress}
-                    </p>
-                    <p className="branch-phone">
-                      <i className="fas fa-phone"></i>
-                      077-806-6301
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="story-text main">{t.description1}</p>
           </div>
         </div>
       </div>

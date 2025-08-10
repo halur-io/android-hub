@@ -55,13 +55,7 @@
   letter-spacing: 1px;
 }
 
-.intro-line {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.5);
-  font-style: italic;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
+
 
 /* About Content */
 .about-content {
@@ -73,265 +67,31 @@
 /* Story Section */
 .about-story {
   text-align: center;
-  margin-bottom: 5rem;
   max-width: 900px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto;
 }
 
 .story-text {
-  font-size: 1.15rem;
-  line-height: 1.8;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+  line-height: 2;
+  color: rgba(255, 255, 255, 0.8);
   font-weight: 300;
+  letter-spacing: 0.5px;
 }
 
-.story-text.highlight {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 1.25rem;
+.story-text.main {
   position: relative;
-  padding: 1.5rem;
-  background: rgba(239, 91, 91, 0.05);
-  border-left: 3px solid rgba(239, 91, 91, 0.4);
-  border-radius: 10px;
-}
-
-/* Why Section */
-.why-section {
-  margin-bottom: 5rem;
-}
-
-.why-title {
-  text-align: center;
-  font-size: 2.5rem;
-  color: #f0f0f0;
-  margin-bottom: 3rem;
-  font-weight: 300;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 2.5rem;
-  margin-bottom: 4rem;
-}
-
-.feature-card {
-  text-align: center;
-  padding: 2.5rem 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  transition: all 0.4s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  padding: 2rem;
   background: linear-gradient(135deg, 
-    transparent 0%, 
-    rgba(239, 91, 91, 0.05) 100%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
+    rgba(239, 91, 91, 0.03) 0%, 
+    rgba(239, 91, 91, 0.01) 100%);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.feature-card:hover::before {
-  opacity: 1;
-}
 
-.feature-card:hover {
-  transform: translateY(-10px);
-  border-color: rgba(239, 91, 91, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.feature-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 1.5rem;
-  background: linear-gradient(135deg, 
-    rgba(239, 91, 91, 0.15) 0%, 
-    rgba(239, 91, 91, 0.05) 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  color: rgba(239, 91, 91, 0.8);
-  border: 2px solid rgba(239, 91, 91, 0.2);
-}
-
-.feature-card h4 {
-  color: #f0f0f0;
-  font-size: 1.4rem;
-  margin-bottom: 0.8rem;
-  font-weight: 400;
-  letter-spacing: 1px;
-}
-
-.feature-card p {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.95rem;
-  line-height: 1.6;
-}
-
-/* Branches Section */
-.branches-section {
-  margin-top: 5rem;
-}
-
-.branches-title {
-  text-align: center;
-  font-size: 2.5rem;
-  color: #f0f0f0;
-  margin-bottom: 3rem;
-  font-weight: 300;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.branches-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 3rem;
-  margin-top: 3rem;
-}
-
-.branch-card {
-  position: relative;
-  background: linear-gradient(135deg, 
-    rgba(255, 255, 255, 0.03) 0%, 
-    rgba(255, 255, 255, 0.01) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 3rem 2rem;
-  transition: all 0.4s ease;
-  overflow: hidden;
-}
-
-.branch-card::before {
-  content: '';
-  position: absolute;
-  top: -100%;
-  left: -100%;
-  width: 300%;
-  height: 300%;
-  background: radial-gradient(circle, 
-    rgba(239, 91, 91, 0.1) 0%, 
-    transparent 40%);
-  animation: float 20s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  33% {
-    transform: translate(30px, -30px) rotate(120deg);
-  }
-  66% {
-    transform: translate(-20px, 20px) rotate(240deg);
-  }
-}
-
-.rama-branch::before {
-  animation-delay: 0s;
-}
-
-.karmiel-branch::before {
-  animation-delay: 10s;
-}
-
-.branch-card:hover {
-  transform: translateY(-10px) scale(1.02);
-  border-color: rgba(239, 91, 91, 0.3);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-}
-
-.branch-card-inner {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-}
-
-.branch-icon {
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 1.5rem;
-  background: rgba(239, 91, 91, 0.1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
-  color: rgba(239, 91, 91, 0.8);
-  border: 2px solid rgba(239, 91, 91, 0.2);
-  transition: all 0.3s ease;
-}
-
-.branch-card:hover .branch-icon {
-  transform: scale(1.1);
-  background: rgba(239, 91, 91, 0.2);
-}
-
-.branch-card h4 {
-  color: #f0f0f0;
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  font-weight: 300;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.branch-desc {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 1rem;
-  margin-bottom: 2rem;
-  line-height: 1.6;
-  font-weight: 300;
-}
-
-.branch-info {
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.branch-address,
-.branch-phone {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.95rem;
-  margin: 0.8rem 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.8rem;
-}
-
-.branch-address i,
-.branch-phone i {
-  color: rgba(239, 91, 91, 0.6);
-  font-size: 0.9rem;
-}
 
 /* Responsive Design */
-@media (max-width: 1024px) {
-  .branches-grid {
-    grid-template-columns: 1fr;
-    max-width: 500px;
-    margin: 3rem auto 0;
-  }
-}
-
 @media (max-width: 768px) {
   .about-section {
     padding: 60px 0;
@@ -345,38 +105,13 @@
     font-size: 1.1rem;
   }
   
-  .why-title,
-  .branches-title {
-    font-size: 1.8rem;
-  }
-  
-  .features-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-  
-  .feature-card {
-    padding: 2rem 1.5rem;
-  }
-  
-  .branches-grid {
-    gap: 2rem;
-  }
-  
-  .branch-card {
-    padding: 2rem 1.5rem;
-  }
-  
-  .branch-card h4 {
-    font-size: 1.5rem;
-  }
-  
   .story-text {
-    font-size: 1rem;
+    font-size: 1.1rem;
+    line-height: 1.8;
   }
   
-  .story-text.highlight {
-    font-size: 1.1rem;
+  .story-text.main {
+    padding: 1.5rem;
   }
 }
 
@@ -385,15 +120,7 @@
     padding: 0 1rem;
   }
   
-  .feature-icon {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-  }
-  
-  .branch-icon {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
+  .story-text {
+    font-size: 1rem;
   }
 }

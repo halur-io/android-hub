@@ -13,29 +13,61 @@
   pointer-events: none;
 }
 
-/* Rotating gradient */
+/* Grid line pattern */
 .about-section::before {
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 20% 50%, 
-    rgba(239, 91, 91, 0.03) 0%, 
-    transparent 50%);
-  animation: rotateGradient 30s linear infinite;
-}
-
-/* Floating orbs */
-.about-section::after {
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(239, 91, 91, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(255, 193, 7, 0.03) 0%, transparent 40%),
-    radial-gradient(circle at 40% 60%, rgba(239, 91, 91, 0.02) 0%, transparent 50%);
-  animation: floatOrbs 20s ease-in-out infinite;
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 50px,
+      rgba(239, 91, 91, 0.1) 50px,
+      rgba(239, 91, 91, 0.1) 51px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 50px,
+      rgba(91, 239, 239, 0.1) 50px,
+      rgba(91, 239, 239, 0.1) 51px
+    );
+  animation: gridSlide 40s linear infinite;
+}
+
+@keyframes gridSlide {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(51px, 51px);
+  }
+}
+
+/* Floating color overlay */
+.about-section::after {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 30% 30%, rgba(239, 91, 91, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 70% 70%, rgba(91, 239, 239, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(239, 239, 91, 0.1) 0%, transparent 60%);
+  animation: breathe 5s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }
 
 @keyframes rotateGradient {

@@ -2,6 +2,44 @@
   background: linear-gradient(135deg, var(--sumo-navy) 0%, #2c3e5a 100%);
   padding: 3rem 0;
   color: var(--pure-white);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Line pattern overlay for footer */
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 30px,
+      rgba(255, 255, 255, 0.05) 30px,
+      rgba(255, 255, 255, 0.05) 31px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 30px,
+      rgba(239, 91, 91, 0.05) 30px,
+      rgba(239, 91, 91, 0.05) 31px
+    );
+  animation: footerLineSlide 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes footerLineSlide {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(31px, 31px);
+  }
 }
 
 .footer-content {
@@ -10,6 +48,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .footer-logo-img {

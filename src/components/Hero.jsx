@@ -24,6 +24,16 @@ const Hero = ({ language }) => {
   return (
     <section id="hero" className="hero-section">
       <div className="hero-background">
+        <video 
+          className="hero-video"
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+        >
+          <source src="/static/videos/hero-bg.mov" type="video/quicktime" />
+          <source src="/static/videos/hero-bg.mp4" type="video/mp4" />
+        </video>
         <div className="hero-overlay"></div>
       </div>
       <div className="hero-content">

@@ -93,9 +93,12 @@ class MenuCategory(db.Model):
     description_en = db.Column(db.Text)
     display_order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
+    icon = db.Column(db.String(50))  # FontAwesome icon name
+    color = db.Column(db.String(7))  # Hex color code
     menu_items = db.relationship('MenuItem', backref='category', lazy=True, cascade='all, delete-orphan')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Menu Items
+# Menu Items - Enhanced
 class MenuItem(db.Model):
     __tablename__ = 'menu_items'
     id = db.Column(db.Integer, primary_key=True)
@@ -104,15 +107,88 @@ class MenuItem(db.Model):
     name_en = db.Column(db.String(200), nullable=False)
     description_he = db.Column(db.Text)
     description_en = db.Column(db.Text)
-    price = db.Column(db.Float)
+    short_description_he = db.Column(db.String(255))  # For cards/previews
+    short_description_en = db.Column(db.String(255))
+    ingredients_he = db.Column(db.Text)  # List of ingredients
+    ingredients_en = db.Column(db.Text)
+    base_price = db.Column(db.Float)  # Base price
     image_path = db.Column(db.String(500))
+    gallery_images = db.Column(db.Text)  # JSON array of additional images
+    
+    # Dietary & Special Properties
     is_vegetarian = db.Column(db.Boolean, default=False)
     is_vegan = db.Column(db.Boolean, default=False)
     is_gluten_free = db.Column(db.Boolean, default=False)
+    is_dairy_free = db.Column(db.Boolean, default=False)
+    is_nut_free = db.Column(db.Boolean, default=False)
     is_spicy = db.Column(db.Boolean, default=False)
+    is_halal = db.Column(db.Boolean, default=False)
+    is_kosher = db.Column(db.Boolean, default=False)
+    is_organic = db.Column(db.Boolean, default=False)
+    is_signature = db.Column(db.Boolean, default=False)  # Chef's special
+    is_new = db.Column(db.Boolean, default=False)
+    is_popular = db.Column(db.Boolean, default=False)
+    
+    # Restaurant Operations
     is_available = db.Column(db.Boolean, default=True)
+    prep_time_minutes = db.Column(db.Integer)  # Preparation time
+    calories = db.Column(db.Integer)  # Nutritional info
+    spice_level = db.Column(db.Integer, default=0)  # 0-5 scale
+    allergens = db.Column(db.Text)  # JSON array of allergens
+    
+    # Display & Ordering
     display_order = db.Column(db.Integer, default=0)
+    featured_until = db.Column(db.DateTime)  # For limited time offers
+    discount_percentage = db.Column(db.Float, default=0)
+    special_offer_text_he = db.Column(db.String(255))
+    special_offer_text_en = db.Column(db.String(255))
+    
+    # Availability Schedule
+    available_days = db.Column(db.String(20), default='1111111')  # 7 chars for days of week
+    available_from_time = db.Column(db.String(5))  # HH:MM
+    available_to_time = db.Column(db.String(5))  # HH:MM
+    
+    # Custom Labels/Tags
+    custom_tags = db.Column(db.Text)  # JSON array of custom tags
+    
+    # Relationships
+    price_options = db.relationship('MenuItemPrice', backref='menu_item', lazy=True, cascade='all, delete-orphan')
+    variations = db.relationship('MenuItemVariation', backref='menu_item', lazy=True, cascade='all, delete-orphan')
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# Menu Item Pricing Options (Different sizes/portions)
+class MenuItemPrice(db.Model):
+    __tablename__ = 'menu_item_prices'
+    id = db.Column(db.Integer, primary_key=True)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=False)
+    size_name_he = db.Column(db.String(50), nullable=False)  # קטן, בינוני, גדול
+    size_name_en = db.Column(db.String(50), nullable=False)  # Small, Medium, Large
+    price = db.Column(db.Float, nullable=False)
+    is_default = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+
+# Menu Item Variations (Spice levels, cooking styles, etc.)
+class MenuItemVariation(db.Model):
+    __tablename__ = 'menu_item_variations'
+    id = db.Column(db.Integer, primary_key=True)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=False)
+    variation_type = db.Column(db.String(50))  # spice_level, cooking_style, etc.
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    price_modifier = db.Column(db.Float, default=0)  # Additional cost
+    is_default = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+
+# Menu Display Settings
+class MenuSettings(db.Model):
+    __tablename__ = 'menu_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    setting_key = db.Column(db.String(100), unique=True, nullable=False)
+    setting_value = db.Column(db.Text)
+    description = db.Column(db.String(255))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Gallery Photos
 class GalleryPhoto(db.Model):

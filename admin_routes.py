@@ -15,6 +15,14 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def get_setting(key, default=''):
+    """Helper function to get menu settings"""
+    try:
+        setting = MenuSettings.query.filter_by(setting_key=key).first()
+        return setting.setting_value if setting else default
+    except:
+        return default
+
 # Custom route for /admin without trailing slash
 @admin_bp.route('', methods=['GET'])
 def admin_redirect():
@@ -251,6 +259,8 @@ def edit_category(id=None):
         category.description_en = request.form.get('description_en')
         category.display_order = int(request.form.get('display_order', 0))
         category.is_active = request.form.get('is_active') == 'on'
+        category.icon = request.form.get('icon')
+        category.color = request.form.get('color')
         
         if not id:
             db.session.add(category)
@@ -259,7 +269,7 @@ def edit_category(id=None):
         flash('Category saved successfully!', 'success')
         return redirect(url_for('admin.menu'))
     
-    return render_template('admin/edit_category.html', category=category)
+    return render_template('admin/enhanced_category.html', category=category)
 
 @admin_bp.route('/menu/item/edit/<int:id>', methods=['GET', 'POST'])
 @admin_bp.route('/menu/item/new', methods=['GET', 'POST'])
@@ -273,18 +283,73 @@ def edit_menu_item(id=None):
     categories = MenuCategory.query.filter_by(is_active=True).all()
     
     if request.method == 'POST':
+        # Basic information
         item.category_id = int(request.form.get('category_id'))
         item.name_he = request.form.get('name_he')
         item.name_en = request.form.get('name_en')
         item.description_he = request.form.get('description_he')
         item.description_en = request.form.get('description_en')
-        item.price = float(request.form.get('price', 0))
+        item.short_description_he = request.form.get('short_description_he')
+        item.short_description_en = request.form.get('short_description_en')
+        item.ingredients_he = request.form.get('ingredients_he')
+        item.ingredients_en = request.form.get('ingredients_en')
+        
+        # Pricing
+        item.base_price = float(request.form.get('base_price', 0))
+        item.discount_percentage = float(request.form.get('discount_percentage', 0))
+        
+        # Dietary & Special Properties
         item.is_vegetarian = request.form.get('is_vegetarian') == 'on'
         item.is_vegan = request.form.get('is_vegan') == 'on'
         item.is_gluten_free = request.form.get('is_gluten_free') == 'on'
+        item.is_dairy_free = request.form.get('is_dairy_free') == 'on'
+        item.is_nut_free = request.form.get('is_nut_free') == 'on'
         item.is_spicy = request.form.get('is_spicy') == 'on'
+        item.is_halal = request.form.get('is_halal') == 'on'
+        item.is_kosher = request.form.get('is_kosher') == 'on'
+        item.is_organic = request.form.get('is_organic') == 'on'
+        item.is_signature = request.form.get('is_signature') == 'on'
+        item.is_new = request.form.get('is_new') == 'on'
+        item.is_popular = request.form.get('is_popular') == 'on'
+        
+        # Operations
         item.is_available = request.form.get('is_available') == 'on'
+        item.prep_time_minutes = int(request.form.get('prep_time_minutes', 0)) if request.form.get('prep_time_minutes') else None
+        item.calories = int(request.form.get('calories', 0)) if request.form.get('calories') else None
+        item.spice_level = int(request.form.get('spice_level', 0))
+        
+        # Special offers
+        item.special_offer_text_he = request.form.get('special_offer_text_he')
+        item.special_offer_text_en = request.form.get('special_offer_text_en')
+        
+        # Availability schedule
+        item.available_from_time = request.form.get('available_from_time')
+        item.available_to_time = request.form.get('available_to_time')
+        
+        # Display settings
         item.display_order = int(request.form.get('display_order', 0))
+        
+        # Custom tags (JSON)
+        custom_tags = request.form.get('custom_tags', '').strip()
+        if custom_tags:
+            try:
+                import json
+                item.custom_tags = json.dumps([tag.strip() for tag in custom_tags.split(',') if tag.strip()])
+            except:
+                item.custom_tags = '[]'
+        else:
+            item.custom_tags = '[]'
+        
+        # Allergens (JSON)
+        allergens = request.form.get('allergens', '').strip()
+        if allergens:
+            try:
+                import json
+                item.allergens = json.dumps([allergen.strip() for allergen in allergens.split(',') if allergen.strip()])
+            except:
+                item.allergens = '[]'
+        else:
+            item.allergens = '[]'
         
         # Handle image upload
         if 'image' in request.files:
@@ -306,7 +371,110 @@ def edit_menu_item(id=None):
         flash('Menu item saved successfully!', 'success')
         return redirect(url_for('admin.menu'))
     
-    return render_template('admin/edit_menu_item.html', item=item, categories=categories)
+    return render_template('admin/enhanced_menu_item.html', item=item, categories=categories)
+
+# Menu Settings Management
+@admin_bp.route('/menu/settings')
+@login_required
+def menu_settings():
+    settings = MenuSettings.query.all()
+    return render_template('admin/menu_settings.html', settings=settings, get_setting=get_setting)
+
+@admin_bp.route('/menu/settings/save', methods=['POST'])
+@login_required
+def save_menu_settings():
+    settings_data = [
+        ('menu_layout', 'Menu Layout Style', request.form.get('menu_layout', 'grid')),
+        ('show_prices', 'Show Prices', request.form.get('show_prices', 'true')),
+        ('show_images', 'Show Images', request.form.get('show_images', 'true')),
+        ('show_dietary_icons', 'Show Dietary Icons', request.form.get('show_dietary_icons', 'true')),
+        ('show_spice_level', 'Show Spice Level', request.form.get('show_spice_level', 'true')),
+        ('show_prep_time', 'Show Preparation Time', request.form.get('show_prep_time', 'false')),
+        ('show_calories', 'Show Calories', request.form.get('show_calories', 'false')),
+        ('currency_symbol', 'Currency Symbol', request.form.get('currency_symbol', '₪')),
+        ('items_per_page', 'Items Per Page', request.form.get('items_per_page', '12')),
+    ]
+    
+    for key, description, value in settings_data:
+        setting = MenuSettings.query.filter_by(setting_key=key).first()
+        if setting:
+            setting.setting_value = value
+            setting.updated_at = datetime.utcnow()
+        else:
+            setting = MenuSettings(setting_key=key, setting_value=value, description=description)
+            db.session.add(setting)
+    
+    db.session.commit()
+    flash('Menu settings saved successfully!', 'success')
+    return redirect(url_for('admin.menu_settings'))
+
+@admin_bp.route('/menu/item/<int:item_id>/prices')
+@login_required
+def manage_item_prices(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    prices = MenuItemPrice.query.filter_by(menu_item_id=item_id).order_by(MenuItemPrice.display_order).all()
+    return render_template('admin/item_prices.html', item=item, prices=prices)
+
+@admin_bp.route('/menu/item/<int:item_id>/prices/add', methods=['POST'])
+@login_required
+def add_item_price(item_id):
+    price = MenuItemPrice()
+    price.menu_item_id = item_id
+    price.size_name_he = request.form.get('size_name_he')
+    price.size_name_en = request.form.get('size_name_en')
+    price.price = float(request.form.get('price'))
+    price.is_default = request.form.get('is_default') == 'on'
+    price.display_order = int(request.form.get('display_order', 0))
+    
+    # If this is set as default, unset other defaults
+    if price.is_default:
+        MenuItemPrice.query.filter_by(menu_item_id=item_id).update({'is_default': False})
+    
+    db.session.add(price)
+    db.session.commit()
+    flash('Price option added successfully!', 'success')
+    return redirect(url_for('admin.manage_item_prices', item_id=item_id))
+
+@admin_bp.route('/menu/item/<int:item_id>/variations')
+@login_required
+def manage_item_variations(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    variations = MenuItemVariation.query.filter_by(menu_item_id=item_id).order_by(MenuItemVariation.display_order).all()
+    return render_template('admin/item_variations.html', item=item, variations=variations)
+
+@admin_bp.route('/menu/item/<int:item_id>/variations/add', methods=['POST'])
+@login_required
+def add_item_variation(item_id):
+    variation = MenuItemVariation()
+    variation.menu_item_id = item_id
+    variation.variation_type = request.form.get('variation_type')
+    variation.name_he = request.form.get('name_he')
+    variation.name_en = request.form.get('name_en')
+    variation.price_modifier = float(request.form.get('price_modifier', 0))
+    variation.is_default = request.form.get('is_default') == 'on'
+    variation.display_order = int(request.form.get('display_order', 0))
+    
+    db.session.add(variation)
+    db.session.commit()
+    flash('Variation added successfully!', 'success')
+    return redirect(url_for('admin.manage_item_variations', item_id=item_id))
+
+# Delete menu items and categories
+@admin_bp.route('/menu/item/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_menu_item(id):
+    item = MenuItem.query.get_or_404(id)
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/menu/category/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_category(id):
+    category = MenuCategory.query.get_or_404(id)
+    db.session.delete(category)
+    db.session.commit()
+    return jsonify({'success': True})
 
 # Gallery Management
 @admin_bp.route('/gallery')

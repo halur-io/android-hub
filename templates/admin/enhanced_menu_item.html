@@ -1,0 +1,350 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if item.id %}עריכת מנה{% else %}הוספת מנה חדשה{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>{% if item.id %}עריכת מנה: {{ item.name_he }}{% else %}הוספת מנה חדשה{% endif %}</h2>
+            
+            <form method="POST" enctype="multipart/form-data" id="menuItemForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs mb-4" id="menuItemTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                            <i class="fas fa-info-circle me-2"></i>מידע בסיסי
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="dietary-tab" data-bs-toggle="tab" data-bs-target="#dietary" type="button" role="tab">
+                            <i class="fas fa-leaf me-2"></i>תכונות תזונתיות
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#pricing" type="button" role="tab">
+                            <i class="fas fa-tags me-2"></i>תמחור ומבצעים
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="availability-tab" data-bs-toggle="tab" data-bs-target="#availability" type="button" role="tab">
+                            <i class="fas fa-clock me-2"></i>זמינות ותפעול
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">
+                            <i class="fas fa-cogs me-2"></i>הגדרות מתקדמות
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content" id="menuItemTabContent">
+                    <!-- Basic Information Tab -->
+                    <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="category_id" class="form-label">קטגוריה</label>
+                                    <select class="form-select" id="category_id" name="category_id" required>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if item.category_id == category.id %}selected{% endif %}>
+                                            {{ category.name_he }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="name_he" class="form-label">שם המנה (עברית)</label>
+                                    <input type="text" class="form-control" id="name_he" name="name_he" value="{{ item.name_he or '' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="name_en" class="form-label">שם המנה (אנגלית)</label>
+                                    <input type="text" class="form-control" id="name_en" name="name_en" value="{{ item.name_en or '' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="short_description_he" class="form-label">תיאור קצר (עברית)</label>
+                                    <input type="text" class="form-control" id="short_description_he" name="short_description_he" value="{{ item.short_description_he or '' }}">
+                                    <small class="form-text text-muted">מוצג בכרטיסי מנה</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="short_description_en" class="form-label">תיאור קצר (אנגלית)</label>
+                                    <input type="text" class="form-control" id="short_description_en" name="short_description_en" value="{{ item.short_description_en or '' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="image" class="form-label">תמונת המנה</label>
+                                    <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                                    {% if item.image_path %}
+                                    <div class="mt-2">
+                                        <img src="{{ item.image_path }}" alt="Current image" class="img-thumbnail" style="max-width: 200px;">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="display_order" class="form-label">סדר הצגה</label>
+                                    <input type="number" class="form-control" id="display_order" name="display_order" value="{{ item.display_order or 0 }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_available" name="is_available" {% if item.is_available %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_available">
+                                            זמין להזמנה
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description_he" class="form-label">תיאור מפורט (עברית)</label>
+                                    <textarea class="form-control" id="description_he" name="description_he" rows="4">{{ item.description_he or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description_en" class="form-label">תיאור מפורט (אנגלית)</label>
+                                    <textarea class="form-control" id="description_en" name="description_en" rows="4">{{ item.description_en or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ingredients_he" class="form-label">רכיבים (עברית)</label>
+                                    <textarea class="form-control" id="ingredients_he" name="ingredients_he" rows="3" placeholder="רשום רכיבים מופרדים בפסיקים">{{ item.ingredients_he or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ingredients_en" class="form-label">רכיבים (אנגלית)</label>
+                                    <textarea class="form-control" id="ingredients_en" name="ingredients_en" rows="3" placeholder="List ingredients separated by commas">{{ item.ingredients_en or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dietary Properties Tab -->
+                    <div class="tab-pane fade" id="dietary" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-leaf me-2"></i>תכונות תזונתיות</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_vegetarian" name="is_vegetarian" {% if item.is_vegetarian %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_vegetarian">צמחוני</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_vegan" name="is_vegan" {% if item.is_vegan %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_vegan">טבעוני</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_gluten_free" name="is_gluten_free" {% if item.is_gluten_free %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_gluten_free">ללא גלוטן</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_dairy_free" name="is_dairy_free" {% if item.is_dairy_free %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_dairy_free">ללא חלב</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_nut_free" name="is_nut_free" {% if item.is_nut_free %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_nut_free">ללא אגוזים</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_halal" name="is_halal" {% if item.is_halal %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_halal">חלאל</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_kosher" name="is_kosher" {% if item.is_kosher %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_kosher">כשר</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_organic" name="is_organic" {% if item.is_organic %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_organic">אורגני</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="allergens" class="form-label">אלרגנים</label>
+                                    <input type="text" class="form-control" id="allergens" name="allergens" 
+                                           value="{% if item.allergens %}{{ item.allergens|tojson|safe }}{% endif %}" 
+                                           placeholder="רשום אלרגנים מופרדים בפסיקים">
+                                    <small class="form-text text-muted">לדוגמה: אגוזים, חלב, ביצים</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-star me-2"></i>מאפיינים מיוחדים</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_spicy" name="is_spicy" {% if item.is_spicy %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_spicy">חריף</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_signature" name="is_signature" {% if item.is_signature %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_signature">מנת השף</label>
+                                        </div>
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_new" name="is_new" {% if item.is_new %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_new">חדש!</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_popular" name="is_popular" {% if item.is_popular %}checked{% endif %}>
+                                            <label class="form-check-label" for="is_popular">פופולרי</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="spice_level" class="form-label">רמת חריפות (0-5)</label>
+                                    <select class="form-select" id="spice_level" name="spice_level">
+                                        <option value="0" {% if item.spice_level == 0 %}selected{% endif %}>לא חריף</option>
+                                        <option value="1" {% if item.spice_level == 1 %}selected{% endif %}>קל 🌶️</option>
+                                        <option value="2" {% if item.spice_level == 2 %}selected{% endif %}>בינוני 🌶️🌶️</option>
+                                        <option value="3" {% if item.spice_level == 3 %}selected{% endif %}>חריף 🌶️🌶️🌶️</option>
+                                        <option value="4" {% if item.spice_level == 4 %}selected{% endif %}>מאוד חריף 🌶️🌶️🌶️🌶️</option>
+                                        <option value="5" {% if item.spice_level == 5 %}selected{% endif %}>שורף! 🌶️🌶️🌶️🌶️🌶️</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="calories" class="form-label">קלוריות</label>
+                                            <input type="number" class="form-control" id="calories" name="calories" value="{{ item.calories or '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="prep_time_minutes" class="form-label">זמן הכנה (דקות)</label>
+                                            <input type="number" class="form-control" id="prep_time_minutes" name="prep_time_minutes" value="{{ item.prep_time_minutes or '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pricing Tab -->
+                    <div class="tab-pane fade" id="pricing" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="base_price" class="form-label">מחיר בסיס (₪)</label>
+                                    <input type="number" step="0.01" class="form-control" id="base_price" name="base_price" value="{{ item.base_price or item.price or '' }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="discount_percentage" class="form-label">הנחה באחוזים</label>
+                                    <input type="number" step="0.01" max="100" class="form-control" id="discount_percentage" name="discount_percentage" value="{{ item.discount_percentage or 0 }}">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="special_offer_text_he" class="form-label">טקסט מבצע (עברית)</label>
+                                    <input type="text" class="form-control" id="special_offer_text_he" name="special_offer_text_he" value="{{ item.special_offer_text_he or '' }}" placeholder="לדוגמה: מבצע השבוע!">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="special_offer_text_en" class="form-label">טקסט מבצע (אנגלית)</label>
+                                    <input type="text" class="form-control" id="special_offer_text_en" name="special_offer_text_en" value="{{ item.special_offer_text_en or '' }}" placeholder="e.g. Special offer!">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Availability Tab -->
+                    <div class="tab-pane fade" id="availability" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-clock me-2"></i>שעות זמינות</h5>
+                                <div class="mb-3">
+                                    <label for="available_from_time" class="form-label">זמין מהשעה</label>
+                                    <input type="time" class="form-control" id="available_from_time" name="available_from_time" value="{{ item.available_from_time or '' }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="available_to_time" class="form-label">זמין עד השעה</label>
+                                    <input type="time" class="form-control" id="available_to_time" name="available_to_time" value="{{ item.available_to_time or '' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-calendar me-2"></i>ימי זמינות</h5>
+                                <div class="form-text mb-2">בחר באילו ימים המנה זמינה:</div>
+                                {% set days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'] %}
+                                {% for day in days %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_{{ loop.index0 }}" name="available_day_{{ loop.index0 }}" 
+                                           {% if item.available_days and item.available_days[loop.index0] == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="day_{{ loop.index0 }}">{{ day }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Settings Tab -->
+                    <div class="tab-pane fade" id="advanced" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="custom_tags" class="form-label">תגיות מותאמות אישית</label>
+                            <input type="text" class="form-control" id="custom_tags" name="custom_tags" 
+                                   value="{% if item.custom_tags %}{{ item.custom_tags|tojson|safe }}{% endif %}" 
+                                   placeholder="רשום תגיות מופרדות בפסיקים">
+                            <small class="form-text text-muted">לדוגמה: ספיישל, המלצת השף, חדש</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="mt-4 mb-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-save me-2"></i>
+                        {% if item.id %}עדכן מנה{% else %}הוסף מנה{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary btn-lg ms-2">
+                        <i class="fas fa-times me-2"></i>
+                        ביטול
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enable Bootstrap tabs
+document.addEventListener('DOMContentLoaded', function() {
+    var triggerTabList = [].slice.call(document.querySelectorAll('#menuItemTabs button'))
+    triggerTabList.forEach(function (triggerEl) {
+        var tabTrigger = new bootstrap.Tab(triggerEl)
+        
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault()
+            tabTrigger.show()
+        })
+    })
+});
+</script>
+{% endblock %}

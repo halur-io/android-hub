@@ -102,7 +102,7 @@ def upload_media():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    if file and allowed_file(file.filename):
+    if file and file.filename and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"{timestamp}_{filename}"

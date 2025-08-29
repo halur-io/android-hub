@@ -27,10 +27,15 @@ csrf = CSRFProtect(app)
 # Initialize database
 init_db(app)
 
-# Import routes
+# Import routes  
 from routes import *
-from admin_routes import admin_bp
-app.register_blueprint(admin_bp)
+
+# Register admin blueprint
+try:
+    from admin_routes import admin_bp
+    app.register_blueprint(admin_bp)
+except Exception as e:
+    print(f"Error registering admin blueprint: {e}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

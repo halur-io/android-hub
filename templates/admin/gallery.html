@@ -1,0 +1,130 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול גלריה - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">ניהול גלריה</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-upload me-2"></i> העלאת תמונות לגלריה
+    </div>
+    <div class="card-body">
+        <form id="galleryUploadForm" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">בחר תמונות (ניתן לבחור מספר קבצים)</label>
+                    <input type="file" class="form-control" name="files[]" multiple accept="image/*" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">כיתוב עברית</label>
+                    <input type="text" class="form-control" name="caption_he">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Caption EN</label>
+                    <input type="text" class="form-control" name="caption_en">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-upload me-2"></i> העלה
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fas fa-images me-2"></i> תמונות בגלריה
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for photo in photos %}
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card">
+                    <img src="{{ photo.file_path }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                    <div class="card-body p-2">
+                        {% if photo.caption_he or photo.caption_en %}
+                            <small class="text-muted">{{ photo.caption_he or photo.caption_en }}</small>
+                        {% endif %}
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-danger delete-photo" data-id="{{ photo.id }}">
+                                <i class="fas fa-trash"></i> מחק
+                            </button>
+                            {% if photo.is_active %}
+                                <span class="badge bg-success">פעיל</span>
+                            {% else %}
+                                <span class="badge bg-secondary">לא פעיל</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not photos %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> אין תמונות בגלריה. העלה תמונות כדי להתחיל.
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('galleryUploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('{{ url_for("admin.upload_gallery") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('התמונות הועלו בהצלחה!');
+            location.reload();
+        } else {
+            alert('שגיאה בהעלאת התמונות');
+        }
+    } catch (error) {
+        alert('שגיאה: ' + error);
+    }
+});
+
+document.querySelectorAll('.delete-photo').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('האם אתה בטוח שברצונך למחוק תמונה זו?')) return;
+        
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/gallery/delete/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה במחיקה');
+        }
+    });
+});
+</script>
+{% endblock %}

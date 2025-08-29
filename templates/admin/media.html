@@ -1,0 +1,147 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מדיה - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">ניהול מדיה</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-upload me-2"></i> העלאת קבצים חדשים
+    </div>
+    <div class="card-body">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">בחר קובץ</label>
+                    <input type="file" class="form-control" name="file" accept="image/*,video/*" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">סוג</label>
+                    <select class="form-select" name="section">
+                        <option value="hero">Hero</option>
+                        <option value="gallery">גלריה</option>
+                        <option value="about">אודות</option>
+                        <option value="menu">תפריט</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">כיתוב עברית</label>
+                    <input type="text" class="form-control" name="caption_he">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Caption EN</label>
+                    <input type="text" class="form-control" name="caption_en">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-upload me-2"></i> העלה
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fas fa-images me-2"></i> קבצי מדיה קיימים
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>תצוגה מקדימה</th>
+                        <th>שם קובץ</th>
+                        <th>סוג</th>
+                        <th>מיקום</th>
+                        <th>כיתוב</th>
+                        <th>תאריך העלאה</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for media in media_files %}
+                    <tr>
+                        <td>
+                            {% if media.file_type == 'image' %}
+                                <img src="{{ media.file_path }}" style="max-width: 100px; max-height: 60px;">
+                            {% else %}
+                                <video src="{{ media.file_path }}" style="max-width: 100px; max-height: 60px;" muted></video>
+                            {% endif %}
+                        </td>
+                        <td>{{ media.filename }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'info' if media.file_type == 'video' else 'success' }}">
+                                {{ media.file_type }}
+                            </span>
+                        </td>
+                        <td>{{ media.section }}</td>
+                        <td>{{ media.caption_he or media.caption_en or '-' }}</td>
+                        <td>{{ media.uploaded_at.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger delete-media" data-id="{{ media.id }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('{{ url_for("admin.upload_media") }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('הקובץ הועלה בהצלחה!');
+            location.reload();
+        } else {
+            alert('שגיאה בהעלאת הקובץ');
+        }
+    } catch (error) {
+        alert('שגיאה: ' + error);
+    }
+});
+
+document.querySelectorAll('.delete-media').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('האם אתה בטוח שברצונך למחוק קובץ זה?')) return;
+        
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/media/delete/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה במחיקה');
+        }
+    });
+});
+</script>
+{% endblock %}

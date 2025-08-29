@@ -1,0 +1,133 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'עריכת סניף' if branch.id else 'הוספת סניף חדש' }} - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ 'עריכת סניף' if branch.id else 'הוספת סניף חדש' }}</h1>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-info-circle me-2"></i> פרטי סניף
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>עברית</h5>
+                    <div class="mb-3">
+                        <label class="form-label">שם הסניף</label>
+                        <input type="text" class="form-control" name="name_he" value="{{ branch.name_he or '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">כתובת</label>
+                        <input type="text" class="form-control" name="address_he" value="{{ branch.address_he or '' }}">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>English</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Branch Name</label>
+                        <input type="text" class="form-control" name="name_en" value="{{ branch.name_en or '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Address</label>
+                        <input type="text" class="form-control" name="address_en" value="{{ branch.address_en or '' }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">טלפון</label>
+                        <input type="text" class="form-control" name="phone" value="{{ branch.phone or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">אימייל</label>
+                        <input type="email" class="form-control" name="email" value="{{ branch.email or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">סדר תצוגה</label>
+                        <input type="number" class="form-control" name="display_order" value="{{ branch.display_order or 0 }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">קישור Waze</label>
+                        <input type="url" class="form-control" name="waze_link" value="{{ branch.waze_link or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">קישור Google Maps</label>
+                        <input type="url" class="form-control" name="google_maps_link" value="{{ branch.google_maps_link or '' }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if branch.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">
+                    סניף פעיל
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="fas fa-clock me-2"></i> שעות פעילות
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>יום</th>
+                        <th>שעת פתיחה</th>
+                        <th>שעת סגירה</th>
+                        <th>סגור</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'] %}
+                    {% for i in range(7) %}
+                    {% set wh = branch.working_hours[i] if branch.id and i < branch.working_hours|length else None %}
+                    <tr>
+                        <td>{{ days[i] }}</td>
+                        <td>
+                            <input type="time" class="form-control" name="open_time_{{ i }}" value="{{ wh.open_time if wh else '12:00' }}">
+                        </td>
+                        <td>
+                            <input type="time" class="form-control" name="close_time_{{ i }}" value="{{ wh.close_time if wh else '23:00' }}">
+                        </td>
+                        <td>
+                            <input type="checkbox" class="form-check-input" name="is_closed_{{ i }}" {% if wh and wh.is_closed %}checked{% endif %}>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save me-2"></i> שמור סניף
+        </button>
+        <a href="{{ url_for('admin.branches') }}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-times me-2"></i> ביטול
+        </a>
+    </div>
+</form>
+
+{% endblock %}

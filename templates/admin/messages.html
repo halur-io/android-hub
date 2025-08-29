@@ -1,0 +1,86 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הודעות - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">הודעות יצירת קשר</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-envelope me-2"></i> הודעות שהתקבלו
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>סטטוס</th>
+                        <th>שם</th>
+                        <th>אימייל</th>
+                        <th>טלפון</th>
+                        <th>הודעה</th>
+                        <th>תאריך</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for message in messages %}
+                    <tr class="{{ '' if message.is_read else 'table-warning' }}">
+                        <td>
+                            {% if message.is_read %}
+                                <span class="badge bg-secondary">נקראה</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">חדשה</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ message.name }}</td>
+                        <td><a href="mailto:{{ message.email }}">{{ message.email }}</a></td>
+                        <td>{{ message.phone or '-' }}</td>
+                        <td>{{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}</td>
+                        <td>{{ message.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            {% if not message.is_read %}
+                            <button class="btn btn-sm btn-success mark-read" data-id="{{ message.id }}">
+                                <i class="fas fa-check"></i> סמן כנקראה
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not messages %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">אין הודעות במערכת</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.mark-read').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/messages/mark-read/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה בעדכון');
+        }
+    });
+});
+</script>
+{% endblock %}

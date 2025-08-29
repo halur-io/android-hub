@@ -3,6 +3,7 @@ import logging
 from flask import Flask
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
+from database import init_db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -23,8 +24,13 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'norep
 mail = Mail(app)
 csrf = CSRFProtect(app)
 
+# Initialize database
+init_db(app)
+
 # Import routes
 from routes import *
+from admin_routes import admin_bp
+app.register_blueprint(admin_bp)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

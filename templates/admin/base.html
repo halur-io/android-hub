@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Panel - SUMO{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sumo-coral: #C75450;
+            --sumo-navy: #1B2951;
+        }
+        
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: #f8f9fa;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            background: var(--sumo-navy);
+            color: white;
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 250px;
+            z-index: 100;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 15px 20px;
+            border-radius: 0;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            padding-right: 30px;
+        }
+        
+        .sidebar .nav-link.active {
+            background: var(--sumo-coral);
+            color: white;
+        }
+        
+        .main-content {
+            margin-right: 250px;
+            padding: 30px;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 0 20px rgba(0,0,0,0.08);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .card-header {
+            background: white;
+            border-bottom: 2px solid var(--sumo-coral);
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        
+        .btn-primary {
+            background: var(--sumo-coral);
+            border-color: var(--sumo-coral);
+        }
+        
+        .btn-primary:hover {
+            background: #a63c38;
+            border-color: #a63c38;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--sumo-coral), var(--sumo-navy));
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card h3 {
+            font-size: 2rem;
+            margin: 0;
+        }
+        
+        .stat-card p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        
+        .table {
+            font-size: 0.95rem;
+        }
+        
+        .badge {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-right: 0;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="sidebar">
+        <div class="p-3 border-bottom">
+            <h4 class="mb-0">SUMO Admin</h4>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+                <i class="fas fa-dashboard me-2"></i> לוח בקרה
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
+                <i class="fas fa-cog me-2"></i> הגדרות אתר
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.media' %}active{% endif %}" href="{{ url_for('admin.media') }}">
+                <i class="fas fa-images me-2"></i> מדיה
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.branches' %}active{% endif %}" href="{{ url_for('admin.branches') }}">
+                <i class="fas fa-store me-2"></i> סניפים
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.menu' %}active{% endif %}" href="{{ url_for('admin.menu') }}">
+                <i class="fas fa-utensils me-2"></i> תפריט
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.gallery' %}active{% endif %}" href="{{ url_for('admin.gallery') }}">
+                <i class="fas fa-photo-video me-2"></i> גלריה
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.messages' %}active{% endif %}" href="{{ url_for('admin.messages') }}">
+                <i class="fas fa-envelope me-2"></i> הודעות
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
+                <i class="fas fa-calendar-check me-2"></i> הזמנות
+            </a>
+            <hr class="my-3">
+            <a class="nav-link" href="{{ url_for('admin.logout') }}">
+                <i class="fas fa-sign-out-alt me-2"></i> יציאה
+            </a>
+        </nav>
+    </div>
+    
+    <div class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

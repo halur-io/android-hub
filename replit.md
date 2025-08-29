@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a modern restaurant website for Sumo Asian Kitchen, featuring a React frontend with Flask backend API. The application provides a bilingual (Hebrew/English) interface with full RTL support, WhatsApp/phone integration, dynamic menu display, and reservation system. The React frontend offers a smooth, interactive user experience with real-time language switching and mobile-responsive design.
+This is a modern restaurant website for Sumo Asian Kitchen, featuring a React frontend with Flask backend API and a comprehensive admin panel. The application provides a bilingual (Hebrew/English) interface with full RTL support, WhatsApp/phone integration, dynamic menu display, reservation system, and complete content management capabilities through the admin dashboard.
 
 ## User Preferences
 

@@ -1,8 +1,17 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './Hero.css'
+import { api } from '../services/api'
 
 const Hero = ({ language }) => {
-  const translations = {
+  const [settings, setSettings] = useState(null)
+
+  useEffect(() => {
+    api.getSettings().then(data => {
+      if (data) setSettings(data)
+    })
+  }, [])
+
+  const defaultTranslations = {
     he: {
       title: 'סומו',
       subtitle: 'מטבח אסייתי אותנטי',
@@ -19,7 +28,13 @@ const Hero = ({ language }) => {
     }
   }
 
-  const t = translations[language]
+  const t = settings ? {
+    title: language === 'he' ? settings.hero_title_he : settings.hero_title_en,
+    subtitle: language === 'he' ? settings.hero_subtitle_he : settings.hero_subtitle_en,
+    description: language === 'he' ? settings.hero_description_he : settings.hero_description_en,
+    orderBtn: defaultTranslations[language].orderBtn,
+    reserveBtn: defaultTranslations[language].reserveBtn
+  } : defaultTranslations[language]
 
   return (
     <section id="hero" className="hero-section">

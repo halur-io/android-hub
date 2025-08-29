@@ -1,0 +1,101 @@
+{% extends "admin/base.html" %}
+
+{% block title %}לוח בקרה - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">לוח בקרה</h1>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3>{{ stats.total_messages }}</h3>
+            <p>הודעות</p>
+            <small>{{ stats.unread_messages }} לא נקראו</small>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3>{{ stats.total_reservations }}</h3>
+            <p>הזמנות</p>
+            <small>{{ stats.pending_reservations }} ממתינות</small>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3>{{ stats.menu_items }}</h3>
+            <p>פריטי תפריט</p>
+            <small>{{ stats.active_branches }} סניפים פעילים</small>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h3>{{ stats.gallery_photos }}</h3>
+            <p>תמונות בגלריה</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-bell me-2"></i> הודעות אחרונות
+            </div>
+            <div class="card-body">
+                <p class="text-muted">אין הודעות חדשות</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-calendar me-2"></i> הזמנות אחרונות
+            </div>
+            <div class="card-body">
+                <p class="text-muted">אין הזמנות חדשות</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fas fa-link me-2"></i> קישורים מהירים
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-cog me-2"></i> הגדרות אתר
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('admin.media') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-upload me-2"></i> העלאת מדיה
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('admin.menu') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-plus me-2"></i> הוספת מנה
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('admin.branches') }}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-store me-2"></i> ניהול סניפים
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <h5><i class="fas fa-info-circle me-2"></i> ברוך הבא למערכת הניהול</h5>
+    <p>שם משתמש ברירת מחדל: <strong>admin</strong></p>
+    <p>סיסמה ברירת מחדל: <strong>admin123</strong></p>
+    <p class="mb-0">מומלץ לשנות את הסיסמה לאחר הכניסה הראשונה.</p>
+</div>
+{% endblock %}

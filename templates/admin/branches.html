@@ -1,0 +1,91 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול סניפים - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">ניהול סניפים</h1>
+
+<div class="mb-3">
+    <a href="{{ url_for('admin.edit_branch') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i> הוסף סניף חדש
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-store me-2"></i> רשימת סניפים
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>שם הסניף</th>
+                        <th>כתובת</th>
+                        <th>טלפון</th>
+                        <th>סטטוס</th>
+                        <th>סדר תצוגה</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for branch in branches %}
+                    <tr>
+                        <td>{{ branch.name_he }} / {{ branch.name_en }}</td>
+                        <td>{{ branch.address_he }}</td>
+                        <td>{{ branch.phone }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if branch.is_active else 'secondary' }}">
+                                {{ 'פעיל' if branch.is_active else 'לא פעיל' }}
+                            </span>
+                        </td>
+                        <td>{{ branch.display_order }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.edit_branch', id=branch.id) }}" class="btn btn-sm btn-info">
+                                <i class="fas fa-edit"></i> ערוך
+                            </a>
+                            <button class="btn btn-sm btn-danger delete-branch" data-id="{{ branch.id }}">
+                                <i class="fas fa-trash"></i> מחק
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not branches %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">אין סניפים במערכת</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.delete-branch').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('האם אתה בטוח שברצונך למחוק סניף זה?')) return;
+        
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/branches/delete/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה במחיקה');
+        }
+    });
+});
+</script>
+{% endblock %}

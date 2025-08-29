@@ -1,0 +1,141 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות אתר - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">הגדרות אתר</h1>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-home me-2"></i> הגדרות Hero Section
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>עברית</h5>
+                    <div class="mb-3">
+                        <label class="form-label">כותרת ראשית</label>
+                        <input type="text" class="form-control" name="hero_title_he" value="{{ settings.hero_title_he }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">כותרת משנה</label>
+                        <input type="text" class="form-control" name="hero_subtitle_he" value="{{ settings.hero_subtitle_he }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">תיאור</label>
+                        <textarea class="form-control" name="hero_description_he" rows="3">{{ settings.hero_description_he }}</textarea>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>English</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Main Title</label>
+                        <input type="text" class="form-control" name="hero_title_en" value="{{ settings.hero_title_en }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Subtitle</label>
+                        <input type="text" class="form-control" name="hero_subtitle_en" value="{{ settings.hero_subtitle_en }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="hero_description_en" rows="3">{{ settings.hero_description_en }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="fas fa-info-circle me-2"></i> אודות
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>עברית</h5>
+                    <div class="mb-3">
+                        <label class="form-label">כותרת</label>
+                        <input type="text" class="form-control" name="about_title_he" value="{{ settings.about_title_he }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">תוכן</label>
+                        <textarea class="form-control" name="about_content_he" rows="5">{{ settings.about_content_he }}</textarea>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>English</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" name="about_title_en" value="{{ settings.about_title_en }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Content</label>
+                        <textarea class="form-control" name="about_content_en" rows="5">{{ settings.about_content_en }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="fas fa-share-alt me-2"></i> רשתות חברתיות ויצירת קשר
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fab fa-facebook me-2"></i> Facebook URL</label>
+                        <input type="url" class="form-control" name="facebook_url" value="{{ settings.facebook_url }}" placeholder="https://facebook.com/yourpage">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fab fa-instagram me-2"></i> Instagram URL</label>
+                        <input type="url" class="form-control" name="instagram_url" value="{{ settings.instagram_url }}" placeholder="https://instagram.com/yourpage">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label"><i class="fab fa-whatsapp me-2"></i> WhatsApp Number</label>
+                        <input type="text" class="form-control" name="whatsapp_number" value="{{ settings.whatsapp_number }}" placeholder="972501234567">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="fas fa-globe me-2"></i> כללי
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">שם האתר (עברית)</label>
+                        <input type="text" class="form-control" name="site_name_he" value="{{ settings.site_name_he }}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Site Name (English)</label>
+                        <input type="text" class="form-control" name="site_name_en" value="{{ settings.site_name_en }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save me-2"></i> שמור שינויים
+        </button>
+    </div>
+</form>
+{% endblock %}

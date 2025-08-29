@@ -1,7 +1,16 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './About.css'
+import { api } from '../services/api'
 
 const About = ({ language }) => {
+  const [settings, setSettings] = useState(null)
+
+  useEffect(() => {
+    api.getSettings().then(data => {
+      if (data) setSettings(data)
+    })
+  }, [])
+
   const translations = {
     he: {
       title: 'סיפור סומו',
@@ -49,7 +58,12 @@ const About = ({ language }) => {
     }
   }
 
-  const t = translations[language]
+  const defaultT = translations[language]
+  const t = {
+    ...defaultT,
+    title: settings ? (language === 'he' ? settings.about_title_he : settings.about_title_en) || defaultT.title : defaultT.title,
+    description1: settings ? (language === 'he' ? settings.about_content_he : settings.about_content_en) || defaultT.description1 : defaultT.description1
+  }
 
   return (
     <section id="about" className="about-section">

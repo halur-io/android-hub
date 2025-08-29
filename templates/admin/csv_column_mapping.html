@@ -1,0 +1,305 @@
+{% extends "admin/base.html" %}
+
+{% block title %}מיפוי עמודות - יבוא תפריט{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-table me-2"></i>מיפוי עמודות - {{ filename }}</h2>
+                <div>
+                    <span class="badge bg-info fs-6">{{ total_rows }} שורות</span>
+                    <a href="{{ url_for('admin.menu_import') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-arrow-right me-2"></i>חזור להעלאה
+                    </a>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>מיפוי עמודות:</strong> התאם בין העמודות בקובץ לבין השדות במערכת. 
+                ניתן להשאיר שדות ריקים אם המידע לא קיים בקובץ.
+            </div>
+            
+            <!-- Preview Data -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-eye me-2"></i>תצוגה מקדימה (5 שורות ראשונות)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-primary">
+                                <tr>
+                                    {% for column in columns %}
+                                    <th>{{ column }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in preview_data %}
+                                <tr>
+                                    {% for column in columns %}
+                                    <td>{{ row[column] if row[column] is not none else '' }}</td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Column Mapping Form -->
+            <form action="{{ url_for('admin.process_csv_import') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="filename" value="{{ filename }}"/>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-link me-2"></i>מיפוי עמודות</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>שדות בסיסיים</h6>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_name_he" class="form-label">שם המנה (עברית) *</label>
+                                            <select class="form-select" id="mapping_name_he" name="mapping_name_he" required>
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_name_en" class="form-label">שם המנה (אנגלית)</label>
+                                            <select class="form-select" id="mapping_name_en" name="mapping_name_en">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_price" class="form-label">מחיר</label>
+                                            <select class="form-select" id="mapping_price" name="mapping_price">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_category" class="form-label">קטגוריה</label>
+                                            <select class="form-select" id="mapping_category" name="mapping_category">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>שדות נוספים</h6>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_description_he" class="form-label">תיאור (עברית)</label>
+                                            <select class="form-select" id="mapping_description_he" name="mapping_description_he">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_description_en" class="form-label">תיאור (אנגלית)</label>
+                                            <select class="form-select" id="mapping_description_en" name="mapping_description_en">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_ingredients_he" class="form-label">רכיבים (עברית)</label>
+                                            <select class="form-select" id="mapping_ingredients_he" name="mapping_ingredients_he">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="mapping_ingredients_en" class="form-label">רכיבים (אנגלית)</label>
+                                            <select class="form-select" id="mapping_ingredients_en" name="mapping_ingredients_en">
+                                                <option value="">בחר עמודה...</option>
+                                                {% for column in columns %}
+                                                <option value="{{ column }}">{{ column }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-cogs me-2"></i>הגדרות יבוא</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="default_category" class="form-label">קטגוריה ברירת מחדל</label>
+                                    <select class="form-select" id="default_category" name="default_category">
+                                        <option value="">ללא קטגוריה</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}">{{ category.name_he }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted">תשומש עבור מנות ללא קטגוריה מוגדרת</small>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <small>
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        <strong>שימו לב:</strong><br>
+                                        • תכונות תזונתיות יש להוסיף באופן ידני לאחר היבוא<br>
+                                        • כל המנות ייובאו כזמינות<br>
+                                        • ניתן לערוך מנות לאחר היבוא
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6><i class="fas fa-list me-2"></i>סיכום יבוא</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <small>שורות לייבוא:</small>
+                                    <strong>{{ total_rows }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small>עמודות בקובץ:</small>
+                                    <strong>{{ columns|length }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small>קטגוריות קיימות:</small>
+                                    <strong>{{ categories|length }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 text-center">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-download me-2"></i>התחל יבוא ({{ total_rows }} מנות)
+                    </button>
+                    <a href="{{ url_for('admin.menu_import') }}" class="btn btn-secondary btn-lg ms-2">
+                        <i class="fas fa-times me-2"></i>ביטול
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-detect column mappings based on common names
+    const autoDetectMappings = {
+        'mapping_name_he': ['שם_בעברית', 'שם בעברית', 'שם', 'name_he', 'hebrew_name'],
+        'mapping_name_en': ['שם_באנגלית', 'שם באנגלית', 'name_en', 'english_name', 'name'],
+        'mapping_price': ['מחיר', 'price', 'cost', 'amount'],
+        'mapping_category': ['קטגוריה', 'category', 'type'],
+        'mapping_description_he': ['תיאור_בעברית', 'תיאור בעברית', 'תיאור', 'description_he'],
+        'mapping_description_en': ['תיאור_באנגלית', 'תיאור באנגלית', 'description_en', 'description'],
+        'mapping_ingredients_he': ['רכיבים_בעברית', 'רכיבים בעברית', 'רכיבים', 'ingredients_he'],
+        'mapping_ingredients_en': ['רכיבים_באנגלית', 'רכיבים באנגלית', 'ingredients_en', 'ingredients']
+    };
+    
+    // Available columns from the CSV
+    const availableColumns = {{ columns|tojson }};
+    
+    // Auto-detect and set mappings
+    for (const [selectId, possibleNames] of Object.entries(autoDetectMappings)) {
+        const select = document.getElementById(selectId);
+        if (select) {
+            for (const possibleName of possibleNames) {
+                // Check for exact match or case-insensitive match
+                const matchedColumn = availableColumns.find(col => 
+                    col.toLowerCase() === possibleName.toLowerCase() ||
+                    col === possibleName
+                );
+                if (matchedColumn) {
+                    select.value = matchedColumn;
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Highlight selected columns in preview table
+    function highlightSelectedColumns() {
+        // Remove existing highlights
+        document.querySelectorAll('.table th, .table td').forEach(cell => {
+            cell.classList.remove('table-success');
+        });
+        
+        // Get all selected mappings
+        const selectedColumns = [];
+        document.querySelectorAll('select[name^="mapping_"]').forEach(select => {
+            if (select.value) {
+                selectedColumns.push(select.value);
+            }
+        });
+        
+        // Highlight selected columns
+        selectedColumns.forEach(columnName => {
+            const columnIndex = {{ columns|tojson }}.indexOf(columnName);
+            if (columnIndex >= 0) {
+                // Highlight header
+                const headerCell = document.querySelector(`thead tr th:nth-child(${columnIndex + 1})`);
+                if (headerCell) headerCell.classList.add('table-success');
+                
+                // Highlight data cells
+                document.querySelectorAll(`tbody tr td:nth-child(${columnIndex + 1})`).forEach(cell => {
+                    cell.classList.add('table-success');
+                });
+            }
+        });
+    }
+    
+    // Add event listeners to mapping selects
+    document.querySelectorAll('select[name^="mapping_"]').forEach(select => {
+        select.addEventListener('change', highlightSelectedColumns);
+    });
+    
+    // Initial highlight
+    highlightSelectedColumns();
+});
+</script>
+
+<style>
+.table-success {
+    background-color: #d1edff !important;
+    border-color: #007bff !important;
+}
+</style>
+{% endblock %}

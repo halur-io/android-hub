@@ -6,14 +6,20 @@ from models import *
 import os
 from datetime import datetime
 import json
+import pandas as pd
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 UPLOAD_FOLDER = 'static/uploads'
+CSV_UPLOAD_FOLDER = 'static/csv_uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
+ALLOWED_CSV_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_csv_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_CSV_EXTENSIONS
 
 def get_setting(key, default=''):
     """Helper function to get menu settings"""
@@ -281,6 +287,7 @@ def edit_menu_item(id=None):
         item = MenuItem()
     
     categories = MenuCategory.query.filter_by(is_active=True).all()
+    dietary_properties = DietaryProperty.query.filter_by(is_active=True).order_by(DietaryProperty.display_order).all()
     
     if request.method == 'POST':
         # Basic information
@@ -298,19 +305,10 @@ def edit_menu_item(id=None):
         item.base_price = float(request.form.get('base_price', 0))
         item.discount_percentage = float(request.form.get('discount_percentage', 0))
         
-        # Dietary & Special Properties
-        item.is_vegetarian = request.form.get('is_vegetarian') == 'on'
-        item.is_vegan = request.form.get('is_vegan') == 'on'
-        item.is_gluten_free = request.form.get('is_gluten_free') == 'on'
-        item.is_dairy_free = request.form.get('is_dairy_free') == 'on'
-        item.is_nut_free = request.form.get('is_nut_free') == 'on'
-        item.is_spicy = request.form.get('is_spicy') == 'on'
-        item.is_halal = request.form.get('is_halal') == 'on'
-        item.is_kosher = request.form.get('is_kosher') == 'on'
-        item.is_organic = request.form.get('is_organic') == 'on'
-        item.is_signature = request.form.get('is_signature') == 'on'
-        item.is_new = request.form.get('is_new') == 'on'
-        item.is_popular = request.form.get('is_popular') == 'on'
+        # Handle dynamic dietary properties
+        selected_property_ids = request.form.getlist('dietary_properties')
+        selected_properties = DietaryProperty.query.filter(DietaryProperty.id.in_(selected_property_ids)).all()
+        item.dietary_properties = selected_properties
         
         # Operations
         item.is_available = request.form.get('is_available') == 'on'
@@ -371,7 +369,7 @@ def edit_menu_item(id=None):
         flash('Menu item saved successfully!', 'success')
         return redirect(url_for('admin.menu'))
     
-    return render_template('admin/enhanced_menu_item.html', item=item, categories=categories)
+    return render_template('admin/enhanced_menu_item.html', item=item, categories=categories, dietary_properties=dietary_properties)
 
 # Menu Settings Management
 @admin_bp.route('/menu/settings')
@@ -458,6 +456,290 @@ def add_item_variation(item_id):
     db.session.commit()
     flash('Variation added successfully!', 'success')
     return redirect(url_for('admin.manage_item_variations', item_id=item_id))
+
+# Dietary Properties Management
+@admin_bp.route('/menu/dietary-properties')
+@login_required
+def dietary_properties():
+    properties = DietaryProperty.query.order_by(DietaryProperty.display_order).all()
+    return render_template('admin/dietary_properties.html', properties=properties)
+
+@admin_bp.route('/menu/dietary-properties/edit/<int:id>', methods=['GET', 'POST'])
+@admin_bp.route('/menu/dietary-properties/new', methods=['GET', 'POST'])
+@login_required
+def edit_dietary_property(id=None):
+    if id:
+        prop = DietaryProperty.query.get_or_404(id)
+    else:
+        prop = DietaryProperty()
+    
+    if request.method == 'POST':
+        prop.name_he = request.form.get('name_he')
+        prop.name_en = request.form.get('name_en')
+        prop.icon = request.form.get('icon')
+        prop.color = request.form.get('color')
+        prop.description_he = request.form.get('description_he')
+        prop.description_en = request.form.get('description_en')
+        prop.is_active = request.form.get('is_active') == 'on'
+        prop.display_order = int(request.form.get('display_order', 0))
+        
+        if not id:
+            db.session.add(prop)
+        
+        db.session.commit()
+        flash('Dietary property saved successfully!', 'success')
+        return redirect(url_for('admin.dietary_properties'))
+    
+    return render_template('admin/edit_dietary_property.html', property=prop)
+
+@admin_bp.route('/menu/dietary-properties/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_dietary_property(id):
+    prop = DietaryProperty.query.get_or_404(id)
+    db.session.delete(prop)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/menu/dietary-properties/reorder', methods=['POST'])
+@login_required
+def reorder_dietary_properties():
+    property_ids = request.json.get('property_ids', [])
+    for index, property_id in enumerate(property_ids):
+        prop = DietaryProperty.query.get(property_id)
+        if prop:
+            prop.display_order = index
+            db.session.add(prop)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# Menu Item Reordering System
+@admin_bp.route('/menu/reorder')
+@login_required
+def menu_reorder():
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    # Get menu items grouped by category
+    menu_data = {}
+    for category in categories:
+        items = MenuItem.query.filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
+        menu_data[category.id] = {
+            'category': category,
+            'items': items
+        }
+    
+    # Get items without category
+    uncategorized_items = MenuItem.query.filter_by(category_id=None).order_by(MenuItem.display_order).all()
+    
+    return render_template('admin/menu_reorder.html', 
+                         menu_data=menu_data, 
+                         categories=categories,
+                         uncategorized_items=uncategorized_items)
+
+@admin_bp.route('/menu/reorder/items', methods=['POST'])
+@login_required
+def reorder_menu_items():
+    item_orders = request.json.get('item_orders', {})
+    
+    for item_id, order_data in item_orders.items():
+        item = MenuItem.query.get(int(item_id))
+        if item:
+            item.display_order = order_data['order']
+            if 'category_id' in order_data:
+                item.category_id = order_data['category_id'] if order_data['category_id'] != 'null' else None
+            db.session.add(item)
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/menu/reorder/categories', methods=['POST'])
+@login_required
+def reorder_categories():
+    category_ids = request.json.get('category_ids', [])
+    for index, category_id in enumerate(category_ids):
+        category = MenuCategory.query.get(category_id)
+        if category:
+            category.display_order = index
+            db.session.add(category)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# CSV/Excel Import System
+@admin_bp.route('/menu/import')
+@login_required
+def menu_import():
+    return render_template('admin/menu_import.html')
+
+@admin_bp.route('/menu/import/upload', methods=['POST'])
+@login_required
+def upload_csv():
+    if 'file' not in request.files:
+        flash('No file selected', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('No file selected', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    if file and allowed_csv_file(file.filename):
+        # Create upload directory if it doesn't exist
+        os.makedirs(CSV_UPLOAD_FOLDER, exist_ok=True)
+        
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(CSV_UPLOAD_FOLDER, filename)
+        file.save(filepath)
+        
+        # Read and preview the file
+        try:
+            if filename.endswith('.csv'):
+                df = pd.read_csv(filepath, encoding='utf-8')
+            else:  # Excel files
+                df = pd.read_excel(filepath)
+            
+            # Get first 5 rows for preview
+            preview_data = df.head(5).to_dict('records')
+            columns = list(df.columns)
+            total_rows = len(df)
+            
+            # Get existing categories and dietary properties for mapping
+            categories = MenuCategory.query.filter_by(is_active=True).all()
+            dietary_properties = DietaryProperty.query.filter_by(is_active=True).all()
+            
+            return render_template('admin/csv_column_mapping.html', 
+                                 filename=filename,
+                                 columns=columns,
+                                 preview_data=preview_data,
+                                 total_rows=total_rows,
+                                 categories=categories,
+                                 dietary_properties=dietary_properties)
+        
+        except Exception as e:
+            flash(f'Error reading file: {str(e)}', 'error')
+            return redirect(url_for('admin.menu_import'))
+    
+    flash('Invalid file format. Please upload CSV, XLS, or XLSX files only.', 'error')
+    return redirect(url_for('admin.menu_import'))
+
+@admin_bp.route('/menu/import/process', methods=['POST'])
+@login_required
+def process_csv_import():
+    filename = request.form.get('filename')
+    if not filename:
+        flash('No file to process', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    filepath = os.path.join(CSV_UPLOAD_FOLDER, filename)
+    if not os.path.exists(filepath):
+        flash('File not found', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    # Get column mappings from form
+    mappings = {}
+    for field in ['name_he', 'name_en', 'description_he', 'description_en', 'price', 'category', 'ingredients_he', 'ingredients_en']:
+        column = request.form.get(f'mapping_{field}')
+        if column and column != '':
+            mappings[field] = column
+    
+    # Read the file
+    try:
+        if filename.endswith('.csv'):
+            df = pd.read_csv(filepath, encoding='utf-8')
+        else:
+            df = pd.read_excel(filepath)
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        # Get default category if specified
+        default_category_id = request.form.get('default_category')
+        if default_category_id == '':
+            default_category_id = None
+        else:
+            default_category_id = int(default_category_id) if default_category_id else None
+        
+        # Process each row
+        for index, row in df.iterrows():
+            try:
+                # Create new menu item
+                item = MenuItem()
+                
+                # Map basic fields
+                if 'name_he' in mappings:
+                    item.name_he = str(row[mappings['name_he']]) if pd.notna(row[mappings['name_he']]) else ''
+                if 'name_en' in mappings:
+                    item.name_en = str(row[mappings['name_en']]) if pd.notna(row[mappings['name_en']]) else ''
+                if 'description_he' in mappings:
+                    item.description_he = str(row[mappings['description_he']]) if pd.notna(row[mappings['description_he']]) else ''
+                if 'description_en' in mappings:
+                    item.description_en = str(row[mappings['description_en']]) if pd.notna(row[mappings['description_en']]) else ''
+                if 'ingredients_he' in mappings:
+                    item.ingredients_he = str(row[mappings['ingredients_he']]) if pd.notna(row[mappings['ingredients_he']]) else ''
+                if 'ingredients_en' in mappings:
+                    item.ingredients_en = str(row[mappings['ingredients_en']]) if pd.notna(row[mappings['ingredients_en']]) else ''
+                
+                # Handle price
+                if 'price' in mappings and pd.notna(row[mappings['price']]):
+                    try:
+                        item.base_price = float(row[mappings['price']])
+                    except:
+                        item.base_price = 0
+                
+                # Handle category
+                if 'category' in mappings and pd.notna(row[mappings['category']]):
+                    category_name = str(row[mappings['category']])
+                    category = MenuCategory.query.filter(
+                        (MenuCategory.name_he == category_name) | 
+                        (MenuCategory.name_en == category_name)
+                    ).first()
+                    if category:
+                        item.category_id = category.id
+                    else:
+                        item.category_id = default_category_id
+                else:
+                    item.category_id = default_category_id
+                
+                # Set default values
+                item.is_available = True
+                item.display_order = index
+                
+                # Validate required fields
+                if not item.name_he and not item.name_en:
+                    errors.append(f'Row {index + 2}: Missing both Hebrew and English names')
+                    error_count += 1
+                    continue
+                
+                db.session.add(item)
+                success_count += 1
+                
+            except Exception as e:
+                errors.append(f'Row {index + 2}: {str(e)}')
+                error_count += 1
+        
+        # Commit all changes
+        try:
+            db.session.commit()
+            flash(f'Import completed! {success_count} items imported successfully.', 'success')
+            if error_count > 0:
+                flash(f'{error_count} items had errors and were skipped.', 'warning')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Database error during import: {str(e)}', 'error')
+        
+        # Clean up uploaded file
+        try:
+            os.remove(filepath)
+        except:
+            pass
+        
+        return render_template('admin/import_results.html', 
+                             success_count=success_count,
+                             error_count=error_count,
+                             errors=errors)
+    
+    except Exception as e:
+        flash(f'Error processing file: {str(e)}', 'error')
+        return redirect(url_for('admin.menu_import'))
 
 # Delete menu items and categories
 @admin_bp.route('/menu/item/delete/<int:id>', methods=['POST'])

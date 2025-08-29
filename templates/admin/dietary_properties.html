@@ -1,0 +1,205 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול תכונות תזונתיות{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-tags me-2"></i>ניהול תכונות תזונתיות</h2>
+                <div>
+                    <a href="{{ url_for('admin.edit_dietary_property') }}" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>הוסף תכונה חדשה
+                    </a>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-arrow-right me-2"></i>חזור לתפריט
+                    </a>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>תכונות תזונתיות:</strong> כאן תוכל להוסיף, לערוך ולמחוק תכונות תזונתיות שיוצגו במנות (צמחוני, טבעוני, ללא גלוטן וכו'). 
+                גרור ושחרר כדי לשנות את סדר ההצגה.
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list me-2"></i>תכונות תזונתיות קיימות</h5>
+                </div>
+                <div class="card-body">
+                    {% if properties %}
+                    <div id="dietary-properties-list" class="sortable-list">
+                        {% for property in properties %}
+                        <div class="dietary-property-item card mb-2" data-id="{{ property.id }}">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-1">
+                                        <div class="drag-handle">
+                                            <i class="fas fa-grip-vertical text-muted"></i>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <i class="fas fa-{{ property.icon or 'tag' }}" style="color: {{ property.color or '#6c757d' }}; font-size: 1.5rem;"></i>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h6 class="mb-1">{{ property.name_he }}</h6>
+                                        <small class="text-muted">{{ property.name_en }}</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">{{ property.description_he or 'ללא תיאור' }}</small>
+                                    </div>
+                                    <div class="col-md-1">
+                                        {% if property.is_active %}
+                                        <span class="badge bg-success">פעיל</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">לא פעיל</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('admin.edit_dietary_property', id=property.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-property" data-id="{{ property.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">אין תכונות תזונתיות</h5>
+                        <p class="text-muted">הוסף תכונות תזונתיות כדי להתחיל</p>
+                        <a href="{{ url_for('admin.edit_dietary_property') }}" class="btn btn-success">
+                            <i class="fas fa-plus me-2"></i>הוסף תכונה ראשונה
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize sortable list
+    const sortableList = document.getElementById('dietary-properties-list');
+    if (sortableList) {
+        Sortable.create(sortableList, {
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: function(evt) {
+                // Get new order
+                const propertyIds = Array.from(sortableList.children).map(item => item.dataset.id);
+                
+                // Send to server
+                fetch('{{ url_for("admin.reorder_dietary_properties") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        property_ids: propertyIds
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        const alert = document.createElement('div');
+                        alert.className = 'alert alert-success alert-dismissible fade show';
+                        alert.innerHTML = `
+                            <i class="fas fa-check me-2"></i>
+                            סדר התכונות עודכן בהצלחה!
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+                        
+                        // Auto-dismiss after 3 seconds
+                        setTimeout(() => {
+                            alert.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('שגיאה בעדכון הסדר');
+                });
+            }
+        });
+    }
+    
+    // Delete property functionality
+    document.querySelectorAll('.delete-property').forEach(button => {
+        button.addEventListener('click', function() {
+            const propertyId = this.dataset.id;
+            const propertyName = this.closest('.dietary-property-item').querySelector('h6').textContent;
+            
+            if (confirm(`האם אתה בטוח שברצונך למחוק את התכונה "${propertyName}"?`)) {
+                fetch(`{{ url_for("admin.delete_dietary_property", id=0) }}`.replace('0', propertyId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('שגיאה במחיקת התכונה');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('שגיאה במחיקת התכונה');
+                });
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.sortable-list {
+    min-height: 100px;
+}
+
+.dietary-property-item {
+    transition: all 0.2s ease;
+    cursor: move;
+}
+
+.dietary-property-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.drag-handle {
+    cursor: grab;
+    padding: 10px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.sortable-ghost {
+    opacity: 0.5;
+    background: #f8f9fa;
+}
+
+.sortable-chosen {
+    transform: scale(1.02);
+}
+</style>
+{% endblock %}

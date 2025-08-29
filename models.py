@@ -3,6 +3,12 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Association table for menu items and dietary properties (define before classes)
+menu_item_dietary_properties = db.Table('menu_item_dietary_properties',
+    db.Column('menu_item_id', db.Integer, db.ForeignKey('menu_items.id'), primary_key=True),
+    db.Column('dietary_property_id', db.Integer, db.ForeignKey('dietary_properties.id'), primary_key=True)
+)
+
 # Admin User Model
 class AdminUser(UserMixin, db.Model):
     __tablename__ = 'admin_users'
@@ -154,6 +160,7 @@ class MenuItem(db.Model):
     # Relationships
     price_options = db.relationship('MenuItemPrice', backref='menu_item', lazy=True, cascade='all, delete-orphan')
     variations = db.relationship('MenuItemVariation', backref='menu_item', lazy=True, cascade='all, delete-orphan')
+    dietary_properties = db.relationship('DietaryProperty', secondary=menu_item_dietary_properties, backref='menu_items')
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -180,6 +187,20 @@ class MenuItemVariation(db.Model):
     price_modifier = db.Column(db.Float, default=0)  # Additional cost
     is_default = db.Column(db.Boolean, default=False)
     display_order = db.Column(db.Integer, default=0)
+
+# Customizable Dietary Properties
+class DietaryProperty(db.Model):
+    __tablename__ = 'dietary_properties'
+    id = db.Column(db.Integer, primary_key=True)
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    icon = db.Column(db.String(50))  # FontAwesome icon
+    color = db.Column(db.String(7))  # Hex color
+    description_he = db.Column(db.String(255))
+    description_en = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Menu Display Settings
 class MenuSettings(db.Model):

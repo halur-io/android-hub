@@ -1,0 +1,358 @@
+{% extends "admin/base.html" %}
+
+{% block title %}סידור תפריט - Drag & Drop{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-sort me-2"></i>סידור תפריט - Drag & Drop</h2>
+                <div>
+                    <button type="button" class="btn btn-success" id="save-order">
+                        <i class="fas fa-save me-2"></i>שמור סידור
+                    </button>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-arrow-right me-2"></i>חזור לתפריט
+                    </a>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>סידור תפריט:</strong> גרור ושחרר כדי לשנות את סדר הקטגוריות והמנות. 
+                ניתן גם להעביר מנות בין קטגוריות שונות.
+            </div>
+            
+            <!-- Categories Reordering -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-folder me-2"></i>סדר קטגוריות</h5>
+                </div>
+                <div class="card-body">
+                    <div id="categories-list" class="sortable-categories">
+                        {% for category in categories %}
+                        <div class="category-item d-inline-block m-2" data-id="{{ category.id }}">
+                            <div class="card border-primary" style="width: 200px;">
+                                <div class="card-body text-center p-2">
+                                    <div class="drag-handle mb-2">
+                                        <i class="fas fa-grip-vertical text-muted"></i>
+                                    </div>
+                                    <h6 class="card-title mb-1">{{ category.name_he }}</h6>
+                                    <small class="text-muted">{{ category.name_en }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Menu Items by Category -->
+            <div class="row">
+                {% for category_id, data in menu_data.items() %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-utensils me-2"></i>
+                                {{ data.category.name_he }}
+                                <span class="badge bg-light text-dark ms-2">{{ data.items|length }} מנות</span>
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="menu-items-list sortable-items" data-category-id="{{ category_id }}">
+                                {% for item in data.items %}
+                                <div class="menu-item-card mb-2" data-id="{{ item.id }}">
+                                    <div class="card border">
+                                        <div class="card-body p-2">
+                                            <div class="row align-items-center">
+                                                <div class="col-1">
+                                                    <div class="drag-handle text-center">
+                                                        <i class="fas fa-grip-vertical text-muted"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="col-8">
+                                                    <h6 class="mb-1">{{ item.name_he }}</h6>
+                                                    <small class="text-muted">{{ item.name_en }}</small>
+                                                    {% if item.base_price %}
+                                                    <div><small class="text-success">₪{{ item.base_price }}</small></div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-3 text-end">
+                                                    {% if not item.is_available %}
+                                                    <span class="badge bg-warning">לא זמין</span>
+                                                    {% endif %}
+                                                    <!-- Display dietary properties -->
+                                                    {% for property in item.dietary_properties %}
+                                                    <i class="fas fa-{{ property.icon or 'tag' }}" 
+                                                       style="color: {{ property.color or '#6c757d' }};" 
+                                                       title="{{ property.name_he }}"></i>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                {% if not data.items %}
+                                <div class="empty-category text-center py-3 text-muted">
+                                    <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                    <div>גרור מנות לכאן</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Uncategorized Items -->
+                {% if uncategorized_items %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-question-circle me-2"></i>
+                                ללא קטגוריה
+                                <span class="badge bg-light text-dark ms-2">{{ uncategorized_items|length }} מנות</span>
+                            </h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="menu-items-list sortable-items" data-category-id="null">
+                                {% for item in uncategorized_items %}
+                                <div class="menu-item-card mb-2" data-id="{{ item.id }}">
+                                    <div class="card border">
+                                        <div class="card-body p-2">
+                                            <div class="row align-items-center">
+                                                <div class="col-1">
+                                                    <div class="drag-handle text-center">
+                                                        <i class="fas fa-grip-vertical text-muted"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="col-8">
+                                                    <h6 class="mb-1">{{ item.name_he }}</h6>
+                                                    <small class="text-muted">{{ item.name_en }}</small>
+                                                    {% if item.base_price %}
+                                                    <div><small class="text-success">₪{{ item.base_price }}</small></div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-3 text-end">
+                                                    {% if not item.is_available %}
+                                                    <span class="badge bg-warning">לא זמין</span>
+                                                    {% endif %}
+                                                    {% for property in item.dietary_properties %}
+                                                    <i class="fas fa-{{ property.icon or 'tag' }}" 
+                                                       style="color: {{ property.color or '#6c757d' }};" 
+                                                       title="{{ property.name_he }}"></i>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let hasChanges = false;
+    
+    // Initialize category sorting
+    const categoriesList = document.getElementById('categories-list');
+    if (categoriesList) {
+        Sortable.create(categoriesList, {
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: function() {
+                hasChanges = true;
+                updateSaveButton();
+            }
+        });
+    }
+    
+    // Initialize menu items sorting
+    const menuItemsLists = document.querySelectorAll('.sortable-items');
+    menuItemsLists.forEach(list => {
+        Sortable.create(list, {
+            group: 'menu-items', // Allow dragging between different categories
+            handle: '.drag-handle',
+            animation: 150,
+            onEnd: function() {
+                hasChanges = true;
+                updateSaveButton();
+            }
+        });
+    });
+    
+    function updateSaveButton() {
+        const saveBtn = document.getElementById('save-order');
+        if (hasChanges) {
+            saveBtn.classList.remove('btn-success');
+            saveBtn.classList.add('btn-warning');
+            saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>שמור שינויים';
+        }
+    }
+    
+    // Save order functionality
+    document.getElementById('save-order').addEventListener('click', function() {
+        const saveBtn = this;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>שומר...';
+        
+        // Collect category order
+        const categoryOrder = Array.from(categoriesList.children).map((item, index) => ({
+            id: item.dataset.id,
+            order: index
+        }));
+        
+        // Collect item orders
+        const itemOrders = {};
+        menuItemsLists.forEach(list => {
+            const categoryId = list.dataset.categoryId;
+            Array.from(list.children).forEach((item, index) => {
+                if (item.classList.contains('menu-item-card')) {
+                    itemOrders[item.dataset.id] = {
+                        order: index,
+                        category_id: categoryId === 'null' ? null : parseInt(categoryId)
+                    };
+                }
+            });
+        });
+        
+        // Save categories order
+        fetch('{{ url_for("admin.reorder_categories") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                category_ids: categoryOrder.map(c => parseInt(c.id))
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Save items order
+                return fetch('{{ url_for("admin.reorder_menu_items") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        item_orders: itemOrders
+                    })
+                });
+            } else {
+                throw new Error('Failed to save category order');
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                hasChanges = false;
+                saveBtn.classList.remove('btn-warning');
+                saveBtn.classList.add('btn-success');
+                saveBtn.innerHTML = '<i class="fas fa-check me-2"></i>נשמר בהצלחה!';
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
+                    <i class="fas fa-check me-2"></i>
+                    סדר התפריט עודכן בהצלחה!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+                
+                setTimeout(() => {
+                    alert.remove();
+                    saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>שמור סידור';
+                }, 3000);
+            } else {
+                throw new Error('Failed to save items order');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('שגיאה בשמירת הסידור: ' + error.message);
+            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>שגיאה';
+            saveBtn.classList.add('btn-danger');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+        });
+    });
+});
+</script>
+
+<style>
+.sortable-categories {
+    min-height: 100px;
+    padding: 10px;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+}
+
+.sortable-items {
+    min-height: 150px;
+    padding: 10px;
+}
+
+.category-item,
+.menu-item-card {
+    transition: all 0.2s ease;
+    cursor: move;
+}
+
+.category-item:hover,
+.menu-item-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.drag-handle {
+    cursor: grab;
+    padding: 5px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.sortable-ghost {
+    opacity: 0.5;
+    background: #f8f9fa;
+}
+
+.sortable-chosen {
+    transform: scale(1.02);
+}
+
+.empty-category {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.empty-category:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.card-header.bg-primary {
+    background-color: var(--sumo-coral) !important;
+}
+</style>
+{% endblock %}

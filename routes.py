@@ -79,12 +79,27 @@ def reservation():
 
 @app.errorhandler(404)
 def not_found(error):
+    # Check if this is an admin route
+    if request.path.startswith('/admin'):
+        return render_template('admin/error.html', 
+                             error_code=404,
+                             error_title='Page Not Found',
+                             error_message='The admin page you are looking for does not exist.',
+                             suggestion='Try accessing the admin panel at <a href="/admin/">/admin/</a>'), 404
+    
     contact_form = ContactForm()
     reservation_form = ReservationForm()
     return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    if request.path.startswith('/admin'):
+        return render_template('admin/error.html',
+                             error_code=500,
+                             error_title='Server Error',
+                             error_message='An internal server error occurred.',
+                             suggestion='Please try again or contact support.'), 500
+    
     contact_form = ContactForm()
     reservation_form = ReservationForm()
     return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form), 500

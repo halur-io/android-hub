@@ -15,18 +15,36 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Custom route for /admin without trailing slash
+@admin_bp.route('', methods=['GET'])
+def admin_redirect():
+    if current_user.is_authenticated:
+        return redirect(url_for('admin.dashboard'))
+    return redirect(url_for('admin.login'))
+
 # Admin Login
 @admin_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated:
+        flash('You are already logged in!', 'info')
+        return redirect(url_for('admin.dashboard'))
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
+        if not username or not password:
+            flash('Please enter both username and password.', 'error')
+            return render_template('admin/login.html')
+        
         user = AdminUser.query.filter_by(username=username).first()
         if user and user.check_password(password):
             login_user(user)
-            return redirect(url_for('admin.dashboard'))
-        flash('Invalid username or password', 'error')
+            next_page = request.args.get('next')
+            flash(f'Welcome back, {user.username}!', 'success')
+            return redirect(next_page) if next_page else redirect(url_for('admin.dashboard'))
+        else:
+            flash('Invalid username or password. Please try again.', 'error')
     
     return render_template('admin/login.html')
 

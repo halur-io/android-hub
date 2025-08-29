@@ -8,6 +8,16 @@ This is a modern restaurant website for Sumo Asian Kitchen, featuring a React fr
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### August 29, 2025 - Enhanced Error Handling and Mobile Responsiveness
+- **Fixed admin panel access issues**: Added custom URL routing for `/admin` without trailing slash
+- **Enhanced error handling**: Created custom error pages for admin routes with helpful suggestions
+- **Improved login validation**: Added clear error messages and user guidance
+- **Mobile-friendly design**: Made both admin panel and React frontend fully responsive
+- **Bottom navigation bar**: Added mobile navigation with quick actions (Menu, Reservations, Call, Location)
+- **Better user experience**: Enhanced login page with instructions and better error messaging
+
 ## System Architecture
 
 ### Frontend Architecture

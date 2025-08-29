@@ -76,6 +76,7 @@
         <div class="logo">
             <h1>SUMO</h1>
             <p class="text-muted">ניהול מערכת</p>
+            <small class="text-muted d-block mt-2">הכנס פרטי התחברות לגישה למערכת הניהול</small>
         </div>
         
         <form method="POST">
@@ -97,12 +98,20 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-danger mt-3" role="alert">
+                    <div class="alert alert-{% if category == 'error' %}danger{% elif category == 'success' %}success{% elif category == 'info' %}info{% else %}warning{% endif %} mt-3" role="alert">
+                        <i class="fas fa-{% if category == 'error' %}exclamation-triangle{% elif category == 'success' %}check-circle{% elif category == 'info' %}info-circle{% else %}exclamation-circle{% endif %} me-2"></i>
                         {{ message }}
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
+        
+        <div class="mt-4 text-center">
+            <small class="text-muted">
+                Admin Panel URL: <code>/admin/</code><br>
+                Default credentials: admin / admin123
+            </small>
+        </div>
     </div>
 </body>
 </html>

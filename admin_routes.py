@@ -906,21 +906,37 @@ def api_menu():
     
     for cat in categories:
         items = []
-        for item in cat.menu_items:
-            if item.is_available:
-                items.append({
-                    'id': item.id,
-                    'name_he': item.name_he,
-                    'name_en': item.name_en,
-                    'description_he': item.description_he,
-                    'description_en': item.description_en,
-                    'price': item.price,
-                    'image_path': item.image_path,
-                    'is_vegetarian': item.is_vegetarian,
-                    'is_vegan': item.is_vegan,
-                    'is_gluten_free': item.is_gluten_free,
-                    'is_spicy': item.is_spicy
-                })
+        # Get items ordered by display_order
+        menu_items = MenuItem.query.filter_by(category_id=cat.id, is_available=True).order_by(MenuItem.display_order).all()
+        
+        for item in menu_items:
+            # Get dietary properties for this item
+            dietary_properties = []
+            for prop in item.dietary_properties:
+                if prop.is_active:
+                    dietary_properties.append({
+                        'id': prop.id,
+                        'name_he': prop.name_he,
+                        'name_en': prop.name_en,
+                        'icon': prop.icon,
+                        'color': prop.color,
+                        'description_he': prop.description_he,
+                        'description_en': prop.description_en
+                    })
+            
+            items.append({
+                'id': item.id,
+                'name_he': item.name_he,
+                'name_en': item.name_en,
+                'description_he': item.description_he,
+                'description_en': item.description_en,
+                'ingredients_he': item.ingredients_he,
+                'ingredients_en': item.ingredients_en,
+                'base_price': item.base_price,
+                'image_path': item.image_path,
+                'dietary_properties': dietary_properties,
+                'display_order': item.display_order
+            })
         
         result.append({
             'id': cat.id,
@@ -928,7 +944,8 @@ def api_menu():
             'name_en': cat.name_en,
             'description_he': cat.description_he,
             'description_en': cat.description_en,
-            'items': items
+            'items': items,
+            'display_order': cat.display_order
         })
     
     return jsonify(result)

@@ -78,6 +78,13 @@ const Navbar = ({ language, setLanguage }) => {
         </a>
 
         <ul className={`navbar-menu ${mobileMenuOpen ? 'active' : ''}`}>
+          <button 
+            className="mobile-menu-close"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <i className="fas fa-times"></i>
+          </button>
           <li><a href="#about" onClick={(e) => handleNavClick(e, '#about')}>{t.about}</a></li>
           <li><Link to="/menu" onClick={() => setMobileMenuOpen(false)}>{t.menu}</Link></li>
           <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>{t.gallery}</a></li>
@@ -98,6 +105,14 @@ const Navbar = ({ language, setLanguage }) => {
             </button>
           </li>
         </ul>
+        
+        {/* Mobile menu overlay */}
+        {mobileMenuOpen && (
+          <div 
+            className="mobile-menu-overlay"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
       </div>
     </nav>
   )

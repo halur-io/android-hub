@@ -6,6 +6,7 @@ import About from './components/About'
 import PhotoShowcase from './components/PhotoShowcase'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
+import MobileNav from './components/MobileNav'
 import MenuPage from './pages/MenuPage'
 import './App.css'
 
@@ -17,6 +18,7 @@ function HomePage({ language }) {
       <PhotoShowcase language={language} />
       <Contact language={language} />
       <Footer language={language} />
+      <MobileNav language={language} />
     </>
   )
 }

@@ -104,18 +104,39 @@
   left: -300px;
   width: 280px;
   height: 100vh;
-  background: var(--sumo-navy);
+  background: linear-gradient(135deg, var(--sumo-navy) 0%, #2c3e5a 100%);
   list-style: none;
   padding: 80px 20px 20px;
   margin: 0;
-  transition: all 0.3s ease;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.3);
   overflow-y: auto;
   z-index: 999;
+  backdrop-filter: blur(10px);
 }
 
 .navbar-menu.active {
   left: 0;
+}
+
+/* Mobile menu overlay */
+.navbar-menu::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: -1;
+}
+
+.navbar-menu.active::before {
+  opacity: 1;
+  visibility: visible;
 }
 
 .navbar-menu li {
@@ -128,14 +149,36 @@
   font-weight: 500;
   font-size: 1.2rem;
   display: block;
-  padding: 12px 20px;
-  border-radius: 10px;
+  padding: 15px 20px;
+  border-radius: 12px;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-menu a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.navbar-menu a:hover::before {
+  left: 100%;
 }
 
 .navbar-menu a:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateX(5px);
+  background: rgba(199, 84, 80, 0.3);
+  transform: translateX(8px);
+  color: #fff;
+}
+
+.navbar-menu a:active {
+  transform: translateX(8px) scale(0.98);
 }
 
 .language-selector-mobile {
@@ -165,66 +208,111 @@
 
 
 
+/* Close button for mobile menu */
+.mobile-menu-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--pure-white);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(90deg);
+}
+
 /* Mobile Styles */
 @media (max-width: 1024px) {
-  .navbar-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, var(--sumo-navy) 0%, #2c3e5a 100%);
-    flex-direction: column;
-    padding: 1.5rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    gap: 0;
+  .navbar-content {
+    padding: 0 15px;
   }
-
-  .navbar-menu.active {
-    display: flex;
+  
+  .menu-hamburger {
+    left: 15px;
   }
-
-  .navbar-menu li {
-    width: 100%;
-    text-align: center;
-    padding: 0.8rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .navbar-menu li:last-child {
-    border-bottom: none;
-  }
-
-  .mobile-menu-btn {
-    display: flex;
-  }
-
-  .contact-buttons {
-    display: none;
-  }
-
-  .language-selector {
-    margin-right: 1rem;
+  
+  .call-now-btn {
+    right: 15px;
+    padding: 6px 12px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: 768px) {
   .logo-img {
-    height: 120px;
-    width: 120px;
+    height: 100px;
+    width: 100px;
   }
 
   .navbar.scrolled .logo-img {
-    height: 95px;
-    width: 95px;
+    height: 80px;
+    width: 80px;
   }
 
   .navbar-content {
-    gap: 1rem;
+    padding: 0 10px;
+  }
+  
+  .menu-hamburger {
+    left: 10px;
+    width: 30px;
+    height: 22px;
+  }
+  
+  .call-now-btn {
+    right: 10px;
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 15px;
+  }
+  
+  .call-now-btn span {
+    display: none;
+  }
+  
+  .navbar-menu {
+    width: 260px;
+    padding: 70px 15px 20px;
+  }
+  
+  .navbar-menu a {
+    font-size: 1.1rem;
+    padding: 12px 15px;
   }
 
   .lang-btn {
     padding: 6px 12px;
     font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-img {
+    height: 90px;
+    width: 90px;
+  }
+
+  .navbar.scrolled .logo-img {
+    height: 70px;
+    width: 70px;
+  }
+  
+  .navbar-menu {
+    width: 240px;
+  }
+  
+  .call-now-btn {
+    padding: 4px 8px;
+  }
+  
+  .call-now-btn i {
+    font-size: 11px;
   }
 }

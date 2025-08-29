@@ -521,10 +521,10 @@ def menu_reorder():
     # Get menu items grouped by category
     menu_data = {}
     for category in categories:
-        items = MenuItem.query.filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
+        items_list = MenuItem.query.filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
         menu_data[category.id] = {
             'category': category,
-            'items': items
+            'items': items_list
         }
     
     # Get items without category

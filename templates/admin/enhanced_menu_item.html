@@ -10,7 +10,7 @@
             
             <form method="POST" enctype="multipart/form-data" id="menuItemForm" 
                   action="{% if item.id %}{{ url_for('admin.edit_menu_item', id=item.id) }}{% else %}{{ url_for('admin.edit_menu_item') }}{% endif %}">
-                {{ csrf_token() }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 
                 <!-- Navigation Tabs -->
                 <ul class="nav nav-tabs mb-4" id="menuItemTabs" role="tablist">
@@ -48,7 +48,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="category_id" class="form-label">קטגוריה</label>
+                                    <label for="category_id" class="form-label">קטגוריה <span class="text-danger">*</span></label>
                                     <select class="form-select" id="category_id" name="category_id" required>
                                         {% for category in categories %}
                                         <option value="{{ category.id }}" {% if item.category_id == category.id %}selected{% endif %}>
@@ -59,13 +59,19 @@
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label for="name_he" class="form-label">שם המנה (עברית)</label>
+                                    <label for="name_he" class="form-label">שם המנה (עברית) <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="name_he" name="name_he" value="{{ item.name_he or '' }}" required>
+                                    <div class="invalid-feedback">
+                                        שדה זה הוא חובה - נא להזין שם למנה בעברית
+                                    </div>
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label for="name_en" class="form-label">שם המנה (אנגלית)</label>
+                                    <label for="name_en" class="form-label">שם המנה (אנגלית) <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="name_en" name="name_en" value="{{ item.name_en or '' }}" required>
+                                    <div class="invalid-feedback">
+                                        שדה זה הוא חובה - נא להזין שם למנה באנגלית
+                                    </div>
                                 </div>
                                 
                                 <div class="mb-3">
@@ -237,8 +243,11 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="base_price" class="form-label">מחיר בסיס (₪)</label>
+                                    <label for="base_price" class="form-label">מחיר בסיס (₪) <span class="text-danger">*</span></label>
                                     <input type="number" step="0.01" class="form-control" id="base_price" name="base_price" value="{{ item.base_price or item.price or '' }}" required>
+                                    <div class="invalid-feedback">
+                                        שדה זה הוא חובה - נא להזין מחיר למנה
+                                    </div>
                                 </div>
                                 
                                 <div class="mb-3">
@@ -359,6 +368,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Show validation messages
                 form.reportValidity();
+                
+                // Also show a user-friendly alert
+                const fieldNames = {
+                    'category_id': 'קטגוריה',
+                    'name_he': 'שם המנה בעברית',
+                    'name_en': 'שם המנה באנגלית',
+                    'base_price': 'מחיר בסיס'
+                };
+                
+                const missingFields = Array.from(invalidFields).map(field => fieldNames[field.name] || field.name);
+                
+                alert(`יש למלא את השדות הבאים:\n• ${missingFields.join('\n• ')}\n\nהשדות הדרושים מסומנים בכוכבית (*)`);
                 return;
             }
             

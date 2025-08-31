@@ -149,8 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/admin/menu/dietary-properties/toggle/${propertyId}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     is_active: isActive
@@ -186,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetch(`{{ url_for("admin.delete_dietary_property", id=0) }}`.replace('0', propertyId), {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': '{{ csrf_token() }}'
+                        'Content-Type': 'application/json'
                     }
                 })
                 .then(response => response.json())

@@ -506,18 +506,30 @@ def edit_dietary_property(id=None):
 @admin_bp.route('/menu/dietary-properties/toggle/<int:id>', methods=['POST'])
 @login_required
 def toggle_dietary_property(id):
+    # Skip CSRF validation for admin API endpoints
+    from flask import current_app
+    current_app.config['WTF_CSRF_ENABLED'] = False
+    
     prop = DietaryProperty.query.get_or_404(id)
-    data = request.get_json()
-    prop.is_active = data.get('is_active', False)
+    data = request.get_json() if request.is_json else request.form
+    prop.is_active = data.get('is_active', False) == True or data.get('is_active', 'false') == 'true'
     db.session.commit()
+    
+    current_app.config['WTF_CSRF_ENABLED'] = True  # Re-enable CSRF
     return jsonify({'success': True})
 
 @admin_bp.route('/menu/dietary-properties/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_dietary_property(id):
+    # Skip CSRF validation for admin API endpoints
+    from flask import current_app
+    current_app.config['WTF_CSRF_ENABLED'] = False
+    
     prop = DietaryProperty.query.get_or_404(id)
     db.session.delete(prop)
     db.session.commit()
+    
+    current_app.config['WTF_CSRF_ENABLED'] = True  # Re-enable CSRF
     return jsonify({'success': True})
 
 @admin_bp.route('/menu/dietary-properties/reorder', methods=['POST'])

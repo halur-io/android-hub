@@ -59,14 +59,14 @@
                             {% endif %}
                         </td>
                         <td>{{ item.name_he }}<br><small class="text-muted">{{ item.name_en }}</small></td>
-                        <td>{{ item.description_he[:50] }}...</td>
+                        <td>{{ item.description_he[:50] if item.description_he else '' }}{% if item.description_he and item.description_he|length > 50 %}...{% endif %}</td>
                         <td>
                             {% if item.base_price %}
-                                <span class="text-success fw-bold">₪{{ item.base_price }}</span>
+                                <span class="text-success fw-bold">₪{{ "%.0f"|format(item.base_price) }}</span>
                             {% elif item.price %}
-                                <span class="text-success fw-bold">₪{{ item.price }}</span>
+                                <span class="text-success fw-bold">₪{{ "%.0f"|format(item.price) }}</span>
                             {% else %}
-                                <span class="text-muted">-</span>
+                                <span class="text-muted">אין מחיר</span>
                             {% endif %}
                         </td>
                         <td>

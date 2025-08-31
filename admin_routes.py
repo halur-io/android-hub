@@ -246,7 +246,16 @@ def delete_branch(id):
 @admin_bp.route('/menu')
 @login_required
 def menu():
-    categories = MenuCategory.query.order_by(MenuCategory.display_order).all()
+    # Eager load menu items and their dietary properties
+    categories = db.session.query(MenuCategory).filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    # Load all menu items with their dietary properties
+    for category in categories:
+        category.menu_items = db.session.query(MenuItem).filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
+        for item in category.menu_items:
+            # Ensure dietary properties are loaded
+            item.dietary_properties = [prop for prop in item.dietary_properties if prop.is_active]
+    
     return render_template('admin/menu.html', categories=categories)
 
 @admin_bp.route('/menu/category/edit/<int:id>', methods=['GET', 'POST'])

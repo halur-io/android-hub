@@ -384,7 +384,7 @@ def edit_menu_item(id=None):
             db.session.add(item)
         
         db.session.commit()
-        flash('Menu item saved successfully!', 'success')
+        flash('המנה נשמרה בהצלחה! ✓', 'success')
         return redirect(url_for('admin.menu'))
     
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties)

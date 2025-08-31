@@ -10,7 +10,7 @@
             
             <form method="POST" enctype="multipart/form-data" id="menuItemForm" 
                   action="{% if item.id %}{{ url_for('admin.edit_menu_item', id=item.id) }}{% else %}{{ url_for('admin.edit_menu_item') }}{% endif %}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {{ form.csrf_token }}
                 
                 <!-- Navigation Tabs -->
                 <ul class="nav nav-tabs mb-4" id="menuItemTabs" role="tablist">

@@ -281,6 +281,8 @@ def edit_category(id=None):
 @admin_bp.route('/menu/item/new', methods=['GET', 'POST'])
 @login_required
 def edit_menu_item(id=None):
+    from flask_wtf import FlaskForm
+    
     print(f"DEBUG: Route hit with method: {request.method}, id: {id}")  # Debug line
     if id:
         item = MenuItem.query.get_or_404(id)
@@ -290,7 +292,10 @@ def edit_menu_item(id=None):
     categories = MenuCategory.query.filter_by(is_active=True).all()
     dietary_properties = DietaryProperty.query.filter_by(is_active=True).order_by(DietaryProperty.display_order).all()
     
-    if request.method == 'POST':
+    # Create form for CSRF token
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
         print(f"DEBUG: Form data received: {dict(request.form)}")  # Debug line
         print(f"DEBUG: All form data: {request.form.to_dict(flat=False)}")  # Debug line
         
@@ -381,7 +386,7 @@ def edit_menu_item(id=None):
         flash('Menu item saved successfully!', 'success')
         return redirect(url_for('admin.menu'))
     
-    return render_template('admin/enhanced_menu_item.html', item=item, categories=categories, dietary_properties=dietary_properties)
+    return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties)
 
 # Menu Settings Management
 @admin_bp.route('/menu/settings')

@@ -347,6 +347,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Test if form is valid
             if (!form.checkValidity()) {
                 console.error('Form is not valid!');
+                
+                // Find which fields are invalid
+                const invalidFields = form.querySelectorAll(':invalid');
+                console.error('Invalid fields:', Array.from(invalidFields).map(field => ({
+                    name: field.name,
+                    id: field.id,
+                    value: field.value,
+                    validationMessage: field.validationMessage
+                })));
+                
+                // Show validation messages
+                form.reportValidity();
                 return;
             }
             

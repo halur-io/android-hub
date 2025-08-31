@@ -43,12 +43,13 @@ class PaymentTransaction(db.Model):
     gateway_response = db.Column(db.Text)  # Full JSON response
 
 class PaymentConfig(db.Model):
-    """Payment gateway configuration"""
+    """Payment gateway configuration - works with any provider"""
     __tablename__ = 'payment_configs'
     id = db.Column(db.Integer, primary_key=True)
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
     
-    # MAX Gateway Settings
+    # Generic Provider Settings
+    provider_name = db.Column(db.String(50))  # Stripe, PayPal, MAX, Tranzila, etc.
     merchant_id = db.Column(db.String(100))
     terminal_id = db.Column(db.String(100))
     api_key = db.Column(db.String(200))
@@ -57,6 +58,7 @@ class PaymentConfig(db.Model):
     # Environment
     environment = db.Column(db.String(20), default='sandbox')  # sandbox, production
     gateway_url = db.Column(db.String(200))
+    sandbox_url = db.Column(db.String(200))
     
     # Payment Methods
     enable_credit_card = db.Column(db.Boolean, default=True)
@@ -73,14 +75,15 @@ class PaymentConfig(db.Model):
     # Status
     is_active = db.Column(db.Boolean, default=True)
 
-class MAXGateway:
-    """MAX Payment Gateway integration for Israeli market"""
+class PaymentGateway:
+    """Generic Payment Gateway integration - configurable for any provider"""
     
     def __init__(self, config):
         self.config = config
-        self.base_url = config.gateway_url or 'https://api.max.co.il/v1'
-        if config.environment == 'sandbox':
-            self.base_url = 'https://sandbox.max.co.il/v1'
+        self.provider = config.provider_name or 'generic'
+        self.base_url = config.gateway_url
+        if config.environment == 'sandbox' and config.sandbox_url:
+            self.base_url = config.sandbox_url
     
     def generate_signature(self, data):
         """Generate signature for API requests"""

@@ -1094,3 +1094,9 @@ def customers_management():
     customers = Customer.query.all()
     return render_template('admin/system_config.html', customers=customers)
 
+@admin_bp.route('/printer-guide')
+@login_required
+def printer_guide():
+    """SNBC Printer setup guide"""
+    return render_template('admin/printer_setup_guide.html')
+

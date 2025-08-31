@@ -2,13 +2,26 @@
 
 {% block title %}הגדרות מטבח ומדפסות{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/modern-style.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid rtl-content">
+<div class="dashboard-container">
     <h1 class="mb-4">
         <i class="fas fa-print"></i>
         הגדרות מטבח ומדפסות SNBC
     </h1>
 
+    <!-- Quick Guide Link -->
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>זקוק לעזרה?</strong> 
+        <a href="{{ url_for('admin.printer_guide') }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-book"></i> מדריך מלא לחיבור מדפסת
+        </a>
+    </div>
+    
     <!-- Printer Test Section -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">

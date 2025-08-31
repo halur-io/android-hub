@@ -983,7 +983,7 @@ def api_menu():
                 'description_en': item.description_en,
                 'ingredients_he': item.ingredients_he,
                 'ingredients_en': item.ingredients_en,
-                'base_price': item.base_price,
+                'base_price': item.base_price or item.price,  # Fallback to old price column
                 'image_path': item.image_path,
                 'dietary_properties': dietary_properties,
                 'display_order': item.display_order

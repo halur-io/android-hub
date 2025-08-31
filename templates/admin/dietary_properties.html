@@ -140,10 +140,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Toggle property active/inactive functionality
-    document.querySelectorAll('.property-toggle').forEach(toggle => {
+    console.log('Initializing toggle functionality...');
+    const toggles = document.querySelectorAll('.property-toggle');
+    console.log('Found toggles:', toggles.length);
+    
+    toggles.forEach(toggle => {
+        console.log('Setting up toggle for property:', toggle.dataset.id);
         toggle.addEventListener('change', function() {
             const propertyId = this.dataset.id;
             const isActive = this.checked;
+            
+            console.log(`Toggling property ${propertyId} to ${isActive ? 'active' : 'inactive'}`);
             
             // Send to server
             fetch(`/admin/menu/dietary-properties/toggle/${propertyId}`, {
@@ -155,22 +162,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     is_active: isActive
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Server response:', data);
                 if (data.success) {
-                    // Update the page title if needed
-                    console.log(`Property ${propertyId} toggled to ${isActive ? 'active' : 'inactive'}`);
+                    console.log(`Property ${propertyId} successfully toggled to ${isActive ? 'active' : 'inactive'}`);
+                    // Show success feedback
+                    const successAlert = document.createElement('div');
+                    successAlert.className = 'alert alert-success alert-dismissible fade show';
+                    successAlert.innerHTML = `
+                        <i class="fas fa-check me-2"></i>
+                        התכונה עודכנה בהצלחה!
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.container-fluid').insertBefore(successAlert, document.querySelector('.row'));
+                    setTimeout(() => successAlert.remove(), 3000);
                 } else {
-                    // Revert toggle if failed
-                    this.checked = !isActive;
-                    alert('שגיאה בעדכון הסטטוס');
+                    throw new Error('Server returned success: false');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Toggle error:', error);
                 // Revert toggle if failed
                 this.checked = !isActive;
-                alert('שגיאה בעדכון הסטטוס');
+                alert('שגיאה בעדכון הסטטוס: ' + error.message);
             });
         });
     });

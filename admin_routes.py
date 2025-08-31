@@ -305,10 +305,18 @@ def edit_menu_item(id=None):
         item.base_price = float(request.form.get('base_price', 0))
         item.discount_percentage = float(request.form.get('discount_percentage', 0))
         
-        # Handle dynamic dietary properties
+        # Handle dietary properties (many-to-many relationship)
         selected_property_ids = request.form.getlist('dietary_properties')
-        selected_properties = DietaryProperty.query.filter(DietaryProperty.id.in_(selected_property_ids)).all()
-        item.dietary_properties = selected_properties
+        print(f"DEBUG: Selected property IDs: {selected_property_ids}")  # Debug line
+        # Clear existing properties
+        item.dietary_properties.clear()
+        # Add selected properties
+        for property_id in selected_property_ids:
+            if property_id.isdigit():
+                property_obj = DietaryProperty.query.get(int(property_id))
+                if property_obj and property_obj.is_active:
+                    item.dietary_properties.append(property_obj)
+                    print(f"DEBUG: Added property {property_obj.name_he}")  # Debug line
         
         # Operations
         item.is_available = request.form.get('is_available') == 'on'
@@ -337,17 +345,6 @@ def edit_menu_item(id=None):
                 item.custom_tags = '[]'
         else:
             item.custom_tags = '[]'
-        
-        # Handle dietary properties (many-to-many relationship)
-        selected_properties = request.form.getlist('dietary_properties')
-        # Clear existing properties
-        item.dietary_properties.clear()
-        # Add selected properties
-        for property_id in selected_properties:
-            if property_id.isdigit():
-                property_obj = DietaryProperty.query.get(int(property_id))
-                if property_obj:
-                    item.dietary_properties.append(property_obj)
         
         # Allergens (JSON)
         allergens = request.form.get('allergens', '').strip()
@@ -504,19 +501,31 @@ def edit_dietary_property(id=None):
     return render_template('admin/edit_dietary_property.html', property=prop)
 
 @admin_bp.route('/menu/dietary-properties/toggle/<int:id>', methods=['POST'])
-@login_required
 def toggle_dietary_property(id):
-    # Skip CSRF validation for admin API endpoints
-    from flask import current_app
-    current_app.config['WTF_CSRF_ENABLED'] = False
+    # Check if user is logged in manually (bypass login_required for API)
+    if not current_user.is_authenticated:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
     
-    prop = DietaryProperty.query.get_or_404(id)
-    data = request.get_json() if request.is_json else request.form
-    prop.is_active = data.get('is_active', False) == True or data.get('is_active', 'false') == 'true'
-    db.session.commit()
-    
-    current_app.config['WTF_CSRF_ENABLED'] = True  # Re-enable CSRF
-    return jsonify({'success': True})
+    try:
+        prop = DietaryProperty.query.get_or_404(id)
+        data = request.get_json() if request.is_json else request.form
+        is_active = data.get('is_active', False)
+        
+        # Handle both boolean and string values
+        if isinstance(is_active, str):
+            is_active = is_active.lower() in ['true', '1', 'on', 'yes']
+        
+        prop.is_active = bool(is_active)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'property_id': id, 
+            'new_status': prop.is_active
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/menu/dietary-properties/delete/<int:id>', methods=['POST'])
 @login_required

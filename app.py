@@ -23,6 +23,9 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'norep
 # Initialize extensions
 mail = Mail(app)
 csrf = CSRFProtect(app)
+# Exempt admin API endpoints from CSRF
+csrf.exempt('admin.toggle_dietary_property')
+csrf.exempt('admin.delete_dietary_property')
 
 # Initialize database
 init_db(app)

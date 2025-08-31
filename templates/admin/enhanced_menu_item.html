@@ -8,7 +8,8 @@
         <div class="col-md-12">
             <h2>{% if item.id %}עריכת מנה: {{ item.name_he }}{% else %}הוספת מנה חדשה{% endif %}</h2>
             
-            <form method="POST" enctype="multipart/form-data" id="menuItemForm">
+            <form method="POST" enctype="multipart/form-data" id="menuItemForm" 
+                  action="{% if item.id %}{{ url_for('admin.edit_menu_item', id=item.id) }}{% else %}{{ url_for('admin.edit_menu_item') }}{% endif %}">
                 {{ csrf_token() }}
                 
                 <!-- Navigation Tabs -->
@@ -339,8 +340,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (saveButton) {
         saveButton.addEventListener('click', function(e) {
             console.log('Save button clicked!');
-            console.log('Form data:', new FormData(form));
-            // Don't prevent default - let form submit normally
+            console.log('Form element:', form);
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            
+            // Test if form is valid
+            if (!form.checkValidity()) {
+                console.error('Form is not valid!');
+                return;
+            }
+            
+            console.log('Form is valid, should submit...');
         });
     }
     

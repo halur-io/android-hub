@@ -281,6 +281,7 @@ def edit_category(id=None):
 @admin_bp.route('/menu/item/new', methods=['GET', 'POST'])
 @login_required
 def edit_menu_item(id=None):
+    print(f"DEBUG: Route hit with method: {request.method}, id: {id}")  # Debug line
     if id:
         item = MenuItem.query.get_or_404(id)
     else:

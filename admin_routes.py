@@ -290,6 +290,9 @@ def edit_menu_item(id=None):
     dietary_properties = DietaryProperty.query.filter_by(is_active=True).order_by(DietaryProperty.display_order).all()
     
     if request.method == 'POST':
+        print(f"DEBUG: Form data received: {dict(request.form)}")  # Debug line
+        print(f"DEBUG: All form data: {request.form.to_dict(flat=False)}")  # Debug line
+        
         # Basic information
         item.category_id = int(request.form.get('category_id'))
         item.name_he = request.form.get('name_he')

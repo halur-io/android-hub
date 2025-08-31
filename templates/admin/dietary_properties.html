@@ -51,11 +51,11 @@
                                         <small class="text-muted">{{ property.description_he or 'ללא תיאור' }}</small>
                                     </div>
                                     <div class="col-md-1">
-                                        {% if property.is_active %}
-                                        <span class="badge bg-success">פעיל</span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">לא פעיל</span>
-                                        {% endif %}
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input property-toggle" type="checkbox" 
+                                                   data-id="{{ property.id }}" 
+                                                   {% if property.is_active %}checked{% endif %}>
+                                        </div>
                                     </div>
                                     <div class="col-md-2">
                                         <div class="btn-group" role="group">
@@ -138,6 +138,43 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Toggle property active/inactive functionality
+    document.querySelectorAll('.property-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const propertyId = this.dataset.id;
+            const isActive = this.checked;
+            
+            // Send to server
+            fetch(`/admin/menu/dietary-properties/toggle/${propertyId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    is_active: isActive
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the page title if needed
+                    console.log(`Property ${propertyId} toggled to ${isActive ? 'active' : 'inactive'}`);
+                } else {
+                    // Revert toggle if failed
+                    this.checked = !isActive;
+                    alert('שגיאה בעדכון הסטטוס');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Revert toggle if failed
+                this.checked = !isActive;
+                alert('שגיאה בעדכון הסטטוס');
+            });
+        });
+    });
     
     // Delete property functionality
     document.querySelectorAll('.delete-property').forEach(button => {

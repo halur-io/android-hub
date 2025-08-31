@@ -503,6 +503,15 @@ def edit_dietary_property(id=None):
     
     return render_template('admin/edit_dietary_property.html', property=prop)
 
+@admin_bp.route('/menu/dietary-properties/toggle/<int:id>', methods=['POST'])
+@login_required
+def toggle_dietary_property(id):
+    prop = DietaryProperty.query.get_or_404(id)
+    data = request.get_json()
+    prop.is_active = data.get('is_active', False)
+    db.session.commit()
+    return jsonify({'success': True})
+
 @admin_bp.route('/menu/dietary-properties/delete/<int:id>', methods=['POST'])
 @login_required
 def delete_dietary_property(id):

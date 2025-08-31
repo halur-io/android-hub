@@ -239,6 +239,16 @@
                 <i class="fas fa-calendar-check me-2"></i> הזמנות
             </a>
             <hr class="my-3">
+            <a class="nav-link {% if request.endpoint == 'admin.microservices_dashboard' %}active{% endif %}" href="{{ url_for('admin.microservices_dashboard') }}">
+                <i class="fas fa-microchip me-2"></i> מערכת הזמנות
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.system_config' %}active{% endif %}" href="{{ url_for('admin.system_config') }}">
+                <i class="fas fa-cogs me-2"></i> הגדרות מערכת
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.kitchen_config' %}active{% endif %}" href="{{ url_for('admin.kitchen_config') }}">
+                <i class="fas fa-print me-2"></i> מדפסות SNBC
+            </a>
+            <hr class="my-3">
             <a class="nav-link" href="{{ url_for('admin.logout') }}">
                 <i class="fas fa-sign-out-alt me-2"></i> יציאה
             </a>

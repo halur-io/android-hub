@@ -1058,3 +1058,39 @@ def kitchen_config():
                          printers=printers,
                          stations=stations)
 
+@admin_bp.route('/payment-config')
+@login_required
+def payment_config():
+    """Payment gateway configuration"""
+    from services.payment.payment_service import PaymentConfig
+    
+    configs = PaymentConfig.query.all()
+    return render_template('admin/system_config.html', configs=configs)
+
+@admin_bp.route('/drivers-management')
+@login_required
+def drivers_management():
+    """Driver management page"""
+    from services.delivery.delivery_service import Driver
+    
+    drivers = Driver.query.all()
+    return render_template('admin/system_config.html', drivers=drivers)
+
+@admin_bp.route('/orders-management')
+@login_required
+def orders_management():
+    """Orders management page"""
+    from services.order.order_service import Order
+    
+    orders = Order.query.order_by(Order.created_at.desc()).limit(100).all()
+    return render_template('admin/system_config.html', orders=orders)
+
+@admin_bp.route('/customers-management')
+@login_required
+def customers_management():
+    """Customer management page"""
+    from services.auth.auth_service import Customer
+    
+    customers = Customer.query.all()
+    return render_template('admin/system_config.html', customers=customers)
+

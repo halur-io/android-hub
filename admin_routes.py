@@ -284,6 +284,10 @@ def edit_menu_item(id=None):
     from flask_wtf import FlaskForm
     
     print(f"DEBUG: Route hit with method: {request.method}, id: {id}")  # Debug line
+    
+    # Create form for CSRF token (needs to be before any conditional logic)
+    form = FlaskForm()
+    
     if id:
         item = MenuItem.query.get_or_404(id)
     else:
@@ -291,9 +295,6 @@ def edit_menu_item(id=None):
     
     categories = MenuCategory.query.filter_by(is_active=True).all()
     dietary_properties = DietaryProperty.query.filter_by(is_active=True).order_by(DietaryProperty.display_order).all()
-    
-    # Create form for CSRF token
-    form = FlaskForm()
     
     if request.method == 'POST' and form.validate_on_submit():
         print(f"DEBUG: Form data received: {dict(request.form)}")  # Debug line

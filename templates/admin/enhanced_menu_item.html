@@ -9,7 +9,7 @@
             <h2>{% if item.id %}עריכת מנה: {{ item.name_he }}{% else %}הוספת מנה חדשה{% endif %}</h2>
             
             <form method="POST" enctype="multipart/form-data" id="menuItemForm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {{ csrf_token() }}
                 
                 <!-- Navigation Tabs -->
                 <ul class="nav nav-tabs mb-4" id="menuItemTabs" role="tablist">
@@ -305,7 +305,7 @@
                 
                 <!-- Action Buttons -->
                 <div class="mt-4 mb-4">
-                    <button type="submit" class="btn btn-success btn-lg">
+                    <button type="submit" class="btn btn-success btn-lg" id="saveButton">
                         <i class="fas fa-save me-2"></i>
                         {% if item.id %}עדכן מנה{% else %}הוסף מנה{% endif %}
                     </button>
@@ -331,6 +331,30 @@ document.addEventListener('DOMContentLoaded', function() {
             tabTrigger.show()
         })
     })
+    
+    // Debug form submission
+    const form = document.getElementById('menuItemForm');
+    const saveButton = document.getElementById('saveButton');
+    
+    if (saveButton) {
+        saveButton.addEventListener('click', function(e) {
+            console.log('Save button clicked!');
+            console.log('Form data:', new FormData(form));
+            // Don't prevent default - let form submit normally
+        });
+    }
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submitting...');
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            
+            // Get all dietary properties checkboxes
+            const dietaryCheckboxes = form.querySelectorAll('input[name="dietary_properties"]:checked');
+            console.log('Dietary properties selected:', Array.from(dietaryCheckboxes).map(cb => cb.value));
+        });
+    }
 });
 </script>
 {% endblock %}

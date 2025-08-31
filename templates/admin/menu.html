@@ -60,12 +60,26 @@
                         </td>
                         <td>{{ item.name_he }}<br><small class="text-muted">{{ item.name_en }}</small></td>
                         <td>{{ item.description_he[:50] }}...</td>
-                        <td>₪{{ item.price }}</td>
                         <td>
-                            {% if item.is_vegetarian %}<span class="badge bg-success">צמחוני</span>{% endif %}
-                            {% if item.is_vegan %}<span class="badge bg-info">טבעוני</span>{% endif %}
-                            {% if item.is_gluten_free %}<span class="badge bg-warning">ללא גלוטן</span>{% endif %}
-                            {% if item.is_spicy %}<span class="badge bg-danger">חריף</span>{% endif %}
+                            {% if item.base_price %}
+                                <span class="text-success fw-bold">₪{{ item.base_price }}</span>
+                            {% elif item.price %}
+                                <span class="text-success fw-bold">₪{{ item.price }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for prop in item.dietary_properties %}
+                                {% if prop.is_active %}
+                                    <span class="badge" style="background-color: {{ prop.color }}; color: white;">
+                                        <i class="fas fa-{{ prop.icon }} me-1"></i>{{ prop.name_he }}
+                                    </span>
+                                {% endif %}
+                            {% endfor %}
+                            {% if not item.dietary_properties %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge bg-{{ 'success' if item.is_available else 'secondary' }}">

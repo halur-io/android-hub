@@ -1,12 +1,37 @@
-# Sumo Restaurant Website
+# Restaurant Platform - Microservices Architecture
 
 ## Overview
 
-This is a modern restaurant website for Sumo Asian Kitchen, featuring a React frontend with Flask backend API and a comprehensive admin panel. The application provides a bilingual (Hebrew/English) interface with full RTL support, WhatsApp/phone integration, dynamic menu display, reservation system, and complete content management capabilities through the admin dashboard.
+This is a comprehensive restaurant management platform built with microservices architecture, featuring:
+- **Ordering System**: Complete takeaway/delivery management with branch selection
+- **Payment Gateway**: Multi-provider support (MAX, Bit, Cash, Apple Pay, Google Pay)
+- **Driver Management**: Real-time tracking and assignment
+- **Kitchen Display System**: Order flow management
+- **Admin Dashboard**: Full control over all services
+- **Customer Portal**: Responsive ordering interface with SMS verification
+
+The platform is built for scalability with no hardcoded business logic - everything is configurable through the admin settings.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Microservices Architecture
+
+### Core Services
+1. **Auth Service** - Phone/SMS verification, user accounts, JWT tokens
+2. **Order Service** - Order processing, status management, notifications
+3. **Payment Service** - MAX gateway integration, payment processing
+4. **Delivery Service** - Driver management, zone configuration, tracking
+5. **Kitchen Service** - Order queue, preparation tracking, printer integration
+6. **Notification Service** - SMS, WhatsApp, email, real-time updates
+7. **Configuration Service** - Central settings for all services
+
+### Communication
+- **Internal APIs**: RESTful endpoints between services
+- **Real-time**: WebSocket for live updates
+- **Message Queue**: Order flow between services
+- **Shared Database**: PostgreSQL with service-specific schemas
 
 ## Recent Changes
 

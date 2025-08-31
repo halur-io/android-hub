@@ -338,6 +338,8 @@ def edit_menu_item(id=None):
         else:
             item.custom_tags = '[]'
         
+
+        
         # Allergens (JSON)
         allergens = request.form.get('allergens', '').strip()
         if allergens:

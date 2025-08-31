@@ -650,20 +650,23 @@ body.dark-mode .glass-card {
     font-weight: 600;
 }
 
-.service-cards-redesigned {
+.service-cards-redesigned,
+.quick-actions-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
 }
 
 @media (max-width: 1200px) {
-    .service-cards-redesigned {
+    .service-cards-redesigned,
+    .quick-actions-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 768px) {
-    .service-cards-redesigned {
+    .service-cards-redesigned,
+    .quick-actions-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -937,6 +940,226 @@ body.dark-mode .glass-card {
 }
 
 /* Remove gradient border effect */
+
+/* Sidebar Menu Styles */
+.sidebar-menu {
+    position: fixed;
+    top: 0;
+    right: -300px;
+    width: 300px;
+    height: 100vh;
+    background: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    transition: right 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+    direction: rtl;
+}
+
+.sidebar-menu.active {
+    right: 0;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.close-sidebar {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+.close-sidebar:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.sidebar-nav {
+    padding: 1rem 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    color: #4b5563;
+    text-decoration: none;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.nav-item:hover {
+    background: #f3f4f6;
+    color: var(--primary-color);
+}
+
+.nav-item.active {
+    background: #eff0ff;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary-color);
+}
+
+.nav-item i {
+    margin-left: 0.75rem;
+    width: 20px;
+    text-align: center;
+}
+
+.nav-badge {
+    background: var(--danger-color);
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.nav-section {
+    margin: 0.5rem 0;
+}
+
+.nav-section-title {
+    padding: 0.75rem 1.5rem;
+    color: #1f2937;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s;
+}
+
+.nav-section-title:hover {
+    background: #f9fafb;
+}
+
+.nav-section-title i {
+    margin-left: 0.75rem;
+}
+
+.section-arrow {
+    transition: transform 0.3s;
+    margin-right: 0;
+}
+
+.nav-section.expanded .section-arrow {
+    transform: rotate(180deg);
+}
+
+.nav-section-items {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.nav-section.expanded .nav-section-items {
+    max-height: 500px;
+}
+
+.nav-section-items .nav-item {
+    padding-right: 3.5rem;
+}
+
+.sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    padding: 1rem;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem;
+    background: #fee2e2;
+    color: var(--danger-color);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.logout-btn:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+/* Menu Toggle Button */
+.menu-toggle {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    transition: all 0.3s;
+}
+
+.menu-toggle:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Dark overlay when sidebar is open */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
 
 .orders-icon {
     background: var(--primary-color);

@@ -58,6 +58,139 @@
             </div>
         </div>
     </nav>
+    
+    <!-- Sidebar Navigation Menu -->
+    <aside class="sidebar-menu" id="sidebarMenu">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-layer-group"></i> תפריט ראשי</h3>
+            <button class="close-sidebar" onclick="toggleSidebar()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <!-- Dashboard -->
+            <a href="/admin/microservices" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>דף הבית</span>
+            </a>
+            
+            <!-- Orders Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-receipt"></i>
+                    <span>הזמנות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/orders" class="nav-item">
+                        <span>הזמנות פעילות</span>
+                        <span class="nav-badge">24</span>
+                    </a>
+                    <a href="/admin/orders/history" class="nav-item">
+                        <span>היסטוריה</span>
+                    </a>
+                    <a href="/admin/orders/new" class="nav-item">
+                        <span>הזמנה חדשה</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Payments Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-credit-card"></i>
+                    <span>תשלומים</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/payments" class="nav-item">
+                        <span>עסקאות</span>
+                    </a>
+                    <a href="/admin/payments/providers" class="nav-item">
+                        <span>ספקי תשלום</span>
+                    </a>
+                    <a href="/admin/payments/reports" class="nav-item">
+                        <span>דוחות</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Kitchen & Delivery Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-utensils"></i>
+                    <span>מטבח ומשלוחים</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/kitchen" class="nav-item">
+                        <span>תצוגת מטבח</span>
+                        <span class="nav-badge">7</span>
+                    </a>
+                    <a href="/admin/delivery" class="nav-item">
+                        <span>ניהול שליחים</span>
+                    </a>
+                    <a href="/admin/delivery/zones" class="nav-item">
+                        <span>אזורי משלוח</span>
+                    </a>
+                    <a href="/admin/printer" class="nav-item">
+                        <span>הגדרות מדפסת</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Customers Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-users"></i>
+                    <span>לקוחות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/customers" class="nav-item">
+                        <span>רשימת לקוחות</span>
+                    </a>
+                    <a href="/admin/customers/reviews" class="nav-item">
+                        <span>ביקורות</span>
+                    </a>
+                    <a href="/admin/customers/loyalty" class="nav-item">
+                        <span>תוכנית נאמנות</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Settings Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-cog"></i>
+                    <span>הגדרות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/settings/general" class="nav-item">
+                        <span>הגדרות כלליות</span>
+                    </a>
+                    <a href="/admin/settings/branches" class="nav-item">
+                        <span>סניפים</span>
+                    </a>
+                    <a href="/admin/settings/menu" class="nav-item">
+                        <span>ניהול תפריט</span>
+                    </a>
+                    <a href="/admin/settings/users" class="nav-item">
+                        <span>משתמשים</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>יציאה</span>
+            </a>
+        </div>
+    </aside>
 
     <!-- Main Dashboard Container -->
     <div class="dashboard-content">
@@ -239,13 +372,13 @@
             </section>
         </div>
 
-        <!-- Service Control Center - Redesigned -->
+        <!-- Quick Actions Grid - Simplified -->
         <section class="services-grid animate__animated animate__fadeIn">
             <h2 class="section-title">
-                <i class="fas fa-th-large"></i> מרכז שליטה
+                <i class="fas fa-rocket"></i> פעולות מהירות
             </h2>
             
-            <div class="service-cards-redesigned">
+            <div class="quick-actions-grid">
                 <!-- Orders Management -->
                 <div class="service-card-new" onclick="navigateTo('orders')">
                     <div class="card-header">
@@ -552,4 +685,5 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/vanilla-tilt@1.7.0/dist/vanilla-tilt.min.js"></script>
 <script src="{{ url_for('static', filename='admin/dashboard-modern.js') }}"></script>
+<script src="{{ url_for('static', filename='admin/sidebar.js') }}"></script>
 {% endblock %}

@@ -75,6 +75,33 @@
                 <span>דף הבית</span>
             </a>
             
+            <!-- Quick Actions Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-rocket"></i>
+                    <span>פעולות מהירות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/orders/new" class="nav-item">
+                        <i class="fas fa-plus"></i>
+                        <span>הזמנה חדשה</span>
+                    </a>
+                    <a href="/admin/payments/quick" class="nav-item">
+                        <i class="fas fa-bolt"></i>
+                        <span>תשלום מהיר</span>
+                    </a>
+                    <a href="/admin/delivery/assign" class="nav-item">
+                        <i class="fas fa-user-plus"></i>
+                        <span>הוסף שליח</span>
+                    </a>
+                    <a href="/admin/customers/add" class="nav-item">
+                        <i class="fas fa-user-circle"></i>
+                        <span>לקוח חדש</span>
+                    </a>
+                </div>
+            </div>
+            
             <!-- Orders Section -->
             <div class="nav-section">
                 <div class="nav-section-title" onclick="toggleSection(this)">
@@ -90,8 +117,11 @@
                     <a href="/admin/orders/history" class="nav-item">
                         <span>היסטוריה</span>
                     </a>
-                    <a href="/admin/orders/new" class="nav-item">
-                        <span>הזמנה חדשה</span>
+                    <a href="/admin/orders/pending" class="nav-item">
+                        <span>ממתינות לאישור</span>
+                    </a>
+                    <a href="/admin/orders/reports" class="nav-item">
+                        <span>דוחות הזמנות</span>
                     </a>
                 </div>
             </div>
@@ -372,206 +402,7 @@
             </section>
         </div>
 
-        <!-- Quick Actions Grid - Simplified -->
-        <section class="services-grid animate__animated animate__fadeIn">
-            <h2 class="section-title">
-                <i class="fas fa-rocket"></i> פעולות מהירות
-            </h2>
-            
-            <div class="quick-actions-grid">
-                <!-- Orders Management -->
-                <div class="service-card-new" onclick="navigateTo('orders')">
-                    <div class="card-header">
-                        <div class="service-icon-new orders-icon">
-                            <i class="fas fa-receipt"></i>
-                        </div>
-                        <h3>ניהול הזמנות</h3>
-                    </div>
-                    
-                    <div class="card-metrics">
-                        <div class="metric-row">
-                            <span class="metric-label">פעיל כרגע:</span>
-                            <span class="metric-value">24</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">סה״כ היום:</span>
-                            <span class="metric-value">156</span>
-                        </div>
-                    </div>
-                    
-                    <div class="card-footer">
-                        <button class="quick-action" onclick="event.stopPropagation(); quickNewOrder()">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                        <span class="card-link">כניסה למערכת <i class="fas fa-arrow-left"></i></span>
-                    </div>
-                </div>
 
-                <!-- Payment Gateway -->
-                <div class="service-card-new" onclick="navigateTo('payments')">
-                    <div class="card-header">
-                        <div class="service-icon-new payment-icon">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                        <h3>שער תשלומים</h3>
-                    </div>
-                    
-                    <div class="card-metrics">
-                        <div class="metric-row">
-                            <span class="metric-label">אחוז הצלחה:</span>
-                            <span class="metric-value success">98%</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">היום:</span>
-                            <span class="metric-value">₪12,847</span>
-                        </div>
-                    </div>
-                    
-                    <div class="payment-icons">
-                        <i class="fab fa-cc-visa"></i>
-                        <i class="fab fa-cc-mastercard"></i>
-                        <i class="fab fa-apple-pay"></i>
-                        <i class="fab fa-google-pay"></i>
-                    </div>
-                    
-                    <div class="card-footer">
-                        <span class="card-link">הגדרות תשלום <i class="fas fa-arrow-left"></i></span>
-                    </div>
-                </div>
-
-                <!-- Kitchen Display -->
-                <div class="service-card-new" onclick="navigateTo('kitchen')">
-                    <div class="card-header">
-                        <div class="service-icon-new kitchen-icon">
-                            <i class="fas fa-fire"></i>
-                        </div>
-                        <h3>תצוגת מטבח</h3>
-                    </div>
-                    
-                    <div class="card-metrics">
-                        <div class="metric-row">
-                            <span class="metric-label">בתור:</span>
-                            <span class="metric-value">7</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">זמן ממוצע:</span>
-                            <span class="metric-value">18 דק'</span>
-                        </div>
-                    </div>
-                    
-                    <div class="status-badge online">
-                        <i class="fas fa-check-circle"></i> SNBC מחובר
-                    </div>
-                    
-                    <div class="card-footer">
-                        <span class="card-link">ניהול מטבח <i class="fas fa-arrow-left"></i></span>
-                    </div>
-                </div>
-
-                <!-- Delivery Management -->
-                <div class="service-card-new" onclick="navigateTo('delivery')">
-                    <div class="card-header">
-                        <div class="service-icon-new delivery-icon">
-                            <i class="fas fa-motorcycle"></i>
-                        </div>
-                        <h3>ניהול משלוחים</h3>
-                    </div>
-                    
-                    <div class="card-metrics">
-                        <div class="metric-row">
-                            <span class="metric-label">שליחים זמינים:</span>
-                            <span class="metric-value">8/12</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">בדרך:</span>
-                            <span class="metric-value">14</span>
-                        </div>
-                    </div>
-                    
-                    <div class="driver-avatars">
-                        <img src="https://ui-avatars.com/api/?name=דוד&background=10b981&color=fff&size=32" alt="דוד">
-                        <img src="https://ui-avatars.com/api/?name=משה&background=10b981&color=fff&size=32" alt="משה">
-                        <img src="https://ui-avatars.com/api/?name=יוסי&background=10b981&color=fff&size=32" alt="יוסי">
-                        <span class="more-count">+5</span>
-                    </div>
-                    
-                    <div class="card-footer">
-                        <button class="quick-action" onclick="event.stopPropagation(); addDriver()">
-                            <i class="fas fa-user-plus"></i>
-                        </button>
-                        <span class="card-link">ניהול שליחים <i class="fas fa-arrow-left"></i></span>
-                    </div>
-                </div>
-
-                <!-- Customer Management -->
-                <div class="service-card-new" onclick="navigateTo('customers')">
-                    <div class="card-header">
-                        <div class="service-icon-new auth-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h3>לקוחות</h3>
-                    </div>
-                    
-                    <div class="card-metrics">
-                        <div class="metric-row">
-                            <span class="metric-label">סה״כ רשומים:</span>
-                            <span class="metric-value">1,247</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">חדשים החודש:</span>
-                            <span class="metric-value success">+89</span>
-                        </div>
-                    </div>
-                    
-                    <div class="rating-display">
-                        <div class="rating-score">4.8</div>
-                        <div class="rating-stars">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star-half-alt"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="card-footer">
-                        <span class="card-link">ניהול לקוחות <i class="fas fa-arrow-left"></i></span>
-                    </div>
-                </div>
-
-                <!-- System Settings -->
-                <div class="service-card-new" onclick="navigateTo('settings')">
-                    <div class="card-header">
-                        <div class="service-icon-new settings-icon">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <h3>הגדרות מערכת</h3>
-                    </div>
-                    
-                    <div class="card-metrics">
-                        <div class="metric-row">
-                            <span class="metric-label">סניפים פעילים:</span>
-                            <span class="metric-value">2</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">סטטוס:</span>
-                            <span class="metric-value success">תקין</span>
-                        </div>
-                    </div>
-                    
-                    <div class="health-indicator">
-                        <div class="health-bar-new">
-                            <div class="health-fill-new" style="width: 95%"></div>
-                        </div>
-                        <span class="health-percentage">95% תקינות מערכת</span>
-                    </div>
-                    
-                    <div class="card-footer">
-                        <span class="card-link">הגדרות <i class="fas fa-arrow-left"></i></span>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- AI Assistant & Quick Actions -->
         <div class="bottom-tools">

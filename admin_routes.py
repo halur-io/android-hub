@@ -338,7 +338,16 @@ def edit_menu_item(id=None):
         else:
             item.custom_tags = '[]'
         
-
+        # Handle dietary properties (many-to-many relationship)
+        selected_properties = request.form.getlist('dietary_properties')
+        # Clear existing properties
+        item.dietary_properties.clear()
+        # Add selected properties
+        for property_id in selected_properties:
+            if property_id.isdigit():
+                property_obj = DietaryProperty.query.get(int(property_id))
+                if property_obj:
+                    item.dietary_properties.append(property_obj)
         
         # Allergens (JSON)
         allergens = request.form.get('allergens', '').strip()

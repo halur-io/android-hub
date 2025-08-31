@@ -1,0 +1,271 @@
+{% extends "admin/base.html" %}
+
+{% block title %}לוח בקרה מיקרו-שירותים{% endblock %}
+
+{% block content %}
+<div class="container-fluid rtl-content">
+    <h1 class="mb-4">
+        <i class="fas fa-microchip"></i>
+        מערכת ניהול הזמנות - לוח בקרה ראשי
+    </h1>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-shopping-cart"></i> הזמנות פעילות
+                    </h5>
+                    <h2 class="mb-0">{{ active_orders | default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-motorcycle"></i> שליחים זמינים
+                    </h5>
+                    <h2 class="mb-0">{{ available_drivers | default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-utensils"></i> במטבח
+                    </h5>
+                    <h2 class="mb-0">{{ kitchen_queue | default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-shekel-sign"></i> מכירות היום
+                    </h5>
+                    <h2 class="mb-0">₪{{ today_sales | default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Cards -->
+    <div class="row">
+        <!-- Configuration Service -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs"></i> הגדרות מערכת
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>ניהול כל הגדרות המערכת ללא קוד קשיח</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> שם העסק והגדרות כלליות</li>
+                        <li><i class="fas fa-check text-success"></i> מטבע ומיסים</li>
+                        <li><i class="fas fa-check text-success"></i> שעות פעילות</li>
+                        <li><i class="fas fa-check text-success"></i> הגדרות סניפים</li>
+                    </ul>
+                    <a href="{{ url_for('admin.system_config') }}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> נהל הגדרות
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Service -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-receipt"></i> ניהול הזמנות
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>מערכת הזמנות מלאה עם בחירת סניפים</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> איסוף עצמי / משלוח</li>
+                        <li><i class="fas fa-check text-success"></i> התאמת מרכיבים</li>
+                        <li><i class="fas fa-check text-success"></i> מעקב סטטוס</li>
+                        <li><i class="fas fa-check text-success"></i> אזורי משלוח</li>
+                    </ul>
+                    <a href="{{ url_for('admin.orders_management') }}" class="btn btn-success">
+                        <i class="fas fa-arrow-left"></i> נהל הזמנות
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Service -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-credit-card"></i> שער תשלומים MAX
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>אמצעי תשלום ישראליים מלאים</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> כרטיסי אשראי</li>
+                        <li><i class="fas fa-check text-success"></i> Bit</li>
+                        <li><i class="fas fa-check text-success"></i> Apple Pay / Google Pay</li>
+                        <li><i class="fas fa-check text-success"></i> מזומן</li>
+                    </ul>
+                    <a href="{{ url_for('admin.payment_config') }}" class="btn btn-warning text-white">
+                        <i class="fas fa-arrow-left"></i> הגדרות תשלום
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Service -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-truck"></i> ניהול משלוחים
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>מערכת שליחים ומעקב בזמן אמת</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> ניהול שליחים</li>
+                        <li><i class="fas fa-check text-success"></i> הקצאה אוטומטית</li>
+                        <li><i class="fas fa-check text-success"></i> מעקב GPS</li>
+                        <li><i class="fas fa-check text-success"></i> אזורי משלוח</li>
+                    </ul>
+                    <a href="{{ url_for('admin.drivers_management') }}" class="btn btn-info">
+                        <i class="fas fa-arrow-left"></i> נהל שליחים
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kitchen Service -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-print"></i> מטבח ומדפסות SNBC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>ניהול תור מטבח ומדפסות תרמיות</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> מדפסות SNBC BTP-R880NP</li>
+                        <li><i class="fas fa-check text-success"></i> תמיכה בעברית RTL</li>
+                        <li><i class="fas fa-check text-success"></i> הדפסה אוטומטית</li>
+                        <li><i class="fas fa-check text-success"></i> תצוגת מטבח</li>
+                    </ul>
+                    <a href="{{ url_for('admin.kitchen_config') }}" class="btn btn-danger">
+                        <i class="fas fa-arrow-left"></i> הגדרות מטבח
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auth Service -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-mobile-alt"></i> אימות SMS
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>מערכת אימות טלפוני ללקוחות</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> אימות OTP</li>
+                        <li><i class="fas fa-check text-success"></i> פרופילי לקוחות</li>
+                        <li><i class="fas fa-check text-success"></i> כתובות משלוח</li>
+                        <li><i class="fas fa-check text-success"></i> JWT אבטחה</li>
+                    </ul>
+                    <a href="{{ url_for('admin.customers_management') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> נהל לקוחות
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mt-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-bolt"></i> פעולות מהירות
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-primary" onclick="testPrinter()">
+                    <i class="fas fa-print"></i> בדוק מדפסת
+                </button>
+                <button class="btn btn-outline-success" onclick="initializeConfig()">
+                    <i class="fas fa-play"></i> אתחל הגדרות
+                </button>
+                <button class="btn btn-outline-warning" onclick="clearQueue()">
+                    <i class="fas fa-broom"></i> נקה תור מטבח
+                </button>
+                <button class="btn btn-outline-info" onclick="refreshStats()">
+                    <i class="fas fa-sync"></i> רענן נתונים
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function testPrinter() {
+    if (confirm('לבדוק חיבור למדפסת?')) {
+        fetch('/api/kitchen/printer/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                ip: prompt('כתובת IP של המדפסת:', '192.168.1.100'),
+                port: 9100
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('הדפסת בדיקה נשלחה בהצלחה!');
+            } else {
+                alert('שגיאה: ' + (data.message || 'החיבור נכשל'));
+            }
+        });
+    }
+}
+
+function initializeConfig() {
+    if (confirm('לאתחל הגדרות ברירת מחדל?')) {
+        fetch('/api/config/initialize', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('הגדרות אותחלו בהצלחה!');
+                location.reload();
+            } else {
+                alert('שגיאה: ' + data.error);
+            }
+        });
+    }
+}
+
+function clearQueue() {
+    alert('פונקציה זו תהיה זמינה בקרוב');
+}
+
+function refreshStats() {
+    location.reload();
+}
+</script>
+{% endblock %}

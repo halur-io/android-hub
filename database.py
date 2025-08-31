@@ -29,6 +29,15 @@ def init_db(app):
     with app.app_context():
         # Import models to create tables
         import models
+        
+        # Import microservices models
+        from services.config.config_service import SystemConfig, BranchConfig
+        from services.auth.auth_service import Customer, CustomerAddress, PhoneVerification
+        from services.order.order_service import Order, OrderItem, DeliveryZone
+        from services.delivery.delivery_service import Driver, DeliveryAssignment, DriverShift
+        from services.kitchen.kitchen_service import KitchenStation, KitchenQueue, PrinterConfig
+        from services.payment.payment_service import PaymentTransaction, PaymentConfig
+        
         db.create_all()
         
         # Create default admin user if not exists

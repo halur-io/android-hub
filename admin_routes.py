@@ -1009,3 +1009,52 @@ def api_menu():
         })
     
     return jsonify(result)
+
+# Microservices Dashboard Routes
+@admin_bp.route('/microservices')
+@login_required
+def microservices_dashboard():
+    """Main microservices dashboard"""
+    from services.order.order_service import Order
+    from services.delivery.delivery_service import Driver
+    from services.kitchen.kitchen_service import KitchenQueue
+    
+    # Get stats
+    active_orders = Order.query.filter(Order.status.in_(['confirmed', 'preparing', 'ready'])).count()
+    available_drivers = Driver.query.filter_by(status='available', is_active=True).count()
+    kitchen_queue = KitchenQueue.query.filter(KitchenQueue.status.in_(['pending', 'preparing'])).count()
+    
+    # Calculate today's sales
+    from datetime import datetime, date
+    today = date.today()
+    today_orders = Order.query.filter(
+        db.func.date(Order.created_at) == today,
+        Order.payment_status == 'paid'
+    ).all()
+    today_sales = sum(order.total_amount for order in today_orders if order.total_amount)
+    
+    return render_template('admin/microservices_dashboard.html',
+                         active_orders=active_orders,
+                         available_drivers=available_drivers,
+                         kitchen_queue=kitchen_queue,
+                         today_sales=today_sales)
+
+@admin_bp.route('/system-config')
+@login_required
+def system_config():
+    """System configuration page"""
+    return render_template('admin/system_config.html')
+
+@admin_bp.route('/kitchen-config')
+@login_required
+def kitchen_config():
+    """Kitchen and printer configuration"""
+    from services.kitchen.kitchen_service import PrinterConfig, KitchenStation
+    
+    printers = PrinterConfig.query.all()
+    stations = KitchenStation.query.all()
+    
+    return render_template('admin/kitchen_config.html',
+                         printers=printers,
+                         stations=stations)
+

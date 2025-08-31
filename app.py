@@ -40,5 +40,25 @@ try:
 except Exception as e:
     print(f"Error registering admin blueprint: {e}")
 
+# Register microservices blueprints
+try:
+    from services.config.config_service import config_bp
+    from services.auth.auth_service import auth_bp
+    from services.order.order_service import order_bp
+    from services.delivery.delivery_service import delivery_bp
+    from services.kitchen.kitchen_service import kitchen_bp
+    from services.payment.payment_service import payment_bp
+    
+    app.register_blueprint(config_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(order_bp)
+    app.register_blueprint(delivery_bp)
+    app.register_blueprint(kitchen_bp)
+    app.register_blueprint(payment_bp)
+    
+    logging.info("All microservices registered successfully")
+except Exception as e:
+    logging.error(f"Error registering microservices: {e}")
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1033,7 +1033,7 @@ def microservices_dashboard():
     ).all()
     today_sales = sum(order.total_amount for order in today_orders if order.total_amount)
     
-    return render_template('admin/microservices_dashboard.html',
+    return render_template('admin/modern_dashboard.html',
                          active_orders=active_orders,
                          available_drivers=available_drivers,
                          kitchen_queue=kitchen_queue,

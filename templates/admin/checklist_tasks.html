@@ -1,425 +1,318 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ניהול משימות ורשימות - לוח בקרה</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='admin/dashboard-advanced.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .tasks-container {
-            padding: 20px;
-        }
-        
-        .tasks-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        
-        .shift-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 10px;
-        }
-        
-        .shift-tab {
-            padding: 10px 20px;
-            background: #f5f5f5;
-            border: none;
-            border-radius: 5px 5px 0 0;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-        
-        .shift-tab:hover {
-            background: #e0e0e0;
-        }
-        
-        .shift-tab.active {
-            background: #2c3e50;
-            color: white;
-        }
-        
-        .task-item {
-            background: white;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: transform 0.2s;
-        }
-        
-        .task-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        
-        .task-info {
-            flex: 1;
-        }
-        
-        .task-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .task-description {
-            color: #666;
-            margin-bottom: 10px;
-        }
-        
-        .task-meta {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .meta-badge {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .category-kitchen { background: #f39c12; color: white; }
-        .category-cleaning { background: #3498db; color: white; }
-        .category-service { background: #9b59b6; color: white; }
-        .category-inventory { background: #1abc9c; color: white; }
-        .category-safety { background: #e74c3c; color: white; }
-        .category-other { background: #95a5a6; color: white; }
-        
-        .priority-high { background: #ff4757; color: white; }
-        .priority-medium { background: #ffa502; color: white; }
-        .priority-low { background: #2ed573; color: white; }
-        
-        .task-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        
-        .btn-primary {
-            background: #27ae60;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #229954;
-        }
-        
-        .btn-generate {
-            background: #9b59b6;
-            color: white;
-            padding: 12px 25px;
-            font-size: 16px;
-        }
-        
-        .btn-generate:hover {
-            background: #8e44ad;
-        }
-        
-        .btn-edit {
-            background: #3498db;
-            color: white;
-        }
-        
-        .btn-edit:hover {
-            background: #2980b9;
-        }
-        
-        .btn-delete {
-            background: #e74c3c;
-            color: white;
-        }
-        
-        .btn-delete:hover {
-            background: #c0392b;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        
-        .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 10px;
-            width: 600px;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-        
-        .modal-header h2 {
-            margin: 0;
-            color: #2c3e50;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-        
-        .form-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 25px;
-        }
-        
-        .btn-save {
-            background: #27ae60;
-            color: white;
-            padding: 10px 25px;
-        }
-        
-        .btn-save:hover {
-            background: #229954;
-        }
-        
-        .btn-cancel {
-            background: #95a5a6;
-            color: white;
-            padding: 10px 25px;
-        }
-        
-        .btn-cancel:hover {
-            background: #7f8c8d;
-        }
-        
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            
-            #printArea, #printArea * {
-                visibility: visible;
-            }
-            
-            #printArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-        }
-        
-        .print-container {
-            background: white;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-        }
-        
-        .print-header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #333;
-            padding-bottom: 20px;
-        }
-        
-        .print-header h1 {
-            margin: 0 0 10px 0;
-            font-size: 28px;
-        }
-        
-        .print-info {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            font-size: 14px;
-        }
-        
-        .print-info div {
-            text-align: center;
-        }
-        
-        .print-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        .print-table th,
-        .print-table td {
-            border: 1px solid #333;
-            padding: 12px;
-            text-align: right;
-        }
-        
-        .print-table th {
-            background: #f0f0f0;
-            font-weight: bold;
-        }
-        
-        .checkbox-col {
-            width: 60px;
-            text-align: center;
-        }
-        
-        .checkbox-box {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #333;
-            vertical-align: middle;
-        }
-        
-        .print-footer {
-            margin-top: 50px;
-            padding-top: 20px;
-            border-top: 2px solid #333;
-        }
-        
-        .signature-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
-            margin-top: 30px;
-        }
-        
-        .signature-line {
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-            margin-top: 40px;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-        
-        .empty-state i {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>לוח בקרה מתקדם</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="/admin/dashboard" class="nav-item">
-                    <i class="fas fa-chart-line"></i>
-                    <span>סקירה כללית</span>
-                </a>
-                <a href="/admin/checklist" class="nav-item active">
-                    <i class="fas fa-tasks"></i>
-                    <span>רשימות משימות</span>
-                </a>
-                <a href="/admin/menu" class="nav-item">
-                    <i class="fas fa-utensils"></i>
-                    <span>ניהול תפריט</span>
-                </a>
-                <a href="/admin/branches" class="nav-item">
-                    <i class="fas fa-store"></i>
-                    <span>ניהול סניפים</span>
-                </a>
-                <a href="/admin/settings" class="nav-item">
-                    <i class="fas fa-cog"></i>
-                    <span>הגדרות</span>
-                </a>
-                <a href="/" class="nav-item">
-                    <i class="fas fa-home"></i>
-                    <span>חזרה לאתר</span>
-                </a>
-            </nav>
-        </aside>
-        
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="tasks-container">
-                <div class="tasks-header">
-                    <h1>ניהול משימות ורשימות</h1>
-                    <div>
-                        <button class="btn btn-primary" onclick="showAddTaskModal()">
-                            <i class="fas fa-plus"></i> הוסף משימה
-                        </button>
-                        <button class="btn btn-generate" onclick="showGenerateModal()">
-                            <i class="fas fa-file-alt"></i> צור רשימת משימות
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Shift Type Tabs -->
-                <div class="shift-tabs">
-                    <button class="shift-tab active" data-shift="all">כל המשימות</button>
-                    <button class="shift-tab" data-shift="morning">פתיחת בוקר</button>
-                    <button class="shift-tab" data-shift="evening">משמרת ערב</button>
-                    <button class="shift-tab" data-shift="closing">סגירה</button>
-                    <button class="shift-tab" data-shift="night">משמרת לילה</button>
-                </div>
-                
-                <!-- Tasks List -->
-                <div id="tasksList">
-                    <!-- Tasks will be loaded here -->
-                </div>
-            </div>
-        </main>
-    </div>
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול רשימות משימות - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.tasks-header h1 {
+    color: var(--sumo-coral);
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.shift-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.shift-tab {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.shift-tab:hover {
+    border-color: var(--sumo-coral);
+    color: var(--sumo-coral);
+}
+
+.shift-tab.active {
+    background: var(--sumo-coral);
+    border-color: var(--sumo-coral);
+    color: white;
+}
+
+.task-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border-right: 4px solid #e9ecef;
+    transition: all 0.3s;
+}
+
+.task-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+.task-card.priority-high {
+    border-right-color: #dc3545;
+}
+
+.task-card.priority-medium {
+    border-right-color: #ffc107;
+}
+
+.task-card.priority-low {
+    border-right-color: #28a745;
+}
+
+.task-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.task-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.task-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    border-radius: 5px;
+}
+
+.task-info {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.task-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-shift {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-category {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.badge-frequency {
+    background: #e8f5e8;
+    color: #388e3c;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    background: var(--sumo-coral);
+    color: white;
+    padding: 20px;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--sumo-coral);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-generate {
+    background: #28a745;
+    color: white;
+    border: none;
+}
+
+.btn-generate:hover {
+    background: #218838;
+}
+
+.btn-save {
+    background: var(--sumo-coral);
+    color: white;
+    border: none;
+}
+
+.btn-save:hover {
+    background: #a63c38;
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+}
+
+.btn-cancel:hover {
+    background: #545b62;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .tasks-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
     
-    <!-- Add/Edit Task Modal -->
-    <div id="taskModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="taskModalTitle">הוסף משימה חדשה</h2>
-            </div>
+    .shift-tabs {
+        justify-content: center;
+    }
+    
+    .task-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .task-actions {
+        justify-content: flex-end;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tasks-header">
+    <h1><i class="fas fa-clipboard-check me-2"></i> ניהול רשימות משימות</h1>
+    <div>
+        <button class="btn btn-primary" onclick="showAddTaskModal()">
+            <i class="fas fa-plus me-2"></i> הוסף משימה
+        </button>
+        <button class="btn btn-generate" onclick="showGenerateModal()">
+            <i class="fas fa-file-alt me-2"></i> צור רשימת משימות
+        </button>
+    </div>
+</div>
+
+<!-- Shift Type Tabs -->
+<div class="shift-tabs">
+    <button class="shift-tab active" data-shift="all">כל המשימות</button>
+    <button class="shift-tab" data-shift="morning">פתיחת בוקר</button>
+    <button class="shift-tab" data-shift="evening">משמרת ערב</button>
+    <button class="shift-tab" data-shift="closing">סגירה</button>
+    <button class="shift-tab" data-shift="night">משמרת לילה</button>
+</div>
+
+<!-- Tasks List -->
+<div id="tasksList">
+    <div class="empty-state">
+        <i class="fas fa-clipboard-list"></i>
+        <h3>טוען משימות...</h3>
+        <p>אנא המתן בזמן טעינת המשימות</p>
+    </div>
+</div>
+
+<!-- Add/Edit Task Modal -->
+<div id="taskModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="taskModalTitle">הוסף משימה חדשה</h2>
+        </div>
+        <div class="modal-body">
             <form id="taskForm">
                 <input type="hidden" id="taskId">
                 
@@ -430,760 +323,511 @@
                 
                 <div class="form-group">
                     <label>תיאור מפורט:</label>
-                    <textarea id="taskDescription" placeholder="תאר את המשימה בפירוט..."></textarea>
+                    <textarea id="taskDescription" rows="3" placeholder="תאר את המשימה בפירוט..."></textarea>
                 </div>
                 
-                <div class="form-group">
-                    <label>סוג משמרת: *</label>
-                    <select id="taskShiftType" required>
-                        <option value="">בחר סוג משמרת</option>
-                        <option value="morning">פתיחת בוקר</option>
-                        <option value="evening">משמרת ערב</option>
-                        <option value="closing">סגירה</option>
-                        <option value="night">משמרת לילה</option>
-                    </select>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>סוג משמרת: *</label>
+                            <select id="taskShiftType" required>
+                                <option value="">בחר סוג משמרת</option>
+                                <option value="morning">פתיחת בוקר</option>
+                                <option value="evening">משמרת ערב</option>
+                                <option value="closing">סגירה</option>
+                                <option value="night">משמרת לילה</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>קטגוריה: *</label>
+                            <select id="taskCategory" required>
+                                <option value="">בחר קטגוריה</option>
+                                <option value="kitchen">מטבח</option>
+                                <option value="cleaning">ניקיון</option>
+                                <option value="service">שירות</option>
+                                <option value="inventory">מלאי</option>
+                                <option value="safety">בטיחות</option>
+                                <option value="other">אחר</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>קטגוריה: *</label>
-                    <select id="taskCategory" required>
-                        <option value="">בחר קטגוריה</option>
-                        <option value="kitchen">מטבח</option>
-                        <option value="cleaning">ניקיון</option>
-                        <option value="service">שירות</option>
-                        <option value="inventory">מלאי</option>
-                        <option value="safety">בטיחות</option>
-                        <option value="other">אחר</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>עדיפות:</label>
-                    <select id="taskPriority">
-                        <option value="low">נמוכה</option>
-                        <option value="medium" selected>בינונית</option>
-                        <option value="high">גבוהה</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>תדירות:</label>
-                    <select id="taskFrequency">
-                        <option value="daily" selected>יומי</option>
-                        <option value="weekly">שבועי</option>
-                        <option value="monthly">חודשי</option>
-                        <option value="as_needed">לפי הצורך</option>
-                    </select>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>עדיפות:</label>
+                            <select id="taskPriority">
+                                <option value="low">נמוכה</option>
+                                <option value="medium" selected>בינונית</option>
+                                <option value="high">גבוהה</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>תדירות:</label>
+                            <select id="taskFrequency">
+                                <option value="daily" selected>יומי</option>
+                                <option value="weekly">שבועי</option>
+                                <option value="monthly">חודשי</option>
+                                <option value="as_needed">לפי הצורך</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="form-buttons">
-                    <button type="submit" class="btn btn-save">שמור משימה</button>
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('taskModal')">ביטול</button>
+                    <button type="submit" class="btn btn-save">
+                        <i class="fas fa-save me-2"></i> שמור משימה
+                    </button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('taskModal')">
+                        <i class="fas fa-times me-2"></i> ביטול
+                    </button>
                 </div>
             </form>
         </div>
     </div>
-    
-    <!-- Generate Checklist Modal -->
-    <div id="generateModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>יצירת רשימת משימות להדפסה</h2>
-            </div>
+</div>
+
+<!-- Generate Checklist Modal -->
+<div id="generateModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>יצירת רשימת משימות להדפסה</h2>
+        </div>
+        <div class="modal-body">
             <form id="generateForm">
                 <div class="form-group">
                     <label>כותרת הרשימה: *</label>
                     <input type="text" id="checklistName" required placeholder="לדוגמה: רשימת משימות יומית">
                 </div>
                 
-                <div class="form-group">
-                    <label>תאריך: *</label>
-                    <input type="date" id="checklistDate" required>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>תאריך: *</label>
+                            <input type="date" id="checklistDate" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>סניף: *</label>
+                            <select id="checklistBranch" required>
+                                <option value="">בחר סניף</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>סניף: *</label>
-                    <select id="checklistBranch" required>
-                        <option value="">בחר סניף</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>סוג משמרת: *</label>
-                    <select id="checklistShiftType" required>
-                        <option value="">בחר סוג משמרת</option>
-                        <option value="morning">פתיחת בוקר</option>
-                        <option value="evening">משמרת ערב</option>
-                        <option value="closing">סגירה</option>
-                        <option value="night">משמרת לילה</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>שם אחראי משמרת:</label>
-                    <input type="text" id="shiftManager" placeholder="שם האחראי">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>סוג משמרת: *</label>
+                            <select id="checklistShiftType" required>
+                                <option value="">בחר סוג משמרת</option>
+                                <option value="morning">פתיחת בוקר</option>
+                                <option value="evening">משמרת ערב</option>
+                                <option value="closing">סגירה</option>
+                                <option value="night">משמרת לילה</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>שם אחראי משמרת:</label>
+                            <input type="text" id="shiftManager" placeholder="שם האחראי">
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="form-buttons">
-                    <button type="submit" class="btn btn-save">צור והדפס</button>
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('generateModal')">ביטול</button>
+                    <button type="submit" class="btn btn-generate">
+                        <i class="fas fa-print me-2"></i> צור והדפס
+                    </button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('generateModal')">
+                        <i class="fas fa-times me-2"></i> ביטול
+                    </button>
                 </div>
             </form>
         </div>
     </div>
+</div>
+
+<script>
+// Global variables
+let tasks = [];
+let branches = [];
+let currentShift = 'all';
+
+// Hebrew translations
+const translations = {
+    shift_types: {
+        'morning': 'פתיחת בוקר',
+        'evening': 'משמרת ערב', 
+        'closing': 'סגירה',
+        'night': 'משמרת לילה'
+    },
+    categories: {
+        'kitchen': 'מטבח',
+        'cleaning': 'ניקיון',
+        'service': 'שירות',
+        'inventory': 'מלאי',
+        'safety': 'בטיחות',
+        'other': 'אחר'
+    },
+    priorities: {
+        'high': 'גבוהה',
+        'medium': 'בינונית',
+        'low': 'נמוכה'
+    },
+    frequencies: {
+        'daily': 'יומי',
+        'weekly': 'שבועי',
+        'monthly': 'חודשי',
+        'as_needed': 'לפי הצורך'
+    }
+};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadTasks();
+    loadBranches();
+    setupEventListeners();
+    setDefaultDate();
+});
+
+// Event listeners
+function setupEventListeners() {
+    // Shift tabs
+    document.querySelectorAll('.shift-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.shift-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentShift = this.dataset.shift;
+            renderTasks();
+        });
+    });
     
-    <!-- Hidden Print Area -->
-    <div id="printArea" style="display: none;"></div>
+    // Modal close on background click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal(this.id);
+            }
+        });
+    });
     
-    <script>
-        let tasks = [];
-        let branches = [];
-        let currentShiftFilter = 'all';
-        
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadTasks();
-            loadBranches();
-            setupEventListeners();
+    // Form submissions
+    document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
+    document.getElementById('generateForm').addEventListener('submit', handleGenerateSubmit);
+}
+
+// Load data functions
+async function loadTasks() {
+    try {
+        const response = await fetch('/api/checklist-tasks');
+        if (response.ok) {
+            tasks = await response.json();
+            renderTasks();
+        } else {
+            showError('שגיאה בטעינת המשימות');
+        }
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+        showError('שגיאה בטעינת המשימות');
+    }
+}
+
+async function loadBranches() {
+    try {
+        const response = await fetch('/api/branches');
+        if (response.ok) {
+            branches = await response.json();
+            populateBranchSelect();
+        } else {
+            showError('שגיאה בטעינת הסניפים');
+        }
+    } catch (error) {
+        console.error('Error loading branches:', error);
+        showError('שגיאה בטעינת הסניפים');
+    }
+}
+
+function populateBranchSelect() {
+    const select = document.getElementById('checklistBranch');
+    select.innerHTML = '<option value="">בחר סניף</option>';
+    branches.forEach(branch => {
+        const option = document.createElement('option');
+        option.value = branch.id;
+        option.textContent = branch.name;
+        select.appendChild(option);
+    });
+}
+
+// Render functions
+function renderTasks() {
+    const container = document.getElementById('tasksList');
+    
+    // Filter tasks by current shift
+    let filteredTasks = tasks;
+    if (currentShift !== 'all') {
+        filteredTasks = tasks.filter(task => task.shift_type === currentShift);
+    }
+    
+    if (filteredTasks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>אין משימות</h3>
+                <p>לא נמצאו משימות עבור הקטגוריה הנבחרת</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = filteredTasks.map(task => `
+        <div class="task-card priority-${task.priority}">
+            <div class="task-meta">
+                <h3 class="task-name">${task.name}</h3>
+                <div class="task-actions">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTask(${task.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
             
-            // Set today's date as default
-            document.getElementById('checklistDate').valueAsDate = new Date();
+            ${task.description ? `<p class="text-muted mb-2">${task.description}</p>` : ''}
+            
+            <div class="task-info">
+                <span class="task-badge badge-shift">${translations.shift_types[task.shift_type]}</span>
+                <span class="task-badge badge-category">${translations.categories[task.category]}</span>
+                <span class="task-badge badge-frequency">${translations.frequencies[task.frequency]}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Modal functions
+function showAddTaskModal() {
+    document.getElementById('taskModalTitle').textContent = 'הוסף משימה חדשה';
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskId').value = '';
+    showModal('taskModal');
+}
+
+function editTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    document.getElementById('taskModalTitle').textContent = 'עריכת משימה';
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('taskName').value = task.name;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskShiftType').value = task.shift_type;
+    document.getElementById('taskCategory').value = task.category;
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskFrequency').value = task.frequency;
+    
+    showModal('taskModal');
+}
+
+function showGenerateModal() {
+    showModal('generateModal');
+}
+
+function showModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Form handlers
+async function handleTaskSubmit(e) {
+    e.preventDefault();
+    
+    const taskData = {
+        name: document.getElementById('taskName').value,
+        description: document.getElementById('taskDescription').value,
+        shift_type: document.getElementById('taskShiftType').value,
+        category: document.getElementById('taskCategory').value,
+        priority: document.getElementById('taskPriority').value,
+        frequency: document.getElementById('taskFrequency').value
+    };
+    
+    const taskId = document.getElementById('taskId').value;
+    const isEdit = !!taskId;
+    
+    try {
+        const url = isEdit ? `/api/checklist-tasks/${taskId}` : '/api/checklist-tasks';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(taskData)
         });
         
-        // Setup event listeners
-        function setupEventListeners() {
-            // Shift tabs
-            document.querySelectorAll('.shift-tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    document.querySelectorAll('.shift-tab').forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    currentShiftFilter = this.dataset.shift;
-                    displayTasks();
-                });
-            });
-            
-            // Form submissions
-            document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
-            document.getElementById('generateForm').addEventListener('submit', handleGenerateSubmit);
-            
-            // Modal close on outside click
-            window.onclick = function(event) {
-                if (event.target.classList.contains('modal')) {
-                    event.target.style.display = 'none';
-                }
-            };
+        if (response.ok) {
+            closeModal('taskModal');
+            loadTasks();
+            showSuccess(isEdit ? 'המשימה עודכנה בהצלחה' : 'המשימה נוספה בהצלחה');
+        } else {
+            const error = await response.json();
+            showError(error.message || 'שגיאה בשמירת המשימה');
         }
+    } catch (error) {
+        console.error('Error saving task:', error);
+        showError('שגיאה בשמירת המשימה');
+    }
+}
+
+async function handleGenerateSubmit(e) {
+    e.preventDefault();
+    
+    const formData = {
+        name: document.getElementById('checklistName').value,
+        date: document.getElementById('checklistDate').value,
+        branch_id: parseInt(document.getElementById('checklistBranch').value),
+        shift_type: document.getElementById('checklistShiftType').value,
+        shift_manager: document.getElementById('shiftManager').value
+    };
+    
+    generateChecklist(formData);
+    closeModal('generateModal');
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את המשימה?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/checklist-tasks/${taskId}`, {
+            method: 'DELETE'
+        });
         
-        // Load tasks from API
-        async function loadTasks() {
-            try {
-                const response = await fetch('/api/checklist-tasks');
-                if (response.ok) {
-                    tasks = await response.json();
-                } else {
-                    // Use sample data if API fails
-                    tasks = getSampleTasks();
-                }
-            } catch (error) {
-                console.error('Error loading tasks:', error);
-                tasks = getSampleTasks();
-            }
-            displayTasks();
+        if (response.ok) {
+            loadTasks();
+            showSuccess('המשימה נמחקה בהצלחה');
+        } else {
+            showError('שגיאה במחיקת המשימה');
         }
-        
-        // Load branches from API
-        async function loadBranches() {
-            try {
-                const response = await fetch('/api/branches');
-                if (response.ok) {
-                    branches = await response.json();
-                } else {
-                    branches = [
-                        { id: 1, name_he: 'סניף ראמה' },
-                        { id: 2, name_he: 'סניף כרמיאל' }
-                    ];
-                }
-            } catch (error) {
-                console.error('Error loading branches:', error);
-                branches = [
-                    { id: 1, name_he: 'סניף ראמה' },
-                    { id: 2, name_he: 'סניף כרמיאל' }
-                ];
-            }
-            updateBranchSelect();
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showError('שגיאה במחיקת המשימה');
+    }
+}
+
+// Generate checklist
+function generateChecklist(data) {
+    const filteredTasks = tasks.filter(task => task.shift_type === data.shift_type);
+    const branch = branches.find(b => b.id === data.branch_id);
+    
+    if (filteredTasks.length === 0) {
+        showError('לא נמצאו משימות עבור המשמרת הנבחרת');
+        return;
+    }
+    
+    // Group tasks by category
+    const tasksByCategory = {};
+    filteredTasks.forEach(task => {
+        if (!tasksByCategory[task.category]) {
+            tasksByCategory[task.category] = [];
         }
-        
-        // Update branch select options
-        function updateBranchSelect() {
-            const select = document.getElementById('checklistBranch');
-            select.innerHTML = '<option value="">בחר סניף</option>';
-            branches.forEach(branch => {
-                const option = document.createElement('option');
-                option.value = branch.id;
-                option.textContent = branch.name_he;
-                select.appendChild(option);
-            });
-        }
-        
-        // Display tasks
-        function displayTasks() {
-            const container = document.getElementById('tasksList');
-            
-            // Filter tasks based on current shift filter
-            let filteredTasks = tasks;
-            if (currentShiftFilter !== 'all') {
-                filteredTasks = tasks.filter(task => task.shift_type === currentShiftFilter);
-            }
-            
-            if (filteredTasks.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-clipboard-list"></i>
-                        <h3>אין משימות להצגה</h3>
-                        <p>לחץ על "הוסף משימה" כדי ליצור משימה חדשה</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = '';
-            filteredTasks.forEach(task => {
-                const taskElement = createTaskElement(task);
-                container.appendChild(taskElement);
-            });
-        }
-        
-        // Create task element
-        function createTaskElement(task) {
-            const div = document.createElement('div');
-            div.className = 'task-item';
-            
-            const categoryNames = {
-                'kitchen': 'מטבח',
-                'cleaning': 'ניקיון',
-                'service': 'שירות',
-                'inventory': 'מלאי',
-                'safety': 'בטיחות',
-                'other': 'אחר'
-            };
-            
-            const priorityNames = {
-                'high': 'גבוהה',
-                'medium': 'בינונית',
-                'low': 'נמוכה'
-            };
-            
-            const shiftNames = {
-                'morning': 'פתיחת בוקר',
-                'evening': 'משמרת ערב',
-                'closing': 'סגירה',
-                'night': 'משמרת לילה'
-            };
-            
-            const frequencyNames = {
-                'daily': 'יומי',
-                'weekly': 'שבועי',
-                'monthly': 'חודשי',
-                'as_needed': 'לפי הצורך'
-            };
-            
-            div.innerHTML = `
-                <div class="task-info">
-                    <div class="task-name">${task.name}</div>
-                    ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
-                    <div class="task-meta">
-                        <span class="meta-badge category-${task.category}">${categoryNames[task.category] || task.category}</span>
-                        <span class="meta-badge priority-${task.priority}">${priorityNames[task.priority]}</span>
-                        <span class="meta-badge" style="background: #34495e; color: white;">${shiftNames[task.shift_type]}</span>
-                        <span class="meta-badge" style="background: #16a085; color: white;">${frequencyNames[task.frequency]}</span>
-                    </div>
+        tasksByCategory[task.category].push(task);
+    });
+    
+    // Generate print-ready HTML
+    const printContent = generatePrintHTML(data, branch, tasksByCategory);
+    
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function generatePrintHTML(data, branch, tasksByCategory) {
+    return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head>
+            <meta charset="UTF-8">
+            <title>רשימת משימות - ${data.name}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
+                .category { margin: 20px 0; }
+                .category h3 { background: #f5f5f5; padding: 10px; margin: 0; }
+                .task-item { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px dotted #ccc; }
+                .checkbox { width: 20px; height: 20px; border: 2px solid #333; margin-left: 10px; }
+                .signature { margin-top: 40px; border-top: 1px solid #333; padding-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>${data.name}</h1>
+                <div class="info-row">
+                    <span><strong>סניף:</strong> ${branch ? branch.name : ''}</span>
+                    <span><strong>תאריך:</strong> ${data.date}</span>
                 </div>
-                <div class="task-actions">
-                    <button class="btn btn-edit" onclick="editTask(${task.id})">
-                        <i class="fas fa-edit"></i> ערוך
-                    </button>
-                    <button class="btn btn-delete" onclick="deleteTask(${task.id})">
-                        <i class="fas fa-trash"></i> מחק
-                    </button>
+                <div class="info-row">
+                    <span><strong>משמרת:</strong> ${translations.shift_types[data.shift_type]}</span>
+                    <span><strong>אחראי משמרת:</strong> ${data.shift_manager || '_____________'}</span>
                 </div>
-            `;
+            </div>
             
-            return div;
-        }
-        
-        // Modal functions
-        function showAddTaskModal() {
-            document.getElementById('taskModalTitle').textContent = 'הוסף משימה חדשה';
-            document.getElementById('taskForm').reset();
-            document.getElementById('taskId').value = '';
-            document.getElementById('taskModal').style.display = 'block';
-        }
-        
-        function showGenerateModal() {
-            document.getElementById('generateModal').style.display = 'block';
-        }
-        
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-        
-        // Edit task
-        function editTask(id) {
-            const task = tasks.find(t => t.id === id);
-            if (!task) return;
-            
-            document.getElementById('taskModalTitle').textContent = 'ערוך משימה';
-            document.getElementById('taskId').value = task.id;
-            document.getElementById('taskName').value = task.name;
-            document.getElementById('taskDescription').value = task.description || '';
-            document.getElementById('taskShiftType').value = task.shift_type;
-            document.getElementById('taskCategory').value = task.category;
-            document.getElementById('taskPriority').value = task.priority;
-            document.getElementById('taskFrequency').value = task.frequency;
-            
-            document.getElementById('taskModal').style.display = 'block';
-        }
-        
-        // Delete task
-        async function deleteTask(id) {
-            if (!confirm('האם אתה בטוח שברצונך למחוק משימה זו?')) return;
-            
-            try {
-                const response = await fetch(`/api/checklist-tasks/${id}`, { method: 'DELETE' });
-                if (response.ok) {
-                    await loadTasks();
-                } else {
-                    // Remove from local array for demo
-                    tasks = tasks.filter(t => t.id !== id);
-                    displayTasks();
-                }
-            } catch (error) {
-                console.error('Error deleting task:', error);
-                tasks = tasks.filter(t => t.id !== id);
-                displayTasks();
-            }
-        }
-        
-        // Handle task form submission
-        async function handleTaskSubmit(e) {
-            e.preventDefault();
-            
-            const taskData = {
-                name: document.getElementById('taskName').value,
-                description: document.getElementById('taskDescription').value,
-                shift_type: document.getElementById('taskShiftType').value,
-                category: document.getElementById('taskCategory').value,
-                priority: document.getElementById('taskPriority').value,
-                frequency: document.getElementById('taskFrequency').value
-            };
-            
-            const taskId = document.getElementById('taskId').value;
-            
-            try {
-                let response;
-                if (taskId) {
-                    // Update existing task
-                    response = await fetch(`/api/checklist-tasks/${taskId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(taskData)
-                    });
-                } else {
-                    // Create new task
-                    response = await fetch('/api/checklist-tasks', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(taskData)
-                    });
-                }
-                
-                if (response.ok) {
-                    await loadTasks();
-                    closeModal('taskModal');
-                } else {
-                    // Handle locally for demo
-                    if (taskId) {
-                        const index = tasks.findIndex(t => t.id == taskId);
-                        if (index !== -1) {
-                            tasks[index] = { ...tasks[index], ...taskData, id: parseInt(taskId) };
-                        }
-                    } else {
-                        tasks.push({ ...taskData, id: Date.now() });
-                    }
-                    displayTasks();
-                    closeModal('taskModal');
-                }
-            } catch (error) {
-                console.error('Error saving task:', error);
-                // Handle locally for demo
-                if (taskId) {
-                    const index = tasks.findIndex(t => t.id == taskId);
-                    if (index !== -1) {
-                        tasks[index] = { ...tasks[index], ...taskData, id: parseInt(taskId) };
-                    }
-                } else {
-                    tasks.push({ ...taskData, id: Date.now() });
-                }
-                displayTasks();
-                closeModal('taskModal');
-            }
-        }
-        
-        // Handle generate form submission
-        function handleGenerateSubmit(e) {
-            e.preventDefault();
-            
-            const checklistData = {
-                name: document.getElementById('checklistName').value,
-                date: document.getElementById('checklistDate').value,
-                branchId: document.getElementById('checklistBranch').value,
-                shiftType: document.getElementById('checklistShiftType').value,
-                managerName: document.getElementById('shiftManager').value
-            };
-            
-            generatePrintableChecklist(checklistData);
-            closeModal('generateModal');
-        }
-        
-        // Generate printable checklist
-        function generatePrintableChecklist(data) {
-            const branch = branches.find(b => b.id == data.branchId);
-            const shiftTasks = tasks.filter(t => t.shift_type === data.shiftType);
-            
-            const shiftNames = {
-                'morning': 'פתיחת בוקר',
-                'evening': 'משמרת ערב',
-                'closing': 'סגירה',
-                'night': 'משמרת לילה'
-            };
-            
-            const categoryNames = {
-                'kitchen': 'מטבח',
-                'cleaning': 'ניקיון',
-                'service': 'שירות',
-                'inventory': 'מלאי',
-                'safety': 'בטיחות',
-                'other': 'אחר'
-            };
-            
-            const priorityNames = {
-                'high': 'גבוהה',
-                'medium': 'בינונית',
-                'low': 'נמוכה'
-            };
-            
-            // Group tasks by category
-            const tasksByCategory = {};
-            shiftTasks.forEach(task => {
-                if (!tasksByCategory[task.category]) {
-                    tasksByCategory[task.category] = [];
-                }
-                tasksByCategory[task.category].push(task);
-            });
-            
-            // Sort tasks within each category by priority
-            for (const category in tasksByCategory) {
-                tasksByCategory[category].sort((a, b) => {
-                    const priorityOrder = { 'high': 0, 'medium': 1, 'low': 2 };
-                    return priorityOrder[a.priority] - priorityOrder[b.priority];
-                });
-            }
-            
-            let tasksHTML = '';
-            for (const category in tasksByCategory) {
-                tasksHTML += `
-                    <tr>
-                        <td colspan="5" style="background: #f0f0f0; font-weight: bold; text-align: center; font-size: 16px;">
-                            ${categoryNames[category]}
-                        </td>
-                    </tr>
-                `;
-                
-                tasksByCategory[category].forEach(task => {
-                    tasksHTML += `
-                        <tr>
-                            <td class="checkbox-col"><span class="checkbox-box"></span></td>
-                            <td style="font-weight: bold;">${task.name}</td>
-                            <td>${task.description || '-'}</td>
-                            <td style="text-align: center;">
-                                <span style="padding: 2px 8px; border-radius: 3px; background: ${
-                                    task.priority === 'high' ? '#ff4757' :
-                                    task.priority === 'medium' ? '#ffa502' : '#2ed573'
-                                }; color: white; font-size: 12px;">
-                                    ${priorityNames[task.priority]}
-                                </span>
-                            </td>
-                            <td></td>
-                        </tr>
-                    `;
-                });
-            }
-            
-            const printContent = `
-                <div class="print-container" dir="rtl">
-                    <div class="print-header">
-                        <h1>${data.name}</h1>
-                        <h2>${branch ? branch.name_he : 'סניף'}</h2>
-                    </div>
-                    
-                    <div class="print-info">
-                        <div>
-                            <strong>תאריך:</strong><br>
-                            ${new Date(data.date).toLocaleDateString('he-IL')}
+            ${Object.entries(tasksByCategory).map(([category, tasks]) => `
+                <div class="category">
+                    <h3>${translations.categories[category]}</h3>
+                    ${tasks.map(task => `
+                        <div class="task-item">
+                            <div class="checkbox"></div>
+                            <span><strong>${task.name}</strong></span>
+                            ${task.description ? `<span style="color: #666; margin-right: 10px;">- ${task.description}</span>` : ''}
                         </div>
-                        <div>
-                            <strong>סוג משמרת:</strong><br>
-                            ${shiftNames[data.shiftType]}
-                        </div>
-                        <div>
-                            <strong>אחראי משמרת:</strong><br>
-                            ${data.managerName || '_______________'}
-                        </div>
-                    </div>
-                    
-                    <table class="print-table">
-                        <thead>
-                            <tr>
-                                <th class="checkbox-col">בוצע</th>
-                                <th style="width: 25%;">משימה</th>
-                                <th style="width: 35%;">תיאור</th>
-                                <th style="width: 10%;">עדיפות</th>
-                                <th style="width: 20%;">הערות</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tasksHTML || '<tr><td colspan="5" style="text-align: center;">אין משימות למשמרת זו</td></tr>'}
-                        </tbody>
-                    </table>
-                    
-                    <div class="print-footer">
-                        <div class="signature-grid">
-                            <div>
-                                <strong>שעת התחלה:</strong> _______________
-                                <div class="signature-line">
-                                    <strong>חתימת אחראי פתיחה:</strong>
-                                </div>
-                            </div>
-                            <div>
-                                <strong>שעת סיום:</strong> _______________
-                                <div class="signature-line">
-                                    <strong>חתימת אחראי סגירה:</strong>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 30px; padding: 15px; border: 1px solid #333; border-radius: 5px;">
-                            <strong>הערות כלליות:</strong>
-                            <div style="height: 60px;"></div>
-                        </div>
-                    </div>
+                    `).join('')}
                 </div>
-            `;
+            `).join('')}
             
-            // Create print window
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html lang="he" dir="rtl">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>${data.name}</title>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            margin: 0;
-                            padding: 20px;
-                        }
-                        .print-container {
-                            max-width: 800px;
-                            margin: 0 auto;
-                        }
-                        .print-header {
-                            text-align: center;
-                            margin-bottom: 30px;
-                            border-bottom: 3px solid #333;
-                            padding-bottom: 20px;
-                        }
-                        .print-header h1 {
-                            margin: 0 0 10px 0;
-                            font-size: 28px;
-                        }
-                        .print-header h2 {
-                            margin: 0;
-                            font-size: 20px;
-                            color: #555;
-                        }
-                        .print-info {
-                            display: flex;
-                            justify-content: space-around;
-                            margin: 20px 0;
-                            font-size: 14px;
-                        }
-                        .print-info div {
-                            text-align: center;
-                        }
-                        .print-table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin-top: 20px;
-                        }
-                        .print-table th,
-                        .print-table td {
-                            border: 1px solid #333;
-                            padding: 10px;
-                            text-align: right;
-                        }
-                        .print-table th {
-                            background: #f0f0f0;
-                            font-weight: bold;
-                        }
-                        .checkbox-col {
-                            width: 60px;
-                            text-align: center;
-                        }
-                        .checkbox-box {
-                            display: inline-block;
-                            width: 20px;
-                            height: 20px;
-                            border: 2px solid #333;
-                            vertical-align: middle;
-                        }
-                        .print-footer {
-                            margin-top: 50px;
-                            padding-top: 20px;
-                        }
-                        .signature-grid {
-                            display: grid;
-                            grid-template-columns: 1fr 1fr;
-                            gap: 50px;
-                            margin-top: 30px;
-                        }
-                        .signature-line {
-                            border-bottom: 1px solid #333;
-                            padding-bottom: 5px;
-                            margin-top: 40px;
-                        }
-                        @media print {
-                            body {
-                                margin: 0;
-                            }
-                            .print-container {
-                                max-width: 100%;
-                            }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${printContent}
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            window.onafterprint = function() {
-                                window.close();
-                            }
-                        }
-                    </script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
-        
-        // Sample tasks data
-        function getSampleTasks() {
-            return [
-                {
-                    id: 1,
-                    name: 'בדיקת טמפרטורת מקררים',
-                    description: 'בדוק ורשום טמפרטורות של כל המקררים והמקפיאים',
-                    shift_type: 'morning',
-                    category: 'kitchen',
-                    priority: 'high',
-                    frequency: 'daily'
-                },
-                {
-                    id: 2,
-                    name: 'ניקוי שולחנות וכסאות',
-                    description: 'נקה וחטא את כל השולחנות והכסאות באזור האוכל',
-                    shift_type: 'morning',
-                    category: 'cleaning',
-                    priority: 'medium',
-                    frequency: 'daily'
-                },
-                {
-                    id: 3,
-                    name: 'הכנת תחנות עבודה',
-                    description: 'הכן את כל תחנות העבודה במטבח לקראת השירות',
-                    shift_type: 'morning',
-                    category: 'kitchen',
-                    priority: 'high',
-                    frequency: 'daily'
-                },
-                {
-                    id: 4,
-                    name: 'ספירת קופה',
-                    description: 'ספור את הקופה וודא התאמה',
-                    shift_type: 'closing',
-                    category: 'inventory',
-                    priority: 'high',
-                    frequency: 'daily'
-                },
-                {
-                    id: 5,
-                    name: 'ניקוי מטבח עמוק',
-                    description: 'ניקוי יסודי של כל משטחי העבודה במטבח',
-                    shift_type: 'closing',
-                    category: 'cleaning',
-                    priority: 'high',
-                    frequency: 'daily'
-                },
-                {
-                    id: 6,
-                    name: 'בדיקת מלאי',
-                    description: 'בדוק מלאי של חומרי גלם עיקריים',
-                    shift_type: 'evening',
-                    category: 'inventory',
-                    priority: 'medium',
-                    frequency: 'daily'
-                },
-                {
-                    id: 7,
-                    name: 'בדיקת ציוד בטיחות',
-                    description: 'וודא תקינות מטפים וציוד בטיחות',
-                    shift_type: 'morning',
-                    category: 'safety',
-                    priority: 'high',
-                    frequency: 'weekly'
-                },
-                {
-                    id: 8,
-                    name: 'ניקוי שירותים',
-                    description: 'ניקוי וחיטוי מלא של חדרי השירותים',
-                    shift_type: 'evening',
-                    category: 'cleaning',
-                    priority: 'high',
-                    frequency: 'daily'
-                },
-                {
-                    id: 9,
-                    name: 'סידור מחסן',
-                    description: 'סידור וארגון המחסן לפי קטגוריות',
-                    shift_type: 'night',
-                    category: 'inventory',
-                    priority: 'low',
-                    frequency: 'weekly'
-                },
-                {
-                    id: 10,
-                    name: 'בדיקת תאורה',
-                    description: 'בדוק תקינות כל נקודות התאורה',
-                    shift_type: 'morning',
-                    category: 'other',
-                    priority: 'low',
-                    frequency: 'weekly'
-                }
-            ];
-        }
-    </script>
-</body>
-</html>
+            <div class="signature">
+                <div class="info-row">
+                    <span>חתימת אחראי משמרת: _______________</span>
+                    <span>שעת השלמה: _______________</span>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+// Utility functions
+function setDefaultDate() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('checklistDate').value = today;
+}
+
+function showSuccess(message) {
+    // Simple alert for now - can be improved with better notifications
+    alert(message);
+}
+
+function showError(message) {
+    // Simple alert for now - can be improved with better notifications
+    alert(message);
+}
+</script>
+{% endblock %}

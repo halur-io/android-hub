@@ -1,5 +1,5 @@
 // API Service for fetching data from admin panel
-const API_BASE = '/admin/api'
+const API_BASE = '/api'
 
 export const api = {
   // Fetch site settings

@@ -27,6 +27,15 @@ csrf = CSRFProtect(app)
 csrf.exempt('admin.toggle_dietary_property')
 csrf.exempt('admin.delete_dietary_property')
 
+# Exempt API blueprint from CSRF
+try:
+    from api_routes import api_bp
+    app.register_blueprint(api_bp)
+    csrf.exempt(api_bp)
+    logging.info("API blueprint registered and exempted from CSRF")
+except Exception as e:
+    logging.error(f"Error registering API blueprint: {e}")
+
 # Initialize Flask-Login
 from flask_login import LoginManager
 login_manager = LoginManager(app)

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import './MenuPage.css'
+import { api } from '../services/api'
 
 const MenuPage = () => {
+  const [menuData, setMenuData] = useState([])
   const [language, setLanguage] = useState(() => {
     return localStorage.getItem('language') || 'he'
   })
@@ -12,6 +14,12 @@ const MenuPage = () => {
     document.documentElement.setAttribute('dir', language === 'he' ? 'rtl' : 'ltr')
     document.documentElement.setAttribute('lang', language)
   }, [language])
+
+  useEffect(() => {
+    api.getMenu().then(data => {
+      if (data && data.length > 0) setMenuData(data)
+    })
+  }, [])
 
   const translations = {
     he: {
@@ -96,14 +104,21 @@ const MenuPage = () => {
 
   const t = translations[language]
 
-  const categories = [
-    { id: 'starters', name: t.starters },
-    { id: 'sushi', name: t.sushi },
-    { id: 'wok', name: t.wok },
-    { id: 'soups', name: t.soups },
-  ]
+  // Use API data if available, otherwise use default categories
+  const categories = menuData.length > 0 
+    ? menuData.map(cat => ({
+        id: cat.id,
+        name: language === 'he' ? cat.name_he : cat.name_en,
+        items: cat.items
+      }))
+    : [
+        { id: 'starters', name: t.starters },
+        { id: 'sushi', name: t.sushi },
+        { id: 'wok', name: t.wok },
+        { id: 'soups', name: t.soups },
+      ]
 
-  const [activeCategory, setActiveCategory] = useState('starters')
+  const [activeCategory, setActiveCategory] = useState(categories[0]?.id || 'starters')
 
   return (
     <div className="menu-page">
@@ -173,16 +188,57 @@ const MenuPage = () => {
         <div className="menu-section">
           <h2 className="category-title">{categories.find(c => c.id === activeCategory)?.name}</h2>
           <div className="menu-items">
-            {t.items[activeCategory]?.map((item, index) => (
-              <div key={index} className="menu-item">
-                <div className="item-header">
-                  <span className="item-name">{item.name}</span>
-                  <span className="item-dots"></span>
-                  <span className="item-price">{item.price}</span>
-                </div>
-                <p className="item-desc">{item.desc}</p>
-              </div>
-            ))}
+            {(() => {
+              if (menuData.length > 0) {
+                // Use API data
+                const category = categories.find(c => c.id === activeCategory);
+                return category?.items?.map((item) => (
+                  <div key={item.id} className="menu-item">
+                    <div className="item-header">
+                      <span className="item-name">
+                        {language === 'he' ? item.name_he : item.name_en}
+                        {item.is_new && <span style={{marginLeft: '8px', fontSize: '0.8em', color: '#10b981'}}> חדש</span>}
+                        {item.is_popular && <span style={{marginLeft: '8px', fontSize: '0.8em', color: '#f59e0b'}}> פופולרי</span>}
+                      </span>
+                      <span className="item-dots"></span>
+                      <span className="item-price">
+                        {item.discount_percentage > 0 ? (
+                          <>
+                            <span style={{textDecoration: 'line-through', opacity: 0.6}}>₪{item.base_price}</span>
+                            {' '}₪{Math.round(item.effective_price)}
+                          </>
+                        ) : (
+                          `₪${item.base_price}`
+                        )}
+                      </span>
+                    </div>
+                    <p className="item-desc">
+                      {language === 'he' ? item.description_he : item.description_en}
+                      {(item.is_vegetarian || item.is_vegan || item.is_gluten_free || item.is_spicy) && (
+                        <span style={{marginLeft: '10px'}}>
+                          {item.is_vegetarian && '🌱 '}
+                          {item.is_vegan && '🌿 '}
+                          {item.is_gluten_free && 'GF '}
+                          {item.is_spicy && '🌶️ '}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )) || <p>No items in this category</p>
+              } else {
+                // Use default hardcoded data
+                return t.items[activeCategory]?.map((item, index) => (
+                  <div key={index} className="menu-item">
+                    <div className="item-header">
+                      <span className="item-name">{item.name}</span>
+                      <span className="item-dots"></span>
+                      <span className="item-price">{item.price}</span>
+                    </div>
+                    <p className="item-desc">{item.desc}</p>
+                  </div>
+                )) || <p>No items in this category</p>
+              }
+            })()}
           </div>
         </div>
       </div>

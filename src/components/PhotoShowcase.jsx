@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './PhotoShowcase.css'
+import { api } from '../services/api'
 
 const PhotoShowcase = ({ language }) => {
+  const [gallery, setGallery] = useState([])
   const translations = {
     he: {
       title: 'אווירה ומנות',
@@ -15,17 +17,25 @@ const PhotoShowcase = ({ language }) => {
 
   const t = translations[language]
 
-  // 8 photos for the showcase - mix of your photos and AI generated
-  const photos = [
-    { id: 1, src: '/static/images/photo5.png', alt: 'Elegant Sushi Platter' },
-    { id: 2, src: '/static/images/photo6.png', alt: 'Restaurant Interior' },
-    { id: 3, src: '/static/images/photo7.png', alt: 'Ramen Bowl' },
-    { id: 4, src: '/static/images/photo8.png', alt: 'Wok Cooking' },
-    { id: 5, src: '/static/images/photo9.png', alt: 'Dragon Roll Sushi' },
-    { id: 6, src: '/static/images/photo10.png', alt: 'Restaurant Bar' },
-    { id: 7, src: '/static/images/photo11.png', alt: 'Sashimi Platter' },
-    { id: 8, src: '/static/images/photo12.png', alt: 'Appetizer Platter' }
+  useEffect(() => {
+    api.getGallery().then(data => {
+      if (data && data.length > 0) setGallery(data)
+    })
+  }, [])
+
+  // Default photos if no gallery from admin
+  const defaultPhotos = [
+    { id: 1, file_path: '/static/images/photo5.png', caption_he: 'מגש סושי מרהיב', caption_en: 'Elegant Sushi Platter' },
+    { id: 2, file_path: '/static/images/photo6.png', caption_he: 'פנים המסעדה', caption_en: 'Restaurant Interior' },
+    { id: 3, file_path: '/static/images/photo7.png', caption_he: 'קערת ראמן', caption_en: 'Ramen Bowl' },
+    { id: 4, file_path: '/static/images/photo8.png', caption_he: 'בישול בווק', caption_en: 'Wok Cooking' },
+    { id: 5, file_path: '/static/images/photo9.png', caption_he: 'דרגון רול סושי', caption_en: 'Dragon Roll Sushi' },
+    { id: 6, file_path: '/static/images/photo10.png', caption_he: 'בר המסעדה', caption_en: 'Restaurant Bar' },
+    { id: 7, file_path: '/static/images/photo11.png', caption_he: 'מגש סשימי', caption_en: 'Sashimi Platter' },
+    { id: 8, file_path: '/static/images/photo12.png', caption_he: 'מגש מנות ראשונות', caption_en: 'Appetizer Platter' }
   ]
+
+  const photos = gallery.length > 0 ? gallery : defaultPhotos
 
   return (
     <section className="photo-showcase">
@@ -34,8 +44,8 @@ const PhotoShowcase = ({ language }) => {
           {photos.map(photo => (
             <div key={photo.id} className="photo-item-simple">
               <img 
-                src={photo.src} 
-                alt={photo.alt} 
+                src={photo.file_path} 
+                alt={language === 'he' ? photo.caption_he : photo.caption_en} 
                 className="photo-image"
                 onError={(e) => {
                   e.target.style.background = 'rgba(50, 50, 50, 0.5)';

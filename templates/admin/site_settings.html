@@ -1,0 +1,303 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות אתר - פאנל ניהול{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .settings-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+    
+    .settings-form {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #2d3748;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #4a5568;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+    
+    .btn-save {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem 3rem;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.3s;
+    }
+    
+    .btn-save:hover {
+        transform: translateY(-2px);
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-success {
+        background: #c6f6d5;
+        color: #22543d;
+        border: 1px solid #9ae6b4;
+    }
+    
+    .alert-error {
+        background: #fed7d7;
+        color: #742a2a;
+        border: 1px solid #fc8181;
+    }
+    
+    .preview-section {
+        background: #f7fafc;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-top: 1rem;
+    }
+    
+    .preview-title {
+        font-size: 0.9rem;
+        color: #718096;
+        margin-bottom: 0.5rem;
+    }
+    
+    .preview-content {
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-header">
+        <h1><i class="fas fa-cog"></i> הגדרות אתר</h1>
+        <p>נהל את תוכן האתר והגדרות התצוגה</p>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST" action="{{ url_for('admin.settings') }}" class="settings-form">
+        {{ form.hidden_tag() }}
+        
+        <!-- Site Names Section -->
+        <div class="form-section">
+            <h2 class="section-title"><i class="fas fa-globe"></i> שם האתר</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="site_name_he">שם האתר בעברית</label>
+                    {{ form.site_name_he(class="form-control", placeholder="סומו") }}
+                </div>
+                <div class="form-group">
+                    <label for="site_name_en">שם האתר באנגלית</label>
+                    {{ form.site_name_en(class="form-control", placeholder="SUMO") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hero Section -->
+        <div class="form-section">
+            <h2 class="section-title"><i class="fas fa-image"></i> אזור ראשי (Hero)</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="hero_title_he">כותרת ראשית בעברית</label>
+                    {{ form.hero_title_he(class="form-control", placeholder="ברוכים הבאים לסומו") }}
+                </div>
+                <div class="form-group">
+                    <label for="hero_title_en">כותרת ראשית באנגלית</label>
+                    {{ form.hero_title_en(class="form-control", placeholder="Welcome to SUMO") }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="hero_subtitle_he">כותרת משנה בעברית</label>
+                    {{ form.hero_subtitle_he(class="form-control", placeholder="מטבח אסייתי אותנטי") }}
+                </div>
+                <div class="form-group">
+                    <label for="hero_subtitle_en">כותרת משנה באנגלית</label>
+                    {{ form.hero_subtitle_en(class="form-control", placeholder="Authentic Asian Kitchen") }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="hero_description_he">תיאור בעברית</label>
+                    {{ form.hero_description_he(class="form-control", rows="3") }}
+                </div>
+                <div class="form-group">
+                    <label for="hero_description_en">תיאור באנגלית</label>
+                    {{ form.hero_description_en(class="form-control", rows="3") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- About Section -->
+        <div class="form-section">
+            <h2 class="section-title"><i class="fas fa-info-circle"></i> אודות</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="about_title_he">כותרת אודות בעברית</label>
+                    {{ form.about_title_he(class="form-control", placeholder="הסיפור שלנו") }}
+                </div>
+                <div class="form-group">
+                    <label for="about_title_en">כותרת אודות באנגלית</label>
+                    {{ form.about_title_en(class="form-control", placeholder="Our Story") }}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="about_content_he">תוכן אודות בעברית</label>
+                    {{ form.about_content_he(class="form-control", rows="5") }}
+                </div>
+                <div class="form-group">
+                    <label for="about_content_en">תוכן אודות באנגלית</label>
+                    {{ form.about_content_en(class="form-control", rows="5") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Social Media Section -->
+        <div class="form-section">
+            <h2 class="section-title"><i class="fas fa-share-alt"></i> רשתות חברתיות</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="facebook_url"><i class="fab fa-facebook"></i> קישור לפייסבוק</label>
+                    {{ form.facebook_url(class="form-control", placeholder="https://facebook.com/yourpage") }}
+                </div>
+                <div class="form-group">
+                    <label for="instagram_url"><i class="fab fa-instagram"></i> קישור לאינסטגרם</label>
+                    {{ form.instagram_url(class="form-control", placeholder="https://instagram.com/yourpage") }}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="whatsapp_number"><i class="fab fa-whatsapp"></i> מספר וואטסאפ</label>
+                {{ form.whatsapp_number(class="form-control", placeholder="+972501234567") }}
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> שמור שינויים
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Auto-save draft
+let saveTimer;
+const form = document.querySelector('.settings-form');
+const inputs = form.querySelectorAll('input, textarea');
+
+inputs.forEach(input => {
+    input.addEventListener('input', () => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+            // Save to localStorage
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            localStorage.setItem('siteSettingsDraft', JSON.stringify(data));
+            console.log('Draft saved');
+        }, 1000);
+    });
+});
+
+// Load draft on page load
+window.addEventListener('load', () => {
+    const draft = localStorage.getItem('siteSettingsDraft');
+    if (draft) {
+        const data = JSON.parse(draft);
+        Object.keys(data).forEach(key => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input && input.type !== 'hidden') {
+                input.value = data[key];
+            }
+        });
+    }
+});
+
+// Clear draft on successful save
+form.addEventListener('submit', () => {
+    localStorage.removeItem('siteSettingsDraft');
+});
+</script>
+{% endblock %}

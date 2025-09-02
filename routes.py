@@ -10,6 +10,11 @@ def index():
     # Serve the React app
     return send_from_directory('static/dist', 'index.html')
 
+@app.route('/demo')
+def demo():
+    """Demo page showing dynamic content from admin"""
+    return render_template('demo.html')
+
 @app.route('/assets/<path:path>')
 def serve_assets(path):
     return send_from_directory('static/dist/assets', path)

@@ -7,8 +7,30 @@ import os
 from datetime import datetime
 import json
 import pandas as pd
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired, URL, Optional
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+# Site Settings Form
+class SiteSettingsForm(FlaskForm):
+    site_name_he = StringField('שם האתר בעברית', validators=[DataRequired()])
+    site_name_en = StringField('Site Name in English', validators=[DataRequired()])
+    hero_title_he = StringField('כותרת ראשית בעברית')
+    hero_title_en = StringField('Hero Title in English')
+    hero_subtitle_he = StringField('כותרת משנה בעברית')
+    hero_subtitle_en = StringField('Hero Subtitle in English')
+    hero_description_he = TextAreaField('תיאור בעברית')
+    hero_description_en = TextAreaField('Description in English')
+    about_title_he = StringField('כותרת אודות בעברית')
+    about_title_en = StringField('About Title in English')
+    about_content_he = TextAreaField('תוכן אודות בעברית')
+    about_content_en = TextAreaField('About Content in English')
+    facebook_url = StringField('Facebook URL', validators=[Optional(), URL()])
+    instagram_url = StringField('Instagram URL', validators=[Optional(), URL()])
+    whatsapp_number = StringField('WhatsApp Number')
+    submit = SubmitField('שמור')
 
 UPLOAD_FOLDER = 'static/uploads'
 CSV_UPLOAD_FOLDER = 'static/csv_uploads'

@@ -27,6 +27,17 @@ csrf = CSRFProtect(app)
 csrf.exempt('admin.toggle_dietary_property')
 csrf.exempt('admin.delete_dietary_property')
 
+# Initialize Flask-Login
+from flask_login import LoginManager
+login_manager = LoginManager(app)
+login_manager.login_view = 'admin.login'
+login_manager.login_message = 'Please log in to access this page.'
+
+@login_manager.user_loader
+def load_user(user_id):
+    from models import AdminUser
+    return AdminUser.query.get(int(user_id))
+
 # Initialize database
 init_db(app)
 

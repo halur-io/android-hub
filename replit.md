@@ -35,6 +35,29 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### September 2, 2025 - Hebrew Checklist Task Management System
+- **Comprehensive Task Management System**: Complete checklist management for restaurant operations
+  - Shift-based task organization (פתיחת בוקר, משמרת ערב, סגירה, משמרת לילה)
+  - Hebrew interface with RTL support throughout
+  - Category system: מטבח, ניקיון, שירות, מלאי, בטיחות, אחר
+  - Priority levels: נמוכה, בינונית, גבוהה
+  - Frequency options: יומי, שבועי, חודשי, לפי הצורך
+- **Professional Printable Checklists**: Print-ready task lists for daily operations
+  - Branch selection integration
+  - Date and shift manager name fields
+  - Organized by categories with checkboxes
+  - Signature areas for accountability
+  - Professional Hebrew formatting
+- **Full CRUD API**: Complete backend functionality
+  - RESTful endpoints: GET, POST, PUT, DELETE for tasks
+  - Database models: ChecklistTask, GeneratedChecklist
+  - Sample data system for demonstration
+- **Admin Panel Integration**: Seamless integration with existing admin system
+  - New sidebar menu item: "רשימות משימות"
+  - Modal-based task editing interface
+  - Real-time task filtering by shift type
+- **Database Architecture**: Enhanced models for task management operations
+
 ### August 29, 2025 - Advanced Menu Management System
 - **Customizable Dietary Properties**: Complete CRUD system for managing dietary properties (vegetarian, vegan, etc.)
   - Dynamic property creation with custom names, icons, colors, and descriptions

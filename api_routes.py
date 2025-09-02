@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from models import (SiteSettings, Branch, WorkingHours, MenuCategory, 
-                   MenuItem, MediaFile, DietaryProperty, db)
+                   MenuItem, MediaFile, DietaryProperty, ChecklistTask,
+                   GeneratedChecklist, db)
 from datetime import datetime
 import logging
 
@@ -219,3 +220,88 @@ def get_featured_items():
     except Exception as e:
         logging.error(f"Error fetching featured items: {e}")
         return jsonify({'error': 'Failed to fetch featured items'}), 500
+
+# Checklist Tasks API
+@api_bp.route('/checklist-tasks', methods=['GET'])
+def get_checklist_tasks():
+    """Get all active checklist tasks"""
+    try:
+        tasks = ChecklistTask.query.filter_by(is_active=True).order_by(ChecklistTask.display_order).all()
+        
+        tasks_list = []
+        for task in tasks:
+            tasks_list.append({
+                'id': task.id,
+                'name': task.name,
+                'description': task.description,
+                'shift_type': task.shift_type,
+                'category': task.category,
+                'priority': task.priority,
+                'frequency': task.frequency,
+                'display_order': task.display_order
+            })
+        
+        return jsonify(tasks_list)
+    except Exception as e:
+        logging.error(f"Error fetching checklist tasks: {e}")
+        return jsonify({'error': 'Failed to fetch tasks'}), 500
+
+@api_bp.route('/checklist-tasks', methods=['POST'])
+def create_checklist_task():
+    """Create a new checklist task"""
+    try:
+        data = request.json
+        
+        task = ChecklistTask(
+            name=data.get('name'),
+            description=data.get('description'),
+            shift_type=data.get('shift_type'),
+            category=data.get('category'),
+            priority=data.get('priority', 'medium'),
+            frequency=data.get('frequency', 'daily')
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'id': task.id})
+    except Exception as e:
+        logging.error(f"Error creating checklist task: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to create task'}), 500
+
+@api_bp.route('/checklist-tasks/<int:task_id>', methods=['PUT'])
+def update_checklist_task(task_id):
+    """Update an existing checklist task"""
+    try:
+        task = ChecklistTask.query.get_or_404(task_id)
+        data = request.json
+        
+        task.name = data.get('name', task.name)
+        task.description = data.get('description', task.description)
+        task.shift_type = data.get('shift_type', task.shift_type)
+        task.category = data.get('category', task.category)
+        task.priority = data.get('priority', task.priority)
+        task.frequency = data.get('frequency', task.frequency)
+        
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error updating checklist task: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update task'}), 500
+
+@api_bp.route('/checklist-tasks/<int:task_id>', methods=['DELETE'])
+def delete_checklist_task(task_id):
+    """Delete (soft delete) a checklist task"""
+    try:
+        task = ChecklistTask.query.get_or_404(task_id)
+        task.is_active = False
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error deleting checklist task: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete task'}), 500

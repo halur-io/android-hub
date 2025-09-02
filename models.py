@@ -60,6 +60,36 @@ class MediaFile(db.Model):
     caption_en = db.Column(db.String(255))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+# Checklist Tasks
+class ChecklistTask(db.Model):
+    __tablename__ = 'checklist_tasks'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    shift_type = db.Column(db.String(50))  # morning, evening, closing, night
+    category = db.Column(db.String(50))  # kitchen, cleaning, service, inventory, safety
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    frequency = db.Column(db.String(20), default='daily')  # daily, weekly, monthly
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# Generated Checklists
+class GeneratedChecklist(db.Model):
+    __tablename__ = 'generated_checklists'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    shift_type = db.Column(db.String(50))
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    manager_name = db.Column(db.String(100))
+    tasks_json = db.Column(db.Text)  # JSON string of tasks included
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    
+    branch = db.relationship('Branch', backref='checklists')
+
 # Branches
 class Branch(db.Model):
     __tablename__ = 'branches'

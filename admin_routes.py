@@ -878,6 +878,12 @@ def upload_gallery():
     db.session.commit()
     return jsonify({'success': True, 'uploaded': uploaded})
 
+# Checklist Management
+@admin_bp.route('/checklist')
+@login_required
+def checklist():
+    return render_template('admin/checklist_tasks.html')
+
 # Messages Management
 @admin_bp.route('/messages')
 @login_required

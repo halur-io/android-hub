@@ -35,7 +35,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### September 2, 2025 - Hebrew Checklist Task Management System
+### September 3, 2025 - Enhanced Hebrew Checklist System with Templates & Group Tasks
+- **Task Template System**: Save and reuse task board configurations
+  - Save current tasks as reusable templates by shift type
+  - Load templates to quickly populate tasks for any shift
+  - Template management with descriptions and default settings
+  - One-click template application without losing existing tasks
+- **Group Task Creation**: Bulk add related tasks efficiently
+  - Add multiple related tasks at once (up to 20 per group)
+  - Shared category, priority, frequency, and shift settings
+  - Simple textarea input - one task per line
+  - Perfect for safety checks, cleaning routines, inventory lists
+- **User-Friendly Notifications**: Professional notification system
+  - Beautiful sliding notifications with emojis and clear messages
+  - Success, error, and info message types with auto-dismiss
+  - Contextual error messages explaining what went wrong
+  - No more basic alerts - smooth UX throughout
 - **Comprehensive Task Management System**: Complete checklist management for restaurant operations
   - Shift-based task organization (פתיחת בוקר, משמרת ערב, סגירה, משמרת לילה)
   - Hebrew interface with RTL support throughout
@@ -49,14 +64,14 @@ Preferred communication style: Simple, everyday language.
   - Signature areas for accountability
   - Professional Hebrew formatting
 - **Full CRUD API**: Complete backend functionality
-  - RESTful endpoints: GET, POST, PUT, DELETE for tasks
-  - Database models: ChecklistTask, GeneratedChecklist
+  - RESTful endpoints: GET, POST, PUT, DELETE for tasks and templates
+  - Database models: ChecklistTask, GeneratedChecklist, TaskTemplate
   - Sample data system for demonstration
 - **Admin Panel Integration**: Seamless integration with existing admin system
   - New sidebar menu item: "רשימות משימות"
   - Modal-based task editing interface
   - Real-time task filtering by shift type
-- **Database Architecture**: Enhanced models for task management operations
+- **Database Architecture**: Enhanced models for task management and template operations
 
 ### August 29, 2025 - Advanced Menu Management System
 - **Customizable Dietary Properties**: Complete CRUD system for managing dietary properties (vegetarian, vegan, etc.)

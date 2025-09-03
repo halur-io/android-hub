@@ -245,6 +245,63 @@
     background: #138496;
 }
 
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 2000;
+    min-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification.success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.notification.error {
+    background: linear-gradient(135deg, #dc3545, #e83e8c);
+}
+
+.notification.info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+}
+
+.notification .close-btn {
+    float: left;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
 .template-item {
     background: white;
     border: 1px solid #e9ecef;
@@ -344,6 +401,9 @@
         </button>
         <button class="btn btn-info" onclick="showTemplatesModal()">
             <i class="fas fa-save me-2"></i> תבניות משימות
+        </button>
+        <button class="btn btn-warning" onclick="showGroupTaskModal()">
+            <i class="fas fa-layer-group me-2"></i> הוסף קבוצת משימות
         </button>
     </div>
 </div>
@@ -590,6 +650,100 @@
     </div>
 </div>
 
+<!-- Group Task Modal -->
+<div id="groupTaskModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>הוסף קבוצת משימות</h2>
+        </div>
+        <div class="modal-body">
+            <form id="groupTaskForm">
+                <div class="form-group">
+                    <label>שם הקבוצה: *</label>
+                    <input type="text" id="groupName" required placeholder="לדוגמה: בדיקות בטיחות שבועיות">
+                </div>
+                
+                <div class="form-group">
+                    <label>תיאור הקבוצה:</label>
+                    <textarea id="groupDescription" rows="2" placeholder="תאר את סוג המשימות בקבוצה..."></textarea>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>סוג משמרת: *</label>
+                            <select id="groupShiftType" required>
+                                <option value="">בחר סוג משמרת</option>
+                                <option value="morning">פתיחת בוקר</option>
+                                <option value="evening">משמרת ערב</option>
+                                <option value="closing">סגירה</option>
+                                <option value="night">משמרת לילה</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>קטגוריה: *</label>
+                            <select id="groupCategory" required>
+                                <option value="">בחר קטגוריה</option>
+                                <option value="kitchen">מטבח</option>
+                                <option value="cleaning">ניקיון</option>
+                                <option value="service">שירות</option>
+                                <option value="inventory">מלאי</option>
+                                <option value="safety">בטיחות</option>
+                                <option value="other">אחר</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>משימות בקבוצה (כל משימה בשורה נפרדת): *</label>
+                    <textarea id="groupTasks" rows="8" required placeholder="בדיקת מטפי כיבוי
+בדיקת יציאות חירום
+בדיקת תאורת חירום
+בדיקת ערכת עזרה ראשונה
+בדיקת טלפון חירום"></textarea>
+                    <small class="text-muted">כתוב כל משימה בשורה נפרדת. ניתן להוסיף עד 20 משימות בקבוצה.</small>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>עדיפות לכל המשימות:</label>
+                            <select id="groupPriority">
+                                <option value="low">נמוכה</option>
+                                <option value="medium" selected>בינונית</option>
+                                <option value="high">גבוהה</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>תדירות לכל המשימות:</label>
+                            <select id="groupFrequency">
+                                <option value="daily" selected>יומי</option>
+                                <option value="weekly">שבועי</option>
+                                <option value="monthly">חודשי</option>
+                                <option value="as_needed">לפי הצורך</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-save">
+                        <i class="fas fa-plus me-2"></i> הוסף קבוצת משימות
+                    </button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('groupTaskModal')">
+                        <i class="fas fa-times me-2"></i> ביטול
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Global variables
 let tasks = [];
@@ -660,6 +814,7 @@ function setupEventListeners() {
     document.getElementById('taskForm').addEventListener('submit', handleTaskSubmit);
     document.getElementById('generateForm').addEventListener('submit', handleGenerateSubmit);
     document.getElementById('saveTemplateForm').addEventListener('submit', handleSaveTemplate);
+    document.getElementById('groupTaskForm').addEventListener('submit', handleGroupTaskSubmit);
 }
 
 // Load data functions
@@ -670,11 +825,11 @@ async function loadTasks() {
             tasks = await response.json();
             renderTasks();
         } else {
-            showError('שגיאה בטעינת המשימות');
+            showError('❌ לא ניתן לטעון את המשימות. בדוק את החיבור לאינטרנט.');
         }
     } catch (error) {
         console.error('Error loading tasks:', error);
-        showError('שגיאה בטעינת המשימות');
+        showError('❌ לא ניתן לטעון את המשימות. בדוק את החיבור לאינטרנט.');
     }
 }
 
@@ -685,11 +840,11 @@ async function loadBranches() {
             branches = await response.json();
             populateBranchSelect();
         } else {
-            showError('שגיאה בטעינת הסניפים');
+            showError('❌ לא ניתן לטעון את הסניפים. בדוק את החיבור לאינטרנט.');
         }
     } catch (error) {
         console.error('Error loading branches:', error);
-        showError('שגיאה בטעינת הסניפים');
+        showError('❌ לא ניתן לטעון את הסניפים. בדוק את החיבור לאינטרנט.');
     }
 }
 
@@ -802,6 +957,11 @@ function showSaveTemplateModal() {
     showModal('saveTemplateModal');
 }
 
+function showGroupTaskModal() {
+    document.getElementById('groupShiftType').value = currentShift === 'all' ? '' : currentShift;
+    showModal('groupTaskModal');
+}
+
 function showModal(modalId) {
     document.getElementById(modalId).style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -843,14 +1003,14 @@ async function handleTaskSubmit(e) {
         if (response.ok) {
             closeModal('taskModal');
             loadTasks();
-            showSuccess(isEdit ? 'המשימה עודכנה בהצלחה' : 'המשימה נוספה בהצלחה');
+            showSuccess(isEdit ? '✅ המשימה עודכנה בהצלחה!' : '✅ המשימה נוספה בהצלחה!');
         } else {
             const error = await response.json();
-            showError(error.message || 'שגיאה בשמירת המשימה');
+            showError('❌ ' + (error.message || 'לא ניתן לשמור את המשימה. אנא נסה שוב.'));
         }
     } catch (error) {
         console.error('Error saving task:', error);
-        showError('שגיאה בשמירת המשימה');
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
     }
 }
 
@@ -881,13 +1041,13 @@ async function deleteTask(taskId) {
         
         if (response.ok) {
             loadTasks();
-            showSuccess('המשימה נמחקה בהצלחה');
+            showSuccess('🗑️ המשימה נמחקה בהצלחה');
         } else {
-            showError('שגיאה במחיקת המשימה');
+            showError('❌ לא ניתן למחוק את המשימה. אנא נסה שוב.');
         }
     } catch (error) {
         console.error('Error deleting task:', error);
-        showError('שגיאה במחיקת המשימה');
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
     }
 }
 
@@ -982,13 +1142,39 @@ function setDefaultDate() {
 }
 
 function showSuccess(message) {
-    // Simple alert for now - can be improved with better notifications
-    alert(message);
+    showNotification(message, 'success');
 }
 
 function showError(message) {
-    // Simple alert for now - can be improved with better notifications
-    alert(message);
+    showNotification(message, 'error');
+}
+
+function showInfo(message) {
+    showNotification(message, 'info');
+}
+
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existing = document.querySelectorAll('.notification');
+    existing.forEach(n => n.remove());
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <button class="close-btn" onclick="this.parentElement.remove()">×</button>
+        <div>${message}</div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
 }
 
 // Template functions
@@ -1053,15 +1239,15 @@ async function handleSaveTemplate(e) {
         if (response.ok) {
             closeModal('saveTemplateModal');
             loadTemplates();
-            showSuccess('התבנית נשמרה בהצלחה');
+            showSuccess('💾 התבנית נשמרה בהצלחה! עכשיו תוכל לטעון אותה בכל עת.');
             document.getElementById('saveTemplateForm').reset();
         } else {
             const error = await response.json();
-            showError(error.message || 'שגיאה בשמירת התבנית');
+            showError('❌ ' + (error.message || 'לא ניתן לשמור את התבנית. וודא שהשם ייחודי.'));
         }
     } catch (error) {
         console.error('Error saving template:', error);
-        showError('שגיאה בשמירת התבנית');
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
     }
 }
 
@@ -1085,14 +1271,14 @@ async function loadTemplate(templateId) {
             const result = await response.json();
             closeModal('templatesModal');
             loadTasks();
-            showSuccess(`התבנית "${result.template_name}" נטענה בהצלחה! נוספו ${result.created_count} משימות.`);
+            showSuccess(`📥 התבנית "${result.template_name}" נטענה בהצלחה! נוספו ${result.created_count} משימות חדשות למשמרת.`);
         } else {
             const error = await response.json();
-            showError(error.message || 'שגיאה בטעינת התבנית');
+            showError('❌ ' + (error.message || 'לא ניתן לטעון את התבנית. אנא נסה שוב.'));
         }
     } catch (error) {
         console.error('Error loading template:', error);
-        showError('שגיאה בטעינת התבנית');
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
     }
 }
 
@@ -1108,13 +1294,83 @@ async function deleteTemplate(templateId) {
         
         if (response.ok) {
             loadTemplates();
-            showSuccess('התבנית נמחקה בהצלחה');
+            showSuccess('🗑️ התבנית נמחקה בהצלחה');
         } else {
-            showError('שגיאה במחיקת התבנית');
+            showError('❌ לא ניתן למחוק את התבנית. אנא נסה שוב.');
         }
     } catch (error) {
         console.error('Error deleting template:', error);
-        showError('שגיאה במחיקת התבנית');
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
+    }
+}
+
+// Group task handling
+async function handleGroupTaskSubmit(e) {
+    e.preventDefault();
+    
+    const groupName = document.getElementById('groupName').value;
+    const groupDescription = document.getElementById('groupDescription').value;
+    const shiftType = document.getElementById('groupShiftType').value;
+    const category = document.getElementById('groupCategory').value;
+    const priority = document.getElementById('groupPriority').value;
+    const frequency = document.getElementById('groupFrequency').value;
+    const tasksText = document.getElementById('groupTasks').value;
+    
+    // Parse tasks from textarea
+    const taskLines = tasksText.split('\n').filter(line => line.trim());
+    
+    if (taskLines.length === 0) {
+        showError('❌ אנא הכנס לפחות משימה אחת');
+        return;
+    }
+    
+    if (taskLines.length > 20) {
+        showError('❌ ניתן להוסיף עד 20 משימות בקבוצה');
+        return;
+    }
+    
+    try {
+        showInfo('⏳ מוסיף קבוצת משימות...');
+        
+        // Create all tasks in the group
+        const createdTasks = [];
+        for (let i = 0; i < taskLines.length; i++) {
+            const taskName = taskLines[i].trim();
+            if (taskName) {
+                const taskData = {
+                    name: taskName,
+                    description: groupDescription ? `${groupDescription} - ${taskName}` : '',
+                    shift_type: shiftType,
+                    category: category,
+                    priority: priority,
+                    frequency: frequency
+                };
+                
+                const response = await fetch('/api/checklist-tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    createdTasks.push(result);
+                } else {
+                    throw new Error(`Failed to create task: ${taskName}`);
+                }
+            }
+        }
+        
+        closeModal('groupTaskModal');
+        loadTasks();
+        showSuccess(`🎉 קבוצת המשימות "${groupName}" נוספה בהצלחה! נוצרו ${createdTasks.length} משימות חדשות.`);
+        document.getElementById('groupTaskForm').reset();
+        
+    } catch (error) {
+        console.error('Error creating group tasks:', error);
+        showError('❌ לא ניתן ליצור את קבוצת המשימות. אנא נסה שוב.');
     }
 }
 </script>

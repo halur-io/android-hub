@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from models import (SiteSettings, Branch, WorkingHours, MenuCategory, 
                    MenuItem, MediaFile, DietaryProperty, ChecklistTask,
-                   GeneratedChecklist, TaskTemplate, db)
+                   GeneratedChecklist, TaskTemplate, TaskGroup, db)
 from datetime import datetime
 import logging
 
@@ -425,3 +425,136 @@ def delete_task_template(template_id):
         logging.error(f"Error deleting task template: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to delete template'}), 500
+
+# Task Groups API
+@api_bp.route('/task-groups', methods=['GET'])
+def get_task_groups():
+    """Get all task groups with their tasks"""
+    try:
+        groups = TaskGroup.query.filter_by(is_active=True).order_by(TaskGroup.display_order, TaskGroup.name).all()
+        
+        groups_list = []
+        for group in groups:
+            group_tasks = [
+                {
+                    'id': task.id,
+                    'name': task.name,
+                    'description': task.description,
+                    'priority': task.priority,
+                    'frequency': task.frequency,
+                    'created_at': task.created_at.isoformat() if task.created_at else None
+                }
+                for task in group.tasks if task.is_active
+            ]
+            
+            groups_list.append({
+                'id': group.id,
+                'name': group.name,
+                'description': group.description,
+                'shift_type': group.shift_type,
+                'category': group.category,
+                'color': group.color,
+                'task_count': len(group_tasks),
+                'tasks': group_tasks,
+                'created_at': group.created_at.isoformat() if group.created_at else None
+            })
+        
+        return jsonify(groups_list)
+    except Exception as e:
+        logging.error(f"Error fetching task groups: {e}")
+        return jsonify({'error': 'Failed to fetch groups'}), 500
+
+@api_bp.route('/task-groups', methods=['POST'])
+def create_task_group():
+    """Create a new task group and optionally add tasks to it"""
+    try:
+        data = request.json
+        
+        # Create the group
+        group = TaskGroup(
+            name=data.get('name'),
+            description=data.get('description'),
+            shift_type=data.get('shift_type'),
+            category=data.get('category'),
+            color=data.get('color', '#007bff')
+        )
+        
+        db.session.add(group)
+        db.session.flush()  # To get the group ID
+        
+        # Add tasks to the group if provided
+        tasks_data = data.get('tasks', [])
+        created_tasks = []
+        
+        for task_data in tasks_data:
+            task = ChecklistTask(
+                name=task_data.get('name'),
+                description=task_data.get('description', ''),
+                shift_type=group.shift_type,
+                category=group.category,
+                priority=task_data.get('priority', 'medium'),
+                frequency=task_data.get('frequency', 'daily'),
+                group_id=group.id
+            )
+            db.session.add(task)
+            created_tasks.append(task)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'group_id': group.id,
+            'tasks_created': len(created_tasks)
+        })
+    except Exception as e:
+        logging.error(f"Error creating task group: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to create group'}), 500
+
+@api_bp.route('/task-groups/<int:group_id>', methods=['PUT'])
+def update_task_group(group_id):
+    """Update a task group"""
+    try:
+        group = TaskGroup.query.get_or_404(group_id)
+        data = request.json
+        
+        if 'name' in data:
+            group.name = data['name']
+        if 'description' in data:
+            group.description = data['description']
+        if 'color' in data:
+            group.color = data['color']
+        if 'category' in data:
+            group.category = data['category']
+            
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error updating task group: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update group'}), 500
+
+@api_bp.route('/task-groups/<int:group_id>', methods=['DELETE'])
+def delete_task_group(group_id):
+    """Delete a task group and optionally its tasks"""
+    try:
+        group = TaskGroup.query.get_or_404(group_id)
+        
+        # Option to delete tasks with group or just remove group assignment
+        delete_tasks = request.json.get('delete_tasks', False) if request.json else False
+        
+        if delete_tasks:
+            # Delete all tasks in the group
+            ChecklistTask.query.filter_by(group_id=group_id).update({'is_active': False})
+        else:
+            # Just remove group assignment from tasks
+            ChecklistTask.query.filter_by(group_id=group_id).update({'group_id': None})
+        
+        db.session.delete(group)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error deleting task group: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete group'}), 500

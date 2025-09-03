@@ -60,6 +60,26 @@ class MediaFile(db.Model):
     caption_en = db.Column(db.String(255))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+# Task Groups
+class TaskGroup(db.Model):
+    __tablename__ = 'task_groups'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    shift_type = db.Column(db.String(50), nullable=False)  # morning, evening, closing, night
+    category = db.Column(db.String(50), nullable=False)
+    color = db.Column(db.String(20), default='#007bff')  # Group color for visual distinction
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<TaskGroup {self.name}>'
+
 # Checklist Tasks
 class ChecklistTask(db.Model):
     __tablename__ = 'checklist_tasks'
@@ -72,6 +92,11 @@ class ChecklistTask(db.Model):
     frequency = db.Column(db.String(20), default='daily')  # daily, weekly, monthly
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
+    
+    # Group relationship
+    group_id = db.Column(db.Integer, db.ForeignKey('task_groups.id'), nullable=True)
+    group = db.relationship('TaskGroup', backref='tasks')
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

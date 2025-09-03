@@ -797,6 +797,7 @@ function setupEventListeners() {
             document.querySelectorAll('.shift-tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             currentShift = this.dataset.shift;
+            console.log(`Shift filter changed to: ${currentShift}`);
             renderTasks();
         });
     });
@@ -881,6 +882,13 @@ function renderTasks() {
     let filteredTasks = tasks;
     if (currentShift !== 'all') {
         filteredTasks = tasks.filter(task => task.shift_type === currentShift);
+    }
+    
+    // Debug: Show filtering info
+    console.log(`Current shift filter: ${currentShift}`);
+    console.log(`Total tasks: ${tasks.length}, Filtered tasks: ${filteredTasks.length}`);
+    if (filteredTasks.length > 0) {
+        console.log('Sample filtered task:', filteredTasks[0]);
     }
     
     if (filteredTasks.length === 0) {

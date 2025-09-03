@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from models import (SiteSettings, Branch, WorkingHours, MenuCategory, 
                    MenuItem, MediaFile, DietaryProperty, ChecklistTask,
-                   GeneratedChecklist, db)
+                   GeneratedChecklist, TaskTemplate, db)
 from datetime import datetime
 import logging
 
@@ -305,3 +305,123 @@ def delete_checklist_task(task_id):
         logging.error(f"Error deleting checklist task: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to delete task'}), 500
+
+# Task Templates API
+@api_bp.route('/task-templates', methods=['GET'])
+def get_task_templates():
+    """Get all task templates"""
+    try:
+        templates = TaskTemplate.query.order_by(TaskTemplate.created_at.desc()).all()
+        
+        templates_list = []
+        for template in templates:
+            templates_list.append({
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'shift_type': template.shift_type,
+                'is_default': template.is_default,
+                'tasks_config': template.tasks_config,
+                'created_at': template.created_at.isoformat() if template.created_at else None
+            })
+        
+        return jsonify(templates_list)
+    except Exception as e:
+        logging.error(f"Error fetching task templates: {e}")
+        return jsonify({'error': 'Failed to fetch templates'}), 500
+
+@api_bp.route('/task-templates', methods=['POST'])
+def create_task_template():
+    """Create a new task template from current tasks"""
+    try:
+        data = request.json
+        
+        # Get current tasks for the shift type
+        current_tasks = ChecklistTask.query.filter_by(
+            shift_type=data.get('shift_type'), 
+            is_active=True
+        ).all()
+        
+        # Convert tasks to config format
+        tasks_config = []
+        for task in current_tasks:
+            tasks_config.append({
+                'name': task.name,
+                'description': task.description,
+                'category': task.category,
+                'priority': task.priority,
+                'frequency': task.frequency
+            })
+        
+        template = TaskTemplate(
+            name=data.get('name'),
+            description=data.get('description'),
+            shift_type=data.get('shift_type'),
+            is_default=data.get('is_default', False),
+            tasks_config=tasks_config
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'id': template.id})
+    except Exception as e:
+        logging.error(f"Error creating task template: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to create template'}), 500
+
+@api_bp.route('/task-templates/<int:template_id>/load', methods=['POST'])
+def load_task_template(template_id):
+    """Load tasks from a template (creates new tasks)"""
+    try:
+        template = TaskTemplate.query.get_or_404(template_id)
+        
+        if not template.tasks_config:
+            return jsonify({'error': 'Template has no tasks configured'}), 400
+        
+        # Delete existing tasks for this shift type (optional - based on user preference)
+        if request.json.get('replace_existing', False):
+            ChecklistTask.query.filter_by(
+                shift_type=template.shift_type,
+                is_active=True
+            ).update({'is_active': False})
+        
+        # Create new tasks from template
+        created_tasks = []
+        for task_data in template.tasks_config:
+            new_task = ChecklistTask(
+                name=task_data.get('name'),
+                description=task_data.get('description'),
+                shift_type=template.shift_type,
+                category=task_data.get('category'),
+                priority=task_data.get('priority', 'medium'),
+                frequency=task_data.get('frequency', 'daily')
+            )
+            db.session.add(new_task)
+            created_tasks.append(new_task)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'created_count': len(created_tasks),
+            'template_name': template.name
+        })
+    except Exception as e:
+        logging.error(f"Error loading task template: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to load template'}), 500
+
+@api_bp.route('/task-templates/<int:template_id>', methods=['DELETE'])
+def delete_task_template(template_id):
+    """Delete a task template"""
+    try:
+        template = TaskTemplate.query.get_or_404(template_id)
+        db.session.delete(template)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error deleting task template: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete template'}), 500

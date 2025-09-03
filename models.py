@@ -90,6 +90,25 @@ class GeneratedChecklist(db.Model):
     
     branch = db.relationship('Branch', backref='checklists')
 
+class TaskTemplate(db.Model):
+    __tablename__ = 'task_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    shift_type = db.Column(db.String(50), nullable=False)  # morning, evening, closing, night
+    is_default = db.Column(db.Boolean, default=False)
+    
+    # JSON field to store task configuration
+    tasks_config = db.Column(db.JSON)  # Will store array of task objects
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<TaskTemplate {self.name}>'
+
 # Branches
 class Branch(db.Model):
     __tablename__ = 'branches'

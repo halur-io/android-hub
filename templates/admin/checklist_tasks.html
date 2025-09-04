@@ -3943,6 +3943,10 @@ function renderSavedChecklists() {
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; flex-direction: column;">
+                    <button class="btn btn-sm btn-info" onclick="previewChecklist(${checklist.id})" 
+                            style="white-space: nowrap;">
+                        <i class="fas fa-eye"></i> תצוגה מקדימה
+                    </button>
                     <button class="btn btn-sm btn-success" onclick="reprintChecklist(${checklist.id})" 
                             style="white-space: nowrap;">
                         <i class="fas fa-print"></i> הדפס
@@ -3959,6 +3963,11 @@ function renderSavedChecklists() {
 
 async function reprintChecklist(checklistId) {
     try {
+        // Make sure branches are loaded
+        if (!branches || branches.length === 0) {
+            await loadBranches();
+        }
+        
         const response = await fetch(`/api/generated-checklists/${checklistId}`);
         if (response.ok) {
             const checklist = await response.json();
@@ -3970,7 +3979,11 @@ async function reprintChecklist(checklistId) {
                 shift_manager: checklist.manager_name
             };
             
-            const branch = branches.find(b => b.id === checklist.branch_id);
+            // Create branch object
+            const branch = branches.find(b => b.id === checklist.branch_id) || {
+                name: checklist.branch_name || 'לא מוגדר'
+            };
+            
             const tasks = checklist.tasks_data || [];
             
             // Group tasks by group_name
@@ -3990,19 +4003,91 @@ async function reprintChecklist(checklistId) {
             
             const selectedGroups = Object.values(groupedTasks);
             
+            console.log('Reprint data:', { printData, branch, selectedGroups, tasks });
+            
             // Generate and print
             const printContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
             const printWindow = window.open('', '_blank');
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.print();
+            if (printWindow) {
+                printWindow.document.write(printContent);
+                printWindow.document.close();
+                printWindow.print();
+                showSuccess('🖨️ מדפיס רשימה...');
+            } else {
+                showError('❌ לא ניתן לפתוח חלון הדפסה. יתכן שהדפדפן חוסם חלונות קופצים.');
+            }
             
         } else {
-            showError('❌ לא ניתן לטעון את הרשימה להדפסה חוזרת');
+            const errorData = await response.json();
+            showError('❌ לא ניתן לטעון את הרשימה: ' + (errorData.error || 'שגיאה לא ידועה'));
         }
     } catch (error) {
         console.error('Error reprinting checklist:', error);
-        showError('❌ שגיאה בהדפסה חוזרת');
+        showError('❌ שגיאה בהדפסה חוזרת: ' + error.message);
+    }
+}
+
+async function previewChecklist(checklistId) {
+    try {
+        // Make sure branches are loaded
+        if (!branches || branches.length === 0) {
+            await loadBranches();
+        }
+        
+        const response = await fetch(`/api/generated-checklists/${checklistId}`);
+        if (response.ok) {
+            const checklist = await response.json();
+            
+            // Reconstruct the data needed for preview
+            const printData = {
+                name: checklist.name,
+                date: checklist.date,
+                shift_manager: checklist.manager_name
+            };
+            
+            // Create branch object
+            const branch = branches.find(b => b.id === checklist.branch_id) || {
+                name: checklist.branch_name || 'לא מוגדר'
+            };
+            
+            const tasks = checklist.tasks_data || [];
+            
+            // Group tasks by group_name
+            const groupedTasks = tasks.reduce((groups, task) => {
+                const groupName = task.group_name || 'לא מוגדר';
+                const groupColor = task.group_color || '#007bff';
+                if (!groups[groupName]) {
+                    groups[groupName] = {
+                        name: groupName,
+                        color: groupColor,
+                        tasks: []
+                    };
+                }
+                groups[groupName].tasks.push(task);
+                return groups;
+            }, {});
+            
+            const selectedGroups = Object.values(groupedTasks);
+            
+            // Generate preview HTML (same as print but without auto-print)
+            const previewContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
+            const previewWindow = window.open('', '_blank');
+            if (previewWindow) {
+                previewWindow.document.write(previewContent);
+                previewWindow.document.close();
+                // Don't call print() for preview
+                showSuccess('👁️ פותח תצוגה מקדימה...');
+            } else {
+                showError('❌ לא ניתן לפתוח חלון תצוגה מקדימה. יתכן שהדפדפן חוסם חלונות קופצים.');
+            }
+            
+        } else {
+            const errorData = await response.json();
+            showError('❌ לא ניתן לטעון את הרשימה: ' + (errorData.error || 'שגיאה לא ידועה'));
+        }
+    } catch (error) {
+        console.error('Error previewing checklist:', error);
+        showError('❌ שגיאה בתצוגה מקדימה: ' + error.message);
     }
 }
 

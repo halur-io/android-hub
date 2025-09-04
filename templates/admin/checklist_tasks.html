@@ -3434,7 +3434,7 @@ async function bulkMoveToGroup(groupId) {
     
     try {
         for (const taskId of selectedTaskIds) {
-            const response = await fetch(`/api/tasks/${taskId}`, {
+            const response = await fetch(`/api/checklist-tasks/${taskId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3444,7 +3444,8 @@ async function bulkMoveToGroup(groupId) {
             });
             
             if (!response.ok) {
-                throw new Error('Failed to update task');
+                const errorText = await response.text();
+                throw new Error(`Failed to update task ${taskId}: ${response.status} ${errorText}`);
             }
         }
         

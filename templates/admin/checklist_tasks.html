@@ -3384,7 +3384,15 @@ function clearSelection() {
 }
 
 function showBulkMoveDialog() {
-    if (selectedTasks.size === 0) return;
+    if (selectedTasks.size === 0) {
+        showError('❌ אין משימות נבחרות');
+        return;
+    }
+    
+    if (!taskGroups || taskGroups.length === 0) {
+        showError('❌ לא נמצאו קבוצות משימות');
+        return;
+    }
     
     const dialog = document.createElement('div');
     dialog.className = 'mobile-confirm';
@@ -3430,21 +3438,46 @@ function showBulkMoveDialog() {
 }
 
 async function bulkMoveToGroup(groupId) {
+    console.log('Starting bulk move to group:', groupId);
+    console.log('Selected tasks:', selectedTasks);
+    
+    if (!selectedTasks || selectedTasks.size === 0) {
+        showError('❌ אין משימות נבחרות');
+        return;
+    }
+    
     const selectedTaskIds = Array.from(selectedTasks);
+    console.log('Task IDs to move:', selectedTaskIds);
     
     try {
+        // Check for CSRF token
+        const csrfTokenElement = document.querySelector('meta[name=csrf-token]');
+        if (!csrfTokenElement) {
+            console.error('CSRF token not found');
+            showError('❌ שגיאה בטוקן האבטחה');
+            return;
+        }
+        
+        const csrfToken = csrfTokenElement.getAttribute('content');
+        console.log('Using CSRF token:', csrfToken ? 'Found' : 'Missing');
+        
         for (const taskId of selectedTaskIds) {
+            console.log(`Moving task ${taskId} to group ${groupId}`);
+            
             const response = await fetch(`/api/checklist-tasks/${taskId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                    'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({ group_id: groupId })
             });
             
+            console.log(`Response for task ${taskId}:`, response.status);
+            
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error(`Failed to update task ${taskId}:`, errorText);
                 throw new Error(`Failed to update task ${taskId}: ${response.status} ${errorText}`);
             }
         }
@@ -3458,7 +3491,7 @@ async function bulkMoveToGroup(groupId) {
         
     } catch (error) {
         console.error('Error moving tasks:', error);
-        showError('❌ שגיאה בהעברת המשימות');
+        showError(`❌ שגיאה בהעברת המשימות: ${error.message}`);
     }
 }
 

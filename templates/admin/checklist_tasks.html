@@ -2972,58 +2972,65 @@ function exportGroupToPDF(groupId, groupName, taskCount) {
                     padding: 2px;
                     min-width: 200px;
                 }
-                .category-section { 
-                    margin: 25px 0; 
-                    break-inside: avoid;
-                }
-                .category-header {
-                    background: #e9ecef;
-                    padding: 12px 15px;
-                    border-radius: 6px;
-                    font-weight: bold;
-                    font-size: 18px;
-                    margin-bottom: 15px;
-                    color: #333;
-                }
                 .task-item {
                     display: flex;
-                    align-items: flex-start;
-                    margin: 12px 0;
-                    padding: 10px;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 6px;
-                    background: white;
+                    align-items: center;
+                    margin: 4px 0;
+                    padding: 3px 0;
+                    border-bottom: 1px dotted #ccc;
                     break-inside: avoid;
+                    font-size: 14px;
                 }
                 .task-checkbox {
-                    width: 20px;
-                    height: 20px;
+                    width: 16px;
+                    height: 16px;
                     border: 2px solid #333;
-                    border-radius: 3px;
-                    margin-left: 12px;
+                    border-radius: 2px;
+                    margin-left: 10px;
                     flex-shrink: 0;
-                    margin-top: 2px;
                 }
                 .task-content {
                     flex: 1;
+                    line-height: 1.3;
                 }
                 .task-name {
+                    font-weight: normal;
+                    font-size: 14px;
+                    margin: 0;
+                    display: inline;
+                }
+                .task-checkbox {
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid #333;
+                    border-radius: 2px;
+                    margin-left: 10px;
+                    flex-shrink: 0;
+                }
+                .task-content {
+                    flex: 1;
+                    line-height: 1.3;
+                }
+                .task-name {
+                    font-weight: normal;
+                    font-size: 14px;
+                    margin: 0;
+                    display: inline;
+                }
+                .category-section { 
+                    margin: 15px 0; 
+                    break-inside: avoid;
+                }
+                .category-header {
+                    background: #f0f0f0;
+                    padding: 8px 12px;
+                    border-radius: 4px;
                     font-weight: bold;
                     font-size: 16px;
-                    margin-bottom: 4px;
+                    margin-bottom: 8px;
+                    color: #333;
+                    border-bottom: 2px solid #333;
                 }
-                .task-description {
-                    color: #666;
-                    font-size: 14px;
-                    margin-bottom: 4px;
-                }
-                .task-meta {
-                    font-size: 12px;
-                    color: #888;
-                }
-                .priority-high { border-right: 4px solid #dc3545; }
-                .priority-medium { border-right: 4px solid #ffc107; }
-                .priority-low { border-right: 4px solid #28a745; }
                 .signatures {
                     margin-top: 40px;
                     display: flex;
@@ -3087,15 +3094,10 @@ function exportGroupToPDF(groupId, groupName, taskCount) {
                         📋 ${translations.categories[category] || category}
                     </div>
                     ${tasks.map(task => `
-                        <div class="task-item priority-${task.priority}">
+                        <div class="task-item">
                             <div class="task-checkbox"></div>
                             <div class="task-content">
-                                <div class="task-name">${task.name}</div>
-                                ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
-                                <div class="task-meta">
-                                    עדיפות: ${translations.priorities[task.priority] || task.priority} • 
-                                    תדירות: ${translations.frequencies[task.frequency] || task.frequency}
-                                </div>
+                                <span class="task-name">${task.name}</span>
                             </div>
                         </div>
                     `).join('')}

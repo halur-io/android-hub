@@ -1002,6 +1002,9 @@
         <button class="btn btn-info" onclick="showTemplatesModal()">
             <i class="fas fa-save me-2"></i> תבניות משימות
         </button>
+        <button class="btn btn-secondary" onclick="showSavedChecklistsModal()">
+            <i class="fas fa-history me-2"></i> רשימות שמורות
+        </button>
         <button class="btn btn-warning" onclick="showGroupTaskModal()">
             <i class="fas fa-layer-group me-2"></i> צור קבוצת משימות
         </button>
@@ -2141,7 +2144,7 @@ async function deleteTask(taskId) {
 }
 
 // Generate checklist
-function generateChecklist(data) {
+async function generateChecklist(data) {
     const selectedGroups = taskGroups.filter(group => data.selected_groups.includes(group.id));
     const branch = branches.find(b => b.id === data.branch_id);
     
@@ -2167,14 +2170,54 @@ function generateChecklist(data) {
         return;
     }
     
-    // Generate print-ready HTML  
-    const printContent = generateMultiGroupPrintHTML(data, branch, selectedGroups, allSelectedTasks);
-    
-    // Open print window
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.print();
+    // Save checklist to database first
+    try {
+        const checklistData = {
+            name: data.name,
+            date: data.date,
+            shift_type: selectedGroups.length > 0 ? selectedGroups[0].tasks[0]?.shift_type : 'morning',
+            branch_id: data.branch_id,
+            manager_name: data.shift_manager,
+            tasks_data: allSelectedTasks.map(task => ({
+                id: task.id,
+                name: task.name,
+                description: task.description,
+                category: task.category,
+                priority: task.priority,
+                frequency: task.frequency,
+                group_name: task.group_name,
+                group_color: task.group_color
+            }))
+        };
+        
+        const response = await fetch('/api/generated-checklists', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(checklistData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showSuccess('💾 הרשימה נשמרה בהצלחה! עכשיו מדפיס...');
+            
+            // Generate print-ready HTML  
+            const printContent = generateMultiGroupPrintHTML(data, branch, selectedGroups, allSelectedTasks);
+            
+            // Open print window
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        } else {
+            const error = await response.json();
+            showError('❌ ' + (error.error || 'לא ניתן לשמור את הרשימה'));
+        }
+    } catch (error) {
+        console.error('Error saving checklist:', error);
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
+    }
 }
 
 function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
@@ -3832,5 +3875,180 @@ document.addEventListener('DOMContentLoaded', () => {
         groupEditForm.addEventListener('submit', handleGroupEditSubmit);
     }
 });
+
+// Saved Checklists functions
+let savedChecklists = [];
+
+async function showSavedChecklistsModal() {
+    await loadSavedChecklists();
+    showModal('savedChecklistsModal');
+}
+
+async function loadSavedChecklists() {
+    try {
+        const response = await fetch('/api/generated-checklists');
+        if (response.ok) {
+            savedChecklists = await response.json();
+            renderSavedChecklists();
+        } else {
+            console.error('Error loading saved checklists');
+            document.getElementById('savedChecklistsContainer').innerHTML = 
+                '<div style="text-align: center; padding: 40px; color: #dc3545;"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><p>שגיאה בטעינת רשימות שמורות</p></div>';
+        }
+    } catch (error) {
+        console.error('Error loading saved checklists:', error);
+        document.getElementById('savedChecklistsContainer').innerHTML = 
+            '<div style="text-align: center; padding: 40px; color: #dc3545;"><i class="fas fa-exclamation-triangle fa-2x mb-3"></i><p>שגיאה בטעינת רשימות שמורות</p></div>';
+    }
+}
+
+function renderSavedChecklists() {
+    const container = document.getElementById('savedChecklistsContainer');
+    
+    if (!savedChecklists || savedChecklists.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #999;">
+                <i class="fas fa-clipboard-list fa-3x mb-3" style="opacity: 0.3;"></i>
+                <p style="font-size: 1.1em; margin-bottom: 10px;">אין רשימות שמורות</p>
+                <p style="font-size: 0.9em;">צור רשימת משימות ראשונה כדי לראות אותה כאן</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = savedChecklists.map(checklist => `
+        <div class="saved-checklist-item" style="
+            border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 15px;
+            background: white; transition: all 0.2s;
+        " onmouseover="this.style.borderColor='#007bff'" onmouseout="this.style.borderColor='#e9ecef'">
+            <div style="display: flex; justify-content: space-between; align-items: start; gap: 15px;">
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 8px 0; color: #333; font-size: 1.1em;">${checklist.name}</h4>
+                    <div style="display: flex; gap: 15px; margin-bottom: 10px; flex-wrap: wrap;">
+                        <span style="color: #666; font-size: 0.9em;">
+                            <i class="fas fa-calendar-alt me-1"></i> ${new Date(checklist.date).toLocaleDateString('he-IL')}
+                        </span>
+                        <span style="color: #666; font-size: 0.9em;">
+                            <i class="fas fa-store me-1"></i> ${checklist.branch_name || 'לא מוגדר'}
+                        </span>
+                        <span style="color: #666; font-size: 0.9em;">
+                            <i class="fas fa-user me-1"></i> ${checklist.manager_name || 'לא מוגדר'}
+                        </span>
+                        <span style="color: #666; font-size: 0.9em;">
+                            <i class="fas fa-tasks me-1"></i> ${checklist.tasks_data ? checklist.tasks_data.length : 0} משימות
+                        </span>
+                    </div>
+                    <div style="color: #999; font-size: 0.85em;">
+                        נוצר: ${new Date(checklist.created_at).toLocaleString('he-IL')}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; flex-direction: column;">
+                    <button class="btn btn-sm btn-success" onclick="reprintChecklist(${checklist.id})" 
+                            style="white-space: nowrap;">
+                        <i class="fas fa-print"></i> הדפס
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSavedChecklist(${checklist.id})" 
+                            style="white-space: nowrap;">
+                        <i class="fas fa-trash"></i> מחק
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function reprintChecklist(checklistId) {
+    try {
+        const response = await fetch(`/api/generated-checklists/${checklistId}`);
+        if (response.ok) {
+            const checklist = await response.json();
+            
+            // Reconstruct the data needed for printing
+            const printData = {
+                name: checklist.name,
+                date: checklist.date,
+                shift_manager: checklist.manager_name
+            };
+            
+            const branch = branches.find(b => b.id === checklist.branch_id);
+            const tasks = checklist.tasks_data || [];
+            
+            // Group tasks by group_name
+            const groupedTasks = tasks.reduce((groups, task) => {
+                const groupName = task.group_name || 'לא מוגדר';
+                const groupColor = task.group_color || '#007bff';
+                if (!groups[groupName]) {
+                    groups[groupName] = {
+                        name: groupName,
+                        color: groupColor,
+                        tasks: []
+                    };
+                }
+                groups[groupName].tasks.push(task);
+                return groups;
+            }, {});
+            
+            const selectedGroups = Object.values(groupedTasks);
+            
+            // Generate and print
+            const printContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+            
+        } else {
+            showError('❌ לא ניתן לטעון את הרשימה להדפסה חוזרת');
+        }
+    } catch (error) {
+        console.error('Error reprinting checklist:', error);
+        showError('❌ שגיאה בהדפסה חוזרת');
+    }
+}
+
+async function deleteSavedChecklist(checklistId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק רשימה זו? פעולה זו לא ניתנת לביטול.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/generated-checklists/${checklistId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showSuccess('🗑️ הרשימה נמחקה בהצלחה');
+            loadSavedChecklists(); // Reload the list
+        } else {
+            showError('❌ לא ניתן למחוק את הרשימה');
+        }
+    } catch (error) {
+        console.error('Error deleting checklist:', error);
+        showError('❌ שגיאה במחיקת הרשימה');
+    }
+}
 </script>
+
+<!-- Saved Checklists Modal -->
+<div id="savedChecklistsModal" class="modal">
+    <div class="modal-content large-modal">
+        <div class="modal-header">
+            <h2>רשימות משימות שמורות</h2>
+        </div>
+        <div class="modal-body">
+            <div id="savedChecklistsContainer">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                    <p>טוען רשימות שמורות...</p>
+                </div>
+            </div>
+            <div class="form-buttons">
+                <button type="button" class="btn btn-cancel" onclick="closeModal('savedChecklistsModal')">
+                    <i class="fas fa-times me-2"></i> סגור
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

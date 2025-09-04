@@ -4,6 +4,7 @@ from models import (SiteSettings, Branch, WorkingHours, MenuCategory,
                    GeneratedChecklist, TaskTemplate, TaskGroup, db)
 from datetime import datetime
 import logging
+import json
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -432,6 +433,98 @@ def delete_task_template(template_id):
         logging.error(f"Error deleting task template: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to delete template'}), 500
+
+# Generated Checklists API
+@api_bp.route('/generated-checklists', methods=['POST'])
+def create_generated_checklist():
+    """Create and save a generated checklist"""
+    try:
+        data = request.json
+        
+        # Create new generated checklist
+        checklist = GeneratedChecklist(
+            name=data.get('name'),
+            date=datetime.strptime(data.get('date'), '%Y-%m-%d').date(),
+            shift_type=data.get('shift_type'),
+            branch_id=data.get('branch_id'),
+            manager_name=data.get('manager_name'),
+            tasks_json=json.dumps(data.get('tasks_data', []))
+        )
+        
+        db.session.add(checklist)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'id': checklist.id,
+            'message': 'Checklist saved successfully'
+        })
+    except Exception as e:
+        logging.error(f"Error creating generated checklist: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save checklist'}), 500
+
+@api_bp.route('/generated-checklists', methods=['GET'])
+def get_generated_checklists():
+    """Get all generated checklists"""
+    try:
+        checklists = GeneratedChecklist.query.order_by(GeneratedChecklist.created_at.desc()).all()
+        
+        checklists_list = []
+        for checklist in checklists:
+            checklists_list.append({
+                'id': checklist.id,
+                'name': checklist.name,
+                'date': checklist.date.isoformat() if checklist.date else None,
+                'shift_type': checklist.shift_type,
+                'branch_id': checklist.branch_id,
+                'branch_name': checklist.branch.name if checklist.branch else None,
+                'manager_name': checklist.manager_name,
+                'tasks_data': json.loads(checklist.tasks_json) if checklist.tasks_json else [],
+                'created_at': checklist.created_at.isoformat() if checklist.created_at else None,
+                'completed_at': checklist.completed_at.isoformat() if checklist.completed_at else None
+            })
+        
+        return jsonify(checklists_list)
+    except Exception as e:
+        logging.error(f"Error fetching generated checklists: {e}")
+        return jsonify({'error': 'Failed to fetch checklists'}), 500
+
+@api_bp.route('/generated-checklists/<int:checklist_id>', methods=['GET'])
+def get_generated_checklist(checklist_id):
+    """Get a specific generated checklist"""
+    try:
+        checklist = GeneratedChecklist.query.get_or_404(checklist_id)
+        
+        return jsonify({
+            'id': checklist.id,
+            'name': checklist.name,
+            'date': checklist.date.isoformat() if checklist.date else None,
+            'shift_type': checklist.shift_type,
+            'branch_id': checklist.branch_id,
+            'branch_name': checklist.branch.name if checklist.branch else None,
+            'manager_name': checklist.manager_name,
+            'tasks_data': json.loads(checklist.tasks_json) if checklist.tasks_json else [],
+            'created_at': checklist.created_at.isoformat() if checklist.created_at else None,
+            'completed_at': checklist.completed_at.isoformat() if checklist.completed_at else None
+        })
+    except Exception as e:
+        logging.error(f"Error fetching generated checklist: {e}")
+        return jsonify({'error': 'Failed to fetch checklist'}), 500
+
+@api_bp.route('/generated-checklists/<int:checklist_id>', methods=['DELETE'])
+def delete_generated_checklist(checklist_id):
+    """Delete a generated checklist"""
+    try:
+        checklist = GeneratedChecklist.query.get_or_404(checklist_id)
+        db.session.delete(checklist)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error deleting generated checklist: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete checklist'}), 500
 
 # Task Groups API
 @api_bp.route('/task-groups', methods=['GET'])

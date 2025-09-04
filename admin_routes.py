@@ -91,6 +91,140 @@ def logout():
     logout_user()
     return redirect(url_for('admin.login'))
 
+# User Management Routes
+@admin_bp.route('/users')
+@login_required
+def users():
+    """List all admin users"""
+    users = AdminUser.query.order_by(AdminUser.created_at.desc()).all()
+    return render_template('admin/users.html', users=users)
+
+@admin_bp.route('/users/add', methods=['GET', 'POST'])
+@login_required
+def add_user():
+    """Add new admin user"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        is_superadmin = request.form.get('is_superadmin') == 'on'
+        
+        # Validation
+        if not username or not email or not password:
+            flash('יש למלא את כל השדות הנדרשים', 'error')
+            return render_template('admin/edit_user.html', user=None)
+        
+        if len(username) < 3:
+            flash('שם המשתמש חייב להכיל לפחות 3 תווים', 'error')
+            return render_template('admin/edit_user.html', user=None)
+            
+        if len(password) < 6:
+            flash('הסיסמה חייבת להכיל לפחות 6 תווים', 'error')
+            return render_template('admin/edit_user.html', user=None)
+            
+        # Check if username or email already exists
+        existing_user = AdminUser.query.filter(
+            (AdminUser.username == username) | (AdminUser.email == email)
+        ).first()
+        
+        if existing_user:
+            if existing_user.username == username:
+                flash('שם המשתמש כבר קיים במערכת', 'error')
+            else:
+                flash('כתובת האימייל כבר קיימת במערכת', 'error')
+            return render_template('admin/edit_user.html', user=None)
+        
+        # Create new user
+        new_user = AdminUser(
+            username=username,
+            email=email,
+            is_superadmin=is_superadmin
+        )
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash(f'המשתמש {username} נוסף בהצלחה!', 'success')
+        return redirect(url_for('admin.users'))
+    
+    return render_template('admin/edit_user.html', user=None)
+
+@admin_bp.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    """Edit existing admin user"""
+    user = AdminUser.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        is_superadmin = request.form.get('is_superadmin') == 'on'
+        
+        # Validation
+        if not username or not email:
+            flash('יש למלא את כל השדות הנדרשים', 'error')
+            return render_template('admin/edit_user.html', user=user)
+        
+        if len(username) < 3:
+            flash('שם המשתמש חייב להכיל לפחות 3 תווים', 'error')
+            return render_template('admin/edit_user.html', user=user)
+            
+        # Check if username or email already exists (excluding current user)
+        existing_user = AdminUser.query.filter(
+            ((AdminUser.username == username) | (AdminUser.email == email)) &
+            (AdminUser.id != user_id)
+        ).first()
+        
+        if existing_user:
+            if existing_user.username == username:
+                flash('שם המשתמש כבר קיים במערכת', 'error')
+            else:
+                flash('כתובת האימייל כבר קיימת במערכת', 'error')
+            return render_template('admin/edit_user.html', user=user)
+        
+        # Update user
+        user.username = username
+        user.email = email
+        user.is_superadmin = is_superadmin
+        
+        # Update password only if provided
+        if password and len(password) >= 6:
+            user.set_password(password)
+        elif password and len(password) < 6:
+            flash('הסיסמה חייבת להכיל לפחות 6 תווים', 'error')
+            return render_template('admin/edit_user.html', user=user)
+        
+        db.session.commit()
+        
+        flash(f'פרטי המשתמש {username} עודכנו בהצלחה!', 'success')
+        return redirect(url_for('admin.users'))
+    
+    return render_template('admin/edit_user.html', user=user)
+
+@admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    """Delete admin user"""
+    user = AdminUser.query.get_or_404(user_id)
+    
+    # Prevent deleting self
+    if user.id == current_user.id:
+        return jsonify({'success': False, 'error': 'לא ניתן למחוק את המשתמש הנוכחי'}), 400
+    
+    # Prevent deleting the only superadmin
+    if user.is_superadmin:
+        superadmin_count = AdminUser.query.filter_by(is_superadmin=True).count()
+        if superadmin_count <= 1:
+            return jsonify({'success': False, 'error': 'לא ניתן למחוק את מנהל המערכת האחרון'}), 400
+    
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'המשתמש {username} נמחק בהצלחה'})
+
 # Admin Dashboard
 @admin_bp.route('/')
 @login_required

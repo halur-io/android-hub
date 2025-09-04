@@ -666,6 +666,9 @@
             <a class="nav-link {% if request.endpoint == 'admin.kitchen_config' %}active{% endif %}" href="{{ url_for('admin.kitchen_config') }}">
                 <i class="fas fa-print me-2"></i> מדפסות SNBC
             </a>
+            <a class="nav-link {% if request.endpoint in ['admin.users', 'admin.edit_user', 'admin.add_user'] %}active{% endif %}" href="{{ url_for('admin.users') }}">
+                <i class="fas fa-users me-2"></i> ניהול משתמשים
+            </a>
             <hr class="my-3">
             <a class="nav-link" href="{{ url_for('admin.logout') }}">
                 <i class="fas fa-sign-out-alt me-2"></i> יציאה

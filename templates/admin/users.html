@@ -1,0 +1,375 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול משתמשים - Admin Panel{% endblock %}
+
+{% block content %}
+<!-- Modern Page Header -->
+<div class="page-header-modern">
+    <div class="header-content">
+        <div class="header-text">
+            <h1 class="page-title">
+                <i class="fas fa-users"></i>
+                ניהול משתמשים
+            </h1>
+            <p class="page-subtitle">ניהול משתמשי מערכת הניהול</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('admin.add_user') }}" class="btn btn-primary btn-modern">
+                <i class="fas fa-plus"></i> הוסף משתמש חדש
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="content-card">
+    {% if users %}
+    <div class="table-responsive">
+        <table class="table table-modern table-hover">
+            <thead>
+                <tr>
+                    <th>שם משתמש</th>
+                    <th>אימייל</th>
+                    <th>סוג משתמש</th>
+                    <th>תאריך הצטרפות</th>
+                    <th>סטטוס</th>
+                    <th>פעולות</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="user-details">
+                                <strong>{{ user.username }}</strong>
+                                {% if user.id == current_user.id %}
+                                    <span class="current-user-badge">אתה</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% if user.is_superadmin %}
+                            <span class="badge-modern badge-success">
+                                <i class="fas fa-crown"></i> מנהל מערכת
+                            </span>
+                        {% else %}
+                            <span class="badge-modern badge-info">
+                                <i class="fas fa-user"></i> מנהל
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '-' }}</td>
+                    <td>
+                        <span class="badge-modern badge-success">
+                            <i class="fas fa-check-circle"></i> פעיל
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" 
+                               class="btn btn-sm btn-outline-primary"
+                               title="עריכת משתמש">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if user.id != current_user.id %}
+                            <button class="btn btn-sm btn-outline-danger delete-user-btn" 
+                                    data-user-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}"
+                                    title="מחיקת משתמש">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state-modern">
+        <div class="empty-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <h3>אין משתמשים במערכת</h3>
+        <p>התחל על ידי הוספת המשתמש הראשון</p>
+        <a href="{{ url_for('admin.add_user') }}" class="btn btn-primary btn-modern">
+            <i class="fas fa-plus"></i> הוסף משתמש ראשון
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    מחיקת משתמש
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="warning-icon">
+                    <i class="fas fa-user-times"></i>
+                </div>
+                <h4>האם אתה בטוח?</h4>
+                <p>פעולה זו תמחק לצמיתות את המשתמש <strong id="deleteUsername"></strong> מהמערכת.</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    פעולה זו אינה ניתנת לביטול!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> ביטול
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteUser">
+                    <i class="fas fa-trash"></i> מחק משתמש
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header-modern {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--sumo-navy);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-subtitle {
+    color: #6b7280;
+    margin: 0.5rem 0 0 0;
+    font-size: 1.1rem;
+}
+
+.content-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.table-modern {
+    margin: 0;
+}
+
+.table-modern th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e5e7eb;
+    font-weight: 600;
+    color: var(--sumo-navy);
+    padding: 1.5rem 1rem;
+}
+
+.table-modern td {
+    padding: 1.2rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-avatar {
+    font-size: 2.5rem;
+    color: var(--sumo-coral);
+}
+
+.user-details strong {
+    color: var(--sumo-navy);
+    font-size: 1.1rem;
+}
+
+.current-user-badge {
+    background: var(--sumo-coral);
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.empty-state-modern {
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: #9ca3af;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state-modern h3 {
+    color: var(--sumo-navy);
+    margin-bottom: 1rem;
+}
+
+.empty-state-modern p {
+    color: #6b7280;
+    margin-bottom: 2rem;
+}
+
+.warning-icon {
+    font-size: 4rem;
+    color: #dc3545;
+    margin-bottom: 1rem;
+}
+
+.btn-modern {
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .page-title {
+        font-size: 1.8rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .user-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .user-avatar {
+        font-size: 2rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-user-btn');
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+    const confirmButton = document.getElementById('confirmDeleteUser');
+    let userToDelete = null;
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            userToDelete = {
+                id: this.dataset.userId,
+                username: this.dataset.username
+            };
+            
+            document.getElementById('deleteUsername').textContent = userToDelete.username;
+            deleteModal.show();
+        });
+    });
+
+    confirmButton.addEventListener('click', function() {
+        if (!userToDelete) return;
+        
+        // Show loading state
+        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מוחק...';
+        confirmButton.disabled = true;
+        
+        fetch(`/admin/users/delete/${userToDelete.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
+                    ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
+                
+                // Reload page to refresh user list
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                // Show error message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger alert-dismissible fade show';
+                alert.innerHTML = `
+                    שגיאה: ${data.error}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
+            }
+            
+            deleteModal.hide();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger alert-dismissible fade show';
+            alert.innerHTML = `
+                שגיאה במחיקת המשתמש
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
+            deleteModal.hide();
+        })
+        .finally(() => {
+            confirmButton.innerHTML = '<i class="fas fa-trash"></i> מחק משתמש';
+            confirmButton.disabled = false;
+            userToDelete = null;
+        });
+    });
+});
+</script>
+
+{% endblock %}

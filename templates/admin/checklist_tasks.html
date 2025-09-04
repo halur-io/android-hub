@@ -377,6 +377,77 @@
     background: #e2e6ea;
 }
 
+/* Quick Action Menu */
+.quick-action-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 2500;
+    min-width: 200px;
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.quick-action-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: right;
+    color: #333;
+}
+
+.quick-action-item:hover {
+    background: #f8f9fa;
+}
+
+.quick-action-item i {
+    margin-left: 10px;
+    width: 16px;
+    text-align: center;
+}
+
+.quick-action-item.assign {
+    color: #007bff;
+}
+
+.quick-action-item.edit {
+    color: #28a745;
+}
+
+.quick-action-item.duplicate {
+    color: #ffc107;
+}
+
+.quick-action-item.assign:hover {
+    background: #e7f3ff;
+}
+
+.quick-action-item.edit:hover {
+    background: #e8f5e8;
+}
+
+.quick-action-item.duplicate:hover {
+    background: #fff8e1;
+}
+
+/* Task item hover effect for better UX */
+.group-task-item {
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.group-task-item:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+}
+
 @keyframes slideIn {
     from {
         transform: translateX(100%);
@@ -1505,7 +1576,7 @@ function renderTaskGroups() {
                 ${group.description ? `<div style="padding: 10px 20px; background: #f8f9fa; font-style: italic;">${group.description}</div>` : ''}
                 <div class="group-tasks">
                     ${group.tasks.map(task => `
-                        <div class="group-task-item">
+                        <div class="group-task-item" onclick="showQuickActionMenu(event, ${task.id})">
                             <div class="task-info-compact">
                                 <div class="priority-dot ${task.priority}"></div>
                                 <h4 class="task-name-compact">${task.name}</h4>
@@ -1541,7 +1612,7 @@ function renderTaskGroups() {
                 </div>
                 <div class="group-tasks">
                     ${ungroupedTasks.map(task => `
-                        <div class="group-task-item">
+                        <div class="group-task-item" onclick="showQuickActionMenu(event, ${task.id})">
                             <div class="task-info-compact">
                                 <div class="priority-dot ${task.priority}"></div>
                                 <h4 class="task-name-compact">${task.name}</h4>
@@ -2436,6 +2507,169 @@ async function deleteGroupConfirmed(groupId) {
     } catch (error) {
         console.error('Error deleting group:', error);
         showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
+    }
+}
+
+// Quick Action Menu Functions
+function showQuickActionMenu(event, taskId) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Remove any existing quick action menus
+    const existingMenu = document.querySelector('.quick-action-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    // Get the task data
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    // Create the quick action menu
+    const menu = document.createElement('div');
+    menu.className = 'quick-action-menu';
+    menu.innerHTML = `
+        <button class="quick-action-item assign" onclick="quickAssignToGroup(${taskId}); hideQuickActionMenu()">
+            <i class="fas fa-layer-group"></i>
+            הקצה לקבוצה
+        </button>
+        <button class="quick-action-item edit" onclick="editTask(${taskId}); hideQuickActionMenu()">
+            <i class="fas fa-edit"></i>
+            ערוך משימה
+        </button>
+        <button class="quick-action-item duplicate" onclick="duplicateTask(${taskId}); hideQuickActionMenu()">
+            <i class="fas fa-copy"></i>
+            שכפל משימה
+        </button>
+    `;
+    
+    // Add to body
+    document.body.appendChild(menu);
+    
+    // Position the menu near the click
+    positionQuickActionMenu(menu, event);
+    
+    // Add click outside to close
+    setTimeout(() => {
+        document.addEventListener('click', hideQuickActionMenuOnClickOutside);
+    }, 10);
+}
+
+function positionQuickActionMenu(menu, event) {
+    const menuRect = { width: 200, height: 120 }; // Approximate menu size
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    
+    let x = event.clientX;
+    let y = event.clientY;
+    
+    // Adjust position to keep menu in viewport
+    if (x + menuRect.width > viewport.width) {
+        x = viewport.width - menuRect.width - 10;
+    }
+    
+    if (y + menuRect.height > viewport.height) {
+        y = y - menuRect.height;
+    }
+    
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+}
+
+function hideQuickActionMenu() {
+    const menu = document.querySelector('.quick-action-menu');
+    if (menu) menu.remove();
+    document.removeEventListener('click', hideQuickActionMenuOnClickOutside);
+}
+
+function hideQuickActionMenuOnClickOutside(event) {
+    const menu = document.querySelector('.quick-action-menu');
+    if (menu && !menu.contains(event.target)) {
+        hideQuickActionMenu();
+    }
+}
+
+// Quick Action Functions
+function quickAssignToGroup(taskId) {
+    const groupOptions = taskGroups.map(group => 
+        `<option value="${group.id}">${group.name}</option>`
+    ).join('');
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'mobile-confirm';
+    dialog.innerHTML = `
+        <div class="mobile-confirm-content">
+            <h3>הקצה משימה לקבוצה</h3>
+            <p>בחר קבוצה עבור המשימה:</p>
+            <select id="quickGroupSelect" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px;">
+                <option value="">ללא קבוצה</option>
+                ${groupOptions}
+            </select>
+            <div class="mobile-confirm-actions">
+                <button class="cancel-btn" onclick="this.closest('.mobile-confirm').remove()">ביטול</button>
+                <button class="confirm-btn" onclick="performQuickGroupAssignment(${taskId}); this.closest('.mobile-confirm').remove();">הקצה</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+}
+
+async function performQuickGroupAssignment(taskId) {
+    const groupId = document.getElementById('quickGroupSelect')?.value || null;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    try {
+        const response = await fetch(`/api/checklist-tasks/${taskId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...task,
+                group_id: groupId ? parseInt(groupId) : null
+            })
+        });
+        
+        if (response.ok) {
+            loadTasks();
+            loadTaskGroups();
+            const groupName = groupId ? taskGroups.find(g => g.id === parseInt(groupId))?.name : 'ללא קבוצה';
+            showSuccess(`✅ המשימה הוקצתה לקבוצה "${groupName}"`);
+        }
+    } catch (error) {
+        showError('❌ בעיה בהקצאת המשימה לקבוצה');
+    }
+}
+
+async function duplicateTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    // Create a copy of the task without the ID
+    const duplicatedTask = {
+        name: `העתק של ${task.name}`,
+        description: task.description,
+        shift_type: task.shift_type,
+        category: task.category,
+        priority: task.priority,
+        frequency: task.frequency,
+        group_id: task.group_id
+    };
+    
+    try {
+        const response = await fetch('/api/checklist-tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(duplicatedTask)
+        });
+        
+        if (response.ok) {
+            loadTasks();
+            loadTaskGroups();
+            showSuccess('✅ המשימה שוכפלה בהצלחה!');
+        } else {
+            showError('❌ לא ניתן לשכפל את המשימה');
+        }
+    } catch (error) {
+        console.error('Error duplicating task:', error);
+        showError('❌ בעיה ברשת');
     }
 }
 

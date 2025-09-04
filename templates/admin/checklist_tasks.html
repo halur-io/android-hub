@@ -1200,12 +1200,30 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>בחר קבוצות למשימות: *</label>
-                    <div id="groupSelectionContainer" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; max-height: 200px; overflow-y: auto;">
-                        <div style="color: #666; text-align: center; padding: 20px;">טוען קבוצות...</div>
-                    </div>
+                    <label>בחר תבנית: *</label>
+                    <select id="checklistTemplate" required onchange="handleTemplateSelection()">
+                        <option value="">בחר תבנית משימות</option>
+                    </select>
                     <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                        <i class="fas fa-info-circle"></i> בחר קבוצה אחת או יותר להכללה ברשימת המשימות
+                        <i class="fas fa-info-circle"></i> בחר תבנית שמורה או צור רשימה מותאמת אישית
+                    </div>
+                </div>
+                
+                <div id="customGroupSelection" style="display: none;">
+                    <div class="form-group">
+                        <label>בחר קבוצות מותאמות אישית:</label>
+                        <div id="groupSelectionContainer" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; max-height: 200px; overflow-y: auto;">
+                            <div style="color: #666; text-align: center; padding: 20px;">טוען קבוצות...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="templateGroupsInfo" style="display: none;">
+                    <div class="form-group">
+                        <label>קבוצות כלולות בתבנית:</label>
+                        <div id="templateGroupsDisplay" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; background: #f8f9fa;">
+                            <!-- Template groups will be shown here -->
+                        </div>
                     </div>
                 </div>
                 
@@ -1279,6 +1297,16 @@
                         <option value="closing">סגירה</option>
                         <option value="night">משמרת לילה</option>
                     </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>הקצה קבוצות לתבנית: *</label>
+                    <div id="templateGroupSelection" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; max-height: 200px; overflow-y: auto;">
+                        <div style="color: #666; text-align: center; padding: 20px;">טוען קבוצות...</div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <i class="fas fa-info-circle"></i> בחר קבוצות שישתייכו לתבנית זו. כאשר תטען את התבנית, רק המשימות מהקבוצות הנבחרות יופיעו.
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -1648,6 +1676,90 @@ function populateGroupSelection() {
     `).join('');
 }
 
+function populateTemplateGroupSelection() {
+    const container = document.getElementById('templateGroupSelection');
+    if (!container) return;
+    
+    if (!taskGroups || taskGroups.length === 0) {
+        container.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">אין קבוצות זמינות</div>';
+        return;
+    }
+    
+    container.innerHTML = taskGroups.map(group => `
+        <label style="
+            display: flex; align-items: center; padding: 8px 12px; 
+            margin: 5px 0; border-radius: 6px; cursor: pointer;
+            border: 1px solid #e9ecef; background: ${group.color}10;
+            transition: all 0.2s;
+        " onmouseover="this.style.backgroundColor='${group.color}20'" 
+           onmouseout="this.style.backgroundColor='${group.color}10'">
+            <input type="checkbox" value="${group.id}" name="templateGroups" style="margin-left: 10px;">
+            <div style="
+                width: 12px; height: 12px; border-radius: 50%; 
+                background: ${group.color}; margin-left: 8px;
+            "></div>
+            <div style="flex: 1;">
+                <div style="font-weight: 500;">${group.name}</div>
+                <div style="font-size: 0.85em; color: #666;">${group.tasks?.length || 0} משימות</div>
+            </div>
+        </label>
+    `).join('');
+}
+
+function populateTemplateSelect() {
+    const select = document.getElementById('checklistTemplate');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">בחר תבנית משימות</option>';
+    select.innerHTML += '<option value="custom">רשימה מותאמת אישית</option>';
+    
+    if (templates && templates.length > 0) {
+        templates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            if (template.description) {
+                option.title = template.description;
+            }
+            select.appendChild(option);
+        });
+    }
+}
+
+function handleTemplateSelection() {
+    const selectedValue = document.getElementById('checklistTemplate').value;
+    const customSelection = document.getElementById('customGroupSelection');
+    const templateInfo = document.getElementById('templateGroupsInfo');
+    const templateDisplay = document.getElementById('templateGroupsDisplay');
+    
+    if (selectedValue === 'custom') {
+        customSelection.style.display = 'block';
+        templateInfo.style.display = 'none';
+    } else if (selectedValue && selectedValue !== '') {
+        customSelection.style.display = 'none';
+        templateInfo.style.display = 'block';
+        
+        // Find selected template and display its groups
+        const template = templates.find(t => t.id == selectedValue);
+        if (template && template.assigned_groups) {
+            const templateGroups = template.assigned_groups.map(groupId => 
+                taskGroups.find(g => g.id === groupId)
+            ).filter(g => g);
+            
+            templateDisplay.innerHTML = templateGroups.map(group => `
+                <div style="display: flex; align-items: center; margin: 5px 0;">
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: ${group.color}; margin-left: 8px;"></div>
+                    <span style="font-weight: 500;">${group.name}</span>
+                    <span style="color: #666; margin-right: 8px;">(${group.tasks?.length || 0} משימות)</span>
+                </div>
+            `).join('');
+        }
+    } else {
+        customSelection.style.display = 'none';
+        templateInfo.style.display = 'none';
+    }
+}
+
 // Render functions
 function renderTasks() {
     const container = document.getElementById('tasksList');
@@ -1898,6 +2010,7 @@ function editTask(taskId) {
 function showGenerateModal() {
     populateBranchSelect();
     populateGroupSelection();
+    populateTemplateSelect();
     setDefaultDate();
     showModal('generateModal');
 }
@@ -1909,6 +2022,7 @@ function showTemplatesModal() {
 
 function showSaveTemplateModal() {
     document.getElementById('templateShiftType').value = currentShift === 'all' ? '' : currentShift;
+    populateTemplateGroupSelection();
     showModal('saveTemplateModal');
 }
 
@@ -1975,14 +2089,30 @@ async function handleTaskSubmit(e) {
 async function handleGenerateSubmit(e) {
     e.preventDefault();
     
-    // Get selected groups
-    const selectedGroups = [];
-    document.querySelectorAll('#groupSelectionContainer input[type="checkbox"]:checked').forEach(checkbox => {
-        selectedGroups.push(parseInt(checkbox.value));
-    });
+    const templateId = document.getElementById('checklistTemplate').value;
+    let selectedGroups = [];
     
-    if (selectedGroups.length === 0) {
-        showError('❌ אנא בחר לפחות קבוצה אחת');
+    if (templateId === 'custom') {
+        // Custom selection - get manually selected groups
+        document.querySelectorAll('#groupSelectionContainer input[type="checkbox"]:checked').forEach(checkbox => {
+            selectedGroups.push(parseInt(checkbox.value));
+        });
+        
+        if (selectedGroups.length === 0) {
+            showError('❌ אנא בחר לפחות קבוצה אחת');
+            return;
+        }
+    } else if (templateId && templateId !== '') {
+        // Template selection - get groups from template
+        const template = templates.find(t => t.id == templateId);
+        if (template && template.assigned_groups) {
+            selectedGroups = template.assigned_groups;
+        } else {
+            showError('❌ התבנית הנבחרת לא כוללת קבוצות');
+            return;
+        }
+    } else {
+        showError('❌ אנא בחר תבנית או קבוצות מותאמות אישית');
         return;
     }
     
@@ -1991,6 +2121,7 @@ async function handleGenerateSubmit(e) {
         date: document.getElementById('checklistDate').value,
         branch_id: parseInt(document.getElementById('checklistBranch').value),
         selected_groups: selectedGroups,
+        template_id: templateId !== 'custom' ? parseInt(templateId) : null,
         shift_manager: document.getElementById('shiftManager').value
     };
     
@@ -2280,11 +2411,23 @@ function renderTemplates() {
 async function handleSaveTemplate(e) {
     e.preventDefault();
     
+    // Get selected groups for template
+    const selectedGroups = [];
+    document.querySelectorAll('input[name="templateGroups"]:checked').forEach(checkbox => {
+        selectedGroups.push(parseInt(checkbox.value));
+    });
+    
+    if (selectedGroups.length === 0) {
+        showError('❌ אנא בחר לפחות קבוצה אחת לתבנית');
+        return;
+    }
+    
     const templateData = {
         name: document.getElementById('templateName').value,
         description: document.getElementById('templateDescription').value,
         shift_type: document.getElementById('templateShiftType').value,
-        is_default: document.getElementById('templateIsDefault').checked
+        is_default: document.getElementById('templateIsDefault').checked,
+        assigned_groups: selectedGroups
     };
     
     try {

@@ -126,6 +126,8 @@ class TaskTemplate(db.Model):
     
     # JSON field to store task configuration
     tasks_config = db.Column(db.JSON)  # Will store array of task objects
+    # JSON field to store assigned group IDs
+    assigned_groups = db.Column(db.JSON)  # Will store array of group IDs
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

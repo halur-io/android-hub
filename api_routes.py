@@ -327,6 +327,7 @@ def get_task_templates():
                 'shift_type': template.shift_type,
                 'is_default': template.is_default,
                 'tasks_config': template.tasks_config,
+                'assigned_groups': template.assigned_groups or [],
                 'created_at': template.created_at.isoformat() if template.created_at else None
             })
         
@@ -363,7 +364,8 @@ def create_task_template():
             description=data.get('description'),
             shift_type=data.get('shift_type'),
             is_default=data.get('is_default', False),
-            tasks_config=tasks_config
+            tasks_config=tasks_config,
+            assigned_groups=data.get('assigned_groups', [])
         )
         
         db.session.add(template)

@@ -2228,40 +2228,91 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
             <meta charset="UTF-8">
             <title>רשימת משימות - ${data.name}</title>
             <style>
-                @page { size: A4; margin: 1.5cm; }
+                @page { size: A4; margin: 1cm; }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; }
-                .header { text-align: center; border-bottom: 3px solid #333; padding-bottom: 15px; margin-bottom: 25px; }
-                .header h1 { font-size: 24px; margin-bottom: 10px; }
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
-                .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 8px; border-radius: 4px; }
-                .group-section { margin: 25px 0; break-inside: avoid; }
+                body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; }
+                
+                /* Compact Header */
+                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 15px; }
+                .header h1 { font-size: 18px; margin-bottom: 6px; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+                .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 4px 6px; border-radius: 3px; font-size: 10px; }
+                
+                /* 2-Column Layout for Groups */
+                .content-container { 
+                    columns: 2; 
+                    column-gap: 15px; 
+                    column-fill: balance;
+                }
+                
+                .group-section { 
+                    margin: 12px 0; 
+                    break-inside: avoid; 
+                    page-break-inside: avoid;
+                    display: inline-block;
+                    width: 100%;
+                }
+                
                 .group-header { 
-                    display: flex; align-items: center; gap: 8px; padding: 12px; 
-                    margin-bottom: 10px; border-radius: 6px; font-weight: bold; color: white;
+                    display: flex; align-items: center; gap: 4px; padding: 6px 8px; 
+                    margin-bottom: 6px; border-radius: 4px; font-weight: bold; color: white;
+                    font-size: 11px;
                 }
+                
                 .task-item { 
-                    display: flex; align-items: center; padding: 8px 0; 
-                    border-bottom: 1px dotted #ddd; min-height: 35px;
+                    display: flex; align-items: flex-start; padding: 4px 0; 
+                    border-bottom: 1px dotted #ddd; min-height: 25px;
                 }
+                
                 .checkbox { 
-                    width: 18px; height: 18px; border: 2px solid #333; 
-                    margin-left: 12px; flex-shrink: 0; 
+                    width: 14px; height: 14px; border: 1.5px solid #333; 
+                    margin-left: 8px; margin-top: 2px; flex-shrink: 0; 
                 }
+                
                 .task-content { flex: 1; }
-                .task-name { font-weight: 500; margin-bottom: 2px; }
-                .task-description { font-size: 10px; color: #666; }
-                .priority-high { border-right: 3px solid #dc3545; }
-                .priority-medium { border-right: 3px solid #ffc107; }
-                .priority-low { border-right: 3px solid #28a745; }
+                .task-name { font-weight: 500; margin-bottom: 1px; font-size: 11px; }
+                .task-description { font-size: 9px; color: #666; }
+                
+                .priority-high { border-right: 2px solid #dc3545; }
+                .priority-medium { border-right: 2px solid #ffc107; }
+                .priority-low { border-right: 2px solid #28a745; }
+                
+                /* Compact Signature Section */
                 .signature-section { 
-                    margin-top: 40px; padding-top: 20px; 
-                    border-top: 2px solid #333; display: grid; 
-                    grid-template-columns: 1fr 1fr; gap: 30px;
+                    margin-top: 20px; padding-top: 10px; 
+                    border-top: 2px solid #333; 
+                    break-inside: avoid;
+                    columns: 1; /* Force signature to single column */
+                    page-break-before: avoid;
                 }
+                
+                .signature-grid {
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr; 
+                    gap: 15px;
+                }
+                
                 .signature-box { 
                     text-align: center; border: 1px solid #333; 
-                    padding: 40px 10px 10px; border-radius: 4px;
+                    padding: 25px 8px 8px; border-radius: 3px; font-size: 10px;
+                }
+                
+                /* Print Optimizations */
+                @media print {
+                    .content-container {
+                        columns: 2;
+                        column-gap: 15px;
+                    }
+                    
+                    .group-section {
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                    
+                    .signature-section {
+                        break-before: avoid;
+                        columns: 1;
+                    }
                 }
             </style>
         </head>
@@ -2275,7 +2326,7 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     </div>
                     <div class="info-item">
                         <span><strong>סניף:</strong></span>
-                        <span>${branch ? branch.name : '___________'}</span>
+                        <span>${branch ? (branch.name_he || branch.name) : '___________'}</span>
                     </div>
                     <div class="info-item">
                         <span><strong>אחראי משמרת:</strong></span>
@@ -2288,31 +2339,34 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 </div>
             </div>
             
-            ${selectedGroups.map(group => `
-                <div class="group-section">
-                    <div class="group-header" style="background: ${group.color};">
-                        <i class="fas fa-layer-group"></i>
-                        <span>${group.name}</span>
-                        <span>(${group.tasks.length} משימות)</span>
-                    </div>
-                    ${group.tasks.map(task => `
-                        <div class="task-item priority-${task.priority}">
-                            <div class="checkbox"></div>
-                            <div class="task-content">
-                                <div class="task-name">${task.name}</div>
-                                ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
-                            </div>
+            <div class="content-container">
+                ${selectedGroups.map(group => `
+                    <div class="group-section">
+                        <div class="group-header" style="background: ${group.color};">
+                            <span>${group.name}</span>
+                            <span>(${group.tasks.length})</span>
                         </div>
-                    `).join('')}
-                </div>
-            `).join('')}
+                        ${group.tasks.map(task => `
+                            <div class="task-item priority-${task.priority}">
+                                <div class="checkbox"></div>
+                                <div class="task-content">
+                                    <div class="task-name">${task.name}</div>
+                                    ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>
             
             <div class="signature-section">
-                <div class="signature-box">
-                    <div><strong>חתימת אחראי משמרת</strong></div>
-                </div>
-                <div class="signature-box">
-                    <div><strong>חתימת מנהל</strong></div>
+                <div class="signature-grid">
+                    <div class="signature-box">
+                        <div><strong>חתימת אחראי משמרת</strong></div>
+                    </div>
+                    <div class="signature-box">
+                        <div><strong>חתימת מנהל</strong></div>
+                    </div>
                 </div>
             </div>
         </body>

@@ -479,6 +479,110 @@
     margin-bottom: 20px;
 }
 
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.quick-action-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.quick-action-btn:hover {
+    background: var(--sumo-coral);
+    border-color: var(--sumo-coral);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.group-edit-modal .modal-content {
+    max-width: 500px;
+}
+
+.group-edit-form {
+    margin-top: 15px;
+}
+
+.color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.color-option {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+    border-color: #adb5bd;
+}
+
+.color-option.selected {
+    border-color: #007bff;
+    border-width: 3px;
+    transform: scale(1.15);
+}
+
+.bulk-select {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+}
+
+.task-card {
+    position: relative;
+}
+
+.group-task-item {
+    position: relative;
+}
+
+.bulk-actions-bar {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.bulk-actions-bar.show {
+    display: flex;
+}
+
+.selected-count {
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
     .tasks-header {
         flex-direction: column;
@@ -486,8 +590,42 @@
         align-items: stretch;
     }
     
+    .tasks-header h1 {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+    
+    .tasks-header > div {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .tasks-header .btn {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+    
     .shift-tabs {
         justify-content: center;
+        gap: 5px;
+    }
+    
+    .shift-tab {
+        font-size: 0.8rem;
+        padding: 8px 12px;
+        flex: 1;
+        text-align: center;
+        min-width: 0;
+    }
+    
+    .view-controls {
+        margin: 15px 0;
+    }
+    
+    .view-toggle {
+        font-size: 0.8rem;
+        padding: 6px 12px;
     }
     
     .task-meta {
@@ -497,11 +635,85 @@
     
     .task-actions {
         justify-content: flex-end;
+        gap: 5px;
+    }
+    
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.7rem;
     }
     
     .modal-content {
         width: 95%;
-        margin: 10% auto;
+        margin: 5% auto;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .row .col-md-6 {
+        margin-bottom: 10px;
+    }
+    
+    .form-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .form-buttons .btn {
+        width: 100%;
+    }
+    
+    .group-header {
+        padding: 12px 15px;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .group-title {
+        font-size: 1rem;
+    }
+    
+    .group-actions {
+        align-self: flex-end;
+        gap: 5px;
+    }
+    
+    .group-task-item {
+        padding: 10px 15px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .task-info-compact {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .task-meta-compact {
+        gap: 5px;
+    }
+    
+    .quick-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .notification {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        margin: 0;
     }
 }
 </style>
@@ -533,6 +745,43 @@
     <button class="shift-tab" data-shift="evening">משמרת ערב</button>
     <button class="shift-tab" data-shift="closing">סגירה</button>
     <button class="shift-tab" data-shift="night">משמרת לילה</button>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <button class="quick-action-btn" onclick="selectAllTasks()">
+        <i class="fas fa-check-square me-1"></i> בחר הכל
+    </button>
+    <button class="quick-action-btn" onclick="clearSelection()">
+        <i class="fas fa-times me-1"></i> בטל בחירה
+    </button>
+    <button class="quick-action-btn" onclick="markAllComplete()">
+        <i class="fas fa-clipboard-check me-1"></i> סמן הכל כהושלם
+    </button>
+    <button class="quick-action-btn" onclick="exportTasks()">
+        <i class="fas fa-download me-1"></i> ייצוא משימות
+    </button>
+</div>
+
+<!-- Bulk Actions Bar -->
+<div class="bulk-actions-bar" id="bulkActionsBar">
+    <div class="selected-count">
+        <span id="selectedCount">0</span> משימות נבחרו
+    </div>
+    <div class="bulk-actions">
+        <button class="btn btn-sm btn-success" onclick="bulkMarkComplete()">
+            <i class="fas fa-check me-1"></i> סמן כהושלם
+        </button>
+        <button class="btn btn-sm btn-primary" onclick="bulkAssignGroup()">
+            <i class="fas fa-layer-group me-1"></i> הקצה לקבוצה
+        </button>
+        <button class="btn btn-sm btn-warning" onclick="bulkChangeCategory()">
+            <i class="fas fa-tag me-1"></i> שנה קטגוריה
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="bulkDelete()">
+            <i class="fas fa-trash me-1"></i> מחק
+        </button>
+    </div>
 </div>
 
 <!-- View Toggle -->
@@ -770,6 +1019,71 @@
                         <i class="fas fa-save me-2"></i> שמור תבנית
                     </button>
                     <button type="button" class="btn btn-cancel" onclick="closeModal('saveTemplateModal')">
+                        <i class="fas fa-times me-2"></i> ביטול
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Group Edit Modal -->
+<div id="groupEditModal" class="modal group-edit-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="groupEditModalTitle">עריכת קבוצה</h2>
+        </div>
+        <div class="modal-body">
+            <form id="groupEditForm" class="group-edit-form">
+                <input type="hidden" id="editGroupId">
+                
+                <div class="form-group">
+                    <label>שם הקבוצה: *</label>
+                    <input type="text" id="editGroupName" required placeholder="שם הקבוצה">
+                </div>
+                
+                <div class="form-group">
+                    <label>תיאור הקבוצה:</label>
+                    <textarea id="editGroupDescription" rows="3" placeholder="תאר את הקבוצה..."></textarea>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>קטגוריה: *</label>
+                            <select id="editGroupCategory" required>
+                                <option value="">בחר קטגוריה</option>
+                                <option value="kitchen">מטבח</option>
+                                <option value="cleaning">ניקיון</option>
+                                <option value="service">שירות</option>
+                                <option value="inventory">מלאי</option>
+                                <option value="safety">בטיחות</option>
+                                <option value="other">אחר</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>צבע הקבוצה:</label>
+                            <div class="color-picker">
+                                <div class="color-option" style="background: #007bff" data-color="#007bff"></div>
+                                <div class="color-option" style="background: #28a745" data-color="#28a745"></div>
+                                <div class="color-option" style="background: #dc3545" data-color="#dc3545"></div>
+                                <div class="color-option" style="background: #ffc107" data-color="#ffc107"></div>
+                                <div class="color-option" style="background: #17a2b8" data-color="#17a2b8"></div>
+                                <div class="color-option" style="background: #6f42c1" data-color="#6f42c1"></div>
+                                <div class="color-option" style="background: #fd7e14" data-color="#fd7e14"></div>
+                                <div class="color-option" style="background: #e83e8c" data-color="#e83e8c"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-save">
+                        <i class="fas fa-save me-2"></i> שמור שינויים
+                    </button>
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('groupEditModal')">
                         <i class="fas fa-times me-2"></i> ביטול
                     </button>
                 </div>
@@ -1072,11 +1386,14 @@ function renderTaskGroups() {
                         <span class="group-badge">${group.task_count} משימות</span>
                     </div>
                     <div class="group-actions">
-                        <button class="btn btn-sm btn-outline-light" onclick="editGroup(${group.id})">
+                        <button class="btn btn-sm btn-outline-light" onclick="editGroup(${group.id})" title="עריכת קבוצה">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-light" onclick="deleteGroup(${group.id})">
+                        <button class="btn btn-sm btn-outline-light" onclick="deleteGroup(${group.id})" title="מחיקת קבוצה">
                             <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-light" onclick="duplicateGroup(${group.id})" title="שכפול קבוצה">
+                            <i class="fas fa-copy"></i>
                         </button>
                     </div>
                 </div>
@@ -1177,10 +1494,17 @@ function renderIndividualTasks() {
             <div class="task-meta">
                 <h3 class="task-name">${task.name}</h3>
                 <div class="task-actions">
-                    <button class="btn btn-sm btn-outline-primary" onclick="editTask(${task.id})">
+                    <input type="checkbox" class="bulk-select" data-task-id="${task.id}" onchange="toggleTaskSelection(${task.id})">
+                    <button class="btn btn-sm btn-outline-success" onclick="markTaskComplete(${task.id})" title="סמן כהושלם">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTask(${task.id})" title="עריכה">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
+                    <button class="btn btn-sm btn-outline-info" onclick="duplicateTask(${task.id})" title="שכפול">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})" title="מחיקה">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1679,8 +2003,28 @@ function toggleView(viewType) {
 
 // Group management functions
 async function editGroup(groupId) {
-    // Implementation for editing groups
-    showInfo('🔧 עריכת קבוצות תבוא בגירסה הבאה');
+    const group = taskGroups.find(g => g.id === groupId);
+    if (!group) {
+        showError('❌ לא נמצאה הקבוצה');
+        return;
+    }
+    
+    // Populate form with current values
+    document.getElementById('groupEditModalTitle').textContent = `עריכת קבוצה: ${group.name}`;
+    document.getElementById('editGroupId').value = group.id;
+    document.getElementById('editGroupName').value = group.name;
+    document.getElementById('editGroupDescription').value = group.description || '';
+    document.getElementById('editGroupCategory').value = group.category;
+    
+    // Set selected color
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.color === group.color) {
+            option.classList.add('selected');
+        }
+    });
+    
+    showModal('groupEditModal');
 }
 
 async function deleteGroup(groupId) {
@@ -1716,5 +2060,227 @@ async function deleteGroup(groupId) {
 function adjustColor(color, amount) {
     return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
 }
+
+// New quick action functions
+let selectedTasks = new Set();
+
+function selectAllTasks() {
+    const checkboxes = document.querySelectorAll('.bulk-select');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        selectedTasks.add(parseInt(checkbox.dataset.taskId));
+    });
+    updateBulkActions();
+    showInfo('✅ כל המשימות נבחרו');
+}
+
+function clearSelection() {
+    const checkboxes = document.querySelectorAll('.bulk-select');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    selectedTasks.clear();
+    updateBulkActions();
+    showInfo('❌ הבחירה בוטלה');
+}
+
+function toggleTaskSelection(taskId) {
+    if (selectedTasks.has(taskId)) {
+        selectedTasks.delete(taskId);
+    } else {
+        selectedTasks.add(taskId);
+    }
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const bulkBar = document.getElementById('bulkActionsBar');
+    const countElement = document.getElementById('selectedCount');
+    
+    if (selectedTasks.size > 0) {
+        bulkBar.classList.add('show');
+        countElement.textContent = selectedTasks.size;
+    } else {
+        bulkBar.classList.remove('show');
+    }
+}
+
+function markAllComplete() {
+    showSuccess('✅ כל המשימות סומנו כהושלמו! (דמו)');
+}
+
+function exportTasks() {
+    const tasksToExport = currentShift === 'all' ? tasks : tasks.filter(t => t.shift_type === currentShift);
+    const dataStr = JSON.stringify(tasksToExport, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tasks_${currentShift}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    showSuccess('📥 המשימות יוצאו בהצלחה');
+}
+
+async function markTaskComplete(taskId) {
+    showSuccess(`✅ משימה ${taskId} סומנה כהושלמה! (דמו)`);
+}
+
+async function duplicateTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const newTaskData = {
+        name: `העתק - ${task.name}`,
+        description: task.description,
+        shift_type: task.shift_type,
+        category: task.category,
+        priority: task.priority,
+        frequency: task.frequency,
+        group_id: task.group_id
+    };
+    
+    try {
+        const response = await fetch('/api/checklist-tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newTaskData)
+        });
+        
+        if (response.ok) {
+            loadTasks();
+            showSuccess('📋 המשימה שוכפלה בהצלחה');
+        } else {
+            showError('❌ לא ניתן לשכפל את המשימה');
+        }
+    } catch (error) {
+        showError('❌ בעיה ברשת');
+    }
+}
+
+async function duplicateGroup(groupId) {
+    const group = taskGroups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    const newGroupData = {
+        name: `העתק - ${group.name}`,
+        description: group.description,
+        shift_type: group.shift_type,
+        category: group.category,
+        color: group.color,
+        tasks: group.tasks.map(task => ({
+            name: task.name,
+            description: task.description,
+            priority: task.priority,
+            frequency: task.frequency
+        }))
+    };
+    
+    try {
+        const response = await fetch('/api/task-groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newGroupData)
+        });
+        
+        if (response.ok) {
+            loadTaskGroups();
+            loadTasks();
+            showSuccess('📋 הקבוצה שוכפלה בהצלחה');
+        } else {
+            showError('❌ לא ניתן לשכפל את הקבוצה');
+        }
+    } catch (error) {
+        showError('❌ בעיה ברשת');
+    }
+}
+
+function bulkMarkComplete() {
+    if (selectedTasks.size === 0) return;
+    showSuccess(`✅ ${selectedTasks.size} משימות סומנו כהושלמו! (דמו)`);
+    clearSelection();
+}
+
+function bulkAssignGroup() {
+    if (selectedTasks.size === 0) return;
+    showInfo(`📦 הקצאת ${selectedTasks.size} משימות לקבוצה תבוא בגירסה הבאה`);
+}
+
+function bulkChangeCategory() {
+    if (selectedTasks.size === 0) return;
+    showInfo(`🏷️ שינוי קטגוריה ל-${selectedTasks.size} משימות תבוא בגירסה הבאה`);
+}
+
+async function bulkDelete() {
+    if (selectedTasks.size === 0) return;
+    
+    if (!confirm(`האם אתה בטוח שברצונך למחוק ${selectedTasks.size} משימות?`)) {
+        return;
+    }
+    
+    try {
+        const deletePromises = Array.from(selectedTasks).map(taskId => 
+            fetch(`/api/checklist-tasks/${taskId}`, { method: 'DELETE' })
+        );
+        
+        await Promise.all(deletePromises);
+        loadTasks();
+        clearSelection();
+        showSuccess(`🗑️ ${selectedTasks.size} משימות נמחקו בהצלחה`);
+    } catch (error) {
+        showError('❌ בעיה במחיקת המשימות');
+    }
+}
+
+// Handle group edit form submission
+async function handleGroupEditSubmit(e) {
+    e.preventDefault();
+    
+    const groupId = document.getElementById('editGroupId').value;
+    const selectedColor = document.querySelector('.color-option.selected')?.dataset.color || '#007bff';
+    
+    const groupData = {
+        name: document.getElementById('editGroupName').value,
+        description: document.getElementById('editGroupDescription').value,
+        category: document.getElementById('editGroupCategory').value,
+        color: selectedColor
+    };
+    
+    try {
+        const response = await fetch(`/api/task-groups/${groupId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(groupData)
+        });
+        
+        if (response.ok) {
+            closeModal('groupEditModal');
+            loadTaskGroups();
+            loadTasks();
+            showSuccess('✅ הקבוצה עודכנה בהצלחה');
+        } else {
+            const error = await response.json();
+            showError('❌ ' + (error.error || 'לא ניתן לעדכן את הקבוצה'));
+        }
+    } catch (error) {
+        showError('❌ בעיה ברשת');
+    }
+}
+
+// Color picker event handlers
+document.addEventListener('DOMContentLoaded', () => {
+    // Color picker functionality
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('color-option')) {
+            e.target.parentElement.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+            e.target.classList.add('selected');
+        }
+    });
+    
+    // Form event listeners
+    const groupEditForm = document.getElementById('groupEditForm');
+    if (groupEditForm) {
+        groupEditForm.addEventListener('submit', handleGroupEditSubmit);
+    }
+});
 </script>
 {% endblock %}

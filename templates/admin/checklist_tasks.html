@@ -260,13 +260,16 @@
     top: 20px;
     right: 20px;
     padding: 15px 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     color: white;
     font-weight: 500;
     z-index: 2000;
     min-width: 300px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    animation: slideIn 0.3s ease-out;
+    max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    animation: slideIn 0.4s ease-out;
+    word-wrap: break-word;
+    line-height: 1.4;
 }
 
 .notification.success {
@@ -289,6 +292,89 @@
     font-size: 1.2rem;
     cursor: pointer;
     margin-right: 10px;
+    min-width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+
+.notification .close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-confirm {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 20px;
+}
+
+.mobile-confirm-content {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.mobile-confirm h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.mobile-confirm p {
+    margin: 0 0 20px 0;
+    color: #666;
+    line-height: 1.5;
+}
+
+.mobile-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.mobile-confirm-actions button {
+    flex: 1;
+    max-width: 120px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.confirm-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: #c82333;
+}
+
+.cancel-btn {
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.cancel-btn:hover {
+    background: #e2e6ea;
 }
 
 @keyframes slideIn {
@@ -710,10 +796,19 @@
     }
     
     .notification {
+        top: 10px;
         right: 10px;
         left: 10px;
         min-width: auto;
+        max-width: none;
         margin: 0;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .notification .close-btn {
+        font-size: 1.4rem;
+        padding: 2px 6px;
     }
 }
 </style>
@@ -772,7 +867,7 @@
         <button class="btn btn-sm btn-success" onclick="bulkMarkComplete()">
             <i class="fas fa-check me-1"></i> סמן כהושלם
         </button>
-        <button class="btn btn-sm btn-primary" onclick="bulkAssignGroup()">
+        <button class="btn btn-sm btn-primary" onclick="showBulkGroupAssignment()">
             <i class="fas fa-layer-group me-1"></i> הקצה לקבוצה
         </button>
         <button class="btn btn-sm btn-warning" onclick="bulkChangeCategory()">
@@ -873,6 +968,16 @@
                                 <option value="as_needed">לפי הצורך</option>
                             </select>
                         </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>הקצה לקבוצה:</label>
+                    <select id="taskGroupId">
+                        <option value="">ללא קבוצה</option>
+                        <!-- Groups will be populated dynamically -->
+                    </select>
+                </div>
                     </div>
                 </div>
                 
@@ -1526,6 +1631,10 @@ function showAddTaskModal() {
     document.getElementById('taskModalTitle').textContent = 'הוסף משימה חדשה';
     document.getElementById('taskForm').reset();
     document.getElementById('taskId').value = '';
+    
+    // Populate group dropdown
+    populateGroupDropdown();
+    
     showModal('taskModal');
 }
 
@@ -1541,6 +1650,13 @@ function editTask(taskId) {
     document.getElementById('taskCategory').value = task.category;
     document.getElementById('taskPriority').value = task.priority;
     document.getElementById('taskFrequency').value = task.frequency;
+    
+    // Populate group dropdown and set current value
+    populateGroupDropdown();
+    const groupSelect = document.getElementById('taskGroupId');
+    if (groupSelect && task.group_id) {
+        groupSelect.value = task.group_id;
+    }
     
     showModal('taskModal');
 }
@@ -1578,13 +1694,15 @@ function closeModal(modalId) {
 async function handleTaskSubmit(e) {
     e.preventDefault();
     
+    const groupId = document.getElementById('taskGroupId').value;
     const taskData = {
         name: document.getElementById('taskName').value,
         description: document.getElementById('taskDescription').value,
         shift_type: document.getElementById('taskShiftType').value,
         category: document.getElementById('taskCategory').value,
         priority: document.getElementById('taskPriority').value,
-        frequency: document.getElementById('taskFrequency').value
+        frequency: document.getElementById('taskFrequency').value,
+        group_id: groupId ? parseInt(groupId) : null
     };
     
     const taskId = document.getElementById('taskId').value;
@@ -1605,6 +1723,7 @@ async function handleTaskSubmit(e) {
         if (response.ok) {
             closeModal('taskModal');
             loadTasks();
+            loadTaskGroups(); // Refresh groups to update task counts
             showSuccess(isEdit ? '✅ המשימה עודכנה בהצלחה!' : '✅ המשימה נוספה בהצלחה!');
         } else {
             const error = await response.json();
@@ -1632,25 +1751,8 @@ async function handleGenerateSubmit(e) {
 }
 
 async function deleteTask(taskId) {
-    if (!confirm('האם אתה בטוח שברצונך למחוק את המשימה?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/checklist-tasks/${taskId}`, {
-            method: 'DELETE'
-        });
-        
-        if (response.ok) {
-            loadTasks();
-            showSuccess('🗑️ המשימה נמחקה בהצלחה');
-        } else {
-            showError('❌ לא ניתן למחוק את המשימה. אנא נסה שוב.');
-        }
-    } catch (error) {
-        console.error('Error deleting task:', error);
-        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
-    }
+    // Use mobile-friendly confirmation
+    deleteTaskMobile(taskId);
 }
 
 // Generate checklist
@@ -2028,32 +2130,8 @@ async function editGroup(groupId) {
 }
 
 async function deleteGroup(groupId) {
-    if (!confirm('האם אתה בטוח שברצונך למחוק את הקבוצה? המשימות יועברו לקטגוריית "לא מקובצות".')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/task-groups/${groupId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                delete_tasks: false  // Keep tasks, just ungroup them
-            })
-        });
-        
-        if (response.ok) {
-            loadTaskGroups();
-            loadTasks();
-            showSuccess('🗑️ הקבוצה נמחקה והמשימות הועברו לקטגוריית "לא מקובצות"');
-        } else {
-            showError('❌ לא ניתן למחוק את הקבוצה. אנא נסה שוב.');
-        }
-    } catch (error) {
-        console.error('Error deleting group:', error);
-        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
-    }
+    // Use mobile-friendly confirmation
+    deleteGroupMobile(groupId);
 }
 
 // Utility function to adjust color brightness
@@ -2263,6 +2341,182 @@ async function handleGroupEditSubmit(e) {
         }
     } catch (error) {
         showError('❌ בעיה ברשת');
+    }
+}
+
+// Mobile-friendly confirmation dialog
+function showMobileConfirm(title, message, onConfirm) {
+    // Remove existing confirm dialog
+    const existing = document.querySelector('.mobile-confirm');
+    if (existing) existing.remove();
+    
+    const confirmDialog = document.createElement('div');
+    confirmDialog.className = 'mobile-confirm';
+    confirmDialog.innerHTML = `
+        <div class="mobile-confirm-content">
+            <h3>${title}</h3>
+            <p>${message}</p>
+            <div class="mobile-confirm-actions">
+                <button class="cancel-btn" onclick="this.closest('.mobile-confirm').remove()">ביטול</button>
+                <button class="confirm-btn" onclick="this.closest('.mobile-confirm').remove(); (${onConfirm})()">אישור</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(confirmDialog);
+    
+    // Close on backdrop click
+    confirmDialog.addEventListener('click', (e) => {
+        if (e.target === confirmDialog) {
+            confirmDialog.remove();
+        }
+    });
+}
+
+// Enhanced delete functions with mobile-friendly confirmations
+async function deleteTaskMobile(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    const taskName = task ? task.name : `משימה ${taskId}`;
+    
+    showMobileConfirm(
+        'מחיקת משימה',
+        `האם אתה בטוח שברצונך למחוק את המשימה "${taskName}"?`,
+        () => deleteTaskConfirmed(taskId)
+    );
+}
+
+async function deleteTaskConfirmed(taskId) {
+    try {
+        const response = await fetch(`/api/checklist-tasks/${taskId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            loadTasks();
+            showSuccess('🗑️ המשימה נמחקה בהצלחה');
+        } else {
+            showError('❌ לא ניתן למחוק את המשימה. אנא נסה שוב.');
+        }
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
+    }
+}
+
+async function deleteGroupMobile(groupId) {
+    const group = taskGroups.find(g => g.id === groupId);
+    const groupName = group ? group.name : `קבוצה ${groupId}`;
+    
+    showMobileConfirm(
+        'מחיקת קבוצה', 
+        `האם אתה בטוח שברצונך למחוק את הקבוצה "${groupName}"? המשימות יועברו לקטגוריית "לא מקובצות".`,
+        () => deleteGroupConfirmed(groupId)
+    );
+}
+
+async function deleteGroupConfirmed(groupId) {
+    try {
+        const response = await fetch(`/api/task-groups/${groupId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                delete_tasks: false  // Keep tasks, just ungroup them
+            })
+        });
+        
+        if (response.ok) {
+            loadTaskGroups();
+            loadTasks();
+            showSuccess('🗑️ הקבוצה נמחקה והמשימות הועברו לקטגוריית "לא מקובצות"');
+        } else {
+            showError('❌ לא ניתן למחוק את הקבוצה. אנא נסה שוב.');
+        }
+    } catch (error) {
+        console.error('Error deleting group:', error);
+        showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
+    }
+}
+
+// Group assignment functions
+function populateGroupDropdown() {
+    const groupSelect = document.getElementById('taskGroupId');
+    if (!groupSelect) return;
+    
+    // Clear existing options except the first one
+    groupSelect.innerHTML = '<option value="">ללא קבוצה</option>';
+    
+    // Add group options
+    taskGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.name;
+        groupSelect.appendChild(option);
+    });
+}
+
+function showBulkGroupAssignment() {
+    if (selectedTasks.size === 0) {
+        showError('❌ אנא בחר משימות להקצאה לקבוצה');
+        return;
+    }
+    
+    // Create a quick selection dialog
+    const groupOptions = taskGroups.map(group => 
+        `<option value="${group.id}">${group.name}</option>`
+    ).join('');
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'mobile-confirm';
+    dialog.innerHTML = `
+        <div class="mobile-confirm-content">
+            <h3>הקצאה לקבוצה</h3>
+            <p>בחר קבוצה עבור ${selectedTasks.size} המשימות הנבחרות:</p>
+            <select id="bulkGroupSelect" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px;">
+                <option value="">ללא קבוצה</option>
+                ${groupOptions}
+            </select>
+            <div class="mobile-confirm-actions">
+                <button class="cancel-btn" onclick="this.closest('.mobile-confirm').remove()">ביטול</button>
+                <button class="confirm-btn" onclick="performBulkGroupAssignment(); this.closest('.mobile-confirm').remove();">הקצה</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+}
+
+async function performBulkGroupAssignment() {
+    const groupId = document.getElementById('bulkGroupSelect')?.value || null;
+    const tasksArray = Array.from(selectedTasks);
+    
+    try {
+        // Update each task with the new group
+        const updatePromises = tasksArray.map(taskId => {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return Promise.resolve();
+            
+            return fetch(`/api/checklist-tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...task,
+                    group_id: groupId ? parseInt(groupId) : null
+                })
+            });
+        });
+        
+        await Promise.all(updatePromises);
+        loadTasks();
+        loadTaskGroups();
+        clearSelection();
+        
+        const groupName = groupId ? taskGroups.find(g => g.id === parseInt(groupId))?.name : 'ללא קבוצה';
+        showSuccess(`✅ ${tasksArray.length} משימות הוקצו לקבוצה "${groupName}"`);
+        
+    } catch (error) {
+        showError('❌ בעיה בהקצאת המשימות לקבוצה');
     }
 }
 

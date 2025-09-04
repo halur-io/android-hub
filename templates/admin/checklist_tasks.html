@@ -3079,9 +3079,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const groupHeader = e.target.closest('.group-header-clickable');
         if (groupHeader && !e.target.closest('.group-actions')) {
+            console.log('Group header clicked:', groupHeader.dataset);
             const groupId = parseInt(groupHeader.dataset.groupId);
             const groupName = groupHeader.dataset.groupName;
             const taskCount = parseInt(groupHeader.dataset.taskCount);
+            console.log('Calling showGroupQuickActionMenu with:', groupId, groupName, taskCount);
             showGroupQuickActionMenu(e, groupId, groupName, taskCount);
         }
     });

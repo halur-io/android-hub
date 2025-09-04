@@ -2020,8 +2020,14 @@ function showTemplatesModal() {
     showModal('templatesModal');
 }
 
-function showSaveTemplateModal() {
+async function showSaveTemplateModal() {
     document.getElementById('templateShiftType').value = currentShift === 'all' ? '' : currentShift;
+    
+    // Ensure task groups are loaded before populating the modal
+    if (!taskGroups || taskGroups.length === 0) {
+        await loadTaskGroups();
+    }
+    
     populateTemplateGroupSelection();
     showModal('saveTemplateModal');
 }

@@ -258,7 +258,8 @@ def create_checklist_task():
             shift_type=data.get('shift_type'),
             category=data.get('category'),
             priority=data.get('priority', 'medium'),
-            frequency=data.get('frequency', 'daily')
+            frequency=data.get('frequency', 'daily'),
+            group_id=data.get('group_id')  # Allow group assignment during creation
         )
         
         db.session.add(task)
@@ -283,6 +284,10 @@ def update_checklist_task(task_id):
         task.category = data.get('category', task.category)
         task.priority = data.get('priority', task.priority)
         task.frequency = data.get('frequency', task.frequency)
+        
+        # Handle group assignment - explicitly check for group_id field
+        if 'group_id' in data:
+            task.group_id = data.get('group_id')
         
         db.session.commit()
         

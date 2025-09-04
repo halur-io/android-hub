@@ -3,155 +3,287 @@
 {% block title %}לוח בקרה - Admin Panel{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">לוח בקרה</h1>
-
-<div class="row">
-    <div class="col-md-3">
-        <div class="stat-card">
-            <h3>{{ stats.total_messages }}</h3>
-            <p>הודעות</p>
-            <small>{{ stats.unread_messages }} לא נקראו</small>
+<!-- Modern Dashboard Header -->
+<div class="dashboard-header-modern">
+    <div class="header-content">
+        <div class="header-text">
+            <h1 class="dashboard-title-modern">
+                <i class="fas fa-tachometer-alt"></i>
+                לוח בקרה
+            </h1>
+            <p class="dashboard-subtitle">ברוך הבא למערכת הניהול של המסעדה</p>
         </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="stat-card">
-            <h3>{{ stats.total_reservations }}</h3>
-            <p>הזמנות</p>
-            <small>{{ stats.pending_reservations }} ממתינות</small>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="stat-card">
-            <h3>{{ stats.menu_items }}</h3>
-            <p>פריטי תפריט</p>
-            <small>{{ stats.active_branches }} סניפים פעילים</small>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="stat-card">
-            <h3>{{ stats.gallery_photos }}</h3>
-            <p>תמונות בגלריה</p>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-bell me-2"></i> הודעות אחרונות
-            </div>
-            <div class="card-body">
-                <p class="text-muted">אין הודעות חדשות</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-calendar me-2"></i> הזמנות אחרונות
-            </div>
-            <div class="card-body">
-                <p class="text-muted">אין הזמנות חדשות</p>
+        <div class="header-actions">
+            <span class="current-time" id="currentTime"></span>
+            <div class="user-welcome">
+                <i class="fas fa-user-circle"></i>
+                שלום, מנהל
             </div>
         </div>
     </div>
 </div>
 
-<div class="card mt-4">
-    <div class="card-header">
-        <i class="fas fa-link me-2"></i> קישורים מהירים
+<!-- Statistics Cards Grid -->
+<div class="stats-grid-modern">
+    <div class="stat-card-modern">
+        <div class="stat-icon">
+            <i class="fas fa-envelope"></i>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-number">{{ stats.total_messages }}</h3>
+            <p class="stat-label">הודעות</p>
+            <small class="stat-detail">{{ stats.unread_messages }} לא נקראו</small>
+        </div>
+        <div class="stat-indicator messages"></div>
     </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-cog me-2"></i> הגדרות אתר
-                </a>
+    
+    <div class="stat-card-modern">
+        <div class="stat-icon">
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-number">{{ stats.total_reservations }}</h3>
+            <p class="stat-label">הזמנות</p>
+            <small class="stat-detail">{{ stats.pending_reservations }} ממתינות</small>
+        </div>
+        <div class="stat-indicator reservations"></div>
+    </div>
+    
+    <div class="stat-card-modern">
+        <div class="stat-icon">
+            <i class="fas fa-utensils"></i>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-number">{{ stats.menu_items }}</h3>
+            <p class="stat-label">פריטי תפריט</p>
+            <small class="stat-detail">{{ stats.active_branches }} סניפים פעילים</small>
+        </div>
+        <div class="stat-indicator menu"></div>
+    </div>
+    
+    <div class="stat-card-modern">
+        <div class="stat-icon">
+            <i class="fas fa-images"></i>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-number">{{ stats.gallery_photos }}</h3>
+            <p class="stat-label">תמונות בגלריה</p>
+            <small class="stat-detail">מוכן לצפייה</small>
+        </div>
+        <div class="stat-indicator gallery"></div>
+    </div>
+</div>
+
+<!-- Activity Cards -->
+<div class="activity-grid">
+    <div class="activity-card">
+        <div class="activity-header">
+            <div class="activity-title">
+                <i class="fas fa-bell"></i>
+                הודעות אחרונות
             </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.checklist') }}" class="btn btn-outline-success w-100 mb-2">
-                    <i class="fas fa-clipboard-check me-2"></i> רשימות משימות
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.media') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-upload me-2"></i> העלאת מדיה
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.menu') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-utensils me-2"></i> ניהול תפריט
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.branches') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-store me-2"></i> ניהול סניפים
-                </a>
+            <span class="activity-count">0</span>
+        </div>
+        <div class="activity-content">
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>אין הודעות חדשות</p>
             </div>
         </div>
+    </div>
+    
+    <div class="activity-card">
+        <div class="activity-header">
+            <div class="activity-title">
+                <i class="fas fa-calendar"></i>
+                הזמנות אחרונות
+            </div>
+            <span class="activity-count">0</span>
+        </div>
+        <div class="activity-content">
+            <div class="empty-state">
+                <i class="fas fa-calendar-plus"></i>
+                <p>אין הזמנות חדשות</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions Section -->
+<div class="quick-actions-section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-bolt"></i>
+            פעולות מהירות
+        </h2>
+        <p class="section-description">גישה מהירה למשימות הנפוצות ביותר</p>
+    </div>
+    
+    <div class="quick-actions-grid">
+        <a href="{{ url_for('admin.settings') }}" class="quick-action-card settings">
+            <div class="action-icon">
+                <i class="fas fa-cog"></i>
+            </div>
+            <div class="action-content">
+                <h3>הגדרות אתר</h3>
+                <p>ניהול הגדרות כלליות</p>
+            </div>
+            <div class="action-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('admin.checklist') }}" class="quick-action-card checklist">
+            <div class="action-icon">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div class="action-content">
+                <h3>רשימות משימות</h3>
+                <p>ניהול משימות יומיות</p>
+            </div>
+            <div class="action-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('admin.media') }}" class="quick-action-card media">
+            <div class="action-icon">
+                <i class="fas fa-upload"></i>
+            </div>
+            <div class="action-content">
+                <h3>העלאת מדיה</h3>
+                <p>ניהול קבצים ותמונות</p>
+            </div>
+            <div class="action-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('admin.menu') }}" class="quick-action-card menu">
+            <div class="action-icon">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <div class="action-content">
+                <h3>ניהול תפריט</h3>
+                <p>עריכת מנות וקטגוריות</p>
+            </div>
+            <div class="action-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
+        
+        <a href="{{ url_for('admin.branches') }}" class="quick-action-card branches">
+            <div class="action-icon">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="action-content">
+                <h3>ניהול סניפים</h3>
+                <p>הגדרות סניפים ומיקומים</p>
+            </div>
+            <div class="action-arrow">
+                <i class="fas fa-chevron-left"></i>
+            </div>
+        </a>
     </div>
 </div>
 
 <!-- Enhanced Menu Management Section -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h5><i class="fas fa-utensils me-2"></i>ניהול תפריט מתקדם</h5>
+<div class="feature-section menu-section">
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="fas fa-utensils"></i>
+            ניהול תפריט מתקדם
+        </h2>
+        <p class="section-description">כלים מתקדמים לניהול התפריט של המסעדה</p>
     </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.edit_menu_item') }}" class="btn btn-success w-100 mb-2">
-                    <i class="fas fa-plus me-2"></i>הוסף מנה חדשה
-                </a>
+    
+    <div class="feature-cards-grid">
+        <a href="{{ url_for('admin.edit_menu_item') }}" class="feature-card primary">
+            <div class="feature-icon">
+                <i class="fas fa-plus"></i>
             </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.edit_category') }}" class="btn btn-info w-100 mb-2">
-                    <i class="fas fa-plus me-2"></i>הוסף קטגוריה
-                </a>
+            <h3>הוסף מנה חדשה</h3>
+            <p>צור מנות חדשות עם תיאורים ותמונות</p>
+        </a>
+        
+        <a href="{{ url_for('admin.edit_category') }}" class="feature-card info">
+            <div class="feature-icon">
+                <i class="fas fa-layer-group"></i>
             </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.menu_settings') }}" class="btn btn-warning w-100 mb-2">
-                    <i class="fas fa-cogs me-2"></i>הגדרות תפריט
-                </a>
+            <h3>הוסף קטגוריה</h3>
+            <p>ארגן את התפריט בקטגוריות</p>
+        </a>
+        
+        <a href="{{ url_for('admin.menu_settings') }}" class="feature-card warning">
+            <div class="feature-icon">
+                <i class="fas fa-cogs"></i>
             </div>
+            <h3>הגדרות תפריט</h3>
+            <p>התאמה אישית של התפריט</p>
+        </a>
+        
+        <a href="{{ url_for('admin.dietary_properties') }}" class="feature-card secondary">
+            <div class="feature-icon">
+                <i class="fas fa-tags"></i>
+            </div>
+            <h3>תכונות תזונתיות</h3>
+            <p>הגדר תיוגים תזונתיים</p>
+        </a>
+        
+        <a href="{{ url_for('admin.menu_import') }}" class="feature-card success">
+            <div class="feature-icon">
+                <i class="fas fa-file-upload"></i>
+            </div>
+            <h3>יבוא CSV/Excel</h3>
+            <p>יבא נתונים מקבצים חיצוניים</p>
+        </a>
+        
+        <a href="{{ url_for('admin.menu_reorder') }}" class="feature-card primary-outline">
+            <div class="feature-icon">
+                <i class="fas fa-sort"></i>
+            </div>
+            <h3>סידור מנות</h3>
+            <p>ארגן מחדש את סדר התפריט</p>
+        </a>
+    </div>
+</div>
+
+<!-- Welcome Information -->
+<div class="welcome-info">
+    <div class="welcome-content">
+        <div class="welcome-icon">
+            <i class="fas fa-info-circle"></i>
         </div>
-        <div class="row mt-2">
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.dietary_properties') }}" class="btn btn-outline-info w-100 mb-2">
-                    <i class="fas fa-tags me-2"></i>תכונות תזונתיות
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.menu_import') }}" class="btn btn-outline-success w-100 mb-2">
-                    <i class="fas fa-file-upload me-2"></i>יבוא CSV/Excel
-                </a>
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.menu_reorder') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-sort me-2"></i>סידור מנות
-                </a>
-            </div>
-            <div class="col-md-3">
-                <!-- Placeholder for future features -->
-            </div>
-            <div class="col-md-3">
-                <a href="{{ url_for('admin.menu') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-list me-2"></i>צפה בתפריט
-                </a>
+        <div class="welcome-text">
+            <h4>ברוך הבא למערכת הניהול</h4>
+            <div class="credentials-info">
+                <p><span class="label">שם משתמש:</span> <code>admin</code></p>
+                <p><span class="label">סיסמה:</span> <code>admin123</code></p>
+                <p class="security-note">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    מומלץ לשנות את הסיסמה לאחר הכניסה הראשונה
+                </p>
             </div>
         </div>
     </div>
 </div>
 
-<div class="alert alert-info mt-4">
-    <h5><i class="fas fa-info-circle me-2"></i> ברוך הבא למערכת הניהול</h5>
-    <p>שם משתמש ברירת מחדל: <strong>admin</strong></p>
-    <p>סיסמה ברירת מחדל: <strong>admin123</strong></p>
-    <p class="mb-0">מומלץ לשנות את הסיסמה לאחר הכניסה הראשונה.</p>
-</div>
+<script>
+// Update current time
+function updateTime() {
+    const now = new Date();
+    const timeString = now.toLocaleString('he-IL', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    const dateString = now.toLocaleDateString('he-IL');
+    document.getElementById('currentTime').innerHTML = `${timeString} | ${dateString}`;
+}
+
+// Update time every second
+setInterval(updateTime, 1000);
+updateTime(); // Initial call
+</script>
+
 {% endblock %}

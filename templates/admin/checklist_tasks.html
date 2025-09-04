@@ -4006,15 +4006,44 @@ async function reprintChecklist(checklistId) {
             console.log('Reprint data:', { printData, branch, selectedGroups, tasks });
             
             // Generate and print
-            const printContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
-            const printWindow = window.open('', '_blank');
-            if (printWindow) {
-                printWindow.document.write(printContent);
-                printWindow.document.close();
-                printWindow.print();
-                showSuccess('🖨️ מדפיס רשימה...');
-            } else {
-                showError('❌ לא ניתן לפתוח חלון הדפסה. יתכן שהדפדפן חוסם חלונות קופצים.');
+            try {
+                const printContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
+                console.log('Generated print content length:', printContent.length);
+                
+                // Try to open print window
+                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                console.log('Print window opened:', !!printWindow);
+                
+                if (printWindow) {
+                    printWindow.document.write(printContent);
+                    printWindow.document.close();
+                    
+                    // Add small delay before printing to ensure content is loaded
+                    setTimeout(() => {
+                        try {
+                            printWindow.print();
+                            showSuccess('🖨️ מדפיס רשימה...');
+                        } catch (printError) {
+                            console.error('Print error:', printError);
+                            showError('❌ שגיאה בהדפסה: ' + printError.message);
+                        }
+                    }, 500);
+                } else {
+                    // Fallback: open in same window if popup blocked
+                    console.log('Popup blocked, trying fallback...');
+                    const blob = new Blob([printContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const fallbackWindow = window.open(url, '_blank');
+                    
+                    if (fallbackWindow) {
+                        showSuccess('🖨️ פותח חלון הדפסה...');
+                    } else {
+                        showError('❌ לא ניתן לפתוח חלון הדפסה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
+                    }
+                }
+            } catch (genError) {
+                console.error('Error generating print content:', genError);
+                showError('❌ שגיאה ביצירת תוכן ההדפסה: ' + genError.message);
             }
             
         } else {
@@ -4070,15 +4099,33 @@ async function previewChecklist(checklistId) {
             const selectedGroups = Object.values(groupedTasks);
             
             // Generate preview HTML (same as print but without auto-print)
-            const previewContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
-            const previewWindow = window.open('', '_blank');
-            if (previewWindow) {
-                previewWindow.document.write(previewContent);
-                previewWindow.document.close();
-                // Don't call print() for preview
-                showSuccess('👁️ פותח תצוגה מקדימה...');
-            } else {
-                showError('❌ לא ניתן לפתוח חלון תצוגה מקדימה. יתכן שהדפדפן חוסם חלונות קופצים.');
+            try {
+                const previewContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
+                console.log('Generated preview content length:', previewContent.length);
+                
+                const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                console.log('Preview window opened:', !!previewWindow);
+                
+                if (previewWindow) {
+                    previewWindow.document.write(previewContent);
+                    previewWindow.document.close();
+                    showSuccess('👁️ פותח תצוגה מקדימה...');
+                } else {
+                    // Fallback: open in same window if popup blocked
+                    console.log('Popup blocked for preview, trying fallback...');
+                    const blob = new Blob([previewContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const fallbackWindow = window.open(url, '_blank');
+                    
+                    if (fallbackWindow) {
+                        showSuccess('👁️ פותח תצוגה מקדימה...');
+                    } else {
+                        showError('❌ לא ניתן לפתוח חלון תצוגה מקדימה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
+                    }
+                }
+            } catch (genError) {
+                console.error('Error generating preview content:', genError);
+                showError('❌ שגיאה ביצירת תוכן התצוגה המקדימה: ' + genError.message);
             }
             
         } else {

@@ -2358,15 +2358,7 @@ function selectAllTasks() {
     showInfo('✅ כל המשימות נבחרו');
 }
 
-function clearSelection() {
-    const checkboxes = document.querySelectorAll('.bulk-select');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-    });
-    selectedTasks.clear();
-    updateBulkActions();
-    showInfo('❌ הבחירה בוטלה');
-}
+// clearSelection function moved to avoid duplicates
 
 function toggleTaskSelection(taskId) {
     if (selectedTasks.has(taskId)) {
@@ -3350,7 +3342,7 @@ function groupAssignToShift(groupId, groupName) {
 }
 
 // Multi-select functionality
-let selectedTasks = new Set();
+// selectedTasks already declared above
 
 function handleTaskSelection(taskId) {
     const checkbox = document.querySelector(`input[data-task-id="${taskId}"]`);
@@ -3381,7 +3373,8 @@ function updateBulkActionToolbar() {
 
 function clearSelection() {
     selectedTasks.clear();
-    document.querySelectorAll('.task-select-checkbox').forEach(checkbox => {
+    // Clear both old bulk-select and new task-select-checkbox
+    document.querySelectorAll('.bulk-select, .task-select-checkbox').forEach(checkbox => {
         checkbox.checked = false;
     });
     document.querySelectorAll('.group-task-item').forEach(item => {

@@ -1566,7 +1566,7 @@ function renderTaskGroups() {
     filteredGroups.forEach(group => {
         html += `
             <div class="task-group">
-                <div class="group-header" style="background: linear-gradient(135deg, ${group.color}, ${adjustColor(group.color, -20)})" onclick="showGroupQuickActionMenu(event, ${group.id}, '${group.name.replace(/'/g, '\\'')}', ${group.task_count})">
+                <div class="group-header group-header-clickable" style="background: linear-gradient(135deg, ${group.color}, ${adjustColor(group.color, -20)})" data-group-id="${group.id}" data-group-name="${group.name}" data-task-count="${group.task_count}">
                     <div class="group-title">
                         <i class="fas fa-layer-group"></i>
                         <span>${group.name}</span>
@@ -2789,72 +2789,8 @@ async function performBulkGroupAssignment() {
     }
 }
 
-// Group Quick Action Menu Functions
-function showGroupQuickActionMenu(event, groupId, groupName, taskCount) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    // Remove any existing quick action menus
-    const existingMenu = document.querySelector('.quick-action-menu');
-    if (existingMenu) existingMenu.remove();
-    
-    // Create the group quick action menu
-    const menu = document.createElement('div');
-    menu.className = 'quick-action-menu';
-    menu.innerHTML = `
-        <button class="quick-action-item assign" onclick="groupAssignToShift(${groupId}, '${groupName}'); hideQuickActionMenu()">
-            <i class="fas fa-clock"></i>
-            הקצה למשמרת
-        </button>
-        <button class="quick-action-item edit" onclick="editGroup(${groupId}); hideQuickActionMenu()">
-            <i class="fas fa-edit"></i>
-            ערוך קבוצה
-        </button>
-        <button class="quick-action-item duplicate" style="color: #17a2b8;" onclick="previewGroup(${groupId}, '${groupName}'); hideQuickActionMenu()">
-            <i class="fas fa-eye"></i>
-            תצוגה מקדימה
-        </button>
-        <button class="quick-action-item duplicate" onclick="exportGroupToPDF(${groupId}, '${groupName}', ${taskCount}); hideQuickActionMenu()">
-            <i class="fas fa-file-pdf"></i>
-            יצוא ל-PDF
-        </button>
-    `;
-    
-    // Add to body
-    document.body.appendChild(menu);
-    
-    // Position the menu near the click
-    positionQuickActionMenu(menu, event);
-    
-    // Add click outside to close
-    setTimeout(() => {
-        document.addEventListener('click', hideQuickActionMenuOnClickOutside);
-    }, 10);
-}
 
 // Group Quick Action Functions
-function groupAssignToShift(groupId, groupName) {
-    const dialog = document.createElement('div');
-    dialog.className = 'mobile-confirm';
-    dialog.innerHTML = `
-        <div class="mobile-confirm-content">
-            <h3>הקצאה למשמרת</h3>
-            <p>בחר משמרת עבור כל המשימות בקבוצה "${groupName}":</p>
-            <select id="groupShiftSelect" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px;">
-                <option value="morning">פתיחת בוקר</option>
-                <option value="evening">משמרת ערב</option>
-                <option value="closing">סגירה</option>
-                <option value="night">משמרת לילה</option>
-            </select>
-            <div class="mobile-confirm-actions">
-                <button class="cancel-btn" onclick="this.closest('.mobile-confirm').remove()">ביטול</button>
-                <button class="confirm-btn" onclick="performGroupShiftAssignment(${groupId}); this.closest('.mobile-confirm').remove();">הקצה</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(dialog);
-}
 
 async function performGroupShiftAssignment(groupId) {
     const shiftType = document.getElementById('groupShiftSelect')?.value;
@@ -3037,6 +2973,98 @@ function exportGroupToPDF(groupId, groupName, taskCount) {
     showSuccess(`📄 PDF עבור קבוצה "${groupName}" נפתח להדפסה`);
 }
 
+// Group Quick Action Menu Functions using Event Delegation
+function showGroupQuickActionMenu(event, groupId, groupName, taskCount) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Remove any existing quick action menus
+    const existingMenu = document.querySelector('.quick-action-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    // Create the group quick action menu
+    const menu = document.createElement('div');
+    menu.className = 'quick-action-menu';
+    menu.innerHTML = `
+        <button class="quick-action-item assign" data-action="assignToShift" data-group-id="${groupId}">
+            <i class="fas fa-clock"></i>
+            הקצה למשמרת
+        </button>
+        <button class="quick-action-item edit" data-action="editGroup" data-group-id="${groupId}">
+            <i class="fas fa-edit"></i>
+            ערוך קבוצה
+        </button>
+        <button class="quick-action-item duplicate" style="color: #17a2b8;" data-action="previewGroup" data-group-id="${groupId}">
+            <i class="fas fa-eye"></i>
+            תצוגה מקדימה
+        </button>
+        <button class="quick-action-item duplicate" data-action="exportToPDF" data-group-id="${groupId}">
+            <i class="fas fa-file-pdf"></i>
+            יצוא ל-PDF
+        </button>
+    `;
+    
+    // Add to body
+    document.body.appendChild(menu);
+    
+    // Position the menu near the click
+    positionQuickActionMenu(menu, event);
+    
+    // Add click handler for menu items
+    menu.addEventListener('click', (e) => {
+        const button = e.target.closest('.quick-action-item');
+        if (button) {
+            const action = button.dataset.action;
+            const gId = parseInt(button.dataset.groupId);
+            
+            switch(action) {
+                case 'assignToShift':
+                    groupAssignToShift(gId, groupName);
+                    break;
+                case 'editGroup':
+                    editGroup(gId);
+                    break;
+                case 'previewGroup':
+                    previewGroup(gId, groupName);
+                    break;
+                case 'exportToPDF':
+                    exportGroupToPDF(gId, groupName, taskCount);
+                    break;
+            }
+            hideQuickActionMenu();
+        }
+    });
+    
+    // Add click outside to close
+    setTimeout(() => {
+        document.addEventListener('click', hideQuickActionMenuOnClickOutside);
+    }, 10);
+}
+
+// Group Quick Action Functions
+function groupAssignToShift(groupId, groupName) {
+    const dialog = document.createElement('div');
+    dialog.className = 'mobile-confirm';
+    dialog.innerHTML = `
+        <div class="mobile-confirm-content">
+            <h3>הקצאה למשמרת</h3>
+            <p>בחר משמרת עבור כל המשימות בקבוצה "${groupName}":</p>
+            <select id="groupShiftSelect" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px;">
+                <option value="morning">פתיחת בוקר</option>
+                <option value="evening">משמרת ערב</option>
+                <option value="closing">סגירה</option>
+                <option value="night">משמרת לילה</option>
+            </select>
+            <div class="mobile-confirm-actions">
+                <button class="cancel-btn" onclick="this.closest('.mobile-confirm').remove()">ביטול</button>
+                <button class="confirm-btn" onclick="performGroupShiftAssignment(${groupId}); this.closest('.mobile-confirm').remove();">הקצה</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+}
+
 // Color picker event handlers
 document.addEventListener('DOMContentLoaded', () => {
     // Color picker functionality
@@ -3044,6 +3072,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('color-option')) {
             e.target.parentElement.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
             e.target.classList.add('selected');
+        }
+    });
+    
+    // Group header click delegation
+    document.addEventListener('click', (e) => {
+        const groupHeader = e.target.closest('.group-header-clickable');
+        if (groupHeader && !e.target.closest('.group-actions')) {
+            const groupId = parseInt(groupHeader.dataset.groupId);
+            const groupName = groupHeader.dataset.groupName;
+            const taskCount = parseInt(groupHeader.dataset.taskCount);
+            showGroupQuickActionMenu(e, groupId, groupName, taskCount);
         }
     });
     

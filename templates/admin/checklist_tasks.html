@@ -2836,27 +2836,10 @@ async function performGroupShiftAssignment(groupId) {
 
 function previewGroup(groupId, groupName) {
     const group = taskGroups.find(g => g.id === groupId);
-    if (!group) {
-        console.error('Group not found:', groupId);
-        return;
-    }
+    if (!group) return;
     
-    console.log('Group found:', group);
-    console.log('Group tasks:', group.tasks);
-    console.log('All tasks:', tasks);
-    console.log('Filtering tasks with group_id:', groupId);
-    
-    // Try both the group's tasks array and filtering from all tasks
+    // Use the group's tasks directly since they're already loaded
     let groupTasks = group.tasks || [];
-    if (groupTasks.length === 0) {
-        groupTasks = tasks.filter(task => {
-            console.log(`Task ${task.id} group_id: ${task.group_id} (type: ${typeof task.group_id}), comparing to ${groupId} (type: ${typeof groupId})`);
-            return task.group_id == groupId; // Use == instead of === to handle type differences
-        });
-    }
-    
-    console.log('Final group tasks:', groupTasks);
-    
     if (groupTasks.length === 0) {
         showInfo('📋 הקבוצה ריקה - אין משימות להציג');
         return;
@@ -2901,94 +2884,251 @@ function previewGroup(groupId, groupName) {
 }
 
 function exportGroupToPDF(groupId, groupName, taskCount) {
-    if (taskCount === 0) {
+    const group = taskGroups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    // Use the group's tasks directly
+    const groupTasks = group.tasks || [];
+    if (groupTasks.length === 0) {
         showInfo('📋 הקבוצה ריקה - אין משימות לייצא');
         return;
     }
     
-    const groupTasks = tasks.filter(task => task.group_id === groupId);
-    const group = taskGroups.find(g => g.id === groupId);
-    
     // Group tasks by category for better organization
     const tasksByCategory = {};
     groupTasks.forEach(task => {
-        if (!tasksByCategory[task.category]) {
-            tasksByCategory[task.category] = [];
+        const category = task.category || 'אחר';
+        if (!tasksByCategory[category]) {
+            tasksByCategory[category] = [];
         }
-        tasksByCategory[task.category].push(task);
+        tasksByCategory[category].push(task);
     });
     
-    // Generate print-ready HTML for the group
+    const today = new Date().toLocaleDateString('he-IL');
+    const shiftName = translations.shift_types[group.shift_type] || group.shift_type;
+    
+    // Generate print-ready HTML checklist
     const printContent = `
         <!DOCTYPE html>
         <html dir="rtl" lang="he">
         <head>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>רשימת משימות - ${groupName}</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                .group-header { background: ${group.color}; color: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
-                .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
-                .category { margin: 20px 0; }
-                .category h3 { background: #f5f5f5; padding: 10px; margin: 0; }
-                .task-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px dotted #ccc; }
-                .checkbox { width: 20px; height: 20px; border: 2px solid #333; margin-left: 10px; flex-shrink: 0; }
-                .task-content { flex: 1; }
-                .task-description { color: #666; font-size: 0.9em; margin-top: 4px; }
-                .signature { margin-top: 40px; border-top: 1px solid #333; padding-top: 20px; }
+                @page { size: A4; margin: 1.5cm; }
+                body { 
+                    font-family: 'Arial', sans-serif; 
+                    margin: 0; 
+                    padding: 20px; 
+                    line-height: 1.6;
+                    direction: rtl;
+                }
+                .header { 
+                    text-align: center; 
+                    border-bottom: 3px solid #333; 
+                    padding-bottom: 20px; 
+                    margin-bottom: 30px; 
+                }
+                .header h1 { 
+                    font-size: 28px; 
+                    margin: 0 0 10px 0; 
+                    color: #333; 
+                }
+                .group-header { 
+                    background: linear-gradient(135deg, ${group.color}, ${adjustColor(group.color, -20)}); 
+                    color: white; 
+                    padding: 20px; 
+                    margin-bottom: 25px; 
+                    border-radius: 10px; 
+                    text-align: center;
+                }
+                .group-header h2 {
+                    margin: 0 0 5px 0;
+                    font-size: 24px;
+                }
+                .group-header p {
+                    margin: 0;
+                    opacity: 0.9;
+                    font-size: 16px;
+                }
+                .info-section {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 25px;
+                    border: 2px solid #e9ecef;
+                }
+                .info-row { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    margin: 8px 0; 
+                    font-weight: bold;
+                }
+                .info-row input {
+                    border: none;
+                    border-bottom: 1px solid #333;
+                    background: transparent;
+                    padding: 2px;
+                    min-width: 200px;
+                }
+                .category-section { 
+                    margin: 25px 0; 
+                    break-inside: avoid;
+                }
+                .category-header {
+                    background: #e9ecef;
+                    padding: 12px 15px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                    font-size: 18px;
+                    margin-bottom: 15px;
+                    color: #333;
+                }
+                .task-item {
+                    display: flex;
+                    align-items: flex-start;
+                    margin: 12px 0;
+                    padding: 10px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    background: white;
+                    break-inside: avoid;
+                }
+                .task-checkbox {
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid #333;
+                    border-radius: 3px;
+                    margin-left: 12px;
+                    flex-shrink: 0;
+                    margin-top: 2px;
+                }
+                .task-content {
+                    flex: 1;
+                }
+                .task-name {
+                    font-weight: bold;
+                    font-size: 16px;
+                    margin-bottom: 4px;
+                }
+                .task-description {
+                    color: #666;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }
+                .task-meta {
+                    font-size: 12px;
+                    color: #888;
+                }
+                .priority-high { border-right: 4px solid #dc3545; }
+                .priority-medium { border-right: 4px solid #ffc107; }
+                .priority-low { border-right: 4px solid #28a745; }
+                .signatures {
+                    margin-top: 40px;
+                    display: flex;
+                    justify-content: space-around;
+                    border-top: 2px solid #333;
+                    padding-top: 20px;
+                }
+                .signature-box {
+                    text-align: center;
+                    min-width: 200px;
+                }
+                .signature-line {
+                    border-bottom: 1px solid #333;
+                    width: 200px;
+                    height: 40px;
+                    margin: 10px auto;
+                }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; color-adjust: exact; }
+                    .group-header, .category-header { -webkit-print-color-adjust: exact; }
+                }
             </style>
         </head>
         <body>
             <div class="header">
-                <h1>רשימת משימות - ${groupName}</h1>
-                <div class="info-row">
-                    <span><strong>תאריך:</strong> ${new Date().toLocaleDateString('he-IL')}</span>
-                    <span><strong>סה"כ משימות:</strong> ${groupTasks.length}</span>
-                </div>
+                <h1>רשימת משימות יומית</h1>
+                <p>מערכת ניהול משימות מסעדה</p>
             </div>
             
             <div class="group-header">
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
-                    <span>📋</span> ${groupName}
-                </h2>
+                <h2>${groupName}</h2>
+                <p>${groupTasks.length} משימות • ${shiftName}</p>
             </div>
             
-            ${Object.entries(tasksByCategory).map(([category, categoryTasks]) => `
-                <div class="category">
-                    <h3>${translations.categories[category]}</h3>
-                    ${categoryTasks.map(task => `
-                        <div class="task-item">
-                            <div class="checkbox"></div>
+            <div class="info-section">
+                <div class="info-row">
+                    <span>תאריך:</span>
+                    <input type="text" value="${today}">
+                </div>
+                <div class="info-row">
+                    <span>משמרת:</span>
+                    <input type="text" value="${shiftName}">
+                </div>
+                <div class="info-row">
+                    <span>שם האחראי:</span>
+                    <input type="text" placeholder="הכנס שם">
+                </div>
+                <div class="info-row">
+                    <span>שעת התחלה:</span>
+                    <input type="text" placeholder="__:__">
+                </div>
+                <div class="info-row">
+                    <span>שעת סיום:</span>
+                    <input type="text" placeholder="__:__">
+                </div>
+            </div>
+
+            ${Object.entries(tasksByCategory).map(([category, tasks]) => `
+                <div class="category-section">
+                    <div class="category-header">
+                        📋 ${translations.categories[category] || category}
+                    </div>
+                    ${tasks.map(task => `
+                        <div class="task-item priority-${task.priority}">
+                            <div class="task-checkbox"></div>
                             <div class="task-content">
-                                <div><strong>${task.name}</strong></div>
+                                <div class="task-name">${task.name}</div>
                                 ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
-                                <div style="font-size: 0.8em; color: #999; margin-top: 4px;">
-                                    ${translations.frequencies[task.frequency]} • ${translations.shift_types[task.shift_type]}
+                                <div class="task-meta">
+                                    עדיפות: ${translations.priorities[task.priority] || task.priority} • 
+                                    תדירות: ${translations.frequencies[task.frequency] || task.frequency}
                                 </div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
             `).join('')}
-            
-            <div class="signature">
-                <div class="info-row">
-                    <span>חתימת אחראי: _______________</span>
-                    <span>שעת השלמה: _______________</span>
+
+            <div class="signatures">
+                <div class="signature-box">
+                    <strong>חתימת המבצע</strong>
+                    <div class="signature-line"></div>
+                    <small>תאריך ושעה</small>
+                </div>
+                <div class="signature-box">
+                    <strong>חתימת המפקח</strong>
+                    <div class="signature-line"></div>
+                    <small>תאריך ושעה</small>
                 </div>
             </div>
         </body>
         </html>
     `;
     
-    // Open print window
+    // Open the generated checklist in a new window for printing
     const printWindow = window.open('', '_blank');
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.print();
+    printWindow.focus();
     
-    showSuccess(`📄 PDF עבור קבוצה "${groupName}" נפתח להדפסה`);
+    // Trigger print dialog after content loads
+    setTimeout(() => {
+        printWindow.print();
+    }, 500);
+    
 }
 
 // Group Quick Action Menu Functions using Event Delegation
@@ -3043,9 +3183,7 @@ function showGroupQuickActionMenu(event, groupId, groupName, taskCount) {
                     editGroup(gId);
                     break;
                 case 'previewGroup':
-                    console.log('About to call previewGroup with:', gId, groupName);
                     previewGroup(gId, groupName);
-                    console.log('previewGroup call completed');
                     break;
                 case 'exportToPDF':
                     exportGroupToPDF(gId, groupName, taskCount);

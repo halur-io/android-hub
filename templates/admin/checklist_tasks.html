@@ -429,6 +429,79 @@
     display: none;
 }
 
+/* Multi-select functionality */
+.task-checkbox-container {
+    display: flex;
+    align-items: center;
+    padding-right: 8px;
+    margin-left: 8px;
+}
+
+.task-select-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #007bff;
+    cursor: pointer;
+}
+
+.group-task-item {
+    display: flex;
+    align-items: center;
+}
+
+.group-task-item.selected {
+    background-color: #e3f2fd;
+    border: 1px solid #2196f3;
+}
+
+.bulk-action-toolbar {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #007bff;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    animation: slideUp 0.3s ease;
+}
+
+.bulk-action-toolbar.show {
+    display: flex;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.bulk-action-count {
+    font-weight: bold;
+    background: rgba(255,255,255,0.2);
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.bulk-action-button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 12px;
+}
+
+.bulk-action-button:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.5);
+}
+
 .quick-action-item.assign {
     color: #007bff;
 }
@@ -1604,8 +1677,11 @@ function renderTaskGroups() {
                 ${group.description ? `<div style="padding: 10px 20px; background: #f8f9fa; font-style: italic;">${group.description}</div>` : ''}
                 <div class="group-tasks" id="tasks-${group.id}">
                     ${group.tasks.map(task => `
-                        <div class="group-task-item" onclick="showQuickActionMenu(event, ${task.id})">
-                            <div class="task-info-compact">
+                        <div class="group-task-item" data-task-id="${task.id}">
+                            <div class="task-checkbox-container">
+                                <input type="checkbox" class="task-select-checkbox" data-task-id="${task.id}" onclick="event.stopPropagation(); handleTaskSelection(${task.id})">
+                            </div>
+                            <div class="task-info-compact" onclick="showQuickActionMenu(event, ${task.id})">
                                 <div class="priority-dot ${task.priority}"></div>
                                 <h4 class="task-name-compact">${task.name}</h4>
                                 <div class="task-meta-compact">
@@ -1613,10 +1689,10 @@ function renderTaskGroups() {
                                 </div>
                             </div>
                             <div class="task-actions">
-                                <button class="btn btn-sm btn-outline-primary" onclick="editTask(${task.id})">
+                                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask(${task.id})">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
+                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask(${task.id})">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -1640,8 +1716,11 @@ function renderTaskGroups() {
                 </div>
                 <div class="group-tasks">
                     ${ungroupedTasks.map(task => `
-                        <div class="group-task-item" onclick="showQuickActionMenu(event, ${task.id})">
-                            <div class="task-info-compact">
+                        <div class="group-task-item" data-task-id="${task.id}">
+                            <div class="task-checkbox-container">
+                                <input type="checkbox" class="task-select-checkbox" data-task-id="${task.id}" onclick="event.stopPropagation(); handleTaskSelection(${task.id})">
+                            </div>
+                            <div class="task-info-compact" onclick="showQuickActionMenu(event, ${task.id})">
                                 <div class="priority-dot ${task.priority}"></div>
                                 <h4 class="task-name-compact">${task.name}</h4>
                                 <div class="task-meta-compact">
@@ -1649,10 +1728,10 @@ function renderTaskGroups() {
                                 </div>
                             </div>
                             <div class="task-actions">
-                                <button class="btn btn-sm btn-outline-primary" onclick="editTask(${task.id})">
+                                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editTask(${task.id})">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${task.id})">
+                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteTask(${task.id})">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -1664,6 +1743,23 @@ function renderTaskGroups() {
     }
     
     container.innerHTML = html;
+    
+    // Add bulk action toolbar to page
+    if (!document.getElementById('bulk-action-toolbar')) {
+        const toolbar = document.createElement('div');
+        toolbar.id = 'bulk-action-toolbar';
+        toolbar.className = 'bulk-action-toolbar';
+        toolbar.innerHTML = `
+            <span class="bulk-action-count" id="selected-count">0 נבחרו</span>
+            <button class="bulk-action-button" onclick="showBulkMoveDialog()">
+                <i class="fas fa-arrow-right"></i> העבר לקבוצה
+            </button>
+            <button class="bulk-action-button" onclick="clearSelection()">
+                <i class="fas fa-times"></i> בטל
+            </button>
+        `;
+        document.body.appendChild(toolbar);
+    }
 }
 
 function renderIndividualTasks() {
@@ -3240,6 +3336,125 @@ function groupAssignToShift(groupId, groupName) {
     `;
     
     document.body.appendChild(dialog);
+}
+
+// Multi-select functionality
+let selectedTasks = new Set();
+
+function handleTaskSelection(taskId) {
+    const checkbox = document.querySelector(`input[data-task-id="${taskId}"]`);
+    const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
+    
+    if (checkbox.checked) {
+        selectedTasks.add(taskId);
+        taskItem.classList.add('selected');
+    } else {
+        selectedTasks.delete(taskId);
+        taskItem.classList.remove('selected');
+    }
+    
+    updateBulkActionToolbar();
+}
+
+function updateBulkActionToolbar() {
+    const toolbar = document.getElementById('bulk-action-toolbar');
+    const countElement = document.getElementById('selected-count');
+    
+    if (selectedTasks.size > 0) {
+        toolbar.classList.add('show');
+        countElement.textContent = `${selectedTasks.size} נבחרו`;
+    } else {
+        toolbar.classList.remove('show');
+    }
+}
+
+function clearSelection() {
+    selectedTasks.clear();
+    document.querySelectorAll('.task-select-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.querySelectorAll('.group-task-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    updateBulkActionToolbar();
+}
+
+function showBulkMoveDialog() {
+    if (selectedTasks.size === 0) return;
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'mobile-confirm';
+    dialog.innerHTML = `
+        <div class="mobile-confirm-content">
+            <h3>העבר ${selectedTasks.size} משימות לקבוצה</h3>
+            <p>בחר קבוצת יעד:</p>
+            
+            <div style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                ${taskGroups.map(group => `
+                    <div class="group-option" onclick="bulkMoveToGroup(${group.id})" style="
+                        padding: 10px;
+                        margin: 8px 0;
+                        border: 1px solid #ddd;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        background: linear-gradient(135deg, ${group.color}20, ${group.color}10);
+                    ">
+                        <div style="
+                            width: 20px;
+                            height: 20px;
+                            background: ${group.color};
+                            border-radius: 50%;
+                            margin-left: 10px;
+                        "></div>
+                        <div>
+                            <strong>${group.name}</strong>
+                            <div style="font-size: 0.9em; color: #666;">${group.task_count || 0} משימות</div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="mobile-confirm-actions">
+                <button class="cancel-btn" onclick="this.closest('.mobile-confirm').remove()">ביטול</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+}
+
+async function bulkMoveToGroup(groupId) {
+    const selectedTaskIds = Array.from(selectedTasks);
+    
+    try {
+        for (const taskId of selectedTaskIds) {
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                },
+                body: JSON.stringify({ group_id: groupId })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to update task');
+            }
+        }
+        
+        showSuccess(`✅ הועברו ${selectedTaskIds.length} משימות בהצלחה!`);
+        clearSelection();
+        refreshData();
+        
+        // Close the dialog
+        document.querySelector('.mobile-confirm')?.remove();
+        
+    } catch (error) {
+        console.error('Error moving tasks:', error);
+        showError('❌ שגיאה בהעברת המשימות');
+    }
 }
 
 // Toggle group collapse/expand

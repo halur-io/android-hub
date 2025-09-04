@@ -1598,6 +1598,17 @@ async function loadTaskGroups() {
     }
 }
 
+// Refresh all data (tasks and groups)
+async function refreshData() {
+    try {
+        await loadTasks();
+        await loadTaskGroups();
+        clearSelection(); // Clear any active selections
+    } catch (error) {
+        console.error('Error refreshing data:', error);
+    }
+}
+
 function populateBranchSelect() {
     const select = document.getElementById('checklistBranch');
     select.innerHTML = '<option value="">בחר סניף</option>';

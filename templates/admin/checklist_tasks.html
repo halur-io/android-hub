@@ -1199,25 +1199,19 @@
                     </div>
                 </div>
                 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label>סוג משמרת: *</label>
-                            <select id="checklistShiftType" required>
-                                <option value="">בחר סוג משמרת</option>
-                                <option value="morning">פתיחת בוקר</option>
-                                <option value="evening">משמרת ערב</option>
-                                <option value="closing">סגירה</option>
-                                <option value="night">משמרת לילה</option>
-                            </select>
-                        </div>
+                <div class="form-group">
+                    <label>בחר קבוצות למשימות: *</label>
+                    <div id="groupSelectionContainer" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; max-height: 200px; overflow-y: auto;">
+                        <div style="color: #666; text-align: center; padding: 20px;">טוען קבוצות...</div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label>שם אחראי משמרת:</label>
-                            <input type="text" id="shiftManager" placeholder="שם האחראי">
-                        </div>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        <i class="fas fa-info-circle"></i> בחר קבוצה אחת או יותר להכללה ברשימת המשימות
                     </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>שם אחראי משמרת:</label>
+                    <input type="text" id="shiftManager" placeholder="שם האחראי">
                 </div>
                 
                 <div class="form-buttons">
@@ -1624,6 +1618,36 @@ function populateBranchSelect() {
     });
 }
 
+function populateGroupSelection() {
+    const container = document.getElementById('groupSelectionContainer');
+    if (!container) return;
+    
+    if (!taskGroups || taskGroups.length === 0) {
+        container.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">אין קבוצות זמינות</div>';
+        return;
+    }
+    
+    container.innerHTML = taskGroups.map(group => `
+        <label style="
+            display: flex; align-items: center; padding: 8px 12px; 
+            margin: 5px 0; border-radius: 6px; cursor: pointer;
+            border: 1px solid #e9ecef; background: ${group.color}10;
+            transition: all 0.2s;
+        " onmouseover="this.style.backgroundColor='${group.color}20'" 
+           onmouseout="this.style.backgroundColor='${group.color}10'">
+            <input type="checkbox" value="${group.id}" style="margin-left: 10px;">
+            <div style="
+                width: 12px; height: 12px; border-radius: 50%; 
+                background: ${group.color}; margin-left: 8px;
+            "></div>
+            <div style="flex: 1;">
+                <div style="font-weight: 500;">${group.name}</div>
+                <div style="font-size: 0.85em; color: #666;">${group.tasks?.length || 0} משימות</div>
+            </div>
+        </label>
+    `).join('');
+}
+
 // Render functions
 function renderTasks() {
     const container = document.getElementById('tasksList');
@@ -1872,6 +1896,9 @@ function editTask(taskId) {
 }
 
 function showGenerateModal() {
+    populateBranchSelect();
+    populateGroupSelection();
+    setDefaultDate();
     showModal('generateModal');
 }
 
@@ -1948,11 +1975,22 @@ async function handleTaskSubmit(e) {
 async function handleGenerateSubmit(e) {
     e.preventDefault();
     
+    // Get selected groups
+    const selectedGroups = [];
+    document.querySelectorAll('#groupSelectionContainer input[type="checkbox"]:checked').forEach(checkbox => {
+        selectedGroups.push(parseInt(checkbox.value));
+    });
+    
+    if (selectedGroups.length === 0) {
+        showError('❌ אנא בחר לפחות קבוצה אחת');
+        return;
+    }
+    
     const formData = {
         name: document.getElementById('checklistName').value,
         date: document.getElementById('checklistDate').value,
         branch_id: parseInt(document.getElementById('checklistBranch').value),
-        shift_type: document.getElementById('checklistShiftType').value,
+        selected_groups: selectedGroups,
         shift_manager: document.getElementById('shiftManager').value
     };
     
@@ -1967,31 +2005,139 @@ async function deleteTask(taskId) {
 
 // Generate checklist
 function generateChecklist(data) {
-    const filteredTasks = tasks.filter(task => task.shift_type === data.shift_type);
+    const selectedGroups = taskGroups.filter(group => data.selected_groups.includes(group.id));
     const branch = branches.find(b => b.id === data.branch_id);
     
-    if (filteredTasks.length === 0) {
-        showError('לא נמצאו משימות עבור המשמרת הנבחרת');
+    if (selectedGroups.length === 0) {
+        showError('❌ לא נמצאו קבוצות נבחרות');
         return;
     }
     
-    // Group tasks by category
-    const tasksByCategory = {};
-    filteredTasks.forEach(task => {
-        if (!tasksByCategory[task.category]) {
-            tasksByCategory[task.category] = [];
+    // Collect all tasks from selected groups
+    let allSelectedTasks = [];
+    selectedGroups.forEach(group => {
+        if (group.tasks && group.tasks.length > 0) {
+            allSelectedTasks = allSelectedTasks.concat(group.tasks.map(task => ({
+                ...task,
+                group_name: group.name,
+                group_color: group.color
+            })));
         }
-        tasksByCategory[task.category].push(task);
     });
     
-    // Generate print-ready HTML
-    const printContent = generatePrintHTML(data, branch, tasksByCategory);
+    if (allSelectedTasks.length === 0) {
+        showError('❌ הקבוצות הנבחרות ריקות מאמשימות');
+        return;
+    }
+    
+    // Generate print-ready HTML  
+    const printContent = generateMultiGroupPrintHTML(data, branch, selectedGroups, allSelectedTasks);
     
     // Open print window
     const printWindow = window.open('', '_blank');
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.print();
+}
+
+function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
+    return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head>
+            <meta charset="UTF-8">
+            <title>רשימת משימות - ${data.name}</title>
+            <style>
+                @page { size: A4; margin: 1.5cm; }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; }
+                .header { text-align: center; border-bottom: 3px solid #333; padding-bottom: 15px; margin-bottom: 25px; }
+                .header h1 { font-size: 24px; margin-bottom: 10px; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+                .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 8px; border-radius: 4px; }
+                .group-section { margin: 25px 0; break-inside: avoid; }
+                .group-header { 
+                    display: flex; align-items: center; gap: 8px; padding: 12px; 
+                    margin-bottom: 10px; border-radius: 6px; font-weight: bold; color: white;
+                }
+                .task-item { 
+                    display: flex; align-items: center; padding: 8px 0; 
+                    border-bottom: 1px dotted #ddd; min-height: 35px;
+                }
+                .checkbox { 
+                    width: 18px; height: 18px; border: 2px solid #333; 
+                    margin-left: 12px; flex-shrink: 0; 
+                }
+                .task-content { flex: 1; }
+                .task-name { font-weight: 500; margin-bottom: 2px; }
+                .task-description { font-size: 10px; color: #666; }
+                .priority-high { border-right: 3px solid #dc3545; }
+                .priority-medium { border-right: 3px solid #ffc107; }
+                .priority-low { border-right: 3px solid #28a745; }
+                .signature-section { 
+                    margin-top: 40px; padding-top: 20px; 
+                    border-top: 2px solid #333; display: grid; 
+                    grid-template-columns: 1fr 1fr; gap: 30px;
+                }
+                .signature-box { 
+                    text-align: center; border: 1px solid #333; 
+                    padding: 40px 10px 10px; border-radius: 4px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>${data.name}</h1>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span><strong>תאריך:</strong></span>
+                        <span>${data.date}</span>
+                    </div>
+                    <div class="info-item">
+                        <span><strong>סניף:</strong></span>
+                        <span>${branch ? branch.name : '___________'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span><strong>אחראי משמרת:</strong></span>
+                        <span>${data.shift_manager || '___________'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span><strong>כ"מ משימות:</strong></span>
+                        <span>${allTasks.length}</span>
+                    </div>
+                </div>
+            </div>
+            
+            ${selectedGroups.map(group => `
+                <div class="group-section">
+                    <div class="group-header" style="background: ${group.color};">
+                        <i class="fas fa-layer-group"></i>
+                        <span>${group.name}</span>
+                        <span>(${group.tasks.length} משימות)</span>
+                    </div>
+                    ${group.tasks.map(task => `
+                        <div class="task-item priority-${task.priority}">
+                            <div class="checkbox"></div>
+                            <div class="task-content">
+                                <div class="task-name">${task.name}</div>
+                                ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('')}
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    <div><strong>חתימת אחראי משמרת</strong></div>
+                </div>
+                <div class="signature-box">
+                    <div><strong>חתימת מנהל</strong></div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
 }
 
 function generatePrintHTML(data, branch, tasksByCategory) {

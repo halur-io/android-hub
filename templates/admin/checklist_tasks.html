@@ -2275,38 +2275,39 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 /* 2-Column Layout for Groups */
                 .content-container { 
-                    columns: 2;
-                    column-gap: 15px;
-                    column-fill: balance;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                    justify-content: space-between;
                 }
                 
                 .group-section { 
-                    margin: 8px 0; 
+                    flex: 0 0 calc(50% - 6px);
+                    margin: 0 0 8px 0; 
                     break-inside: avoid;
                     page-break-inside: avoid;
-                    display: inline-block;
-                    width: 100%;
                 }
                 
                 .group-header { 
-                    display: flex; align-items: center; gap: 4px; padding: 6px 8px; 
-                    margin-bottom: 6px; border-radius: 4px; font-weight: bold; color: white;
-                    font-size: 11px;
+                    display: flex; align-items: center; gap: 4px; padding: 4px 6px; 
+                    margin-bottom: 4px; border-radius: 4px; font-weight: bold; color: white;
+                    font-size: 10px;
                 }
                 
                 .task-item { 
-                    display: flex; align-items: flex-start; padding: 4px 0; 
-                    border-bottom: 1px dotted #ddd; min-height: 22px;
+                    display: flex; align-items: flex-start; padding: 2px 0; 
+                    border-bottom: 1px dotted #ddd; min-height: 18px;
+                    margin-bottom: 1px;
                 }
                 
                 .checkbox { 
-                    width: 14px; height: 14px; border: 1.5px solid #333; 
-                    margin-left: 8px; margin-top: 2px; flex-shrink: 0; 
+                    width: 12px; height: 12px; border: 1.5px solid #333; 
+                    margin-left: 6px; margin-top: 2px; flex-shrink: 0; 
                 }
                 
                 .task-content { flex: 1; }
-                .task-name { font-weight: 500; margin-bottom: 1px; font-size: 11px; }
-                .task-description { font-size: 9px; color: #666; }
+                .task-name { font-weight: 500; margin-bottom: 1px; font-size: 10px; line-height: 1.2; }
+                .task-description { font-size: 8px; color: #666; line-height: 1.1; }
                 
                 .priority-high { border-right: 2px solid #dc3545; }
                 .priority-medium { border-right: 2px solid #ffc107; }
@@ -2314,12 +2315,13 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 /* Compact Signature Section */
                 .signature-section { 
-                    margin-top: 15px; 
-                    padding-top: 10px; 
+                    width: 100%;
+                    margin-top: 12px; 
+                    padding-top: 8px; 
                     border-top: 2px solid #333; 
                     break-inside: avoid;
                     page-break-inside: avoid;
-                    columns: 1;
+                    clear: both;
                 }
                 
                 .signature-grid {
@@ -2341,21 +2343,25 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     }
                     
                     .content-container {
-                        columns: 2;
-                        column-gap: 15px;
-                        column-fill: balance;
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 10px;
+                        justify-content: space-between;
                     }
                     
                     .group-section {
+                        flex: 0 0 calc(50% - 5px);
                         break-inside: avoid;
                         page-break-inside: avoid;
+                        margin: 0 0 6px 0;
                     }
                     
                     .signature-section {
+                        width: 100%;
                         break-inside: avoid;
                         page-break-inside: avoid;
-                        columns: 1;
-                        margin-top: 10px;
+                        clear: both;
+                        margin-top: 8px;
                     }
                 }
             </style>

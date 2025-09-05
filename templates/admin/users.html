@@ -1,323 +1,763 @@
 {% extends "admin/base.html" %}
 
-{% block title %}ניהול משתמשים - Admin Panel{% endblock %}
+{% block title %}ניהול משתמשים ותפקידים - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/modern-style.css') }}">
+<style>
+    :root {
+        --sumo-coral: #C75450;
+        --sumo-navy: #1B2951;
+        --success-green: #10b981;
+        --warning-orange: #f59e0b;
+        --info-blue: #3b82f6;
+    }
+
+    /* Mobile-First Layout */
+    .user-management-container {
+        padding: 1rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Hero Header - Mobile Optimized */
+    .hero-header {
+        background: linear-gradient(135deg, var(--sumo-navy) 0%, #2a3f73 100%);
+        border-radius: 20px;
+        padding: 2rem 1.5rem;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(27, 41, 81, 0.3);
+    }
+
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin: 0 0 2rem 0;
+    }
+
+    /* Navigation Tabs - Mobile Scrollable */
+    .nav-tabs-container {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+
+    .nav-tabs-mobile {
+        display: flex;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        padding: 0.5rem;
+        gap: 0.5rem;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-tabs-mobile::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-tab {
+        flex: 0 0 auto;
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 140px;
+        justify-content: center;
+    }
+
+    .nav-tab.active {
+        background: var(--sumo-coral);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(199, 84, 80, 0.3);
+    }
+
+    .nav-tab:hover:not(.active) {
+        background: #e5e7eb;
+        transform: translateY(-1px);
+    }
+
+    /* Tab Content */
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeInUp 0.3s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Users Section */
+    .users-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .user-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+
+    .user-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .user-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .user-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--sumo-coral), #e67e73);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .user-info h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--sumo-navy);
+        font-weight: 600;
+    }
+
+    .user-email {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin: 0.25rem 0 0 0;
+    }
+
+    .user-badges {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .user-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .user-badge.superadmin {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        color: white;
+    }
+
+    .user-badge.admin {
+        background: linear-gradient(135deg, var(--info-blue), #2563eb);
+        color: white;
+    }
+
+    .user-badge.current {
+        background: linear-gradient(135deg, var(--success-green), #059669);
+        color: white;
+    }
+
+    .user-roles {
+        margin-bottom: 1rem;
+    }
+
+    .user-roles-title {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .role-tags {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .role-tag {
+        background: #f3f4f6;
+        color: #4b5563;
+        padding: 0.2rem 0.5rem;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+
+    .user-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: space-between;
+    }
+
+    .btn-card {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+    }
+
+    .btn-edit {
+        background: var(--sumo-coral);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #a63c38;
+        transform: translateY(-1px);
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+        transform: translateY(-1px);
+    }
+
+    /* Roles Section */
+    .roles-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .role-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s ease;
+    }
+
+    .role-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+
+    .role-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .role-info h3 {
+        margin: 0 0 0.5rem 0;
+        color: var(--sumo-navy);
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .role-description {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .role-type-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .role-type-badge.system {
+        background: linear-gradient(135deg, #e0f2fe, #b3e5fc);
+        color: #0277bd;
+    }
+
+    .role-type-badge.custom {
+        background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+        color: #7b1fa2;
+    }
+
+    .role-stats {
+        display: flex;
+        justify-content: space-between;
+        margin: 1rem 0;
+    }
+
+    .role-stat {
+        text-align: center;
+    }
+
+    .role-stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--sumo-coral);
+    }
+
+    .role-stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn-action {
+        flex: 1;
+        padding: 1rem;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        text-decoration: none;
+    }
+
+    .btn-primary-action {
+        background: var(--sumo-coral);
+        color: white;
+        box-shadow: 0 4px 15px rgba(199, 84, 80, 0.2);
+    }
+
+    .btn-primary-action:hover {
+        background: #a63c38;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(199, 84, 80, 0.3);
+    }
+
+    .btn-secondary-action {
+        background: var(--sumo-navy);
+        color: white;
+        box-shadow: 0 4px 15px rgba(27, 41, 81, 0.2);
+    }
+
+    .btn-secondary-action:hover {
+        background: #0f1a35;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(27, 41, 81, 0.3);
+    }
+
+    /* Empty States */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        color: #d1d5db;
+        margin-bottom: 1.5rem;
+    }
+
+    .empty-state h3 {
+        color: var(--sumo-navy);
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .empty-state p {
+        color: #6b7280;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .user-management-container {
+            padding: 0.5rem;
+        }
+        
+        .hero-header {
+            padding: 1.5rem 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title {
+            font-size: 1.5rem;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-tabs-mobile {
+            padding: 0.25rem;
+            gap: 0.25rem;
+        }
+
+        .nav-tab {
+            min-width: 120px;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .users-grid,
+        .roles-overview {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .user-card,
+        .role-card {
+            padding: 1rem;
+        }
+
+        .user-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+        }
+
+        .user-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn-card {
+            padding: 0.75rem 1rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .role-stats {
+            justify-content: space-around;
+        }
+    }
+
+    /* Touch-friendly improvements */
+    @media (hover: none) and (pointer: coarse) {
+        .nav-tab,
+        .btn-card,
+        .btn-action {
+            padding: 1rem;
+            font-size: 1rem;
+        }
+
+        .user-card:hover,
+        .role-card:hover {
+            transform: none;
+        }
+
+        .user-card:active,
+        .role-card:active {
+            transform: scale(0.98);
+        }
+    }
+
+    /* High contrast for accessibility */
+    @media (prefers-contrast: high) {
+        .user-badge,
+        .role-type-badge {
+            border: 2px solid currentColor;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Modern Page Header -->
-<div class="page-header-modern">
-    <div class="header-content">
-        <div class="header-text">
-            <h1 class="page-title">
+<div class="user-management-container">
+    <!-- Hero Header -->
+    <div class="hero-header">
+        <h1 class="hero-title">
+            <i class="fas fa-users-cog"></i>
+            ניהול משתמשים ותפקידים
+        </h1>
+        <p class="hero-subtitle">מרכז בקרה מלא לניהול משתמשים, תפקידים והרשאות במערכת</p>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs-container">
+        <div class="nav-tabs-mobile">
+            <button class="nav-tab active" data-tab="users">
                 <i class="fas fa-users"></i>
-                ניהול משתמשים
-            </h1>
-            <p class="page-subtitle">ניהול משתמשי מערכת הניהול</p>
+                משתמשים ({{ users|length }})
+            </button>
+            <button class="nav-tab" data-tab="roles">
+                <i class="fas fa-user-shield"></i>
+                תפקידים והרשאות
+            </button>
+            <button class="nav-tab" data-tab="permissions">
+                <i class="fas fa-key"></i>
+                הרשאות מפורטות
+            </button>
+            <button class="nav-tab" data-tab="activity">
+                <i class="fas fa-history"></i>
+                פעילות משתמשים
+            </button>
         </div>
-        <div class="header-actions">
-            <a href="{{ url_for('admin.add_user') }}" class="btn btn-primary btn-modern">
-                <i class="fas fa-plus"></i> הוסף משתמש חדש
+    </div>
+
+    <!-- Users Tab Content -->
+    <div class="tab-content active" data-content="users">
+        <div class="action-buttons">
+            <a href="{{ url_for('admin.add_user') }}" class="btn-action btn-primary-action">
+                <i class="fas fa-user-plus"></i>
+                הוסף משתמש חדש
             </a>
         </div>
-    </div>
-</div>
 
-<!-- Users Table -->
-<div class="content-card">
-    {% if users %}
-    <div class="table-responsive">
-        <table class="table table-modern table-hover">
-            <thead>
-                <tr>
-                    <th>שם משתמש</th>
-                    <th>אימייל</th>
-                    <th>סוג משתמש</th>
-                    <th>תאריך הצטרפות</th>
-                    <th>סטטוס</th>
-                    <th>פעולות</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td>
-                        <div class="user-info">
-                            <div class="user-avatar">
-                                <i class="fas fa-user-circle"></i>
-                            </div>
-                            <div class="user-details">
-                                <strong>{{ user.username }}</strong>
-                                {% if user.id == current_user.id %}
-                                    <span class="current-user-badge">אתה</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-                    <td>{{ user.email }}</td>
-                    <td>
-                        {% if user.is_superadmin %}
-                            <span class="badge-modern badge-success">
-                                <i class="fas fa-crown"></i> מנהל מערכת
-                            </span>
-                        {% else %}
-                            <span class="badge-modern badge-info">
-                                <i class="fas fa-user"></i> מנהל
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '-' }}</td>
-                    <td>
-                        <span class="badge-modern badge-success">
-                            <i class="fas fa-check-circle"></i> פעיל
+        {% if users %}
+        <div class="users-grid">
+            {% for user in users %}
+            <div class="user-card">
+                <div class="user-header">
+                    <div class="user-avatar">
+                        {{ user.username[0].upper() }}
+                    </div>
+                    <div class="user-info">
+                        <h3>{{ user.username }}</h3>
+                        <p class="user-email">{{ user.email }}</p>
+                    </div>
+                </div>
+
+                <div class="user-badges">
+                    {% if user.is_superadmin %}
+                        <span class="user-badge superadmin">
+                            <i class="fas fa-crown"></i>
+                            מנהל מערכת
                         </span>
-                    </td>
-                    <td>
-                        <div class="action-buttons">
-                            <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" 
-                               class="btn btn-sm btn-outline-primary"
-                               title="עריכת משתמש">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            {% if user.id != current_user.id %}
-                            <button class="btn btn-sm btn-outline-danger delete-user-btn" 
-                                    data-user-id="{{ user.id }}" 
-                                    data-username="{{ user.username }}"
-                                    title="מחיקת משתמש">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="empty-state-modern">
-        <div class="empty-icon">
-            <i class="fas fa-users"></i>
-        </div>
-        <h3>אין משתמשים במערכת</h3>
-        <p>התחל על ידי הוספת המשתמש הראשון</p>
-        <a href="{{ url_for('admin.add_user') }}" class="btn btn-primary btn-modern">
-            <i class="fas fa-plus"></i> הוסף משתמש ראשון
-        </a>
-    </div>
-    {% endif %}
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    מחיקת משתמש
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <div class="warning-icon">
-                    <i class="fas fa-user-times"></i>
+                    {% else %}
+                        <span class="user-badge admin">
+                            <i class="fas fa-user-tie"></i>
+                            מנהל
+                        </span>
+                    {% endif %}
+                    
+                    {% if user.id == current_user.id %}
+                        <span class="user-badge current">
+                            <i class="fas fa-user-check"></i>
+                            זה אתה
+                        </span>
+                    {% endif %}
                 </div>
-                <h4>האם אתה בטוח?</h4>
-                <p>פעולה זו תמחק לצמיתות את המשתמש <strong id="deleteUsername"></strong> מהמערכת.</p>
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    פעולה זו אינה ניתנת לביטול!
+
+                <div class="user-roles">
+                    <div class="user-roles-title">תפקידים:</div>
+                    <div class="role-tags">
+                        {% for role in user.roles %}
+                            <span class="role-tag">{{ role.display_name }}</span>
+                        {% else %}
+                            <span class="role-tag">אין תפקידים מוגדרים</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="user-actions">
+                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn-card btn-edit">
+                        <i class="fas fa-edit"></i>
+                        עריכה
+                    </a>
+                    {% if user.id != current_user.id %}
+                    <button class="btn-card btn-delete" 
+                            onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                        <i class="fas fa-trash"></i>
+                        מחיקה
+                    </button>
+                    {% endif %}
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> ביטול
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteUser">
-                    <i class="fas fa-trash"></i> מחק משתמש
-                </button>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3>אין משתמשים במערכת</h3>
+            <p>התחל על ידי הוספת המשתמש הראשון למערכת</p>
+            <a href="{{ url_for('admin.add_user') }}" class="btn-action btn-primary-action">
+                <i class="fas fa-user-plus"></i>
+                הוסף משתמש ראשון
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Roles Tab Content -->
+    <div class="tab-content" data-content="roles">
+        <div class="action-buttons">
+            <a href="{{ url_for('admin.roles') }}" class="btn-action btn-primary-action">
+                <i class="fas fa-user-shield"></i>
+                ניהול תפקידים מלא
+            </a>
+            <a href="{{ url_for('admin.create_role') }}" class="btn-action btn-secondary-action">
+                <i class="fas fa-plus"></i>
+                צור תפקיד חדש
+            </a>
+        </div>
+
+        <div class="roles-overview">
+            <!-- Role cards will be loaded here via JavaScript -->
+            <div class="role-card">
+                <div class="role-header">
+                    <div class="role-info">
+                        <h3>מנהל מערכת</h3>
+                        <p class="role-description">הרשאות מלאות לכל המערכת</p>
+                    </div>
+                    <span class="role-type-badge system">מערכת</span>
+                </div>
+                <div class="role-stats">
+                    <div class="role-stat">
+                        <div class="role-stat-number">1</div>
+                        <div class="role-stat-label">משתמשים</div>
+                    </div>
+                    <div class="role-stat">
+                        <div class="role-stat-number">28</div>
+                        <div class="role-stat-label">הרשאות</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <h3>ניהול תפקידים מתקדם</h3>
+                <p>לחץ על "ניהול תפקידים מלא" למעלה לגישה למערכת התפקידים וההרשאות המלאה</p>
             </div>
         </div>
     </div>
+
+    <!-- Permissions Tab Content -->
+    <div class="tab-content" data-content="permissions">
+        <div class="action-buttons">
+            <a href="{{ url_for('admin.permissions') }}" class="btn-action btn-primary-action">
+                <i class="fas fa-key"></i>
+                צפה בכל ההרשאות
+            </a>
+        </div>
+
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-key"></i>
+            </div>
+            <h3>מערכת הרשאות מתקדמת</h3>
+            <p>המערכת כוללת 28+ הרשאות מפורטות המחולקות לקטגוריות:<br>
+            משתמשים, הזמנות, מטבח, משלוחים, תשלומים, תפריט, הגדרות ועוד</p>
+        </div>
+    </div>
+
+    <!-- Activity Tab Content -->
+    <div class="tab-content" data-content="activity">
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3>פעילות משתמשים</h3>
+            <p>כאן יוצג לוג של פעילות המשתמשים במערכת</p>
+        </div>
+    </div>
 </div>
-
-<style>
-.page-header-modern {
-    background: white;
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    border: 1px solid #e5e7eb;
-}
-
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.page-title {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: var(--sumo-navy);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.page-subtitle {
-    color: #6b7280;
-    margin: 0.5rem 0 0 0;
-    font-size: 1.1rem;
-}
-
-.content-card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    border: 1px solid #e5e7eb;
-    overflow: hidden;
-}
-
-.table-modern {
-    margin: 0;
-}
-
-.table-modern th {
-    background: #f8f9fa;
-    border-bottom: 2px solid #e5e7eb;
-    font-weight: 600;
-    color: var(--sumo-navy);
-    padding: 1.5rem 1rem;
-}
-
-.table-modern td {
-    padding: 1.2rem 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #f1f3f4;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.user-avatar {
-    font-size: 2.5rem;
-    color: var(--sumo-coral);
-}
-
-.user-details strong {
-    color: var(--sumo-navy);
-    font-size: 1.1rem;
-}
-
-.current-user-badge {
-    background: var(--sumo-coral);
-    color: white;
-    padding: 0.15rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    margin-right: 0.5rem;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.empty-state-modern {
-    padding: 4rem 2rem;
-    text-align: center;
-}
-
-.empty-icon {
-    font-size: 4rem;
-    color: #9ca3af;
-    margin-bottom: 1.5rem;
-}
-
-.empty-state-modern h3 {
-    color: var(--sumo-navy);
-    margin-bottom: 1rem;
-}
-
-.empty-state-modern p {
-    color: #6b7280;
-    margin-bottom: 2rem;
-}
-
-.warning-icon {
-    font-size: 4rem;
-    color: #dc3545;
-    margin-bottom: 1rem;
-}
-
-.btn-modern {
-    padding: 0.75rem 1.5rem;
-    border-radius: 10px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-@media (max-width: 768px) {
-    .header-content {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: stretch;
-    }
-    
-    .page-title {
-        font-size: 1.8rem;
-    }
-    
-    .table-responsive {
-        font-size: 0.9rem;
-    }
-    
-    .user-info {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .user-avatar {
-        font-size: 2rem;
-    }
-}
-</style>
 
 <script>
+// Tab switching functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.delete-user-btn');
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-    const confirmButton = document.getElementById('confirmDeleteUser');
-    let userToDelete = null;
+    const tabs = document.querySelectorAll('.nav-tab');
+    const contents = document.querySelectorAll('.tab-content');
 
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            userToDelete = {
-                id: this.dataset.userId,
-                username: this.dataset.username
-            };
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.dataset.tab;
             
-            document.getElementById('deleteUsername').textContent = userToDelete.username;
-            deleteModal.show();
+            // Remove active class from all tabs and contents
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding content
+            this.classList.add('active');
+            document.querySelector(`[data-content="${targetTab}"]`).classList.add('active');
         });
     });
+});
 
-    confirmButton.addEventListener('click', function() {
-        if (!userToDelete) return;
-        
-        // Show loading state
-        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> מוחק...';
-        confirmButton.disabled = true;
-        
-        fetch(`/admin/users/delete/${userToDelete.id}`, {
+// User deletion functionality
+function deleteUser(userId, username) {
+    if (confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${username}"?`)) {
+        fetch(`/admin/users/delete/${userId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -327,49 +767,63 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 // Show success message
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-success alert-dismissible fade show';
-                alert.innerHTML = `
-                    ${data.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
-                
-                // Reload page to refresh user list
+                showNotification(data.message, 'success');
+                // Reload page after short delay
                 setTimeout(() => {
                     window.location.reload();
-                }, 1000);
+                }, 1500);
             } else {
-                // Show error message
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-danger alert-dismissible fade show';
-                alert.innerHTML = `
-                    שגיאה: ${data.error}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
+                showNotification('שגיאה: ' + data.error, 'error');
             }
-            
-            deleteModal.hide();
         })
         .catch(error => {
-            console.error('Error:', error);
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-danger alert-dismissible fade show';
-            alert.innerHTML = `
-                שגיאה במחיקת המשתמש
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.querySelector('.main-content').insertBefore(alert, document.querySelector('.main-content').firstChild);
-            deleteModal.hide();
-        })
-        .finally(() => {
-            confirmButton.innerHTML = '<i class="fas fa-trash"></i> מחק משתמש';
-            confirmButton.disabled = false;
-            userToDelete = null;
+            showNotification('שגיאה במחיקת המשתמש', 'error');
+        });
+    }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    `;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
+// Touch and mobile enhancements
+if ('ontouchstart' in window) {
+    // Add touch feedback for mobile devices
+    const touchElements = document.querySelectorAll('.nav-tab, .btn-card, .btn-action, .user-card, .role-card');
+    
+    touchElements.forEach(element => {
+        element.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+        
+        element.addEventListener('touchend', function() {
+            this.style.transform = '';
         });
     });
-});
+}
 </script>
 
 {% endblock %}

@@ -4280,13 +4280,10 @@ async function previewChecklist(checklistId) {
             try {
                 const previewContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
                 console.log('Generated preview content length:', previewContent.length);
+                console.log('Is mobile device:', isMobileDevice());
                 
-                // Mobile-aware preview with fallbacks
-                if (isMobileDevice()) {
-                    handleMobilePreview(previewContent, checklist.name);
-                } else {
-                    handleDesktopPreview(previewContent);
-                }
+                // Always use desktop preview for now to test
+                handleDesktopPreview(previewContent);
             } catch (genError) {
                 console.error('Error generating preview content:', genError);
                 showError('❌ שגיאה ביצירת תוכן התצוגה המקדימה: ' + genError.message);
@@ -4364,12 +4361,20 @@ function handleMobilePrint(printContent, fileName) {
 
 function handleDesktopPreview(previewContent) {
     try {
-        const previewWindow = window.open('', '_blank', 'width=800,height=600');
-        if (previewWindow) {
+        console.log('Opening desktop preview...');
+        const previewWindow = window.open('', '_blank', 'width=800,height=600,toolbar=yes,location=yes,directories=yes,status=yes,menubar=yes,scrollbars=yes,copyhistory=yes,resizable=yes');
+        
+        if (previewWindow && previewWindow.document) {
+            previewWindow.document.open();
             previewWindow.document.write(previewContent);
             previewWindow.document.close();
-            showSuccess('👁️ פותח תצוגה מקדימה...');
+            
+            // Focus the window
+            previewWindow.focus();
+            
+            showSuccess('👁️ תצוגה מקדימה נפתחה בחלון חדש');
         } else {
+            console.error('Could not open preview window - trying fallback');
             handlePreviewFallback(previewContent);
         }
     } catch (error) {
@@ -4413,18 +4418,32 @@ function handlePrintFallback(printContent) {
 
 function handlePreviewFallback(previewContent) {
     try {
-        const blob = new Blob([previewContent], { type: 'text/html' });
+        console.log('Using preview fallback method...');
+        
+        // Method 1: Try blob URL
+        const blob = new Blob([previewContent], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const fallbackWindow = window.open(url, '_blank');
         
         if (fallbackWindow) {
-            showSuccess('👁️ פותח תצוגה מקדימה...');
+            showSuccess('👁️ תצוגה מקדימה נפתחה (שיטה חלופית)');
+            // Clean up blob URL after a delay
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         } else {
-            showError('❌ לא ניתן לפתוח תצוגה מקדימה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
+            // Method 2: Try data URL as last resort
+            console.log('Blob URL failed, trying data URL...');
+            const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(previewContent);
+            const dataWindow = window.open(dataUrl, '_blank');
+            
+            if (dataWindow) {
+                showSuccess('👁️ תצוגה מקדימה נפתחה');
+            } else {
+                showError('❌ לא ניתן לפתוח תצוגה מקדימה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
+            }
         }
     } catch (error) {
         console.error('Preview fallback error:', error);
-        showError('❌ שגיאה בפתיחת תצוגה מקדימה');
+        showError('❌ שגיאה בפתיחת תצוגה מקדימה. נסה להוריד את הקובץ במקום.');
     }
 }
 

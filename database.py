@@ -40,15 +40,33 @@ def init_db(app):
         
         db.create_all()
         
-        # Create default admin user if not exists
-        from models import AdminUser, SiteSettings
+        # Create default data
+        from models import AdminUser, SiteSettings, Role, Permission
         
-        admin = AdminUser.query.filter_by(username='admin').first()
+        # Try to create default roles and permissions
+        try:
+            create_default_roles_and_permissions()
+        except Exception as e:
+            # Tables might not exist, recreate everything
+            print(f"Database error: {e}")
+            print("Recreating database...")
+            db.drop_all()
+            db.create_all()
+            create_default_roles_and_permissions()
+        
+        # Create default admin user if not exists
+        try:
+            admin = AdminUser.query.filter_by(username='admin').first()
+        except Exception as e:
+            print(f"Admin user query error: {e}")
+            admin = None
+            
         if not admin:
             admin = AdminUser(
                 username='admin',
                 email='admin@sumo.com',
-                is_superadmin=True
+                is_superadmin=True,
+                is_active=True
             )
             admin.set_password('admin123')  # Default password
             db.session.add(admin)
@@ -62,6 +80,170 @@ def init_db(app):
             db.session.add(settings)
             db.session.commit()
             print("Created default site settings")
+
+def create_default_roles_and_permissions():
+    """Create default roles and permissions for the system"""
+    from models import Role, Permission
+    
+    # Define default permissions by category
+    permissions_data = [
+        # User Management
+        ('users.view', 'View Users', 'users', 'View user list and details'),
+        ('users.create', 'Create Users', 'users', 'Create new users'),
+        ('users.edit', 'Edit Users', 'users', 'Edit user information'),
+        ('users.delete', 'Delete Users', 'users', 'Delete users from system'),
+        
+        # Role Management
+        ('roles.view', 'View Roles', 'roles', 'View roles and permissions'),
+        ('roles.create', 'Create Roles', 'roles', 'Create new roles'),
+        ('roles.edit', 'Edit Roles', 'roles', 'Edit role permissions'),
+        ('roles.delete', 'Delete Roles', 'roles', 'Delete roles'),
+        
+        # Orders
+        ('orders.view', 'View Orders', 'orders', 'View order list and details'),
+        ('orders.create', 'Create Orders', 'orders', 'Create new orders'),
+        ('orders.edit', 'Edit Orders', 'orders', 'Modify order status and details'),
+        ('orders.delete', 'Delete Orders', 'orders', 'Cancel/delete orders'),
+        
+        # Kitchen Management
+        ('kitchen.view', 'View Kitchen', 'kitchen', 'Access kitchen display system'),
+        ('kitchen.manage', 'Manage Kitchen', 'kitchen', 'Update order status in kitchen'),
+        
+        # Delivery Management
+        ('delivery.view', 'View Deliveries', 'delivery', 'View delivery assignments'),
+        ('delivery.manage', 'Manage Deliveries', 'delivery', 'Assign drivers and manage deliveries'),
+        
+        # Payment Management
+        ('payments.view', 'View Payments', 'payments', 'View payment transactions'),
+        ('payments.manage', 'Manage Payments', 'payments', 'Process refunds and manage payments'),
+        
+        # Menu Management
+        ('menu.view', 'View Menu', 'menu', 'View menu items and categories'),
+        ('menu.edit', 'Edit Menu', 'menu', 'Edit menu items and categories'),
+        
+        # Settings
+        ('settings.view', 'View Settings', 'settings', 'View system settings'),
+        ('settings.edit', 'Edit Settings', 'settings', 'Modify system settings'),
+        
+        # Branches
+        ('branches.view', 'View Branches', 'branches', 'View branch information'),
+        ('branches.edit', 'Edit Branches', 'branches', 'Edit branch settings'),
+        
+        # Checklists
+        ('checklists.view', 'View Checklists', 'checklists', 'View task checklists'),
+        ('checklists.edit', 'Edit Checklists', 'checklists', 'Manage task checklists'),
+        
+        # Reports
+        ('reports.view', 'View Reports', 'reports', 'View system reports'),
+        
+        # System Administration
+        ('system.admin', 'System Administration', 'system', 'Full system administration access'),
+    ]
+    
+    # Create permissions
+    for perm_name, display_name, category, description in permissions_data:
+        try:
+            existing = Permission.query.filter_by(name=perm_name).first()
+            if not existing:
+                permission = Permission(
+                    name=perm_name,
+                    display_name=display_name,
+                    category=category,
+                    description=description
+                )
+                db.session.add(permission)
+        except Exception as e:
+            print(f"Error checking permission {perm_name}: {e}")
+            permission = Permission(
+                name=perm_name,
+                display_name=display_name,
+                category=category,
+                description=description
+            )
+            db.session.add(permission)
+    
+    # Define default roles
+    roles_data = [
+        ('superadmin', 'Super Administrator', 'Full system access with all permissions', True),
+        ('admin', 'Administrator', 'Full administrative access to most features', True),
+        ('manager', 'Manager', 'Management access to operations and reports', False),
+        ('kitchen', 'Kitchen Staff', 'Kitchen operations and order management', False),
+        ('delivery', 'Delivery Manager', 'Delivery and driver management', False),
+        ('cashier', 'Cashier', 'Order taking and payment processing', False),
+        ('viewer', 'Viewer', 'Read-only access to reports and data', False),
+    ]
+    
+    # Create roles
+    for role_name, display_name, description, is_system in roles_data:
+        try:
+            existing = Role.query.filter_by(name=role_name).first()
+            if not existing:
+                role = Role(
+                    name=role_name,
+                    display_name=display_name,
+                    description=description,
+                    is_system_role=is_system
+                )
+                db.session.add(role)
+        except Exception as e:
+            print(f"Error checking role {role_name}: {e}")
+            role = Role(
+                name=role_name,
+                display_name=display_name,
+                description=description,
+                is_system_role=is_system
+            )
+            db.session.add(role)
+    
+    db.session.commit()
+    
+    # Assign permissions to roles
+    superadmin_role = Role.query.filter_by(name='superadmin').first()
+    admin_role = Role.query.filter_by(name='admin').first()
+    manager_role = Role.query.filter_by(name='manager').first()
+    kitchen_role = Role.query.filter_by(name='kitchen').first()
+    delivery_role = Role.query.filter_by(name='delivery').first()
+    cashier_role = Role.query.filter_by(name='cashier').first()
+    viewer_role = Role.query.filter_by(name='viewer').first()
+    
+    # Superadmin gets all permissions
+    if superadmin_role:
+        superadmin_role.permissions = Permission.query.all()
+    
+    # Admin gets most permissions except system admin
+    if admin_role:
+        admin_perms = Permission.query.filter(Permission.name != 'system.admin').all()
+        admin_role.permissions = admin_perms
+    
+    # Manager gets operational permissions
+    if manager_role:
+        manager_perms = Permission.query.filter(Permission.category.in_([
+            'orders', 'kitchen', 'delivery', 'menu', 'branches', 'checklists', 'reports'
+        ])).all()
+        manager_role.permissions = manager_perms
+    
+    # Kitchen staff gets kitchen permissions
+    if kitchen_role:
+        kitchen_perms = Permission.query.filter(Permission.category.in_(['kitchen', 'orders'])).all()
+        kitchen_role.permissions = kitchen_perms
+    
+    # Delivery gets delivery permissions
+    if delivery_role:
+        delivery_perms = Permission.query.filter(Permission.category.in_(['delivery', 'orders'])).all()
+        delivery_role.permissions = delivery_perms
+    
+    # Cashier gets order and payment permissions
+    if cashier_role:
+        cashier_perms = Permission.query.filter(Permission.category.in_(['orders', 'payments'])).all()
+        cashier_role.permissions = cashier_perms
+    
+    # Viewer gets view-only permissions
+    if viewer_role:
+        viewer_perms = Permission.query.filter(Permission.name.like('%.view')).all()
+        viewer_role.permissions = viewer_perms
+    
+    db.session.commit()
+    print("Created default roles and permissions")
 
 @login_manager.user_loader
 def load_user(user_id):

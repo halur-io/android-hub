@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from database import db
 from models import *
+from permissions import require_permission, require_role, superadmin_required, has_permission
 import os
 from datetime import datetime
 import json
@@ -94,6 +95,7 @@ def logout():
 # User Management Routes
 @admin_bp.route('/users')
 @login_required
+@require_permission('users.view')
 def users():
     """List all admin users"""
     users = AdminUser.query.order_by(AdminUser.created_at.desc()).all()
@@ -101,6 +103,7 @@ def users():
 
 @admin_bp.route('/users/add', methods=['GET', 'POST'])
 @login_required
+@require_permission('users.create')
 def add_user():
     """Add new admin user"""
     if request.method == 'POST':
@@ -152,6 +155,7 @@ def add_user():
 
 @admin_bp.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
 @login_required
+@require_permission('users.edit')
 def edit_user(user_id):
     """Edit existing admin user"""
     user = AdminUser.query.get_or_404(user_id)
@@ -205,6 +209,7 @@ def edit_user(user_id):
 
 @admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
+@require_permission('users.delete')
 def delete_user(user_id):
     """Delete admin user"""
     user = AdminUser.query.get_or_404(user_id)
@@ -1206,6 +1211,139 @@ def microservices_dashboard():
 def system_config():
     """System configuration page"""
     return render_template('admin/system_config.html')
+
+# Role and Permission Management Routes
+@admin_bp.route('/roles')
+@login_required
+@require_permission('roles.view')
+def roles():
+    """List all roles"""
+    roles = Role.query.all()
+    return render_template('admin/roles.html', roles=roles)
+
+@admin_bp.route('/roles/create', methods=['GET', 'POST'])
+@login_required
+@require_permission('roles.create')
+def create_role():
+    """Create new role"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        display_name = request.form.get('display_name')
+        description = request.form.get('description')
+        permission_ids = request.form.getlist('permissions')
+        
+        if not name or not display_name:
+            flash('שם התפקיד ושם התצוגה נדרשים', 'error')
+            return redirect(request.url)
+        
+        # Check if role already exists
+        if Role.query.filter_by(name=name).first():
+            flash('תפקיד עם השם הזה כבר קיים', 'error')
+            return redirect(request.url)
+        
+        # Create new role
+        role = Role(
+            name=name,
+            display_name=display_name,
+            description=description
+        )
+        
+        # Add permissions
+        if permission_ids:
+            permissions = Permission.query.filter(Permission.id.in_(permission_ids)).all()
+            role.permissions = permissions
+        
+        db.session.add(role)
+        db.session.commit()
+        
+        flash(f'התפקיד "{display_name}" נוצר בהצלחה', 'success')
+        return redirect(url_for('admin.roles'))
+    
+    # Get all permissions grouped by category
+    permissions = Permission.query.order_by(Permission.category, Permission.display_name).all()
+    permissions_by_category = {}
+    for perm in permissions:
+        if perm.category not in permissions_by_category:
+            permissions_by_category[perm.category] = []
+        permissions_by_category[perm.category].append(perm)
+    
+    return render_template('admin/create_role.html', permissions_by_category=permissions_by_category)
+
+@admin_bp.route('/roles/<int:role_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('roles.edit')
+def edit_role(role_id):
+    """Edit existing role"""
+    role = Role.query.get_or_404(role_id)
+    
+    if request.method == 'POST':
+        display_name = request.form.get('display_name')
+        description = request.form.get('description')
+        permission_ids = request.form.getlist('permissions')
+        
+        if not display_name:
+            flash('שם התצוגה נדרש', 'error')
+            return redirect(request.url)
+        
+        role.display_name = display_name
+        role.description = description
+        
+        # Update permissions
+        if permission_ids:
+            permissions = Permission.query.filter(Permission.id.in_(permission_ids)).all()
+            role.permissions = permissions
+        else:
+            role.permissions = []
+        
+        db.session.commit()
+        
+        flash(f'התפקיד "{display_name}" עודכן בהצלחה', 'success')
+        return redirect(url_for('admin.roles'))
+    
+    # Get all permissions grouped by category
+    permissions = Permission.query.order_by(Permission.category, Permission.display_name).all()
+    permissions_by_category = {}
+    for perm in permissions:
+        if perm.category not in permissions_by_category:
+            permissions_by_category[perm.category] = []
+        permissions_by_category[perm.category].append(perm)
+    
+    return render_template('admin/edit_role.html', role=role, permissions_by_category=permissions_by_category)
+
+@admin_bp.route('/roles/<int:role_id>/delete', methods=['DELETE'])
+@login_required
+@require_permission('roles.delete')
+def delete_role(role_id):
+    """Delete role"""
+    role = Role.query.get_or_404(role_id)
+    
+    # Prevent deletion of system roles
+    if role.is_system_role:
+        return jsonify({'success': False, 'error': 'לא ניתן למחוק תפקיד מערכת'}), 400
+    
+    # Check if role has users
+    if role.users:
+        return jsonify({'success': False, 'error': f'לא ניתן למחוק תפקיד עם {len(role.users)} משתמשים'}), 400
+    
+    role_name = role.display_name
+    db.session.delete(role)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'התפקיד "{role_name}" נמחק בהצלחה'})
+
+@admin_bp.route('/permissions')
+@login_required
+@require_permission('roles.view')
+def permissions():
+    """List all permissions"""
+    permissions = Permission.query.order_by(Permission.category, Permission.display_name).all()
+    permissions_by_category = {}
+    for perm in permissions:
+        if perm.category not in permissions_by_category:
+            permissions_by_category[perm.category] = []
+        permissions_by_category[perm.category].append(perm)
+    
+    return render_template('admin/permissions.html', permissions_by_category=permissions_by_category)
 
 @admin_bp.route('/kitchen-config')
 @login_required

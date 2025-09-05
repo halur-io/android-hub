@@ -2257,144 +2257,113 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 body { 
                     font-family: Arial, sans-serif; 
                     font-size: 11px; 
-                    line-height: 1.2; 
+                    line-height: 1.3; 
                     margin: 0;
                     padding: 0;
-                    width: 100%;
-                    height: 100%;
                 }
                 
-                /* Header - Compact but readable */
+                /* Simple Header */
                 .header { 
                     text-align: center; 
-                    border-bottom: 2px solid #333; 
-                    padding-bottom: 8px; 
+                    border-bottom: 1px solid #000; 
+                    padding-bottom: 5px; 
                     margin-bottom: 10px; 
                 }
-                .header h1 { font-size: 20px; margin-bottom: 6px; }
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin: 6px 0; }
-                .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 4px 6px; border-radius: 3px; font-size: 10px; }
+                .header h1 { font-size: 18px; margin-bottom: 5px; }
+                .info-grid { display: flex; justify-content: center; gap: 20px; }
+                .info-item { font-size: 11px; }
                 
-                /* 2-Column Layout that uses full page width */
+                /* 3-Column Layout for Maximum Space Usage */
                 .content-container { 
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 15px;
-                    justify-content: space-between;
+                    columns: 3;
+                    column-gap: 10px;
                     width: 100%;
                 }
                 
                 .group-section { 
-                    flex: 0 0 calc(50% - 8px);
-                    margin: 0 0 10px 0; 
                     break-inside: avoid;
-                    page-break-inside: avoid;
+                    margin-bottom: 15px;
                 }
                 
                 .group-header { 
-                    display: flex; align-items: center; justify-content: space-between;
-                    padding: 5px 8px; 
-                    margin-bottom: 5px; 
-                    border-radius: 4px; 
-                    font-weight: bold; 
-                    color: white;
-                    font-size: 11px;
+                    font-weight: bold;
+                    font-size: 12px;
+                    border-bottom: 1px solid #000;
+                    padding-bottom: 2px;
+                    margin-bottom: 5px;
                 }
                 
                 .task-item { 
-                    display: flex; align-items: center; 
-                    padding: 3px 2px; 
-                    border-bottom: 1px dotted #ddd; 
-                    min-height: 20px;
+                    display: flex; 
+                    align-items: center; 
+                    margin-bottom: 3px;
                 }
                 
                 .checkbox { 
-                    width: 14px; height: 14px; 
-                    border: 1.5px solid #333; 
-                    margin-left: 6px; 
-                    margin-top: 0; 
+                    width: 12px; 
+                    height: 12px; 
+                    border: 1px solid #000; 
+                    margin-left: 5px; 
                     flex-shrink: 0; 
                 }
                 
-                .task-content { 
-                    flex: 1; 
-                    display: flex;
-                    align-items: center;
-                }
                 .task-name { 
-                    font-weight: 500; 
-                    font-size: 10px; 
-                    line-height: 1.2; 
-                }
-                .task-description { 
-                    font-size: 9px; 
-                    color: #666; 
-                    margin-right: 4px;
-                    line-height: 1.1; 
+                    font-size: 11px; 
+                    flex: 1;
                 }
                 
-                .priority-high { border-right: 2px solid #dc3545; padding-right: 2px; }
-                .priority-medium { border-right: 2px solid #ffc107; padding-right: 2px; }
-                .priority-low { border-right: 2px solid #28a745; padding-right: 2px; }
-                
-                /* Signature Section - At bottom of page */
+                /* Signature Section */
                 .signature-section { 
                     width: 100%;
-                    margin-top: auto;
+                    margin-top: 20px;
                     padding-top: 10px; 
-                    border-top: 2px solid #333; 
-                    break-inside: avoid;
-                    page-break-inside: avoid;
+                    border-top: 1px solid #000; 
+                    break-before: auto;
                     clear: both;
                 }
                 
                 .signature-grid {
-                    display: grid; 
-                    grid-template-columns: 1fr 1fr; 
+                    display: flex;
+                    justify-content: space-around;
                     gap: 20px;
                 }
                 
                 .signature-box { 
-                    text-align: center; 
-                    border: 1px solid #333; 
-                    padding: 20px 8px 8px; 
-                    border-radius: 3px; 
-                    font-size: 10px;
+                    text-align: center;
+                    width: 200px;
+                }
+                
+                .signature-line {
+                    border-bottom: 1px solid #000;
+                    margin-top: 30px;
+                    margin-bottom: 5px;
+                }
+                
+                .signature-label {
+                    font-size: 11px;
                 }
                 
                 /* Print Optimizations */
                 @media print {
-                    @page { size: A4; margin: 10mm; }
+                    @page { 
+                        size: A4; 
+                        margin: 10mm; 
+                    }
                     body { 
-                        -webkit-print-color-adjust: exact; 
-                        color-adjust: exact; 
                         font-size: 11px;
-                        width: 100%;
-                        height: 100%;
                     }
-                    
+                    .header {
+                        page-break-after: avoid;
+                    }
                     .content-container {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 15px;
-                        justify-content: space-between;
-                        width: 100%;
+                        columns: 3;
+                        column-gap: 10px;
                     }
-                    
                     .group-section {
-                        flex: 0 0 calc(50% - 8px);
                         break-inside: avoid;
-                        page-break-inside: avoid;
-                        margin: 0 0 10px 0;
                     }
-                    
                     .signature-section {
-                        width: 100%;
                         break-inside: avoid;
-                        page-break-inside: avoid;
-                        page-break-before: avoid;
-                        clear: both;
-                        margin-top: auto;
                     }
                 }
             </style>
@@ -2403,39 +2372,23 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
             <div class="header">
                 <h1>${data.name}</h1>
                 <div class="info-grid">
-                    <div class="info-item">
-                        <span><strong>תאריך:</strong></span>
-                        <span>${data.date}</span>
-                    </div>
-                    <div class="info-item">
-                        <span><strong>סניף:</strong></span>
-                        <span>${branch ? (branch.name_he || branch.name) : '___________'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span><strong>אחראי משמרת:</strong></span>
-                        <span>${data.shift_manager || '___________'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span><strong>כ"מ משימות:</strong></span>
-                        <span>${allTasks.length}</span>
-                    </div>
+                    <span class="info-item"><strong>תאריך:</strong> ${data.date}</span>
+                    <span class="info-item"><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
+                    <span class="info-item"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
+                    <span class="info-item"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>
                 </div>
             </div>
             
             <div class="content-container">
                 ${selectedGroups.map(group => `
                     <div class="group-section">
-                        <div class="group-header" style="background: ${group.color};">
-                            <span>${group.name}</span>
-                            <span>(${group.tasks.length})</span>
+                        <div class="group-header">
+                            ${group.name} (${group.tasks.length})
                         </div>
                         ${group.tasks.map(task => `
-                            <div class="task-item priority-${task.priority}">
+                            <div class="task-item">
                                 <div class="checkbox"></div>
-                                <div class="task-content">
-                                    <div class="task-name">${task.name}</div>
-                                    ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
-                                </div>
+                                <div class="task-name">${task.name}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -2445,10 +2398,12 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
             <div class="signature-section">
                 <div class="signature-grid">
                     <div class="signature-box">
-                        <div><strong>חתימת אחראי משמרת</strong></div>
+                        <div class="signature-line"></div>
+                        <div class="signature-label">חתימת אחראי משמרת</div>
                     </div>
                     <div class="signature-box">
-                        <div><strong>חתימת מנהל</strong></div>
+                        <div class="signature-line"></div>
+                        <div class="signature-label">חתימת מנהל</div>
                     </div>
                 </div>
             </div>

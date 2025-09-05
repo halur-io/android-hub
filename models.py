@@ -207,12 +207,16 @@ class TaskTemplate(db.Model):
     name = db.Column(db.String(200), nullable=False, unique=True)
     description = db.Column(db.Text)
     shift_type = db.Column(db.String(50), nullable=False)  # morning, evening, closing, night
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)  # Required branch
     is_default = db.Column(db.Boolean, default=False)
     
     # JSON field to store task configuration
     tasks_config = db.Column(db.JSON)  # Will store array of task objects
     # JSON field to store assigned group IDs
     assigned_groups = db.Column(db.JSON)  # Will store array of group IDs
+    
+    # Relationship
+    branch = db.relationship('Branch', backref='templates')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

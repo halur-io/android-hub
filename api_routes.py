@@ -327,6 +327,7 @@ def get_task_templates():
                 'name': template.name,
                 'description': template.description,
                 'shift_type': template.shift_type,
+                'branch_id': template.branch_id,
                 'is_default': template.is_default,
                 'tasks_config': template.tasks_config,
                 'assigned_groups': template.assigned_groups or [],
@@ -365,6 +366,7 @@ def create_task_template():
             name=data.get('name'),
             description=data.get('description'),
             shift_type=data.get('shift_type'),
+            branch_id=data.get('branch_id'),
             is_default=data.get('is_default', False),
             tasks_config=tasks_config,
             assigned_groups=data.get('assigned_groups', [])

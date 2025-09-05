@@ -1303,6 +1303,14 @@
                 </div>
                 
                 <div class="form-group">
+                    <label>סניף: *</label>
+                    <select id="templateBranch" required>
+                        <option value="">בחר סניף</option>
+                        <!-- Branch options will be loaded here -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label>הקצה קבוצות לתבנית: *</label>
                     <div id="templateGroupSelection" style="border: 1px solid #ddd; border-radius: 6px; padding: 15px; max-height: 200px; overflow-y: auto;">
                         <div style="color: #666; text-align: center; padding: 20px;">טוען קבוצות...</div>
@@ -1645,6 +1653,17 @@ function populateBranchSelect() {
         const option = document.createElement('option');
         option.value = branch.id;
         option.textContent = branch.name;
+        select.appendChild(option);
+    });
+}
+
+function populateTemplateBranchSelect() {
+    const select = document.getElementById('templateBranch');
+    select.innerHTML = '<option value="">בחר סניף</option>';
+    branches.forEach(branch => {
+        const option = document.createElement('option');
+        option.value = branch.id;
+        option.textContent = branch.name_he;  // Use Hebrew name for template form
         select.appendChild(option);
     });
 }
@@ -2031,6 +2050,8 @@ async function showSaveTemplateModal() {
         await loadTaskGroups();
     }
     
+    // Load branches for template branch selection
+    populateTemplateBranchSelect();
     populateTemplateGroupSelection();
     showModal('saveTemplateModal');
 }
@@ -2529,6 +2550,7 @@ async function handleSaveTemplate(e) {
         name: document.getElementById('templateName').value,
         description: document.getElementById('templateDescription').value,
         shift_type: document.getElementById('templateShiftType').value,
+        branch_id: parseInt(document.getElementById('templateBranch').value),
         is_default: document.getElementById('templateIsDefault').checked,
         assigned_groups: selectedGroups
     };

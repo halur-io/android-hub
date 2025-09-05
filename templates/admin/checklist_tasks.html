@@ -2275,14 +2275,17 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 /* 2-Column Layout for Groups */
                 .content-container { 
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 15px;
+                    columns: 2;
+                    column-gap: 15px;
+                    column-fill: balance;
                 }
                 
                 .group-section { 
-                    margin: 12px 0; 
+                    margin: 8px 0; 
                     break-inside: avoid;
+                    page-break-inside: avoid;
+                    display: inline-block;
+                    width: 100%;
                 }
                 
                 .group-header { 
@@ -2293,7 +2296,7 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 .task-item { 
                     display: flex; align-items: flex-start; padding: 4px 0; 
-                    border-bottom: 1px dotted #ddd; min-height: 25px;
+                    border-bottom: 1px dotted #ddd; min-height: 22px;
                 }
                 
                 .checkbox { 
@@ -2311,10 +2314,12 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 /* Compact Signature Section */
                 .signature-section { 
-                    margin-top: 20px; 
+                    margin-top: 15px; 
                     padding-top: 10px; 
                     border-top: 2px solid #333; 
-                    grid-column: 1 / -1;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                    columns: 1;
                 }
                 
                 .signature-grid {
@@ -2336,9 +2341,9 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     }
                     
                     .content-container {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 15px;
+                        columns: 2;
+                        column-gap: 15px;
+                        column-fill: balance;
                     }
                     
                     .group-section {
@@ -2348,7 +2353,9 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     
                     .signature-section {
                         break-inside: avoid;
-                        grid-column: 1 / -1;
+                        page-break-inside: avoid;
+                        columns: 1;
+                        margin-top: 10px;
                     }
                 }
             </style>

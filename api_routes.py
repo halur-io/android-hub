@@ -239,7 +239,8 @@ def get_checklist_tasks():
                 'category': task.category,
                 'priority': task.priority,
                 'frequency': task.frequency,
-                'display_order': task.display_order
+                'display_order': task.display_order,
+                'group_id': task.group_id  # Fix: Include group_id to prevent duplicates
             })
         
         return jsonify(tasks_list)
@@ -540,8 +541,11 @@ def get_task_groups():
                     'id': task.id,
                     'name': task.name,
                     'description': task.description,
+                    'shift_type': task.shift_type,
+                    'category': task.category,
                     'priority': task.priority,
                     'frequency': task.frequency,
+                    'group_id': task.group_id,  # Include group_id for consistency
                     'created_at': task.created_at.isoformat() if task.created_at else None
                 }
                 for task in group.tasks if task.is_active

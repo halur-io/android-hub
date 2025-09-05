@@ -4652,7 +4652,7 @@ function createAlternativePDF(htmlContent, fileName) {
                 </head>
                 <body>
                     ${htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] || htmlContent}
-                    <script>
+                    <${'script'}>
                         // Auto-trigger print dialog after load
                         window.onload = function() {
                             setTimeout(function() {
@@ -4664,7 +4664,7 @@ function createAlternativePDF(htmlContent, fileName) {
                                 document.body.appendChild(instructions);
                             }, 500);
                         };
-                    </script>
+                    </${'script'}>
                 </body>
                 </html>
             `;

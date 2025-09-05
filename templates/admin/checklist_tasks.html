@@ -2254,12 +2254,15 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     margin: 10mm; 
                 }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
+                html { direction: rtl; }
                 body { 
                     font-family: Arial, sans-serif; 
                     font-size: 11px; 
                     line-height: 1.3; 
                     margin: 0;
                     padding: 0;
+                    direction: rtl;
+                    text-align: right;
                 }
                 
                 /* Simple Header */
@@ -2278,6 +2281,7 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     columns: 3;
                     column-gap: 10px;
                     width: 100%;
+                    direction: rtl;
                 }
                 
                 .group-section { 
@@ -2291,25 +2295,32 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     border-bottom: 1px solid #000;
                     padding-bottom: 2px;
                     margin-bottom: 5px;
+                    text-align: right;
+                    direction: rtl;
                 }
                 
                 .task-item { 
                     display: flex; 
                     align-items: center; 
                     margin-bottom: 3px;
+                    direction: rtl;
+                    text-align: right;
                 }
                 
                 .checkbox { 
                     width: 12px; 
                     height: 12px; 
                     border: 1px solid #000; 
-                    margin-left: 5px; 
+                    margin-right: 5px; 
+                    margin-left: 0;
                     flex-shrink: 0; 
                 }
                 
                 .task-name { 
                     font-size: 11px; 
                     flex: 1;
+                    text-align: right;
+                    direction: rtl;
                 }
                 
                 /* Signature Section */
@@ -2349,7 +2360,8 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                         size: A4; 
                         margin: 10mm; 
                     }
-                    body { 
+                    html, body { 
+                        direction: rtl;
                         font-size: 11px;
                     }
                     .header {
@@ -2358,9 +2370,11 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     .content-container {
                         columns: 3;
                         column-gap: 10px;
+                        direction: rtl;
                     }
                     .group-section {
                         break-inside: avoid;
+                        direction: rtl;
                     }
                     .signature-section {
                         break-inside: avoid;

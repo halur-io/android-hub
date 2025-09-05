@@ -2251,73 +2251,98 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
             <style>
                 @page { 
                     size: A4; 
-                    margin: 8mm; 
+                    margin: 10mm; 
                 }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
                     font-family: Arial, sans-serif; 
-                    font-size: 8px; 
-                    line-height: 1.1; 
+                    font-size: 11px; 
+                    line-height: 1.2; 
                     margin: 0;
                     padding: 0;
+                    width: 100%;
+                    height: 100%;
                 }
                 
-                /* Ultra-Compact Header */
+                /* Header - Compact but readable */
                 .header { 
                     text-align: center; 
-                    border-bottom: 1px solid #333; 
-                    padding-bottom: 3px; 
-                    margin-bottom: 6px; 
+                    border-bottom: 2px solid #333; 
+                    padding-bottom: 8px; 
+                    margin-bottom: 10px; 
                 }
-                .header h1 { font-size: 14px; margin-bottom: 3px; }
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin: 3px 0; }
-                .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 2px 3px; border-radius: 2px; font-size: 8px; }
+                .header h1 { font-size: 20px; margin-bottom: 6px; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin: 6px 0; }
+                .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 4px 6px; border-radius: 3px; font-size: 10px; }
                 
-                /* 3-Column Ultra-Compact Layout */
+                /* 2-Column Layout that uses full page width */
                 .content-container { 
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 6px;
+                    gap: 15px;
                     justify-content: space-between;
+                    width: 100%;
                 }
                 
                 .group-section { 
-                    flex: 0 0 calc(33.33% - 4px);
-                    margin: 0 0 4px 0; 
+                    flex: 0 0 calc(50% - 8px);
+                    margin: 0 0 10px 0; 
                     break-inside: avoid;
                     page-break-inside: avoid;
                 }
                 
                 .group-header { 
-                    display: flex; align-items: center; gap: 2px; padding: 2px 3px; 
-                    margin-bottom: 2px; border-radius: 2px; font-weight: bold; color: white;
-                    font-size: 8px;
+                    display: flex; align-items: center; justify-content: space-between;
+                    padding: 5px 8px; 
+                    margin-bottom: 5px; 
+                    border-radius: 4px; 
+                    font-weight: bold; 
+                    color: white;
+                    font-size: 11px;
                 }
                 
                 .task-item { 
-                    display: flex; align-items: flex-start; padding: 1px 0; 
-                    border-bottom: 0.5px dotted #ddd; min-height: 12px;
+                    display: flex; align-items: center; 
+                    padding: 3px 2px; 
+                    border-bottom: 1px dotted #ddd; 
+                    min-height: 20px;
                 }
                 
                 .checkbox { 
-                    width: 9px; height: 9px; border: 1px solid #333; 
-                    margin-left: 3px; margin-top: 1px; flex-shrink: 0; 
+                    width: 14px; height: 14px; 
+                    border: 1.5px solid #333; 
+                    margin-left: 6px; 
+                    margin-top: 0; 
+                    flex-shrink: 0; 
                 }
                 
-                .task-content { flex: 1; }
-                .task-name { font-weight: 500; font-size: 7px; line-height: 1.1; }
-                .task-description { font-size: 6px; color: #666; line-height: 1.0; }
+                .task-content { 
+                    flex: 1; 
+                    display: flex;
+                    align-items: center;
+                }
+                .task-name { 
+                    font-weight: 500; 
+                    font-size: 10px; 
+                    line-height: 1.2; 
+                }
+                .task-description { 
+                    font-size: 9px; 
+                    color: #666; 
+                    margin-right: 4px;
+                    line-height: 1.1; 
+                }
                 
-                .priority-high { border-right: 1px solid #dc3545; }
-                .priority-medium { border-right: 1px solid #ffc107; }
-                .priority-low { border-right: 1px solid #28a745; }
+                .priority-high { border-right: 2px solid #dc3545; padding-right: 2px; }
+                .priority-medium { border-right: 2px solid #ffc107; padding-right: 2px; }
+                .priority-low { border-right: 2px solid #28a745; padding-right: 2px; }
                 
-                /* Ultra-Compact Signature Section */
+                /* Signature Section - At bottom of page */
                 .signature-section { 
                     width: 100%;
-                    margin-top: 6px; 
-                    padding-top: 4px; 
-                    border-top: 1px solid #333; 
+                    margin-top: auto;
+                    padding-top: 10px; 
+                    border-top: 2px solid #333; 
                     break-inside: avoid;
                     page-break-inside: avoid;
                     clear: both;
@@ -2326,35 +2351,41 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 .signature-grid {
                     display: grid; 
                     grid-template-columns: 1fr 1fr; 
-                    gap: 8px;
+                    gap: 20px;
                 }
                 
                 .signature-box { 
-                    text-align: center; border: 1px solid #333; 
-                    padding: 12px 4px 4px; border-radius: 2px; font-size: 8px;
+                    text-align: center; 
+                    border: 1px solid #333; 
+                    padding: 20px 8px 8px; 
+                    border-radius: 3px; 
+                    font-size: 10px;
                 }
                 
                 /* Print Optimizations */
                 @media print {
-                    @page { size: A4; margin: 8mm; }
+                    @page { size: A4; margin: 10mm; }
                     body { 
                         -webkit-print-color-adjust: exact; 
                         color-adjust: exact; 
-                        font-size: 8px;
+                        font-size: 11px;
+                        width: 100%;
+                        height: 100%;
                     }
                     
                     .content-container {
                         display: flex;
                         flex-wrap: wrap;
-                        gap: 6px;
+                        gap: 15px;
                         justify-content: space-between;
+                        width: 100%;
                     }
                     
                     .group-section {
-                        flex: 0 0 calc(33.33% - 4px);
+                        flex: 0 0 calc(50% - 8px);
                         break-inside: avoid;
                         page-break-inside: avoid;
-                        margin: 0 0 4px 0;
+                        margin: 0 0 10px 0;
                     }
                     
                     .signature-section {
@@ -2363,7 +2394,7 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                         page-break-inside: avoid;
                         page-break-before: avoid;
                         clear: both;
-                        margin-top: 6px;
+                        margin-top: auto;
                     }
                 }
             </style>

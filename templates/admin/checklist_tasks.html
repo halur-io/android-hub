@@ -2255,129 +2255,135 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
             <style>
                 @page { 
                     size: A4; 
-                    margin: 8mm; 
+                    margin: 5mm; 
                 }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 html { direction: rtl; height: 100%; }
                 body { 
                     font-family: Arial, sans-serif; 
-                    font-size: 11px; 
-                    line-height: 1.2; 
+                    font-size: 12px; 
+                    line-height: 1.15; 
                     margin: 0;
                     padding: 0;
                     direction: rtl;
                     text-align: right;
+                    width: 100%;
                     height: 100%;
-                    max-height: 297mm;
                 }
                 
-                /* Optimized Header - More compact */
+                /* Ultra-compact Header */
                 .header { 
                     text-align: center; 
                     border-bottom: 1px solid #000; 
-                    padding-bottom: 8px; 
-                    margin-bottom: 12px; 
+                    padding-bottom: 5px; 
+                    margin-bottom: 8px; 
                 }
-                .header h1 { font-size: 16px; margin-bottom: 6px; font-weight: bold; }
-                .info-grid { display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; }
-                .info-item { font-size: 10px; white-space: nowrap; }
+                .header h1 { font-size: 18px; margin-bottom: 4px; font-weight: bold; }
+                .info-grid { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
+                .info-item { font-size: 11px; white-space: nowrap; }
                 
-                /* 3-Column Layout for Maximum Space Usage */
+                /* Maximize content area with 4 columns for better space usage */
                 .content-container { 
-                    columns: 3;
-                    column-gap: 8px;
+                    columns: 4;
+                    column-gap: 6px;
                     width: 100%;
                     direction: rtl;
-                    height: calc(100% - 120px);
-                    overflow: hidden;
+                    margin-bottom: 60px;
                 }
                 
                 .group-section { 
                     break-inside: avoid;
-                    margin-bottom: 12px;
+                    margin-bottom: 10px;
                     page-break-inside: avoid;
+                    background: #f9f9f9;
+                    padding: 4px;
+                    border: 1px solid #ddd;
+                    border-radius: 3px;
                 }
                 
                 .group-header { 
                     font-weight: bold;
-                    font-size: 11px;
-                    border-bottom: 1px solid #000;
+                    font-size: 12px;
+                    border-bottom: 1px solid #888;
                     padding-bottom: 2px;
-                    margin-bottom: 4px;
+                    margin-bottom: 3px;
                     text-align: right;
                     direction: rtl;
+                    color: #333;
                 }
                 
                 .task-item { 
                     display: flex; 
                     align-items: flex-start; 
-                    margin-bottom: 2px;
+                    margin-bottom: 1px;
+                    padding: 1px 0;
                     direction: rtl;
                     text-align: right;
                     line-height: 1.1;
                 }
                 
                 .checkbox { 
-                    width: 11px; 
-                    height: 11px; 
+                    width: 10px; 
+                    height: 10px; 
                     border: 1px solid #000; 
-                    margin-right: 4px; 
+                    margin-right: 3px; 
                     margin-left: 0;
                     flex-shrink: 0; 
                     margin-top: 1px;
                 }
                 
                 .task-name { 
-                    font-size: 10px; 
+                    font-size: 11px; 
                     flex: 1;
                     text-align: right;
                     direction: rtl;
                     word-wrap: break-word;
-                    line-height: 1.2;
+                    line-height: 1.15;
                 }
                 
-                /* Compact Signature Section */
+                /* Fixed Signature Section at Bottom */
                 .signature-section { 
-                    position: absolute;
-                    bottom: 8mm;
-                    left: 8mm;
-                    right: 8mm;
+                    position: fixed;
+                    bottom: 5mm;
+                    left: 5mm;
+                    right: 5mm;
                     border-top: 1px solid #000; 
-                    padding-top: 8px;
-                    clear: both;
+                    padding-top: 6px;
+                    background: white;
                 }
                 
                 .signature-grid {
                     display: flex;
                     justify-content: space-around;
-                    gap: 15px;
+                    gap: 20px;
                 }
                 
                 .signature-box { 
                     text-align: center;
-                    width: 160px;
+                    width: 180px;
                 }
                 
                 .signature-line {
                     border-bottom: 1px solid #000;
-                    margin-top: 20px;
-                    margin-bottom: 4px;
+                    margin-top: 15px;
+                    margin-bottom: 3px;
                 }
                 
                 .signature-label {
-                    font-size: 10px;
+                    font-size: 11px;
                 }
                 
-                /* Enhanced Print Optimizations */
+                /* Print-specific optimizations */
                 @media print {
                     @page { 
                         size: A4; 
-                        margin: 8mm; 
+                        margin: 5mm; 
                     }
                     html, body { 
                         direction: rtl;
-                        font-size: 11px;
+                        font-size: 12px;
                         height: 100%;
+                        width: 100%;
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
@@ -2385,10 +2391,10 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                         page-break-after: avoid;
                     }
                     .content-container {
-                        columns: 3;
-                        column-gap: 8px;
+                        columns: 4;
+                        column-gap: 6px;
                         direction: rtl;
-                        height: calc(100vh - 120px);
+                        width: 100%;
                     }
                     .group-section {
                         break-inside: avoid;
@@ -2399,20 +2405,17 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                         page-break-inside: avoid;
                     }
                     .signature-section {
-                        break-inside: avoid;
-                        page-break-inside: avoid;
                         position: fixed;
-                        bottom: 8mm;
+                        bottom: 5mm;
+                        page-break-inside: avoid;
                     }
                 }
                 
-                /* Mobile Print Optimizations */
+                /* Mobile adjustments */
                 @media screen and (max-width: 768px) {
-                    body { font-size: 12px; }
-                    .content-container { columns: 2; column-gap: 10px; }
-                    .info-grid { gap: 15px; }
-                    .signature-grid { flex-direction: column; gap: 10px; }
-                    .signature-box { width: 100%; }
+                    .content-container { columns: 3; column-gap: 8px; }
+                    .group-section { padding: 3px; }
+                    .task-name { font-size: 10px; }
                 }
             </style>
         </head>
@@ -4330,22 +4333,40 @@ function isMobileDevice() {
 
 function handleDesktopPrint(printContent) {
     try {
+        console.log('Desktop print initiated');
         const printWindow = window.open('', '_blank', 'width=800,height=600');
-        if (printWindow) {
+        
+        if (printWindow && printWindow.document) {
+            printWindow.document.open();
             printWindow.document.write(printContent);
             printWindow.document.close();
             
+            // Wait for content to load before printing
+            printWindow.onload = function() {
+                setTimeout(() => {
+                    try {
+                        printWindow.print();
+                        showSuccess('🖨️ חלון הדפסה נפתח');
+                    } catch (printError) {
+                        console.error('Print error:', printError);
+                        handlePrintFallback(printContent);
+                    }
+                }, 100);
+            };
+            
+            // Fallback if onload doesn't fire
             setTimeout(() => {
                 try {
-                    printWindow.print();
-                    showSuccess('🖨️ מדפיס רשימה...');
-                } catch (printError) {
-                    console.error('Print error:', printError);
-                    showError('❌ שגיאה בהדפסה: ' + printError.message);
+                    if (printWindow && !printWindow.closed) {
+                        printWindow.print();
+                    }
+                } catch(e) {
+                    console.log('Fallback print attempt');
                 }
-            }, 500);
+            }, 1000);
         } else {
             // Fallback for blocked popups
+            console.log('Window blocked, using fallback');
             handlePrintFallback(printContent);
         }
     } catch (error) {

@@ -2226,11 +2226,12 @@ async function generateChecklist(data) {
             // Generate print-ready HTML  
             const printContent = generateMultiGroupPrintHTML(data, branch, selectedGroups, allSelectedTasks);
             
-            // Open print window
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            printWindow.print();
+            // Mobile-aware printing with fallbacks
+            if (isMobileDevice()) {
+                handleMobilePrint(printContent, data.name);
+            } else {
+                handleDesktopPrint(printContent);
+            }
         } else {
             const error = await response.json();
             showError('❌ ' + (error.error || 'לא ניתן לשמור את הרשימה'));
@@ -2247,138 +2248,169 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
         <html dir="rtl" lang="he">
         <head>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>רשימת משימות - ${data.name}</title>
             <style>
                 @page { 
                     size: A4; 
-                    margin: 10mm; 
+                    margin: 8mm; 
                 }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
-                html { direction: rtl; }
+                html { direction: rtl; height: 100%; }
                 body { 
                     font-family: Arial, sans-serif; 
                     font-size: 11px; 
-                    line-height: 1.3; 
+                    line-height: 1.2; 
                     margin: 0;
                     padding: 0;
                     direction: rtl;
                     text-align: right;
+                    height: 100%;
+                    max-height: 297mm;
                 }
                 
-                /* Simple Header */
+                /* Optimized Header - More compact */
                 .header { 
                     text-align: center; 
                     border-bottom: 1px solid #000; 
-                    padding-bottom: 5px; 
-                    margin-bottom: 10px; 
+                    padding-bottom: 8px; 
+                    margin-bottom: 12px; 
                 }
-                .header h1 { font-size: 18px; margin-bottom: 5px; }
-                .info-grid { display: flex; justify-content: center; gap: 20px; }
-                .info-item { font-size: 11px; }
+                .header h1 { font-size: 16px; margin-bottom: 6px; font-weight: bold; }
+                .info-grid { display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; }
+                .info-item { font-size: 10px; white-space: nowrap; }
                 
                 /* 3-Column Layout for Maximum Space Usage */
                 .content-container { 
                     columns: 3;
-                    column-gap: 10px;
+                    column-gap: 8px;
                     width: 100%;
                     direction: rtl;
+                    height: calc(100% - 120px);
+                    overflow: hidden;
                 }
                 
                 .group-section { 
                     break-inside: avoid;
-                    margin-bottom: 15px;
+                    margin-bottom: 12px;
+                    page-break-inside: avoid;
                 }
                 
                 .group-header { 
                     font-weight: bold;
-                    font-size: 12px;
+                    font-size: 11px;
                     border-bottom: 1px solid #000;
                     padding-bottom: 2px;
-                    margin-bottom: 5px;
+                    margin-bottom: 4px;
                     text-align: right;
                     direction: rtl;
                 }
                 
                 .task-item { 
                     display: flex; 
-                    align-items: center; 
-                    margin-bottom: 3px;
+                    align-items: flex-start; 
+                    margin-bottom: 2px;
                     direction: rtl;
                     text-align: right;
+                    line-height: 1.1;
                 }
                 
                 .checkbox { 
-                    width: 12px; 
-                    height: 12px; 
+                    width: 11px; 
+                    height: 11px; 
                     border: 1px solid #000; 
-                    margin-right: 5px; 
+                    margin-right: 4px; 
                     margin-left: 0;
                     flex-shrink: 0; 
+                    margin-top: 1px;
                 }
                 
                 .task-name { 
-                    font-size: 11px; 
+                    font-size: 10px; 
                     flex: 1;
                     text-align: right;
                     direction: rtl;
+                    word-wrap: break-word;
+                    line-height: 1.2;
                 }
                 
-                /* Signature Section */
+                /* Compact Signature Section */
                 .signature-section { 
-                    width: 100%;
-                    margin-top: 20px;
-                    padding-top: 10px; 
+                    position: absolute;
+                    bottom: 8mm;
+                    left: 8mm;
+                    right: 8mm;
                     border-top: 1px solid #000; 
-                    break-before: auto;
+                    padding-top: 8px;
                     clear: both;
                 }
                 
                 .signature-grid {
                     display: flex;
                     justify-content: space-around;
-                    gap: 20px;
+                    gap: 15px;
                 }
                 
                 .signature-box { 
                     text-align: center;
-                    width: 200px;
+                    width: 160px;
                 }
                 
                 .signature-line {
                     border-bottom: 1px solid #000;
-                    margin-top: 30px;
-                    margin-bottom: 5px;
+                    margin-top: 20px;
+                    margin-bottom: 4px;
                 }
                 
                 .signature-label {
-                    font-size: 11px;
+                    font-size: 10px;
                 }
                 
-                /* Print Optimizations */
+                /* Enhanced Print Optimizations */
                 @media print {
                     @page { 
                         size: A4; 
-                        margin: 10mm; 
+                        margin: 8mm; 
                     }
                     html, body { 
                         direction: rtl;
                         font-size: 11px;
+                        height: 100%;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     .header {
                         page-break-after: avoid;
                     }
                     .content-container {
                         columns: 3;
-                        column-gap: 10px;
+                        column-gap: 8px;
                         direction: rtl;
+                        height: calc(100vh - 120px);
                     }
                     .group-section {
                         break-inside: avoid;
+                        page-break-inside: avoid;
                         direction: rtl;
+                    }
+                    .task-item {
+                        page-break-inside: avoid;
                     }
                     .signature-section {
                         break-inside: avoid;
+                        page-break-inside: avoid;
+                        position: fixed;
+                        bottom: 8mm;
                     }
+                }
+                
+                /* Mobile Print Optimizations */
+                @media screen and (max-width: 768px) {
+                    body { font-size: 12px; }
+                    .content-container { columns: 2; column-gap: 10px; }
+                    .info-grid { gap: 15px; }
+                    .signature-grid { flex-direction: column; gap: 10px; }
+                    .signature-box { width: 100%; }
                 }
             </style>
         </head>
@@ -4179,36 +4211,11 @@ async function reprintChecklist(checklistId) {
                 const printContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
                 console.log('Generated print content length:', printContent.length);
                 
-                // Try to open print window
-                const printWindow = window.open('', '_blank', 'width=800,height=600');
-                console.log('Print window opened:', !!printWindow);
-                
-                if (printWindow) {
-                    printWindow.document.write(printContent);
-                    printWindow.document.close();
-                    
-                    // Add small delay before printing to ensure content is loaded
-                    setTimeout(() => {
-                        try {
-                            printWindow.print();
-                            showSuccess('🖨️ מדפיס רשימה...');
-                        } catch (printError) {
-                            console.error('Print error:', printError);
-                            showError('❌ שגיאה בהדפסה: ' + printError.message);
-                        }
-                    }, 500);
+                // Mobile-aware printing with fallbacks
+                if (isMobileDevice()) {
+                    handleMobilePrint(printContent, checklist.name);
                 } else {
-                    // Fallback: open in same window if popup blocked
-                    console.log('Popup blocked, trying fallback...');
-                    const blob = new Blob([printContent], { type: 'text/html' });
-                    const url = URL.createObjectURL(blob);
-                    const fallbackWindow = window.open(url, '_blank');
-                    
-                    if (fallbackWindow) {
-                        showSuccess('🖨️ פותח חלון הדפסה...');
-                    } else {
-                        showError('❌ לא ניתן לפתוח חלון הדפסה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
-                    }
+                    handleDesktopPrint(printContent);
                 }
             } catch (genError) {
                 console.error('Error generating print content:', genError);
@@ -4272,25 +4279,11 @@ async function previewChecklist(checklistId) {
                 const previewContent = generateMultiGroupPrintHTML(printData, branch, selectedGroups, tasks);
                 console.log('Generated preview content length:', previewContent.length);
                 
-                const previewWindow = window.open('', '_blank', 'width=800,height=600');
-                console.log('Preview window opened:', !!previewWindow);
-                
-                if (previewWindow) {
-                    previewWindow.document.write(previewContent);
-                    previewWindow.document.close();
-                    showSuccess('👁️ פותח תצוגה מקדימה...');
+                // Mobile-aware preview with fallbacks
+                if (isMobileDevice()) {
+                    handleMobilePreview(previewContent, checklist.name);
                 } else {
-                    // Fallback: open in same window if popup blocked
-                    console.log('Popup blocked for preview, trying fallback...');
-                    const blob = new Blob([previewContent], { type: 'text/html' });
-                    const url = URL.createObjectURL(blob);
-                    const fallbackWindow = window.open(url, '_blank');
-                    
-                    if (fallbackWindow) {
-                        showSuccess('👁️ פותח תצוגה מקדימה...');
-                    } else {
-                        showError('❌ לא ניתן לפתוח חלון תצוגה מקדימה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
-                    }
+                    handleDesktopPreview(previewContent);
                 }
             } catch (genError) {
                 console.error('Error generating preview content:', genError);
@@ -4326,6 +4319,158 @@ async function deleteSavedChecklist(checklistId) {
     } catch (error) {
         console.error('Error deleting checklist:', error);
         showError('❌ שגיאה במחיקת הרשימה');
+    }
+}
+
+// Mobile detection and printing functions
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768) ||
+           ('ontouchstart' in window);
+}
+
+function handleDesktopPrint(printContent) {
+    try {
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            setTimeout(() => {
+                try {
+                    printWindow.print();
+                    showSuccess('🖨️ מדפיס רשימה...');
+                } catch (printError) {
+                    console.error('Print error:', printError);
+                    showError('❌ שגיאה בהדפסה: ' + printError.message);
+                }
+            }, 500);
+        } else {
+            // Fallback for blocked popups
+            handlePrintFallback(printContent);
+        }
+    } catch (error) {
+        console.error('Desktop print error:', error);
+        handlePrintFallback(printContent);
+    }
+}
+
+function handleMobilePrint(printContent, fileName) {
+    try {
+        // Option 1: Try standard mobile printing
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            setTimeout(() => {
+                try {
+                    printWindow.print();
+                    showSuccess('🖨️ מדפיס רשימה (מובייל)...');
+                } catch (printError) {
+                    console.log('Mobile print failed, trying download fallback');
+                    handleMobileDownloadFallback(printContent, fileName);
+                }
+            }, 300);
+        } else {
+            // Option 2: Download fallback for mobile
+            handleMobileDownloadFallback(printContent, fileName);
+        }
+    } catch (error) {
+        console.error('Mobile print error:', error);
+        handleMobileDownloadFallback(printContent, fileName);
+    }
+}
+
+function handleDesktopPreview(previewContent) {
+    try {
+        const previewWindow = window.open('', '_blank', 'width=800,height=600');
+        if (previewWindow) {
+            previewWindow.document.write(previewContent);
+            previewWindow.document.close();
+            showSuccess('👁️ פותח תצוגה מקדימה...');
+        } else {
+            handlePreviewFallback(previewContent);
+        }
+    } catch (error) {
+        console.error('Desktop preview error:', error);
+        handlePreviewFallback(previewContent);
+    }
+}
+
+function handleMobilePreview(previewContent, fileName) {
+    try {
+        const previewWindow = window.open('', '_blank');
+        if (previewWindow) {
+            previewWindow.document.write(previewContent);
+            previewWindow.document.close();
+            showSuccess('👁️ פותח תצוגה מקדימה (מובייל)...');
+        } else {
+            handlePreviewFallback(previewContent);
+        }
+    } catch (error) {
+        console.error('Mobile preview error:', error);
+        handlePreviewFallback(previewContent);
+    }
+}
+
+function handlePrintFallback(printContent) {
+    try {
+        const blob = new Blob([printContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const fallbackWindow = window.open(url, '_blank');
+        
+        if (fallbackWindow) {
+            showSuccess('🖨️ פותח חלון הדפסה...');
+        } else {
+            showError('❌ לא ניתן לפתוח חלון הדפסה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
+        }
+    } catch (error) {
+        console.error('Print fallback error:', error);
+        showError('❌ שגיאה בפתיחת חלון הדפסה');
+    }
+}
+
+function handlePreviewFallback(previewContent) {
+    try {
+        const blob = new Blob([previewContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const fallbackWindow = window.open(url, '_blank');
+        
+        if (fallbackWindow) {
+            showSuccess('👁️ פותח תצוגה מקדימה...');
+        } else {
+            showError('❌ לא ניתן לפתוח תצוגה מקדימה. אנא בדוק הגדרות חסימת חלונות קופצים בדפדפן.');
+        }
+    } catch (error) {
+        console.error('Preview fallback error:', error);
+        showError('❌ שגיאה בפתיחת תצוגה מקדימה');
+    }
+}
+
+function handleMobileDownloadFallback(printContent, fileName) {
+    try {
+        // Create downloadable HTML file for mobile devices
+        const blob = new Blob([printContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create temporary download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = `${fileName}_checklist_${new Date().toISOString().split('T')[0]}.html`;
+        downloadLink.style.display = 'none';
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        showSuccess('📱 הקובץ הורד למכשיר - פתח אותו והדפס מהדפדפן');
+    } catch (error) {
+        console.error('Mobile download fallback error:', error);
+        showError('❌ לא ניתן להוריד את הקובץ למכשיר');
     }
 }
 </script>

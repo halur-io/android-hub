@@ -3756,12 +3756,12 @@ function handleTaskSelection(taskId) {
 }
 
 function updateBulkActionToolbar() {
-    const toolbar = document.getElementById('bulk-action-toolbar');
-    const countElement = document.getElementById('selected-count');
+    const toolbar = document.getElementById('bulkActionsBar');  // Fix: Use correct ID
+    const countElement = document.getElementById('selectedCount');  // Fix: Use correct ID
     
     if (selectedTasks.size > 0) {
         toolbar.classList.add('show');
-        countElement.textContent = `${selectedTasks.size} נבחרו`;
+        countElement.textContent = selectedTasks.size;  // Fix: Use just the number
     } else {
         toolbar.classList.remove('show');
     }

@@ -2249,29 +2249,40 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
             <meta charset="UTF-8">
             <title>רשימת משימות - ${data.name}</title>
             <style>
-                @page { size: A4; margin: 1cm; }
+                @page { 
+                    size: A4; 
+                    margin: 15mm; 
+                }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    font-size: 11px; 
+                    line-height: 1.3; 
+                    margin: 0;
+                    padding: 0;
+                }
                 
                 /* Compact Header */
-                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 15px; }
+                .header { 
+                    text-align: center; 
+                    border-bottom: 2px solid #333; 
+                    padding-bottom: 8px; 
+                    margin-bottom: 15px; 
+                }
                 .header h1 { font-size: 18px; margin-bottom: 6px; }
                 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
                 .info-item { display: flex; justify-content: space-between; background: #f8f9fa; padding: 4px 6px; border-radius: 3px; font-size: 10px; }
                 
                 /* 2-Column Layout for Groups */
                 .content-container { 
-                    columns: 2; 
-                    column-gap: 15px; 
-                    column-fill: balance;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
                 }
                 
                 .group-section { 
                     margin: 12px 0; 
-                    break-inside: avoid; 
-                    page-break-inside: avoid;
-                    display: inline-block;
-                    width: 100%;
+                    break-inside: avoid;
                 }
                 
                 .group-header { 
@@ -2300,11 +2311,10 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 /* Compact Signature Section */
                 .signature-section { 
-                    margin-top: 20px; padding-top: 10px; 
+                    margin-top: 20px; 
+                    padding-top: 10px; 
                     border-top: 2px solid #333; 
-                    break-inside: avoid;
-                    columns: 1; /* Force signature to single column */
-                    page-break-before: avoid;
+                    grid-column: 1 / -1;
                 }
                 
                 .signature-grid {
@@ -2320,9 +2330,15 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 
                 /* Print Optimizations */
                 @media print {
+                    body { 
+                        -webkit-print-color-adjust: exact; 
+                        color-adjust: exact; 
+                    }
+                    
                     .content-container {
-                        columns: 2;
-                        column-gap: 15px;
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 15px;
                     }
                     
                     .group-section {
@@ -2331,8 +2347,8 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     }
                     
                     .signature-section {
-                        break-before: avoid;
-                        columns: 1;
+                        break-inside: avoid;
+                        grid-column: 1 / -1;
                     }
                 }
             </style>
@@ -2403,14 +2419,71 @@ function generatePrintHTML(data, branch, tasksByCategory) {
             <meta charset="UTF-8">
             <title>רשימת משימות - ${data.name}</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-                .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
-                .category { margin: 20px 0; }
-                .category h3 { background: #f5f5f5; padding: 10px; margin: 0; }
-                .task-item { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px dotted #ccc; }
-                .checkbox { width: 20px; height: 20px; border: 2px solid #333; margin-left: 10px; }
-                .signature { margin-top: 40px; border-top: 1px solid #333; padding-top: 20px; }
+                @page { 
+                    size: A4; 
+                    margin: 15mm; 
+                }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    margin: 0; 
+                    padding: 0;
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+                .header { 
+                    text-align: center; 
+                    border-bottom: 2px solid #333; 
+                    padding-bottom: 20px; 
+                    margin-bottom: 30px; 
+                }
+                .info-row { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    margin: 10px 0; 
+                }
+                .category { 
+                    margin: 20px 0; 
+                    break-inside: avoid;
+                }
+                .category h3 { 
+                    background: #f5f5f5; 
+                    padding: 10px; 
+                    margin: 0; 
+                }
+                .task-item { 
+                    display: flex; 
+                    align-items: center; 
+                    padding: 5px 0; 
+                    border-bottom: 1px dotted #ccc; 
+                }
+                .checkbox { 
+                    width: 20px; 
+                    height: 20px; 
+                    border: 2px solid #333; 
+                    margin-left: 10px; 
+                    flex-shrink: 0;
+                }
+                .signature { 
+                    margin-top: 40px; 
+                    border-top: 1px solid #333; 
+                    padding-top: 20px; 
+                    break-inside: avoid;
+                }
+                
+                @media print {
+                    body { 
+                        -webkit-print-color-adjust: exact; 
+                        color-adjust: exact; 
+                    }
+                    .category {
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                    }
+                    .signature {
+                        break-inside: avoid;
+                    }
+                }
             </style>
         </head>
         <body>
@@ -3449,13 +3522,18 @@ function exportGroupToPDF(groupId, groupName, taskCount) {
             <meta charset="UTF-8">
             <title>${groupName} - ${today}</title>
             <style>
-                @page { size: A4; margin: 1cm; }
+                @page { 
+                    size: A4; 
+                    margin: 15mm; 
+                }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
                     font-family: Arial; 
                     font-size: 12px; 
                     line-height: 1.2; 
                     direction: rtl;
+                    margin: 0;
+                    padding: 0;
                 }
                 .header { 
                     text-align: center; 

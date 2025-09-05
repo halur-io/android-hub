@@ -4356,30 +4356,8 @@ function handleDesktopPrint(printContent) {
 }
 
 function handleMobilePrint(printContent, fileName) {
-    try {
-        // Option 1: Try standard mobile printing
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            
-            setTimeout(() => {
-                try {
-                    printWindow.print();
-                    showSuccess('🖨️ מדפיס רשימה (מובייל)...');
-                } catch (printError) {
-                    console.log('Mobile print failed, trying download fallback');
-                    handleMobileDownloadFallback(printContent, fileName);
-                }
-            }, 300);
-        } else {
-            // Option 2: Download fallback for mobile
-            handleMobileDownloadFallback(printContent, fileName);
-        }
-    } catch (error) {
-        console.error('Mobile print error:', error);
-        handleMobileDownloadFallback(printContent, fileName);
-    }
+    // For mobile, directly show download/print options
+    showMobilePrintOptions(printContent, fileName);
 }
 
 function handleDesktopPreview(previewContent) {
@@ -4471,6 +4449,199 @@ function handleMobileDownloadFallback(printContent, fileName) {
     } catch (error) {
         console.error('Mobile download fallback error:', error);
         showError('❌ לא ניתן להוריד את הקובץ למכשיר');
+    }
+}
+
+function showMobilePrintOptions(printContent, fileName) {
+    // Remove existing dialog if any
+    const existing = document.querySelector('.mobile-print-dialog');
+    if (existing) existing.remove();
+    
+    // Create mobile print options dialog
+    const dialog = document.createElement('div');
+    dialog.className = 'mobile-confirm mobile-print-dialog';
+    dialog.innerHTML = `
+        <div class="mobile-confirm-content" style="max-width: 400px;">
+            <h3 style="margin-bottom: 15px;">
+                <i class="fas fa-print" style="color: var(--sumo-coral); margin-left: 8px;"></i>
+                אפשרויות הדפסה במובייל
+            </h3>
+            <p style="margin-bottom: 20px; color: #666; font-size: 14px;">
+                בחר איך תרצה לשמור או להדפיס את הרשימה:
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <button onclick="openInNewTabForPDF('${btoa(encodeURIComponent(printContent))}')" style="
+                    background: linear-gradient(135deg, #28a745, #20c997);
+                    color: white;
+                    border: none;
+                    padding: 15px 20px;
+                    border-radius: 10px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+                ">
+                    <i class="fas fa-file-pdf"></i>
+                    פתח בחלון חדש לשמירה כ-PDF
+                    <small style="display: block; font-weight: normal; font-size: 11px; opacity: 0.9;">
+                        (מומלץ)
+                    </small>
+                </button>
+                
+                <button onclick="downloadHTMLFile('${btoa(encodeURIComponent(printContent))}', '${fileName}')" style="
+                    background: #007bff;
+                    color: white;
+                    border: none;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                ">
+                    <i class="fas fa-download"></i>
+                    הורד כקובץ HTML
+                </button>
+                
+                <button onclick="tryMobilePrintDirect('${btoa(encodeURIComponent(printContent))}')" style="
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                ">
+                    <i class="fas fa-print"></i>
+                    נסה הדפסה ישירה
+                </button>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0; font-size: 13px; color: #666;">
+                    <strong>טיפ:</strong> לחץ על "פתח בחלון חדש" ואז:
+                </p>
+                <ol style="margin: 5px 0 0 20px; font-size: 12px; color: #666;">
+                    <li>לחץ על שלוש הנקודות ⋮ בפינה</li>
+                    <li>בחר "שתף" או "Share"</li>
+                    <li>בחר "הדפס" או "Print" או "שמור כ-PDF"</li>
+                </ol>
+            </div>
+            
+            <button class="cancel-btn" onclick="this.closest('.mobile-print-dialog').remove()" style="
+                width: 100%;
+                padding: 10px;
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                cursor: pointer;
+            ">
+                ביטול
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+}
+
+function openInNewTabForPDF(encodedContent) {
+    try {
+        // Decode the content
+        const printContent = decodeURIComponent(atob(encodedContent));
+        
+        // Open in new tab
+        const newTab = window.open('', '_blank');
+        if (newTab) {
+            newTab.document.write(printContent);
+            newTab.document.close();
+            
+            // Close the dialog
+            document.querySelector('.mobile-print-dialog')?.remove();
+            
+            // Show instructions
+            showSuccess('📄 הרשימה נפתחה בחלון חדש - השתמש בתפריט הדפדפן לשמירה כ-PDF');
+            
+            // Try to trigger print after a delay (may not work on all mobile browsers)
+            setTimeout(() => {
+                try {
+                    newTab.print();
+                } catch(e) {
+                    console.log('Auto-print not supported on this mobile browser');
+                }
+            }, 1000);
+        } else {
+            showError('❌ לא ניתן לפתוח חלון חדש. בדוק הגדרות חסימת חלונות קופצים');
+        }
+    } catch (error) {
+        console.error('Error opening in new tab:', error);
+        showError('❌ שגיאה בפתיחת חלון חדש');
+    }
+}
+
+function downloadHTMLFile(encodedContent, fileName) {
+    try {
+        // Decode the content
+        const printContent = decodeURIComponent(atob(encodedContent));
+        
+        // Create blob and download
+        const blob = new Blob([printContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = `${fileName}_${new Date().toISOString().split('T')[0]}.html`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        
+        // Clean up
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        // Close dialog
+        document.querySelector('.mobile-print-dialog')?.remove();
+        
+        showSuccess('💾 הקובץ הורד - פתח אותו בדפדפן ובחר "הדפס" או "שמור כ-PDF"');
+    } catch (error) {
+        console.error('Download error:', error);
+        showError('❌ שגיאה בהורדת הקובץ');
+    }
+}
+
+function tryMobilePrintDirect(encodedContent) {
+    try {
+        // Decode the content
+        const printContent = decodeURIComponent(atob(encodedContent));
+        
+        // Try direct print
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            setTimeout(() => {
+                try {
+                    printWindow.print();
+                    document.querySelector('.mobile-print-dialog')?.remove();
+                    showInfo('🖨️ אם חלון ההדפסה לא נפתח, השתמש באפשרות "פתח בחלון חדש"');
+                } catch(e) {
+                    showError('❌ הדפסה ישירה לא נתמכת במכשיר זה. השתמש באפשרות "פתח בחלון חדש"');
+                }
+            }, 500);
+        }
+    } catch (error) {
+        console.error('Direct print error:', error);
+        showError('❌ שגיאה בהדפסה ישירה. נסה "פתח בחלון חדש"');
     }
 }
 </script>

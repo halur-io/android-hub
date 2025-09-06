@@ -1259,21 +1259,21 @@
         <div class="modal-body">
             <form id="generateForm">
                 <div class="form-group">
-                    <label>כותרת הרשימה: *</label>
-                    <input type="text" id="checklistName" required placeholder="לדוגמה: רשימת משימות יומית">
+                    <label>כותרת הרשימה:</label>
+                    <input type="text" id="checklistName" placeholder="לדוגמה: רשימת משימות יומית">
                 </div>
                 
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>תאריך: *</label>
-                            <input type="date" id="checklistDate" required>
+                            <label>תאריך:</label>
+                            <input type="date" id="checklistDate">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label>סניף: *</label>
-                            <select id="checklistBranch" required>
+                            <label>סניף:</label>
+                            <select id="checklistBranch">
                                 <option value="">בחר סניף</option>
                             </select>
                         </div>
@@ -1281,8 +1281,8 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>בחר תבנית: *</label>
-                    <select id="checklistTemplate" required onchange="handleTemplateSelection()">
+                    <label>בחר תבנית:</label>
+                    <select id="checklistTemplate" onchange="handleTemplateSelection()">
                         <option value="">בחר תבנית משימות</option>
                     </select>
                     <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
@@ -2205,32 +2205,22 @@ async function handleGenerateSubmit(e) {
         document.querySelectorAll('#groupSelectionContainer input[type="checkbox"]:checked').forEach(checkbox => {
             selectedGroups.push(parseInt(checkbox.value));
         });
-        
-        if (selectedGroups.length === 0) {
-            showError('❌ אנא בחר לפחות קבוצה אחת');
-            return;
-        }
     } else if (templateId && templateId !== '') {
         // Template selection - get groups from template
         const template = templates.find(t => t.id == templateId);
         if (template && template.assigned_groups) {
             selectedGroups = template.assigned_groups;
-        } else {
-            showError('❌ התבנית הנבחרת לא כוללת קבוצות');
-            return;
         }
-    } else {
-        showError('❌ אנא בחר תבנית או קבוצות מותאמות אישית');
-        return;
     }
     
+    // Allow empty form - print with dashes for empty fields
     const formData = {
-        name: document.getElementById('checklistName').value,
-        date: document.getElementById('checklistDate').value,
-        branch_id: parseInt(document.getElementById('checklistBranch').value),
+        name: document.getElementById('checklistName').value || 'רשימת משימות',
+        date: document.getElementById('checklistDate').value || '',
+        branch_id: document.getElementById('checklistBranch').value ? parseInt(document.getElementById('checklistBranch').value) : null,
         selected_groups: selectedGroups,
-        template_id: templateId !== 'custom' ? parseInt(templateId) : null,
-        shift_manager: document.getElementById('shiftManager').value
+        template_id: templateId !== 'custom' && templateId ? parseInt(templateId) : null,
+        shift_manager: document.getElementById('shiftManager').value || ''
     };
     
     generateChecklist(formData);
@@ -2497,9 +2487,9 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
         </head>
         <body>
             <div class="header">
-                <h1>${data.name}</h1>
+                <h1>${data.name || '___________'}</h1>
                 <div class="info-grid">
-                    <span class="info-item"><strong>תאריך:</strong> ${data.date}</span>
+                    <span class="info-item"><strong>תאריך:</strong> ${data.date || '___________'}</span>
                     <span class="info-item"><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
                     <span class="info-item"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
                     <span class="info-item"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>
@@ -2616,14 +2606,14 @@ function generatePrintHTML(data, branch, tasksByCategory) {
         </head>
         <body>
             <div class="header">
-                <h1>${data.name}</h1>
+                <h1>${data.name || '___________'}</h1>
                 <div class="info-row">
-                    <span><strong>סניף:</strong> ${branch ? branch.name : ''}</span>
-                    <span><strong>תאריך:</strong> ${data.date}</span>
+                    <span><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
+                    <span><strong>תאריך:</strong> ${data.date || '___________'}</span>
                 </div>
                 <div class="info-row">
-                    <span><strong>משמרת:</strong> ${translations.shift_types[data.shift_type]}</span>
-                    <span><strong>אחראי משמרת:</strong> ${data.shift_manager || '_____________'}</span>
+                    <span><strong>משמרת:</strong> ${data.shift_type ? translations.shift_types[data.shift_type] : '___________'}</span>
+                    <span><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
                 </div>
             </div>
             
@@ -4580,9 +4570,9 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
     return `
         <div style="padding: ${settings.margin}mm; font-family: Arial, sans-serif; direction: rtl;">
             <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
-                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name}</h1>
+                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
                 <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
-                    <span style="font-size: ${settings.fontSize}px;"><strong>תאריך:</strong> ${data.date}</span>
+                    <span style="font-size: ${settings.fontSize}px;"><strong>תאריך:</strong> ${data.date || '___________'}</span>
                     <span style="font-size: ${settings.fontSize}px;"><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
                     <span style="font-size: ${settings.fontSize}px;"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
                     <span style="font-size: ${settings.fontSize}px;"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>

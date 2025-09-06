@@ -4453,30 +4453,13 @@ function printFromPreview() {
         printSettings
     );
     
-    // Create hidden iframe for printing
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'absolute';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = 'none';
-    document.body.appendChild(printFrame);
+    // Close the preview modal first to avoid blocking
+    closePrintPreview();
     
-    const printDocument = printFrame.contentWindow.document;
-    printDocument.open();
-    printDocument.write(printContent);
-    printDocument.close();
-    
-    // Wait for content to load then print
-    printFrame.contentWindow.onload = function() {
-        setTimeout(() => {
-            printFrame.contentWindow.print();
-            setTimeout(() => {
-                document.body.removeChild(printFrame);
-            }, 1000);
-        }, 100);
-    };
-    
-    showSuccess('🖨️ מדפיס עם ההגדרות שנבחרו...');
+    // Use the non-blocking iframe print method
+    setTimeout(() => {
+        handleIframePrint(printContent);
+    }, 100);
 }
 
 function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings) {
@@ -4636,45 +4619,56 @@ function isMobileDevice() {
 }
 
 function handleDesktopPrint(printContent) {
+    // Always use iframe printing to avoid blocking issues
+    handleIframePrint(printContent);
+}
+
+function handleIframePrint(printContent) {
     try {
-        console.log('Desktop print initiated');
-        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        // Remove any existing print frames first
+        const existingFrames = document.querySelectorAll('.print-frame');
+        existingFrames.forEach(frame => frame.remove());
         
-        if (printWindow && printWindow.document) {
-            printWindow.document.open();
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            
-            // Wait for content to load before printing
-            printWindow.onload = function() {
+        // Create hidden iframe for printing
+        const printFrame = document.createElement('iframe');
+        printFrame.className = 'print-frame';
+        printFrame.style.position = 'absolute';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = 'none';
+        printFrame.style.left = '-9999px';
+        document.body.appendChild(printFrame);
+        
+        const printDocument = printFrame.contentWindow.document;
+        printDocument.open();
+        printDocument.write(printContent);
+        printDocument.close();
+        
+        // Print after a short delay
+        setTimeout(() => {
+            try {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+                
+                // Clean up after printing
                 setTimeout(() => {
-                    try {
-                        printWindow.print();
-                        showSuccess('🖨️ חלון הדפסה נפתח');
-                    } catch (printError) {
-                        console.error('Print error:', printError);
-                        handlePrintFallback(printContent);
+                    if (printFrame && printFrame.parentNode) {
+                        printFrame.parentNode.removeChild(printFrame);
                     }
-                }, 100);
-            };
-            
-            // Fallback if onload doesn't fire
-            setTimeout(() => {
-                try {
-                    if (printWindow && !printWindow.closed) {
-                        printWindow.print();
-                    }
-                } catch(e) {
-                    console.log('Fallback print attempt');
+                }, 1000);
+                
+                showSuccess('🖨️ מדפיס...');
+            } catch (error) {
+                console.error('Print error:', error);
+                // Clean up on error
+                if (printFrame && printFrame.parentNode) {
+                    printFrame.parentNode.removeChild(printFrame);
                 }
-            }, 1000);
-        } else {
-            // Fallback for blocked popups
-            console.log('Window blocked, using fallback');
-            handlePrintFallback(printContent);
-        }
+                handlePrintFallback(printContent);
+            }
+        }, 250);
     } catch (error) {
-        console.error('Desktop print error:', error);
+        console.error('Iframe print error:', error);
         handlePrintFallback(printContent);
     }
 }

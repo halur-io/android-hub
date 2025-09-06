@@ -4247,10 +4247,23 @@ async function reprintChecklist(checklistId) {
 }
 
 function openPrintPreview() {
-    document.getElementById('printPreviewModal').style.display = 'flex';
-    initializePreviewListeners();
-    updatePreview();
-    zoomPreview('fit');
+    console.log('Opening print preview with data:', {currentPrintData, currentBranch, currentSelectedGroups, currentAllTasks});
+    
+    const modal = document.getElementById('printPreviewModal');
+    if (!modal) {
+        console.error('Print preview modal not found');
+        showError('❌ לא ניתן לפתוח תצוגה מקדימה');
+        return;
+    }
+    
+    modal.style.display = 'flex';
+    
+    // Ensure modal is visible
+    setTimeout(() => {
+        initializePreviewListeners();
+        updatePreview();
+        zoomPreview('fit');
+    }, 100);
 }
 
 function closePrintPreview() {
@@ -4318,17 +4331,33 @@ function initializePreviewListeners() {
 }
 
 function updatePreview() {
-    if (!currentPrintData) return;
+    console.log('updatePreview called', {currentPrintData, currentBranch, currentSelectedGroups, currentAllTasks});
     
-    const previewContent = generateCustomPrintHTML(
-        currentPrintData,
-        currentBranch,
-        currentSelectedGroups,
-        currentAllTasks,
-        printSettings
-    );
+    if (!currentPrintData) {
+        console.error('No print data available');
+        document.getElementById('printPreviewContent').innerHTML = '<div style="padding: 20px; text-align: center;">אין נתונים להצגה</div>';
+        return;
+    }
     
-    document.getElementById('printPreviewContent').innerHTML = previewContent;
+    try {
+        const previewContent = generateCustomPrintHTML(
+            currentPrintData,
+            currentBranch,
+            currentSelectedGroups,
+            currentAllTasks,
+            printSettings
+        );
+        
+        const previewElement = document.getElementById('printPreviewContent');
+        if (previewElement) {
+            previewElement.innerHTML = previewContent;
+        } else {
+            console.error('Preview content element not found');
+        }
+    } catch (error) {
+        console.error('Error generating preview:', error);
+        document.getElementById('printPreviewContent').innerHTML = '<div style="padding: 20px; text-align: center; color: red;">שגיאה בטעינת התצוגה המקדימה</div>';
+    }
 }
 
 function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, settings) {

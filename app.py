@@ -1,6 +1,7 @@
 import os
 import logging
-from flask import Flask
+import time
+from flask import Flask, make_response
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
 from database import init_db
@@ -49,6 +50,24 @@ def load_user(user_id):
 
 # Initialize database
 init_db(app)
+
+# Add cache busting for static files
+@app.after_request
+def add_cache_control_headers(response):
+    # Add cache busting headers for HTML pages to prevent caching
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+# Add version for cache busting
+app.config['CACHE_BUSTER'] = str(int(time.time()))
+
+# Make cache buster available in templates
+@app.context_processor
+def inject_cache_buster():
+    return dict(cache_version=app.config['CACHE_BUSTER'])
 
 # Import routes  
 from routes import *

@@ -69,6 +69,16 @@ app.config['CACHE_BUSTER'] = str(int(time.time()))
 def inject_cache_buster():
     return dict(cache_version=app.config['CACHE_BUSTER'])
 
+# Make permission functions available in templates
+@app.context_processor
+def inject_permissions():
+    from permissions import has_permission, has_role, has_any_permission
+    return dict(
+        has_permission=has_permission,
+        has_role=has_role,
+        has_any_permission=has_any_permission
+    )
+
 # Import routes  
 from routes import *
 

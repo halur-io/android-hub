@@ -14,18 +14,259 @@
 
 {% block extra_css %}
 <style>
-.tasks-header {
+/* Clean Header */
+.clean-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 20px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.clean-header h1 {
+    color: var(--sumo-coral);
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+/* Main Action Cards */
+.main-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.action-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.action-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.primary-card {
+    border-color: var(--sumo-coral);
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.primary-card:hover {
+    border-color: var(--sumo-coral);
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+}
+
+.secondary-card {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #fff 0%, #f0f8ff 100%);
+}
+
+.secondary-card:hover {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+}
+
+.menu-card {
+    border-color: #6c757d;
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+}
+
+.menu-card:hover {
+    border-color: #6c757d;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.primary-card .card-icon {
+    background: var(--sumo-coral);
+    color: white;
+}
+
+.secondary-card .card-icon {
+    background: #007bff;
+    color: white;
+}
+
+.menu-card .card-icon {
+    background: #6c757d;
+    color: white;
+}
+
+.card-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.card-content p {
+    margin: 0;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 10;
+    display: none;
+    padding: 10px 0;
+    margin-top: 10px;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    text-align: right;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.95rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-item:hover {
+    background: #f8f9fa;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 8px 0;
+}
+
+/* Filter Section */
+.filter-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.filter-header {
+    margin-bottom: 15px;
+}
+
+.filter-header h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Task Controls */
+.task-controls {
+    background: #007bff;
+    color: white;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+}
+
+.controls-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
 }
 
-.tasks-header h1 {
-    color: var(--sumo-coral);
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 600;
+.controls-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 14px;
+}
+
+.control-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.control-btn.success {
+    background: #28a745;
+}
+
+.control-btn.success:hover {
+    background: #218838;
+}
+
+.control-btn.danger {
+    background: #dc3545;
+}
+
+.control-btn.danger:hover {
+    background: #c82333;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .main-actions {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .action-card {
+        padding: 20px;
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .card-content h3 {
+        font-size: 1.2rem;
+    }
+    
+    .controls-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .controls-actions {
+        justify-content: center;
+    }
 }
 
 .shift-tabs {
@@ -1068,70 +1309,94 @@
 {% endblock %}
 
 {% block content %}
-<div class="tasks-header">
-    <h1><i class="fas fa-clipboard-check me-2"></i> ניהול רשימות משימות</h1>
-    <div>
-        <button class="btn btn-primary" onclick="showAddTaskModal()">
-            <i class="fas fa-plus me-2"></i> הוסף משימה
-        </button>
-        <button class="btn btn-generate" onclick="showGenerateModal()">
-            <i class="fas fa-file-alt me-2"></i> צור רשימת משימות
-        </button>
-        <button class="btn btn-info" onclick="showTemplatesModal()">
-            <i class="fas fa-save me-2"></i> תבניות משימות
-        </button>
-        <button class="btn btn-secondary" onclick="showSavedChecklistsModal()">
-            <i class="fas fa-history me-2"></i> רשימות שמורות
-        </button>
-        <button class="btn btn-warning" onclick="showGroupTaskModal()">
-            <i class="fas fa-layer-group me-2"></i> צור קבוצת משימות
-        </button>
+<!-- Clean Header -->
+<div class="clean-header">
+    <div class="header-title">
+        <h1><i class="fas fa-clipboard-check me-2"></i> ניהול רשימות משימות</h1>
     </div>
 </div>
 
-<!-- Shift Type Tabs -->
-<div class="shift-tabs">
-    <button class="shift-tab active" data-shift="all">כל המשימות</button>
-    <button class="shift-tab" data-shift="morning">פתיחת בוקר</button>
-    <button class="shift-tab" data-shift="evening">משמרת ערב</button>
-    <button class="shift-tab" data-shift="closing">סגירה</button>
-    <button class="shift-tab" data-shift="night">משמרת לילה</button>
-</div>
-
-<!-- Quick Actions -->
-<div class="quick-actions">
-    <button class="quick-action-btn" onclick="selectAllTasks()">
-        <i class="fas fa-check-square me-1"></i> בחר הכל
-    </button>
-    <button class="quick-action-btn" onclick="clearSelection()">
-        <i class="fas fa-times me-1"></i> בטל בחירה
-    </button>
-    <button class="quick-action-btn" onclick="markAllComplete()">
-        <i class="fas fa-clipboard-check me-1"></i> סמן הכל כהושלם
-    </button>
-    <button class="quick-action-btn" onclick="exportTasks()">
-        <i class="fas fa-download me-1"></i> ייצוא משימות
-    </button>
-</div>
-
-<!-- Bulk Actions Bar -->
-<div class="bulk-actions-bar" id="bulkActionsBar">
-    <div class="selected-count">
-        <span id="selectedCount">0</span> משימות נבחרו
+<!-- Main Action Cards -->
+<div class="main-actions">
+    <div class="action-card primary-card" onclick="showGenerateModal()">
+        <div class="card-icon">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="card-content">
+            <h3>צור רשימת משימות</h3>
+            <p>יצירת רשימה חדשה להדפסה</p>
+        </div>
     </div>
-    <div class="bulk-actions">
-        <button class="btn btn-sm btn-success" onclick="bulkMarkComplete()">
-            <i class="fas fa-check me-1"></i> סמן כהושלם
-        </button>
-        <button class="btn btn-sm btn-primary" onclick="showBulkGroupAssignment()">
-            <i class="fas fa-layer-group me-1"></i> הקצה לקבוצה
-        </button>
-        <button class="btn btn-sm btn-warning" onclick="bulkChangeCategory()">
-            <i class="fas fa-tag me-1"></i> שנה קטגוריה
-        </button>
-        <button class="btn btn-sm btn-danger" onclick="bulkDelete()">
-            <i class="fas fa-trash me-1"></i> מחק
-        </button>
+    
+    <div class="action-card secondary-card" onclick="showSavedChecklistsModal()">
+        <div class="card-icon">
+            <i class="fas fa-history"></i>
+        </div>
+        <div class="card-content">
+            <h3>רשימות שמורות</h3>
+            <p>צפייה והדפסה של רשימות קיימות</p>
+        </div>
+    </div>
+    
+    <!-- Management Menu -->
+    <div class="action-card menu-card">
+        <div class="card-icon">
+            <i class="fas fa-cog"></i>
+        </div>
+        <div class="card-content">
+            <h3>ניהול</h3>
+            <p>הגדרות וניהול משימות</p>
+        </div>
+        <div class="dropdown-menu" id="managementDropdown">
+            <button class="dropdown-item" onclick="showAddTaskModal()">
+                <i class="fas fa-plus me-2"></i> הוסף משימה
+            </button>
+            <button class="dropdown-item" onclick="showGroupTaskModal()">
+                <i class="fas fa-layer-group me-2"></i> צור קבוצת משימות
+            </button>
+            <button class="dropdown-item" onclick="showTemplatesModal()">
+                <i class="fas fa-save me-2"></i> תבניות משימות
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" onclick="exportTasks()">
+                <i class="fas fa-download me-2"></i> ייצוא משימות
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Shift Filter Section -->
+<div class="filter-section">
+    <div class="filter-header">
+        <h4><i class="fas fa-filter me-2"></i> סינון לפי משמרת</h4>
+    </div>
+    <div class="shift-tabs">
+        <button class="shift-tab active" data-shift="all">כל המשימות</button>
+        <button class="shift-tab" data-shift="morning">בוקר</button>
+        <button class="shift-tab" data-shift="evening">ערב</button>
+        <button class="shift-tab" data-shift="closing">סגירה</button>
+        <button class="shift-tab" data-shift="night">לילה</button>
+    </div>
+</div>
+
+<!-- Task Controls (appears when needed) -->
+<div class="task-controls" id="taskControls" style="display: none;">
+    <div class="controls-header">
+        <span id="selectedTasksCount">0 משימות נבחרו</span>
+        <div class="controls-actions">
+            <button class="control-btn" onclick="selectAllTasks()" title="בחר הכל">
+                <i class="fas fa-check-square"></i>
+            </button>
+            <button class="control-btn" onclick="clearSelection()" title="בטל בחירה">
+                <i class="fas fa-times"></i>
+            </button>
+            <button class="control-btn success" onclick="bulkMarkComplete()" title="סמן כהושלם">
+                <i class="fas fa-check"></i>
+            </button>
+            <button class="control-btn danger" onclick="bulkDelete()" title="מחק נבחרות">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -5420,5 +5685,86 @@ function createAlternativePDF(htmlContent, fileName) {
         </div>
     </div>
 </div>
+
+<script>
+// Dropdown functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const menuCard = document.querySelector('.menu-card');
+    const dropdown = document.getElementById('managementDropdown');
+    
+    if (menuCard && dropdown) {
+        menuCard.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function() {
+            dropdown.classList.remove('show');
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        dropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+});
+
+// Updated task selection functions for new layout
+function updateTaskControlsVisibility() {
+    const taskControls = document.getElementById('taskControls');
+    const selectedTasksCount = document.getElementById('selectedTasksCount');
+    const checkboxes = document.querySelectorAll('.task-item input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    
+    if (count > 0) {
+        taskControls.style.display = 'block';
+        selectedTasksCount.textContent = count + ' משימות נבחרו';
+    } else {
+        taskControls.style.display = 'none';
+    }
+}
+
+// Override existing functions to use new layout
+const originalSelectAllTasks = window.selectAllTasks;
+window.selectAllTasks = function() {
+    if (typeof originalSelectAllTasks === 'function') {
+        originalSelectAllTasks();
+    }
+    updateTaskControlsVisibility();
+};
+
+const originalClearSelection = window.clearSelection;
+window.clearSelection = function() {
+    if (typeof originalClearSelection === 'function') {
+        originalClearSelection();
+    }
+    updateTaskControlsVisibility();
+};
+
+// Update task controls when checkboxes change
+document.addEventListener('change', function(e) {
+    if (e.target.type === 'checkbox' && e.target.closest('.task-item')) {
+        updateTaskControlsVisibility();
+    }
+});
+
+// Override bulk operations to update controls after completion
+const originalBulkDelete = window.bulkDelete;
+window.bulkDelete = async function() {
+    if (typeof originalBulkDelete === 'function') {
+        await originalBulkDelete();
+        updateTaskControlsVisibility();
+    }
+};
+
+const originalBulkMarkComplete = window.bulkMarkComplete;
+window.bulkMarkComplete = function() {
+    if (typeof originalBulkMarkComplete === 'function') {
+        originalBulkMarkComplete();
+        updateTaskControlsVisibility();
+    }
+};
+</script>
 
 {% endblock %}

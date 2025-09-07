@@ -1,0 +1,416 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מלאי - Admin Panel{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Stock Management Dashboard Styles */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+    position: relative;
+    overflow: hidden;
+}
+
+.stats-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover::before {
+    top: -30%;
+    right: -30%;
+}
+
+.stats-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.stats-icon {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.alert-card {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stock-card {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.expiry-card {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.items-card {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.action-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.action-card:hover {
+    border-color: var(--sumo-coral);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.action-card i {
+    font-size: 2.5rem;
+    color: var(--sumo-coral);
+    margin-bottom: 15px;
+}
+
+.action-card h5 {
+    color: var(--sumo-navy);
+    margin: 0;
+    font-weight: 600;
+}
+
+.branch-selector {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.quick-actions {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.alert-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        margin-right: 0;
+        padding: 15px;
+    }
+    
+    .stats-card {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+    }
+    
+    .action-card {
+        height: 120px;
+        padding: 20px;
+    }
+    
+    .action-card i {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-boxes me-2 text-primary"></i>ניהול מלאי
+            </h1>
+            <p class="text-muted mb-0">מערכת מתקדמת לניהול מלאי המסעדה</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="location.href='{{ url_for('admin.stock_items') }}'">
+                <i class="fas fa-plus me-2"></i>הוסף פריט חדש
+            </button>
+        </div>
+    </div>
+
+    <!-- Branch Selector -->
+    <div class="branch-selector">
+        <h5 class="mb-3">
+            <i class="fas fa-store me-2"></i>בחר סניף
+        </h5>
+        <div class="row">
+            <div class="col-md-6">
+                <select class="form-select" id="branchSelector" onchange="changeBranch()">
+                    <option value="">בחר סניף...</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                        {{ branch.name_he }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-center">
+                <span class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    {% if current_branch_id %}
+                        מלאי נוכחי עבור {{ branches|selectattr('id', 'equalto', current_branch_id)|first|attr('name_he') if branches|selectattr('id', 'equalto', current_branch_id)|first else 'סניף נבחר' }}
+                    {% else %}
+                        אנא בחר סניף לצפייה במלאי
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {% if current_branch_id and stats %}
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="stats-card items-card">
+                <div class="stats-icon">
+                    <i class="fas fa-cube"></i>
+                </div>
+                <div class="stats-label">סך פריטים במערכת</div>
+                <div class="stats-number">{{ stats.total_items }}</div>
+                <small>פריטי מלאי רשומים</small>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="stats-card alert-card position-relative">
+                <div class="stats-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stats-label">התראות מלאי נמוך</div>
+                <div class="stats-number">{{ stats.low_stock_alerts }}</div>
+                <small>פריטים הדורשים הזמנה</small>
+                {% if stats.low_stock_alerts > 0 %}
+                <div class="alert-badge">!</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="stats-card stock-card position-relative">
+                <div class="stats-icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="stats-label">פריטים שאזלו</div>
+                <div class="stats-number">{{ stats.out_of_stock }}</div>
+                <small>דורש הזמנה מיידית</small>
+                {% if stats.out_of_stock > 0 %}
+                <div class="alert-badge">{{ stats.out_of_stock }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="stats-card expiry-card position-relative">
+                <div class="stats-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stats-label">פגי תוקף בקרוב</div>
+                <div class="stats-number">{{ stats.expiring_soon }}</div>
+                <small>דורש בדיקה</small>
+                {% if stats.expiring_soon > 0 %}
+                <div class="alert-badge">{{ stats.expiring_soon }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h5 class="mb-3">
+            <i class="fas fa-bolt me-2"></i>פעולות מהירות
+        </h5>
+        <div class="row">
+            <div class="col-lg-2 col-md-4 col-6 mb-3">
+                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_levels') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                    <i class="fas fa-chart-bar"></i>
+                    <h5>רמות מלאי</h5>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-6 mb-3">
+                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_transactions') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                    <i class="fas fa-exchange-alt"></i>
+                    <h5>תנועות מלאי</h5>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-6 mb-3">
+                <div class="action-card" onclick="location.href='{{ url_for('admin.shopping_lists') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h5>רשימות קניות</h5>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-6 mb-3">
+                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_alerts') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                    <i class="fas fa-bell"></i>
+                    <h5>התראות</h5>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-6 mb-3">
+                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_suppliers') }}'">
+                    <i class="fas fa-truck"></i>
+                    <h5>ספקים</h5>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-6 mb-3">
+                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_analytics') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                    <i class="fas fa-chart-pie"></i>
+                    <h5>דוחות</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Sections -->
+    <div class="row">
+        <!-- Items Management -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cube me-2"></i>ניהול פריטים
+                    </h5>
+                    <a href="{{ url_for('admin.stock_items') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-cog me-1"></i>נהל
+                    </a>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">הוסף, ערוך וארגן פריטי מלאי במערכת</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            הוספת פריטים חדשים
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            עריכת פרטי פריטים
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            קטגוריזציה וארגון
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            הגדרת מינימום ומקסימום
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>הגדרות מלאי
+                    </h5>
+                    <a href="{{ url_for('admin.stock_settings') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-cog me-1"></i>הגדר
+                    </a>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">הגדר התאמות אישיות לניהול המלאי</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-toggle-on text-primary me-2"></i>
+                            הפעלה/כיבוי תכונות
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-bell text-warning me-2"></i>
+                            הגדרות התראות
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-calendar text-info me-2"></i>
+                            תדירות יצירת רשימות
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-clock text-secondary me-2"></i>
+                            מעקב תאריכי תפוגה
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not current_branch_id %}
+    <!-- No Branch Selected -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card text-center">
+                <div class="card-body py-5">
+                    <i class="fas fa-store fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">אנא בחר סניף</h5>
+                    <p class="text-muted">בחר סניף מהרשימה למעלה כדי לצפות במלאי ובנתונים</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function changeBranch() {
+    const branchId = document.getElementById('branchSelector').value;
+    if (branchId) {
+        window.location.href = `{{ url_for('admin.stock_management') }}?branch_id=${branchId}`;
+    } else {
+        window.location.href = `{{ url_for('admin.stock_management') }}`;
+    }
+}
+
+// Auto-refresh alerts every 30 seconds
+setInterval(function() {
+    if (window.location.pathname.includes('stock-management')) {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %}

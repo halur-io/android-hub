@@ -635,6 +635,11 @@
             <a class="nav-link {% if request.endpoint == 'admin.checklist' %}active{% endif %}" href="{{ url_for('admin.checklist') }}">
                 <i class="fas fa-clipboard-check me-2"></i> רשימות משימות
             </a>
+            {% if has_permission('stock.view') %}
+            <a class="nav-link {% if 'stock' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.stock_management') }}">
+                <i class="fas fa-boxes me-2"></i> ניהול מלאי
+            </a>
+            {% endif %}
             <a class="nav-link {% if request.endpoint in ['admin.users', 'admin.edit_user', 'admin.add_user'] %}active{% endif %}" href="{{ url_for('admin.users') }}">
                 <i class="fas fa-users me-2"></i> ניהול משתמשים
             </a>

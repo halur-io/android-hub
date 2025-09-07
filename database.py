@@ -133,6 +133,16 @@ def create_default_roles_and_permissions():
         ('checklists.view', 'View Checklists', 'checklists', 'View task checklists'),
         ('checklists.edit', 'Edit Checklists', 'checklists', 'Manage task checklists'),
         
+        # Stock Management
+        ('stock.view', 'View Stock', 'stock', 'View stock levels and items'),
+        ('stock.manage', 'Manage Stock', 'stock', 'Add/edit stock items and levels'),
+        ('stock.transactions', 'Stock Transactions', 'stock', 'Record stock transactions'),
+        ('stock.alerts', 'Stock Alerts', 'stock', 'Manage stock alerts and notifications'),
+        ('stock.shopping_lists', 'Shopping Lists', 'stock', 'Create and manage shopping lists'),
+        ('stock.suppliers', 'Manage Suppliers', 'stock', 'Manage supplier information'),
+        ('stock.settings', 'Stock Settings', 'stock', 'Configure stock management settings'),
+        ('stock.analytics', 'Stock Analytics', 'stock', 'View stock reports and analytics'),
+        
         # Reports
         ('reports.view', 'View Reports', 'reports', 'View system reports'),
         
@@ -215,17 +225,21 @@ def create_default_roles_and_permissions():
         admin_perms = Permission.query.filter(Permission.name != 'system.admin').all()
         admin_role.permissions = admin_perms
     
-    # Manager gets operational permissions
+    # Manager gets operational permissions including stock management
     if manager_role:
         manager_perms = Permission.query.filter(Permission.category.in_([
-            'orders', 'kitchen', 'delivery', 'menu', 'branches', 'checklists', 'reports'
+            'orders', 'kitchen', 'delivery', 'menu', 'branches', 'checklists', 'reports', 'stock'
         ])).all()
         manager_role.permissions = manager_perms
     
-    # Kitchen staff gets kitchen permissions
+    # Kitchen staff gets kitchen permissions and basic stock viewing
     if kitchen_role:
         kitchen_perms = Permission.query.filter(Permission.category.in_(['kitchen', 'orders'])).all()
-        kitchen_role.permissions = kitchen_perms
+        # Add stock viewing permissions for kitchen staff
+        stock_view_perms = Permission.query.filter(Permission.name.in_([
+            'stock.view', 'stock.transactions'
+        ])).all()
+        kitchen_role.permissions = kitchen_perms + stock_view_perms
     
     # Delivery gets delivery permissions
     if delivery_role:

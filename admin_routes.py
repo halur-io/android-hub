@@ -1400,3 +1400,303 @@ def printer_guide():
     """SNBC Printer setup guide"""
     return render_template('admin/printer_setup_guide.html')
 
+# ===== STOCK MANAGEMENT MICROSERVICE ROUTES =====
+
+@admin_bp.route('/stock-management')
+@login_required
+@require_permission('stock.view')
+def stock_management():
+    """Main stock management dashboard"""
+    from models import StockItem, StockLevel, Branch, StockAlert
+    
+    # Get current branch or default to first branch
+    branch_id = request.args.get('branch_id', type=int)
+    if not branch_id:
+        branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = branch.id if branch else None
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    # Get stock statistics for the selected branch
+    stats = {}
+    if branch_id:
+        total_items = StockItem.query.filter_by(is_active=True).count()
+        low_stock_alerts = StockAlert.query.filter_by(
+            branch_id=branch_id, 
+            alert_type='low_stock', 
+            is_resolved=False
+        ).count()
+        out_of_stock = StockLevel.query.filter_by(
+            branch_id=branch_id
+        ).filter(StockLevel.current_quantity <= 0).count()
+        expiring_soon = StockAlert.query.filter_by(
+            branch_id=branch_id, 
+            alert_type='expiring_soon', 
+            is_resolved=False
+        ).count()
+        
+        stats = {
+            'total_items': total_items,
+            'low_stock_alerts': low_stock_alerts,
+            'out_of_stock': out_of_stock,
+            'expiring_soon': expiring_soon
+        }
+    
+    return render_template('admin/stock_management.html', 
+                         branches=branches, 
+                         current_branch_id=branch_id,
+                         stats=stats)
+
+@admin_bp.route('/stock-items')
+@login_required
+@require_permission('stock.view')
+def stock_items():
+    """Stock items management"""
+    from models import StockItem, StockCategory, Supplier
+    
+    # Get filter parameters
+    category_id = request.args.get('category_id', type=int)
+    item_type = request.args.get('item_type')
+    search_query = request.args.get('search', '')
+    
+    # Build query
+    query = StockItem.query.filter_by(is_active=True)
+    
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+    if item_type:
+        query = query.filter_by(item_type=item_type)
+    if search_query:
+        query = query.filter(
+            db.or_(
+                StockItem.name_he.contains(search_query),
+                StockItem.name_en.contains(search_query),
+                StockItem.sku.contains(search_query)
+            )
+        )
+    
+    items = query.order_by(StockItem.name_he).all()
+    categories = StockCategory.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_items.html', 
+                         items=items, 
+                         categories=categories,
+                         suppliers=suppliers,
+                         filters={
+                             'category_id': category_id,
+                             'item_type': item_type,
+                             'search': search_query
+                         })
+
+@admin_bp.route('/stock-levels')
+@login_required
+@require_permission('stock.view')
+def stock_levels():
+    """Stock levels by branch"""
+    from models import StockLevel, Branch, StockItem
+    
+    branch_id = request.args.get('branch_id', type=int)
+    if not branch_id:
+        branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = branch.id if branch else None
+    
+    if branch_id:
+        levels = db.session.query(StockLevel, StockItem).join(
+            StockItem, StockLevel.item_id == StockItem.id
+        ).filter(
+            StockLevel.branch_id == branch_id,
+            StockItem.is_active == True
+        ).order_by(StockItem.name_he).all()
+    else:
+        levels = []
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_levels.html', 
+                         levels=levels, 
+                         branches=branches,
+                         current_branch_id=branch_id)
+
+@admin_bp.route('/stock-transactions')
+@login_required
+@require_permission('stock.view')
+def stock_transactions():
+    """Stock transaction history"""
+    from models import StockTransaction, Branch, StockItem
+    
+    branch_id = request.args.get('branch_id', type=int)
+    transaction_type = request.args.get('type')
+    page = request.args.get('page', 1, type=int)
+    
+    query = db.session.query(StockTransaction, StockItem).join(
+        StockItem, StockTransaction.item_id == StockItem.id
+    )
+    
+    if branch_id:
+        query = query.filter(StockTransaction.branch_id == branch_id)
+    if transaction_type:
+        query = query.filter(StockTransaction.transaction_type == transaction_type)
+    
+    transactions = query.order_by(StockTransaction.transaction_date.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_transactions.html', 
+                         transactions=transactions, 
+                         branches=branches,
+                         current_branch_id=branch_id,
+                         current_type=transaction_type)
+
+@admin_bp.route('/shopping-lists')
+@login_required
+@require_permission('stock.view')
+def shopping_lists():
+    """Shopping lists management"""
+    from models import ShoppingList, Branch, Supplier
+    
+    branch_id = request.args.get('branch_id', type=int)
+    status = request.args.get('status')
+    
+    query = ShoppingList.query
+    
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    if status:
+        query = query.filter_by(status=status)
+    
+    lists = query.order_by(ShoppingList.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/shopping_lists.html', 
+                         shopping_lists=lists, 
+                         branches=branches,
+                         suppliers=suppliers,
+                         current_branch_id=branch_id,
+                         current_status=status)
+
+@admin_bp.route('/stock-alerts')
+@login_required
+@require_permission('stock.view')
+def stock_alerts():
+    """Stock alerts dashboard"""
+    from models import StockAlert, Branch, StockItem
+    
+    branch_id = request.args.get('branch_id', type=int)
+    alert_type = request.args.get('type')
+    show_resolved = request.args.get('resolved', False, type=bool)
+    
+    query = db.session.query(StockAlert, StockItem).join(
+        StockItem, StockAlert.item_id == StockItem.id
+    )
+    
+    if branch_id:
+        query = query.filter(StockAlert.branch_id == branch_id)
+    if alert_type:
+        query = query.filter(StockAlert.alert_type == alert_type)
+    if not show_resolved:
+        query = query.filter(StockAlert.is_resolved == False)
+    
+    alerts = query.order_by(StockAlert.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_alerts.html', 
+                         alerts=alerts, 
+                         branches=branches,
+                         current_branch_id=branch_id,
+                         current_type=alert_type,
+                         show_resolved=show_resolved)
+
+@admin_bp.route('/stock-suppliers')
+@login_required
+@require_permission('stock.manage')
+def stock_suppliers():
+    """Suppliers management"""
+    from models import Supplier
+    
+    suppliers = Supplier.query.order_by(Supplier.name).all()
+    
+    return render_template('admin/stock_suppliers.html', suppliers=suppliers)
+
+@admin_bp.route('/stock-settings')
+@login_required
+@require_permission('stock.settings')
+def stock_settings():
+    """Stock management settings"""
+    from models import StockSettings, Branch
+    
+    branch_id = request.args.get('branch_id', type=int)
+    
+    # Get or create settings for the branch
+    if branch_id:
+        settings = StockSettings.query.filter_by(branch_id=branch_id).first()
+        if not settings:
+            settings = StockSettings(branch_id=branch_id)
+            db.session.add(settings)
+            db.session.commit()
+    else:
+        # Global settings
+        settings = StockSettings.query.filter_by(branch_id=None).first()
+        if not settings:
+            settings = StockSettings()
+            db.session.add(settings)
+            db.session.commit()
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_settings.html', 
+                         settings=settings, 
+                         branches=branches,
+                         current_branch_id=branch_id)
+
+@admin_bp.route('/stock-analytics')
+@login_required
+@require_permission('stock.view')
+def stock_analytics():
+    """Stock analytics and reports"""
+    from models import StockTransaction, StockLevel, Branch, StockItem
+    from datetime import datetime, timedelta
+    
+    branch_id = request.args.get('branch_id', type=int)
+    period = request.args.get('period', '30')  # days
+    
+    if not branch_id:
+        branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = branch.id if branch else None
+    
+    analytics_data = {}
+    
+    if branch_id:
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=int(period))
+        
+        # Get transaction data for charts
+        transactions = StockTransaction.query.filter(
+            StockTransaction.branch_id == branch_id,
+            StockTransaction.transaction_date >= start_date
+        ).all()
+        
+        # Get current stock levels
+        stock_levels = db.session.query(StockLevel, StockItem).join(
+            StockItem, StockLevel.item_id == StockItem.id
+        ).filter(StockLevel.branch_id == branch_id).all()
+        
+        analytics_data = {
+            'transactions': transactions,
+            'stock_levels': stock_levels,
+            'period': period,
+            'start_date': start_date,
+            'end_date': end_date
+        }
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_analytics.html', 
+                         analytics=analytics_data, 
+                         branches=branches,
+                         current_branch_id=branch_id)
+

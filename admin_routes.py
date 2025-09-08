@@ -1502,9 +1502,7 @@ def stock_levels():
         branch_id = branch.id if branch else None
     
     if branch_id:
-        levels = db.session.query(StockLevel, StockItem).join(
-            StockItem, StockLevel.item_id == StockItem.id
-        ).filter(
+        levels = StockLevel.query.join(StockItem).filter(
             StockLevel.branch_id == branch_id,
             StockItem.is_active == True
         ).order_by(StockItem.name_he).all()
@@ -1529,9 +1527,7 @@ def stock_transactions():
     transaction_type = request.args.get('type')
     page = request.args.get('page', 1, type=int)
     
-    query = db.session.query(StockTransaction, StockItem).join(
-        StockItem, StockTransaction.item_id == StockItem.id
-    )
+    query = StockTransaction.query.join(StockItem)
     
     if branch_id:
         query = query.filter(StockTransaction.branch_id == branch_id)
@@ -1587,9 +1583,7 @@ def stock_alerts():
     alert_type = request.args.get('type')
     show_resolved = request.args.get('resolved', False, type=bool)
     
-    query = db.session.query(StockAlert, StockItem).join(
-        StockItem, StockAlert.item_id == StockItem.id
-    )
+    query = StockAlert.query.join(StockItem)
     
     if branch_id:
         query = query.filter(StockAlert.branch_id == branch_id)
@@ -1688,16 +1682,14 @@ def stock_analytics():
         ).all()
         
         # Get current stock levels
-        stock_levels = db.session.query(StockLevel, StockItem).join(
-            StockItem, StockLevel.item_id == StockItem.id
-        ).filter(StockLevel.branch_id == branch_id).all()
+        stock_levels = StockLevel.query.join(StockItem).filter(StockLevel.branch_id == branch_id).all()
         
         # Calculate additional analytics
         total_items = StockItem.query.filter_by(is_active=True).count()
-        low_stock_items = len([level for level, item in stock_levels if level.available_quantity <= item.minimum_stock])
-        out_of_stock_items = len([level for level, item in stock_levels if level.available_quantity <= 0])
-        full_stock_items = len([level for level, item in stock_levels if level.available_quantity >= item.maximum_stock])
-        total_value = sum([level.available_quantity * item.cost_per_unit for level, item in stock_levels])
+        low_stock_items = len([level for level in stock_levels if level.available_quantity <= level.item.minimum_stock])
+        out_of_stock_items = len([level for level in stock_levels if level.available_quantity <= 0])
+        full_stock_items = len([level for level in stock_levels if level.available_quantity >= level.item.maximum_stock])
+        total_value = sum([level.available_quantity * level.item.cost_per_unit for level in stock_levels])
         
         analytics_data = {
             'total_transactions': len(transactions),

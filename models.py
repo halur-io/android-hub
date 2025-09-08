@@ -731,7 +731,7 @@ class Receipt(db.Model):
     
     # Manual verification
     is_verified = db.Column(db.Boolean, default=False)
-    verified_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    verified_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
     verified_at = db.Column(db.DateTime)
     
     # Processing notes
@@ -741,7 +741,7 @@ class Receipt(db.Model):
     # Relationships
     supplier = db.relationship('Supplier', backref='receipts')
     branch = db.relationship('Branch', backref='receipts')
-    verifier = db.relationship('User', backref='verified_receipts')
+    verifier = db.relationship('AdminUser', backref='verified_receipts')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -795,7 +795,7 @@ class CostEntry(db.Model):
     
     # Approval workflow
     is_approved = db.Column(db.Boolean, default=False)
-    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    approved_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
     approved_at = db.Column(db.DateTime)
     
     # Additional metadata
@@ -809,7 +809,7 @@ class CostEntry(db.Model):
     supplier = db.relationship('Supplier', backref='cost_entries')
     branch = db.relationship('Branch', backref='cost_entries')
     receipt = db.relationship('Receipt', backref='cost_entries')
-    approver = db.relationship('User', backref='approved_costs')
+    approver = db.relationship('AdminUser', backref='approved_costs')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -884,11 +884,11 @@ class FileImport(db.Model):
     error_details = db.Column(db.JSON)  # Detailed error information per row
     
     # User tracking
-    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'), nullable=False)
     
     # Relationships
     branch = db.relationship('Branch', backref='file_imports')
-    uploader = db.relationship('User', backref='file_imports')
+    uploader = db.relationship('AdminUser', backref='file_imports')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

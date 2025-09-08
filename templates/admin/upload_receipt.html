@@ -1,0 +1,258 @@
+{% extends "admin/base.html" %}
+
+{% block title %}העלאת קבלה - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-camera me-2 text-primary"></i>העלאת קבלה
+            </h1>
+            <p class="text-muted mb-0">העלה תמונת קבלה לעיבוד אוטומטי</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.receipts') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right me-2"></i>חזרה לרשימה
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Upload Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-upload me-2"></i>פרטי הקבלה</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                        {{ csrf_token() }}
+                        
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label class="form-label">תמונת קבלה *</label>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                    <h5>גרור תמונה לכאן או לחץ לבחירה</h5>
+                                    <p class="text-muted">תמיכה בקבצי JPG, PNG, PDF עד 10MB</p>
+                                    <input type="file" 
+                                           name="receipt_image" 
+                                           id="receiptImage" 
+                                           accept=".jpg,.jpeg,.png,.pdf"
+                                           required
+                                           style="display: none;">
+                                    <button type="button" class="btn btn-primary" onclick="document.getElementById('receiptImage').click()">
+                                        <i class="fas fa-folder-open me-2"></i>בחר קובץ
+                                    </button>
+                                </div>
+                                <div id="previewArea" style="display: none;">
+                                    <img id="imagePreview" style="max-width: 100%; max-height: 300px; border-radius: 5px;">
+                                    <div class="mt-2">
+                                        <span id="fileName" class="text-muted"></span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="clearFile()">
+                                            <i class="fas fa-times"></i> הסר
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Branch Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">סניף *</label>
+                            <select class="form-select" name="branch_id" required>
+                                <option value="">בחר סניף</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Supplier Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">ספק (אופציונלי)</label>
+                            <select class="form-select" name="supplier_id">
+                                <option value="">בחר ספק (אם ידוע)</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">אם תבחר ספק, זה יעזור לזיהוי הפריטים בקבלה</div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-magic me-2"></i>העלה ועבד
+                            </button>
+                            <div id="processingStatus" class="text-muted" style="display: none;">
+                                <i class="fas fa-spinner fa-spin me-2"></i>מעבד קבלה...
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>הוראות לקבלת תוצאות מיטביות</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-camera text-success me-2"></i>איכות תמונה</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>צלם בתאורה טובה</li>
+                                <li><i class="fas fa-check text-success me-2"></i>הקבלה חייבת להיות ישרה</li>
+                                <li><i class="fas fa-check text-success me-2"></i>טקסט חד וברור</li>
+                                <li><i class="fas fa-check text-success me-2"></i>ללא השתקפויות</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-eye text-info me-2"></i>מה המערכת מזהה</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-info me-2"></i>סכום כולל</li>
+                                <li><i class="fas fa-check text-info me-2"></i>מספר קבלה</li>
+                                <li><i class="fas fa-check text-info me-2"></i>תאריך</li>
+                                <li><i class="fas fa-check text-info me-2"></i>פירוט פריטים</li>
+                                <li><i class="fas fa-check text-info me-2"></i>מחירים</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+    transform: scale(1.02);
+}
+
+.upload-content {
+    pointer-events: none;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('receiptImage');
+    const previewArea = document.getElementById('previewArea');
+    const imagePreview = document.getElementById('imagePreview');
+    const fileName = document.getElementById('fileName');
+    const uploadForm = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const processingStatus = document.getElementById('processingStatus');
+
+    // Click to upload
+    uploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect(files[0]);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelect(file) {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('סוג קובץ לא נתמך. אנא בחר JPG, PNG או PDF');
+            return;
+        }
+
+        // Validate file size (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('קובץ גדול מדי. מקסימום 10MB');
+            return;
+        }
+
+        fileName.textContent = file.name;
+
+        // Show preview for images
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                showPreview();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            // For PDF, just show file name
+            showPreview();
+        }
+    }
+
+    function showPreview() {
+        uploadArea.querySelector('.upload-content').style.display = 'none';
+        previewArea.style.display = 'block';
+    }
+
+    // Form submission
+    uploadForm.addEventListener('submit', function(e) {
+        submitBtn.style.display = 'none';
+        processingStatus.style.display = 'block';
+        
+        // Allow form to submit normally
+    });
+});
+
+function clearFile() {
+    const fileInput = document.getElementById('receiptImage');
+    const uploadArea = document.getElementById('uploadArea');
+    const previewArea = document.getElementById('previewArea');
+    
+    fileInput.value = '';
+    uploadArea.querySelector('.upload-content').style.display = 'block';
+    previewArea.style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1710,5 +1710,151 @@ def stock_analytics():
     return render_template('admin/stock_analytics.html', 
                          analytics=analytics_data, 
                          branches=branches,
-                         current_branch_id=branch_id)
+                         current_branch_id=branch_id,
+                         period=period)
+
+# ===== RECEIPT MANAGEMENT & OCR PROCESSING =====
+
+@admin_bp.route('/receipts')
+@login_required
+@require_permission('stock.manage')
+def receipts():
+    """Receipt management dashboard"""
+    from models import Receipt, Branch, Supplier
+    
+    branch_id = request.args.get('branch_id', type=int)
+    status = request.args.get('status')
+    supplier_id = request.args.get('supplier_id', type=int)
+    
+    query = Receipt.query
+    
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    if status:
+        query = query.filter_by(ocr_status=status)
+    if supplier_id:
+        query = query.filter_by(supplier_id=supplier_id)
+    
+    receipts = query.order_by(Receipt.created_at.desc()).limit(50).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/receipts.html',
+                         receipts=receipts,
+                         branches=branches,
+                         suppliers=suppliers,
+                         current_branch_id=branch_id,
+                         current_status=status,
+                         current_supplier_id=supplier_id)
+
+@admin_bp.route('/receipts/upload', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def upload_receipt():
+    """Upload and process receipt image"""
+    if request.method == 'POST':
+        from models import Receipt, Branch, Supplier
+        from ocr_service import ReceiptOCRService
+        import os
+        from werkzeug.utils import secure_filename
+        from datetime import datetime
+        
+        try:
+            # Get form data
+            file = request.files.get('receipt_image')
+            branch_id = request.form.get('branch_id', type=int)
+            supplier_id = request.form.get('supplier_id', type=int) if request.form.get('supplier_id') else None
+            
+            if not file or file.filename == '':
+                flash('לא נבחר קובץ', 'error')
+                return redirect(request.url)
+            
+            if not branch_id:
+                flash('חובה לבחור סניף', 'error')
+                return redirect(request.url)
+            
+            # Validate file type
+            allowed_extensions = {'jpg', 'jpeg', 'png', 'pdf'}
+            filename = secure_filename(file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                flash('סוג קובץ לא נתמך. אנא העלה JPG, PNG או PDF', 'error')
+                return redirect(request.url)
+            
+            # Create upload directory if it doesn't exist
+            upload_dir = os.path.join('static', 'uploads', 'receipts')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Generate unique filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            new_filename = f"{timestamp}_{filename}"
+            file_path = os.path.join(upload_dir, new_filename)
+            
+            # Save file
+            file.save(file_path)
+            
+            # Create receipt record
+            receipt = Receipt(
+                image_path=file_path,
+                original_filename=filename,
+                file_size=os.path.getsize(file_path),
+                branch_id=branch_id,
+                supplier_id=supplier_id,
+                ocr_status='pending'
+            )
+            
+            db.session.add(receipt)
+            db.session.commit()
+            
+            # Process OCR in background (for now, process immediately)
+            try:
+                ocr_service = ReceiptOCRService()
+                result = ocr_service.process_receipt_image(file_path)
+                
+                # Update receipt with OCR results
+                receipt.ocr_status = result['status'] if result['status'] == 'success' else 'failed'
+                receipt.ocr_data = result.get('data', {})
+                receipt.ocr_confidence = result.get('confidence', 0.0)
+                receipt.processed_at = datetime.utcnow()
+                
+                # Extract basic information
+                if result['status'] == 'success' and result.get('data'):
+                    data = result['data']
+                    if 'total_amount' in data:
+                        receipt.total_amount = data['total_amount']
+                    if 'tax_amount' in data:
+                        receipt.tax_amount = data['tax_amount']
+                    if 'receipt_number' in data:
+                        receipt.receipt_number = data['receipt_number']
+                    if 'receipt_date' in data:
+                        receipt.receipt_date = datetime.fromisoformat(data['receipt_date']).date()
+                
+                db.session.commit()
+                
+                if result['status'] == 'success':
+                    flash(f'קבלה הועלתה בהצלחה! נמצאו {len(result.get("data", {}).get("items", []))} פריטים', 'success')
+                else:
+                    flash('קבלה הועלתה אך עיבוד OCR נכשל', 'warning')
+                    
+            except Exception as ocr_error:
+                receipt.ocr_status = 'failed'
+                receipt.processing_errors = str(ocr_error)
+                db.session.commit()
+                flash('קבלה הועלתה אך עיבוד הטקסט נכשל', 'warning')
+            
+            return redirect(url_for('admin.receipts'))
+            
+        except Exception as e:
+            flash(f'שגיאה בהעלאת הקבלה: {str(e)}', 'error')
+            return redirect(request.url)
+    
+    # GET request - show upload form
+    from models import Branch, Supplier
+    branches = Branch.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/upload_receipt.html',
+                         branches=branches,
+                         suppliers=suppliers)
 

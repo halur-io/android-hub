@@ -1,0 +1,311 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול קבלות - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-receipt me-2 text-primary"></i>ניהול קבלות
+            </h1>
+            <p class="text-muted mb-0">מערכת עיבוד קבלות עם OCR אוטומטי</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.upload_receipt') }}" class="btn btn-primary">
+                <i class="fas fa-camera me-2"></i>העלה קבלה
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ receipts|length }}</h4>
+                            <small>סה"כ קבלות</small>
+                        </div>
+                        <i class="fas fa-receipt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ receipts|selectattr('ocr_status', 'equalto', 'completed')|list|length }}</h4>
+                            <small>עובדו בהצלחה</small>
+                        </div>
+                        <i class="fas fa-check fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ receipts|selectattr('ocr_status', 'equalto', 'pending')|list|length }}</h4>
+                            <small>בעיבוד</small>
+                        </div>
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ receipts|selectattr('ocr_status', 'equalto', 'failed')|list|length }}</h4>
+                            <small>נכשלו</small>
+                        </div>
+                        <i class="fas fa-exclamation fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>סינון קבלות</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">סניף</label>
+                    <select class="form-select" name="branch_id">
+                        <option value="">כל הסניפים</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">סטטוס עיבוד</label>
+                    <select class="form-select" name="status">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>בעיבוד</option>
+                        <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>הושלם</option>
+                        <option value="failed" {% if current_status == 'failed' %}selected{% endif %}>נכשל</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">ספק</label>
+                    <select class="form-select" name="supplier_id">
+                        <option value="">כל הספקים</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}" {% if supplier.id == current_supplier_id %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-secondary me-2">
+                        <i class="fas fa-search me-1"></i>סנן
+                    </button>
+                    <a href="{{ url_for('admin.receipts') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>נקה
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Receipts List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>קבלות אחרונות</h5>
+        </div>
+        <div class="card-body">
+            {% if receipts %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>תמונה</th>
+                            <th>מספר קבלה</th>
+                            <th>ספק</th>
+                            <th>סניף</th>
+                            <th>תאריך קבלה</th>
+                            <th>סכום</th>
+                            <th>סטטוס עיבוד</th>
+                            <th>ביטחון</th>
+                            <th>הועלה ב</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for receipt in receipts %}
+                        <tr>
+                            <td>
+                                {% if receipt.image_path %}
+                                <img src="{{ url_for('static', filename=receipt.image_path) }}" 
+                                     alt="Receipt" 
+                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                                {% else %}
+                                <i class="fas fa-image text-muted"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.receipt_number %}
+                                <strong>{{ receipt.receipt_number }}</strong>
+                                {% else %}
+                                <span class="text-muted">לא זוהה</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.supplier %}
+                                <span class="badge bg-info">{{ receipt.supplier.name }}</span>
+                                {% else %}
+                                <span class="text-muted">לא ידוע</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.branch %}
+                                {{ receipt.branch.name_he }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.receipt_date %}
+                                {{ receipt.receipt_date.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                <span class="text-muted">לא זוהה</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.total_amount %}
+                                <strong>₪{{ "%.2f"|format(receipt.total_amount) }}</strong>
+                                {% else %}
+                                <span class="text-muted">לא זוהה</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.ocr_status == 'pending' %}
+                                <span class="badge bg-warning">בעיבוד</span>
+                                {% elif receipt.ocr_status == 'completed' %}
+                                <span class="badge bg-success">הושלם</span>
+                                {% elif receipt.ocr_status == 'failed' %}
+                                <span class="badge bg-danger">נכשל</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ receipt.ocr_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if receipt.ocr_confidence %}
+                                <div class="progress" style="width: 60px;">
+                                    <div class="progress-bar 
+                                        {% if receipt.ocr_confidence >= 0.8 %}bg-success
+                                        {% elif receipt.ocr_confidence >= 0.6 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" 
+                                        style="width: {{ (receipt.ocr_confidence * 100)|round }}%">
+                                    </div>
+                                </div>
+                                <small>{{ (receipt.ocr_confidence * 100)|round }}%</small>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ receipt.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.receipt_detail', receipt_id=receipt.id) }}" 
+                                       class="btn btn-outline-primary" title="פרטים">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if receipt.ocr_status == 'completed' %}
+                                    <button class="btn btn-outline-success" 
+                                            onclick="processReceipt({{ receipt.id }})" 
+                                            title="עבד למלאי">
+                                        <i class="fas fa-cogs"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="deleteReceipt({{ receipt.id }})" 
+                                            title="מחק">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-receipt fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">אין קבלות להצגה</h5>
+                <p class="text-muted">כדי להתחיל, העלה קבלה ראשונה</p>
+                <a href="{{ url_for('admin.upload_receipt') }}" class="btn btn-primary">
+                    <i class="fas fa-camera me-2"></i>העלה קבלה
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function processReceipt(receiptId) {
+    if (confirm('האם אתה בטוח שברצונך לעבד את הקבלה ולעדכן את המלאי?')) {
+        fetch(`/admin/receipts/${receiptId}/process`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('שגיאה בעיבוד הקבלה');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('שגיאה בעיבוד הקבלה');
+        });
+    }
+}
+
+function deleteReceipt(receiptId) {
+    if (confirm('האם אתה בטוח שברצונך למחוק את הקבלה? פעולה זו לא ניתנת לביטול.')) {
+        fetch(`/admin/receipts/${receiptId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('שגיאה במחיקת הקבלה');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('שגיאה במחיקת הקבלה');
+        });
+    }
+}
+</script>
+{% endblock %}

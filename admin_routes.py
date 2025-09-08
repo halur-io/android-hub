@@ -1622,6 +1622,146 @@ def stock_suppliers():
     
     return render_template('admin/stock_suppliers.html', suppliers=suppliers)
 
+@admin_bp.route('/stock-suppliers/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def add_supplier():
+    """Add new supplier"""
+    if request.method == 'POST':
+        from models import Supplier
+        
+        try:
+            supplier = Supplier(
+                name=request.form['name'].strip(),
+                contact_person=request.form.get('contact_person', '').strip(),
+                phone=request.form.get('phone', '').strip(),
+                email=request.form.get('email', '').strip(),
+                address=request.form.get('address', '').strip(),
+                delivery_days=request.form.get('delivery_days', '1111111'),
+                delivery_time=request.form.get('delivery_time', '').strip(),
+                minimum_order=float(request.form.get('minimum_order', 0) or 0),
+                payment_terms=request.form.get('payment_terms', '').strip(),
+                notes=request.form.get('notes', '').strip()
+            )
+            
+            db.session.add(supplier)
+            db.session.commit()
+            
+            flash('ספק חדש נוסף בהצלחה', 'success')
+            return redirect(url_for('admin.stock_suppliers'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בהוספת ספק: {str(e)}', 'error')
+    
+    return render_template('admin/add_supplier.html')
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def edit_supplier(supplier_id):
+    """Edit supplier"""
+    from models import Supplier
+    
+    supplier = Supplier.query.get_or_404(supplier_id)
+    
+    if request.method == 'POST':
+        try:
+            supplier.name = request.form['name'].strip()
+            supplier.contact_person = request.form.get('contact_person', '').strip()
+            supplier.phone = request.form.get('phone', '').strip()
+            supplier.email = request.form.get('email', '').strip()
+            supplier.address = request.form.get('address', '').strip()
+            supplier.delivery_days = request.form.get('delivery_days', '1111111')
+            supplier.delivery_time = request.form.get('delivery_time', '').strip()
+            supplier.minimum_order = float(request.form.get('minimum_order', 0) or 0)
+            supplier.payment_terms = request.form.get('payment_terms', '').strip()
+            supplier.notes = request.form.get('notes', '').strip()
+            
+            db.session.commit()
+            
+            flash('פרטי ספק עודכנו בהצלחה', 'success')
+            return redirect(url_for('admin.stock_suppliers'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון ספק: {str(e)}', 'error')
+    
+    return render_template('admin/edit_supplier.html', supplier=supplier)
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def toggle_supplier(supplier_id):
+    """Toggle supplier active status"""
+    from models import Supplier
+    
+    try:
+        supplier = Supplier.query.get_or_404(supplier_id)
+        supplier.is_active = not supplier.is_active
+        
+        db.session.commit()
+        
+        status = 'הופעל' if supplier.is_active else 'הושבת'
+        flash(f'ספק {supplier.name} {status} בהצלחה', 'success')
+        
+        return redirect(url_for('admin.stock_suppliers'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה בשינוי סטטוס ספק: {str(e)}', 'error')
+        return redirect(url_for('admin.stock_suppliers'))
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/items')
+@login_required
+@require_permission('stock.view')
+def supplier_items(supplier_id):
+    """View items from specific supplier"""
+    from models import Supplier, SupplierItem, StockItem
+    
+    supplier = Supplier.query.get_or_404(supplier_id)
+    
+    # Get items associated with this supplier
+    supplier_items = db.session.query(SupplierItem, StockItem).join(
+        StockItem, SupplierItem.item_id == StockItem.id
+    ).filter(SupplierItem.supplier_id == supplier_id).all()
+    
+    return render_template('admin/supplier_items.html', 
+                         supplier=supplier, 
+                         supplier_items=supplier_items)
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_supplier(supplier_id):
+    """Delete supplier (soft delete by setting is_active=False)"""
+    from models import Supplier
+    
+    try:
+        supplier = Supplier.query.get_or_404(supplier_id)
+        
+        # Check if supplier has any associated items or receipts
+        from models import SupplierItem, Receipt
+        has_items = SupplierItem.query.filter_by(supplier_id=supplier_id).first() is not None
+        has_receipts = Receipt.query.filter_by(supplier_id=supplier_id).first() is not None
+        
+        if has_items or has_receipts:
+            # Soft delete - just deactivate
+            supplier.is_active = False
+            flash(f'ספק {supplier.name} הושבת (יש לו נתונים משויכים)', 'warning')
+        else:
+            # Hard delete if no associated data
+            db.session.delete(supplier)
+            flash(f'ספק {supplier.name} נמחק לחלוטין', 'success')
+        
+        db.session.commit()
+        return redirect(url_for('admin.stock_suppliers'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה במחיקת ספק: {str(e)}', 'error')
+        return redirect(url_for('admin.stock_suppliers'))
+
 @admin_bp.route('/stock-settings')
 @login_required
 @require_permission('stock.settings')

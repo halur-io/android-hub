@@ -1,0 +1,150 @@
+{% extends "admin/base.html" %}
+
+{% block title %}פריטי ספק - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-boxes me-2 text-primary"></i>פריטים של {{ supplier.name }}
+            </h1>
+            <p class="text-muted mb-0">רשימת פריטים המשויכים לספק זה</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.stock_suppliers') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right me-2"></i>חזרה לספקים
+            </a>
+        </div>
+    </div>
+
+    <!-- Supplier Info Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <h6 class="text-muted mb-1">ספק</h6>
+                    <p class="mb-0"><strong>{{ supplier.name }}</strong></p>
+                </div>
+                <div class="col-md-3">
+                    {% if supplier.contact_person %}
+                    <h6 class="text-muted mb-1">איש קשר</h6>
+                    <p class="mb-0">{{ supplier.contact_person }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    {% if supplier.phone %}
+                    <h6 class="text-muted mb-1">טלפון</h6>
+                    <p class="mb-0"><a href="tel:{{ supplier.phone }}">{{ supplier.phone }}</a></p>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    {% if supplier.minimum_order %}
+                    <h6 class="text-muted mb-1">הזמנה מינימלית</h6>
+                    <p class="mb-0">₪{{ "%.2f"|format(supplier.minimum_order) }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>פריטים משויכים ({{ supplier_items|length }})
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if supplier_items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>שם פריט</th>
+                            <th>SKU פריט</th>
+                            <th>SKU ספק</th>
+                            <th>עלות ליחידה</th>
+                            <th>יחידת מידה</th>
+                            <th>קטגוריה</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier_item, stock_item in supplier_items %}
+                        <tr>
+                            <td>
+                                <strong>{{ stock_item.name }}</strong>
+                                {% if stock_item.description %}
+                                <br><small class="text-muted">{{ stock_item.description }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if stock_item.sku %}
+                                <code>{{ stock_item.sku }}</code>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if supplier_item.supplier_sku %}
+                                <code>{{ supplier_item.supplier_sku }}</code>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if supplier_item.cost_per_unit %}
+                                <strong>₪{{ "%.2f"|format(supplier_item.cost_per_unit) }}</strong>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ stock_item.unit_of_measure }}</td>
+                            <td>
+                                {% if stock_item.category %}
+                                <span class="badge bg-info">{{ stock_item.category.name }}</span>
+                                {% else %}
+                                <span class="text-muted">ללא קטגוריה</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.edit_stock_item', item_id=stock_item.id) }}" 
+                                       class="btn btn-outline-primary" title="ערוך פריט">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-outline-info" 
+                                            onclick="viewStockLevels({{ stock_item.id }})" 
+                                            title="רמות מלאי">
+                                        <i class="fas fa-layer-group"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-boxes fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">אין פריטים משויכים לספק זה</h5>
+                <p class="text-muted">פריטים ישויכו אוטומטית כאשר תוסיף אותם למערכת או תערוך פריטים קיימים</p>
+                <a href="{{ url_for('admin.stock_items') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>נהל פריטי מלאי
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function viewStockLevels(itemId) {
+    // Redirect to stock levels filtered by item
+    window.location.href = `{{ url_for('admin.stock_levels') }}?item_id=${itemId}`;
+}
+</script>
+{% endblock %}

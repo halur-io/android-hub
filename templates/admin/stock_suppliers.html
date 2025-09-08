@@ -99,6 +99,9 @@
                             <i class="fas fa-play me-1"></i>הפעל
                         </button>
                         {% endif %}
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteSupplier({{ supplier.id }}, '{{ supplier.name|replace("'", "\\'") }}')">
+                            <i class="fas fa-trash me-1"></i>מחק
+                        </button>
                     </div>
                 </div>
             </div>
@@ -120,25 +123,58 @@
 
 <script>
 function addNewSupplier() {
-    alert('הוספת ספק חדש - בפיתוח');
+    window.location.href = "{{ url_for('admin.add_supplier') }}";
 }
 
 function editSupplier(id) {
-    alert(`עריכת ספק ${id} - בפיתוח`);
+    window.location.href = `{{ url_for('admin.edit_supplier', supplier_id='') }}${id}`;
 }
 
 function viewSupplierItems(id) {
-    alert(`צפייה בפריטי ספק ${id} - בפיתוח`);
+    window.location.href = `{{ url_for('admin.supplier_items', supplier_id='') }}${id}`;
 }
 
 function createOrder(id) {
-    alert(`יצירת הזמנה לספק ${id} - בפיתוח`);
+    // TODO: Implement order creation functionality
+    alert(`יצירת הזמנה לספק ${id} - יתווסף בעדכון הבא`);
 }
 
 function toggleSupplier(id, activate) {
     const action = activate ? 'הפעלת' : 'השבתת';
-    if (confirm(`האם אתה בטוח ש${action} ספק זה?`)) {
-        alert(`${action} ספק ${id} - בפיתוח`);
+    if (confirm(`האם אתה בטוח שברצונך ${action} ספק זה?`)) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url_for('admin.toggle_supplier', supplier_id='') }}${id}`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteSupplier(id, name) {
+    if (confirm(`האם אתה בטוח שברצונך למחוק את ספק "${name}"? פעולה זו אינה ניתנת לביטול.`)) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url_for('admin.delete_supplier', supplier_id='') }}${id}`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>

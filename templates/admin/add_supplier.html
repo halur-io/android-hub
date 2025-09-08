@@ -1,0 +1,185 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הוספת ספק חדש - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-plus me-2 text-primary"></i>הוספת ספק חדש
+            </h1>
+            <p class="text-muted mb-0">הוסף ספק חדש למערכת המלאי</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.stock_suppliers') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right me-2"></i>חזרה לרשימת ספקים
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-truck me-2"></i>פרטי ספק</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ csrf_token() }}
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i>מידע בסיסי</h6>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">שם הספק *</label>
+                                <input type="text" class="form-control" name="name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">איש קשר</label>
+                                <input type="text" class="form-control" name="contact_person">
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i class="fas fa-phone me-2"></i>פרטי התקשרות</h6>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">טלפון</label>
+                                <input type="tel" class="form-control" name="phone" placeholder="050-1234567">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">אימייל</label>
+                                <input type="email" class="form-control" name="email" placeholder="supplier@example.com">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">הזמנה מינימלית (₪)</label>
+                                <input type="number" class="form-control" name="minimum_order" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3"><i class="fas fa-map-marker-alt me-2"></i>כתובת</h6>
+                            <textarea class="form-control" name="address" rows="2" placeholder="כתובת מלאה של הספק"></textarea>
+                        </div>
+
+                        <!-- Delivery Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-muted mb-3"><i class="fas fa-truck me-2"></i>מידע אספקה</h6>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">ימי אספקה</label>
+                                <div class="delivery-days">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_0" id="sunday" checked>
+                                        <label class="form-check-label" for="sunday">א</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_1" id="monday" checked>
+                                        <label class="form-check-label" for="monday">ב</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_2" id="tuesday" checked>
+                                        <label class="form-check-label" for="tuesday">ג</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_3" id="wednesday" checked>
+                                        <label class="form-check-label" for="wednesday">ד</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_4" id="thursday" checked>
+                                        <label class="form-check-label" for="thursday">ה</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_5" id="friday" checked>
+                                        <label class="form-check-label" for="friday">ו</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" name="delivery_day_6" id="saturday" checked>
+                                        <label class="form-check-label" for="saturday">ש</label>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="delivery_days" id="delivery_days_hidden" value="1111111">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">זמני אספקה</label>
+                                <input type="text" class="form-control" name="delivery_time" placeholder="9:00-17:00">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">תנאי תשלום</label>
+                                <select class="form-control" name="payment_terms">
+                                    <option value="">בחר תנאי תשלום</option>
+                                    <option value="מזומן">מזומן</option>
+                                    <option value="30 ימים">30 ימים</option>
+                                    <option value="45 ימים">45 ימים</option>
+                                    <option value="60 ימים">60 ימים</option>
+                                    <option value="שוטף + 30">שוטף + 30</option>
+                                    <option value="אחר">אחר</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3"><i class="fas fa-sticky-note me-2"></i>הערות</h6>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="הערות נוספות על הספק..."></textarea>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.stock_suppliers') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>ביטול
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>שמור ספק
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delivery days checkboxes
+    const deliveryCheckboxes = document.querySelectorAll('input[name^="delivery_day_"]');
+    const hiddenInput = document.getElementById('delivery_days_hidden');
+    
+    function updateDeliveryDays() {
+        let days = '';
+        for (let i = 0; i < 7; i++) {
+            const checkbox = document.querySelector(`input[name="delivery_day_${i}"]`);
+            days += checkbox.checked ? '1' : '0';
+        }
+        hiddenInput.value = days;
+    }
+    
+    deliveryCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateDeliveryDays);
+    });
+    
+    // Initialize delivery days
+    updateDeliveryDays();
+});
+</script>
+
+<style>
+.delivery-days .form-check {
+    margin-bottom: 0.5rem;
+}
+
+.delivery-days .form-check-label {
+    min-width: 20px;
+    text-align: center;
+}
+</style>
+{% endblock %}

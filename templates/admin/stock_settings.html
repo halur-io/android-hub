@@ -1,0 +1,246 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-cogs me-2 text-primary"></i>הגדרות מלאי
+            </h1>
+            <p class="text-muted mb-0">התאמה אישית של מערכת המלאי</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="saveSettings()">
+                <i class="fas fa-save me-2"></i>שמור הגדרות
+            </button>
+        </div>
+    </div>
+
+    <!-- Branch Selector -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-store me-2"></i>בחר סניף</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <select class="form-select" id="branchSelector" onchange="changeBranch()">
+                        <option value="">בחר סניף...</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_branch_id and settings %}
+    <!-- Settings Form -->
+    <form id="settingsForm">
+        <input type="hidden" id="branchId" value="{{ current_branch_id }}">
+        
+        <!-- General Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-toggle-on me-2"></i>הגדרות כלליות</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableExpirationTracking" 
+                                   {% if settings.enable_expiration_tracking %}checked{% endif %}>
+                            <label class="form-check-label" for="enableExpirationTracking">
+                                <strong>מעקב תאריכי פג תוקף</strong>
+                                <br><small class="text-muted">מעקב אחר פריטים עם תאריך פגיה</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableAutomaticAlerts"
+                                   {% if settings.enable_automatic_alerts %}checked{% endif %}>
+                            <label class="form-check-label" for="enableAutomaticAlerts">
+                                <strong>התראות אוטומטיות</strong>
+                                <br><small class="text-muted">התראות על מלאי נמוך ופגי תוקף</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableAutoShoppingLists"
+                                   {% if settings.enable_auto_shopping_lists %}checked{% endif %}>
+                            <label class="form-check-label" for="enableAutoShoppingLists">
+                                <strong>רשימות קניות אוטומטיות</strong>
+                                <br><small class="text-muted">יצירה אוטומטית של רשימות קניות</small>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableCostTracking"
+                                   {% if settings.enable_cost_tracking %}checked{% endif %}>
+                            <label class="form-check-label" for="enableCostTracking">
+                                <strong>מעקב עלויות</strong>
+                                <br><small class="text-muted">מעקב עלויות המלאי והרווחיות</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableBatchTracking"
+                                   {% if settings.enable_batch_tracking %}checked{% endif %}>
+                            <label class="form-check-label" for="enableBatchTracking">
+                                <strong>מעקב אצווה (Batch)</strong>
+                                <br><small class="text-muted">מעקב מספרי אצווה ויצירה</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bell me-2"></i>הגדרות התראות</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="lowStockAlertDays" class="form-label">
+                                <strong>התראה על מלאי נמוך (ימים)</strong>
+                            </label>
+                            <input type="number" class="form-control" id="lowStockAlertDays" 
+                                   value="{{ settings.low_stock_alert_days }}" min="1" max="30">
+                            <div class="form-text">מספר הימים לפני הגעה למינימום</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="expirationAlertDays" class="form-label">
+                                <strong>התראה על פגי תוקף (ימים)</strong>
+                            </label>
+                            <input type="number" class="form-control" id="expirationAlertDays" 
+                                   value="{{ settings.expiration_alert_days }}" min="1" max="30">
+                            <div class="form-text">מספר הימים לפני פגיית התוקף</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shopping Lists Settings -->
+        <div class="card mb-4" id="shoppingListSettings" style="{% if not settings.enable_auto_shopping_lists %}display: none;{% endif %}">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>הגדרות רשימות קניות אוטומטיות</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="autoGenerateFrequency" class="form-label">
+                                <strong>תדירות יצירה</strong>
+                            </label>
+                            <select class="form-select" id="autoGenerateFrequency">
+                                <option value="daily" {% if settings.auto_generate_frequency == 'daily' %}selected{% endif %}>יומי</option>
+                                <option value="weekly" {% if settings.auto_generate_frequency == 'weekly' %}selected{% endif %}>שבועי</option>
+                                <option value="monthly" {% if settings.auto_generate_frequency == 'monthly' %}selected{% endif %}>חודשי</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6" id="daySelection" style="{% if settings.auto_generate_frequency == 'daily' %}display: none;{% endif %}">
+                        <div class="mb-3">
+                            <label for="autoGenerateDay" class="form-label">
+                                <strong>יום היצירה</strong>
+                            </label>
+                            <select class="form-select" id="autoGenerateDay">
+                                <option value="Sunday" {% if settings.auto_generate_day == 'Sunday' %}selected{% endif %}>ראשון</option>
+                                <option value="Monday" {% if settings.auto_generate_day == 'Monday' %}selected{% endif %}>שני</option>
+                                <option value="Tuesday" {% if settings.auto_generate_day == 'Tuesday' %}selected{% endif %}>שלישי</option>
+                                <option value="Wednesday" {% if settings.auto_generate_day == 'Wednesday' %}selected{% endif %}>רביעי</option>
+                                <option value="Thursday" {% if settings.auto_generate_day == 'Thursday' %}selected{% endif %}>חמישי</option>
+                                <option value="Friday" {% if settings.auto_generate_day == 'Friday' %}selected{% endif %}>שישי</option>
+                                <option value="Saturday" {% if settings.auto_generate_day == 'Saturday' %}selected{% endif %}>שבת</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="text-center">
+            <button type="button" class="btn btn-primary btn-lg" onclick="saveSettings()">
+                <i class="fas fa-save me-2"></i>שמור הגדרות
+            </button>
+        </div>
+    </form>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-store fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">אנא בחר סניף</h5>
+            <p class="text-muted">בחר סניף מהרשימה למעלה כדי לערוך את ההגדרות</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function changeBranch() {
+    const branchId = document.getElementById('branchSelector').value;
+    if (branchId) {
+        window.location.href = `{{ url_for('admin.stock_settings') }}?branch_id=${branchId}`;
+    } else {
+        window.location.href = `{{ url_for('admin.stock_settings') }}`;
+    }
+}
+
+function saveSettings() {
+    // Collect form data
+    const formData = {
+        branch_id: document.getElementById('branchId').value,
+        enable_expiration_tracking: document.getElementById('enableExpirationTracking').checked,
+        enable_automatic_alerts: document.getElementById('enableAutomaticAlerts').checked,
+        enable_auto_shopping_lists: document.getElementById('enableAutoShoppingLists').checked,
+        enable_cost_tracking: document.getElementById('enableCostTracking').checked,
+        enable_batch_tracking: document.getElementById('enableBatchTracking').checked,
+        low_stock_alert_days: document.getElementById('lowStockAlertDays').value,
+        expiration_alert_days: document.getElementById('expirationAlertDays').value,
+        auto_generate_frequency: document.getElementById('autoGenerateFrequency').value,
+        auto_generate_day: document.getElementById('autoGenerateDay').value
+    };
+    
+    console.log('Settings to save:', formData);
+    alert('שמירת הגדרות - בפיתוח');
+}
+
+// Show/hide shopping list settings based on checkbox
+document.getElementById('enableAutoShoppingLists').addEventListener('change', function() {
+    const shoppingListSettings = document.getElementById('shoppingListSettings');
+    if (this.checked) {
+        shoppingListSettings.style.display = 'block';
+    } else {
+        shoppingListSettings.style.display = 'none';
+    }
+});
+
+// Show/hide day selection based on frequency
+document.getElementById('autoGenerateFrequency').addEventListener('change', function() {
+    const daySelection = document.getElementById('daySelection');
+    if (this.value === 'daily') {
+        daySelection.style.display = 'none';
+    } else {
+        daySelection.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

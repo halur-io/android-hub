@@ -1,0 +1,254 @@
+{% extends "admin/base.html" %}
+
+{% block title %}אנליטיקות מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-chart-pie me-2 text-primary"></i>אנליטיקות מלאי
+            </h1>
+            <p class="text-muted mb-0">דוחות וניתוח נתוני המלאי</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="exportReport()">
+                <i class="fas fa-download me-2"></i>יצא דוח
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>בחירת תקופה וסניף</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">סניף</label>
+                    <select class="form-select" id="branchFilter">
+                        <option value="">כל הסניפים</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">תקופה</label>
+                    <select class="form-select" id="periodFilter">
+                        <option value="7" {% if period == 7 %}selected{% endif %}>7 ימים אחרונים</option>
+                        <option value="30" {% if period == 30 %}selected{% endif %}>30 ימים אחרונים</option>
+                        <option value="90" {% if period == 90 %}selected{% endif %}>3 חודשים אחרונים</option>
+                        <option value="365" {% if period == 365 %}selected{% endif %}>שנה אחרונה</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-secondary" onclick="applyFilters()">
+                        <i class="fas fa-search me-1"></i>עדכן
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if analytics %}
+    <!-- Analytics Summary -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ analytics.total_transactions or 0 }}</h4>
+                            <small>תנועות מלאי</small>
+                        </div>
+                        <i class="fas fa-exchange-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>₪{{ "%.0f"|format(analytics.total_value or 0) }}</h4>
+                            <small>ערך מלאי כולל</small>
+                        </div>
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ analytics.active_items or 0 }}</h4>
+                            <small>פריטים פעילים</small>
+                        </div>
+                        <i class="fas fa-cube fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ analytics.low_stock_items or 0 }}</h4>
+                            <small>פריטים נמוכים</small>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Stock Levels Chart -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>רמות מלאי נוכחיות</h5>
+                </div>
+                <div class="card-body">
+                    {% if analytics.stock_levels %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>פריט</th>
+                                    <th>כמות נוכחית</th>
+                                    <th>יחידה</th>
+                                    <th>סטטוס</th>
+                                    <th>ערך</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for level, item in analytics.stock_levels[:10] %}
+                                <tr>
+                                    <td>{{ item.name_he }}</td>
+                                    <td>{{ level.available_quantity }}</td>
+                                    <td>{{ item.unit_he }}</td>
+                                    <td>
+                                        {% if level.available_quantity <= 0 %}
+                                        <span class="badge bg-danger">אזל</span>
+                                        {% elif level.available_quantity <= item.minimum_stock %}
+                                        <span class="badge bg-warning">נמוך</span>
+                                        {% else %}
+                                        <span class="badge bg-success">תקין</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>₪{{ "%.2f"|format(level.available_quantity * item.cost_per_unit) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">אין נתונים זמינים</h5>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>סטטיסטיקות מהירות</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>פריטים במלאי מלא</span>
+                            <strong>{{ analytics.full_stock_items or 0 }}</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-success" style="width: {% if analytics.active_items %}{{ (analytics.full_stock_items / analytics.active_items * 100)|round }}{% else %}0{% endif %}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>פריטים במלאי נמוך</span>
+                            <strong>{{ analytics.low_stock_items or 0 }}</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-warning" style="width: {% if analytics.active_items %}{{ (analytics.low_stock_items / analytics.active_items * 100)|round }}{% else %}0{% endif %}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>פריטים שאזלו</span>
+                            <strong>{{ analytics.out_of_stock_items or 0 }}</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-danger" style="width: {% if analytics.active_items %}{{ (analytics.out_of_stock_items / analytics.active_items * 100)|round }}{% else %}0{% endif %}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Moving Items -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-fire me-2"></i>פריטים בתנועה גבוהה</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        {% for i in range(5) %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <h6 class="mb-0">פריט דוגמה {{ i + 1 }}</h6>
+                                <small class="text-muted">{{ 50 - (i * 8) }} תנועות</small>
+                            </div>
+                            <span class="badge bg-primary">{{ 95 - (i * 15) }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">אין נתוני אנליטיקה</h5>
+            <p class="text-muted">בחר סניף ותקופה כדי לצפות בדוחות</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function applyFilters() {
+    const branchId = document.getElementById('branchFilter').value;
+    const period = document.getElementById('periodFilter').value;
+    
+    let url = `{{ url_for('admin.stock_analytics') }}?`;
+    if (branchId) url += `branch_id=${branchId}&`;
+    if (period) url += `period=${period}&`;
+    
+    window.location.href = url;
+}
+
+function exportReport() {
+    alert('יצוא דוח - בפיתוח');
+}
+</script>
+{% endblock %}

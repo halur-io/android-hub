@@ -269,37 +269,37 @@
         </h5>
         <div class="row">
             <div class="col-lg-2 col-md-4 col-6 mb-3">
-                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_levels') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                <div class="action-card" onclick="goToStockLevels()">
                     <i class="fas fa-chart-bar"></i>
                     <h5>רמות מלאי</h5>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6 mb-3">
-                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_transactions') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                <div class="action-card" onclick="goToTransactions()">
                     <i class="fas fa-exchange-alt"></i>
                     <h5>תנועות מלאי</h5>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6 mb-3">
-                <div class="action-card" onclick="location.href='{{ url_for('admin.shopping_lists') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                <div class="action-card" onclick="goToShoppingLists()">
                     <i class="fas fa-shopping-cart"></i>
                     <h5>רשימות קניות</h5>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6 mb-3">
-                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_alerts') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                <div class="action-card" onclick="goToAlerts()">
                     <i class="fas fa-bell"></i>
                     <h5>התראות</h5>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6 mb-3">
-                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_suppliers') }}'">
+                <div class="action-card" onclick="goToSuppliers()">
                     <i class="fas fa-truck"></i>
                     <h5>ספקים</h5>
                 </div>
             </div>
             <div class="col-lg-2 col-md-4 col-6 mb-3">
-                <div class="action-card" onclick="location.href='{{ url_for('admin.stock_analytics') }}{% if current_branch_id %}?branch_id={{ current_branch_id }}{% endif %}'">
+                <div class="action-card" onclick="goToAnalytics()">
                     <i class="fas fa-chart-pie"></i>
                     <h5>דוחות</h5>
                 </div>
@@ -406,11 +406,48 @@ function changeBranch() {
     }
 }
 
-// Auto-refresh alerts every 30 seconds
-setInterval(function() {
-    if (window.location.pathname.includes('stock-management')) {
-        location.reload();
-    }
-}, 30000);
+function goToStockLevels() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_levels') }}?branch_id=${branchId}` : 
+        `{{ url_for('admin.stock_levels') }}`;
+    window.location.href = url;
+}
+
+function goToTransactions() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_transactions') }}?branch_id=${branchId}` : 
+        `{{ url_for('admin.stock_transactions') }}`;
+    window.location.href = url;
+}
+
+function goToShoppingLists() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.shopping_lists') }}?branch_id=${branchId}` : 
+        `{{ url_for('admin.shopping_lists') }}`;
+    window.location.href = url;
+}
+
+function goToAlerts() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_alerts') }}?branch_id=${branchId}` : 
+        `{{ url_for('admin.stock_alerts') }}`;
+    window.location.href = url;
+}
+
+function goToSuppliers() {
+    window.location.href = `{{ url_for('admin.stock_suppliers') }}`;
+}
+
+function goToAnalytics() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_analytics') }}?branch_id=${branchId}` : 
+        `{{ url_for('admin.stock_analytics') }}`;
+    window.location.href = url;
+}
 </script>
 {% endblock %}

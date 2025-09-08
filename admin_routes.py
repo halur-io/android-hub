@@ -1538,9 +1538,7 @@ def stock_transactions():
     if transaction_type:
         query = query.filter(StockTransaction.transaction_type == transaction_type)
     
-    transactions = query.order_by(StockTransaction.transaction_date.desc()).paginate(
-        page=page, per_page=50, error_out=False
-    )
+    transactions = query.order_by(StockTransaction.created_at.desc()).limit(50).all()
     
     branches = Branch.query.filter_by(is_active=True).all()
     
@@ -1603,12 +1601,21 @@ def stock_alerts():
     alerts = query.order_by(StockAlert.created_at.desc()).all()
     branches = Branch.query.filter_by(is_active=True).all()
     
+    # Calculate alert statistics
+    alert_stats = {
+        'critical': StockAlert.query.filter_by(severity='critical', is_resolved=False).count(),
+        'medium': StockAlert.query.filter_by(severity='medium', is_resolved=False).count(), 
+        'low': StockAlert.query.filter_by(severity='low', is_resolved=False).count(),
+        'resolved': StockAlert.query.filter_by(is_resolved=True).count()
+    }
+    
     return render_template('admin/stock_alerts.html', 
                          alerts=alerts, 
                          branches=branches,
                          current_branch_id=branch_id,
                          current_type=alert_type,
-                         show_resolved=show_resolved)
+                         show_resolved=show_resolved,
+                         alert_stats=alert_stats)
 
 @admin_bp.route('/stock-suppliers')
 @login_required
@@ -1677,7 +1684,7 @@ def stock_analytics():
         # Get transaction data for charts
         transactions = StockTransaction.query.filter(
             StockTransaction.branch_id == branch_id,
-            StockTransaction.transaction_date >= start_date
+            StockTransaction.created_at >= start_date
         ).all()
         
         # Get current stock levels
@@ -1685,12 +1692,25 @@ def stock_analytics():
             StockItem, StockLevel.item_id == StockItem.id
         ).filter(StockLevel.branch_id == branch_id).all()
         
+        # Calculate additional analytics
+        total_items = StockItem.query.filter_by(is_active=True).count()
+        low_stock_items = len([level for level, item in stock_levels if level.available_quantity <= item.minimum_stock])
+        out_of_stock_items = len([level for level, item in stock_levels if level.available_quantity <= 0])
+        full_stock_items = len([level for level, item in stock_levels if level.available_quantity >= item.maximum_stock])
+        total_value = sum([level.available_quantity * item.cost_per_unit for level, item in stock_levels])
+        
         analytics_data = {
+            'total_transactions': len(transactions),
             'transactions': transactions,
-            'stock_levels': stock_levels,
+            'stock_levels': stock_levels[:10],  # Limit for display
             'period': period,
             'start_date': start_date,
-            'end_date': end_date
+            'end_date': end_date,
+            'active_items': total_items,
+            'low_stock_items': low_stock_items,
+            'out_of_stock_items': out_of_stock_items,
+            'full_stock_items': full_stock_items,
+            'total_value': total_value
         }
     
     branches = Branch.query.filter_by(is_active=True).all()

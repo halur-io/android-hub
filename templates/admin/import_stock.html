@@ -1,0 +1,341 @@
+{% extends "admin/base.html" %}
+
+{% block title %}יבוא נתוני מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-file-import me-2 text-primary"></i>יבוא נתוני מלאי
+            </h1>
+            <p class="text-muted mb-0">יבוא מתוך קבצי Excel או CSV</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.stock_management') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right me-2"></i>חזרה לניהול מלאי
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Import Form -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-upload me-2"></i>העלאת קובץ לייבוא</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="importForm">
+                        {{ csrf_token() }}
+                        
+                        <!-- Import Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">סוג הייבוא *</label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="import_type" id="import_items" value="items" checked>
+                                        <label class="form-check-label" for="import_items">
+                                            <strong>פריטי מלאי</strong><br>
+                                            <small class="text-muted">יבוא פריטים חדשים למערכת</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="import_type" id="import_levels" value="stock_levels">
+                                        <label class="form-check-label" for="import_levels">
+                                            <strong>רמות מלאי</strong><br>
+                                            <small class="text-muted">עדכון כמויות קיימות</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="import_type" id="import_suppliers" value="suppliers">
+                                        <label class="form-check-label" for="import_suppliers">
+                                            <strong>ספקים</strong><br>
+                                            <small class="text-muted">הוספת ספקים חדשים</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Branch Selection (shown for stock levels only) -->
+                        <div class="mb-3" id="branchSelection" style="display: none;">
+                            <label class="form-label">סניף *</label>
+                            <select class="form-select" name="branch_id">
+                                <option value="">בחר סניף</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">חובה לבחור סניף עבור יבוא רמות מלאי</div>
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label class="form-label">קובץ לייבוא *</label>
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                                    <h5>גרור קובץ Excel/CSV לכאן או לחץ לבחירה</h5>
+                                    <p class="text-muted">תמיכה בקבצי XLSX, XLS, CSV</p>
+                                    <input type="file" 
+                                           name="import_file" 
+                                           id="importFile" 
+                                           accept=".xlsx,.xls,.csv"
+                                           required
+                                           style="display: none;">
+                                    <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('importFile').click()">
+                                        <i class="fas fa-folder-open me-2"></i>בחר קובץ
+                                    </button>
+                                </div>
+                                <div id="fileInfo" style="display: none;">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-file-excel fa-2x text-success me-3"></i>
+                                        <div>
+                                            <strong id="fileName"></strong><br>
+                                            <small id="fileSize" class="text-muted"></small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" onclick="clearFile()">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-file-import me-2"></i>יבא נתונים
+                            </button>
+                            <div id="processingStatus" class="text-muted" style="display: none;">
+                                <i class="fas fa-spinner fa-spin me-2"></i>מייבא נתונים...
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Templates and Instructions -->
+        <div class="col-lg-4">
+            <!-- Download Templates -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-download me-2"></i>הורדת תבניות</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">הורד תבניות Excel לייבוא נתונים</p>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.download_import_template', template_type='items') }}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-boxes me-2"></i>תבנית פריטי מלאי
+                        </a>
+                        <a href="{{ url_for('admin.download_import_template', template_type='levels') }}" 
+                           class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-layer-group me-2"></i>תבנית רמות מלאי
+                        </a>
+                        <a href="{{ url_for('admin.download_import_template', template_type='suppliers') }}" 
+                           class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-truck me-2"></i>תבנית ספקים
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>הוראות ייבוא</h5>
+                </div>
+                <div class="card-body">
+                    <div class="import-instructions">
+                        <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>חשוב לדעת</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i>השתמש בתבניות הכוללות</li>
+                            <li><i class="fas fa-check text-success me-2"></i>שדות חובה: שם פריט</li>
+                            <li><i class="fas fa-check text-success me-2"></i>ספקים וקטגוריות ייווצרו אוטומטית</li>
+                            <li><i class="fas fa-check text-success me-2"></i>פורמט תאריכים: DD/MM/YYYY</li>
+                        </ul>
+
+                        <h6 class="mt-3"><i class="fas fa-boxes text-primary me-2"></i>פריטי מלאי</h6>
+                        <small class="text-muted">
+                            יצירת פריטים חדשים במערכת עם כל הפרטים הרלוונטיים
+                        </small>
+
+                        <h6 class="mt-3"><i class="fas fa-layer-group text-success me-2"></i>רמות מלאי</h6>
+                        <small class="text-muted">
+                            עדכון כמויות למלאי קיים. הפריטים חייבים להיות קיימים במערכת
+                        </small>
+
+                        <h6 class="mt-3"><i class="fas fa-truck text-info me-2"></i>ספקים</h6>
+                        <small class="text-muted">
+                            הוספת ספקים חדשים עם פרטי קשר מלאים
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+    transform: scale(1.02);
+}
+
+.upload-content {
+    pointer-events: none;
+}
+
+.import-instructions h6 {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.import-instructions ul {
+    margin-bottom: 1rem;
+}
+
+.import-instructions small {
+    display: block;
+    margin-bottom: 1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const importTypeRadios = document.querySelectorAll('input[name="import_type"]');
+    const branchSelection = document.getElementById('branchSelection');
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('importFile');
+    const fileInfo = document.getElementById('fileInfo');
+    const uploadContent = uploadArea.querySelector('.upload-content');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const submitBtn = document.getElementById('submitBtn');
+    const processingStatus = document.getElementById('processingStatus');
+    const importForm = document.getElementById('importForm');
+
+    // Handle import type change
+    importTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'stock_levels') {
+                branchSelection.style.display = 'block';
+                branchSelection.querySelector('select').required = true;
+            } else {
+                branchSelection.style.display = 'none';
+                branchSelection.querySelector('select').required = false;
+            }
+        });
+    });
+
+    // File upload handling
+    uploadArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect(files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelect(file) {
+        // Validate file type
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel',
+            'text/csv'
+        ];
+        
+        if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.csv')) {
+            alert('סוג קובץ לא נתמך. אנא בחר קובץ Excel או CSV');
+            return;
+        }
+
+        // Validate file size (50MB max)
+        if (file.size > 50 * 1024 * 1024) {
+            alert('קובץ גדול מדי. מקסימום 50MB');
+            return;
+        }
+
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        
+        uploadContent.style.display = 'none';
+        fileInfo.style.display = 'block';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Form submission
+    importForm.addEventListener('submit', function(e) {
+        submitBtn.style.display = 'none';
+        processingStatus.style.display = 'block';
+    });
+});
+
+function clearFile() {
+    const fileInput = document.getElementById('importFile');
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInfo = document.getElementById('fileInfo');
+    const uploadContent = uploadArea.querySelector('.upload-content');
+    
+    fileInput.value = '';
+    uploadContent.style.display = 'block';
+    fileInfo.style.display = 'none';
+}
+</script>
+{% endblock %}

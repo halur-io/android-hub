@@ -1858,3 +1858,363 @@ def upload_receipt():
                          branches=branches,
                          suppliers=suppliers)
 
+# ===== FILE IMPORT/EXPORT SYSTEM =====
+
+@admin_bp.route('/stock/import', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def import_stock_data():
+    """Import stock data from Excel/CSV files"""
+    if request.method == 'POST':
+        import pandas as pd
+        import os
+        from werkzeug.utils import secure_filename
+        from datetime import datetime
+        from models import StockItem, Supplier, Category, Branch, StockLevel
+        
+        try:
+            # Get form data
+            file = request.files.get('import_file')
+            branch_id = request.form.get('branch_id', type=int)
+            import_type = request.form.get('import_type')  # 'items', 'stock_levels', 'suppliers'
+            
+            if not file or file.filename == '':
+                flash('לא נבחר קובץ', 'error')
+                return redirect(request.url)
+            
+            if not branch_id and import_type in ['stock_levels']:
+                flash('חובה לבחור סניף עבור יבוא רמות מלאי', 'error')
+                return redirect(request.url)
+            
+            # Validate file type
+            allowed_extensions = {'csv', 'xlsx', 'xls'}
+            filename = secure_filename(file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                flash('סוג קובץ לא נתמך. אנא העלה CSV או Excel', 'error')
+                return redirect(request.url)
+            
+            # Save file temporarily
+            upload_dir = os.path.join('static', 'uploads', 'import')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            temp_filename = f"{timestamp}_{filename}"
+            temp_path = os.path.join(upload_dir, temp_filename)
+            file.save(temp_path)
+            
+            # Read file
+            try:
+                if file_extension == 'csv':
+                    df = pd.read_csv(temp_path)
+                else:
+                    df = pd.read_excel(temp_path)
+            except Exception as e:
+                os.remove(temp_path)
+                flash(f'שגיאה בקריאת הקובץ: {str(e)}', 'error')
+                return redirect(request.url)
+            
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            if import_type == 'items':
+                # Import stock items
+                for index, row in df.iterrows():
+                    try:
+                        # Get or create category
+                        category = None
+                        if pd.notna(row.get('category')):
+                            category = Category.query.filter_by(name=str(row['category'])).first()
+                            if not category:
+                                category = Category(name=str(row['category']), description='Imported category')
+                                db.session.add(category)
+                                db.session.flush()
+                        
+                        # Get or create supplier
+                        supplier = None
+                        if pd.notna(row.get('supplier')):
+                            supplier = Supplier.query.filter_by(name=str(row['supplier'])).first()
+                            if not supplier:
+                                supplier = Supplier(name=str(row['supplier']), contact_info='Imported supplier')
+                                db.session.add(supplier)
+                                db.session.flush()
+                        
+                        # Create stock item
+                        item = StockItem(
+                            name=str(row['name']),
+                            description=str(row.get('description', '')),
+                            sku=str(row.get('sku', '')),
+                            unit_of_measure=str(row.get('unit', 'יחידה')),
+                            cost_per_unit=float(row.get('cost', 0)),
+                            minimum_stock=int(row.get('min_stock', 0)),
+                            maximum_stock=int(row.get('max_stock', 100)),
+                            category_id=category.id if category else None
+                        )
+                        
+                        db.session.add(item)
+                        db.session.flush()
+                        
+                        # Add supplier relationship if exists
+                        if supplier:
+                            from models import SupplierItem
+                            supplier_item = SupplierItem(
+                                supplier_id=supplier.id,
+                                item_id=item.id,
+                                supplier_sku=str(row.get('supplier_sku', '')),
+                                cost_per_unit=float(row.get('supplier_cost', row.get('cost', 0)))
+                            )
+                            db.session.add(supplier_item)
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"שורה {index + 2}: {str(e)}")
+                        
+            elif import_type == 'stock_levels':
+                # Import stock levels
+                for index, row in df.iterrows():
+                    try:
+                        # Find item by name or SKU
+                        item = None
+                        if pd.notna(row.get('sku')):
+                            item = StockItem.query.filter_by(sku=str(row['sku'])).first()
+                        if not item and pd.notna(row.get('name')):
+                            item = StockItem.query.filter_by(name=str(row['name'])).first()
+                        
+                        if not item:
+                            error_count += 1
+                            errors.append(f"שורה {index + 2}: פריט לא נמצא")
+                            continue
+                        
+                        # Update or create stock level
+                        stock_level = StockLevel.query.filter_by(
+                            item_id=item.id,
+                            branch_id=branch_id
+                        ).first()
+                        
+                        quantity = int(row.get('quantity', 0))
+                        
+                        if stock_level:
+                            stock_level.current_quantity = quantity
+                            stock_level.available_quantity = quantity - stock_level.reserved_quantity
+                            stock_level.last_updated = datetime.utcnow()
+                        else:
+                            stock_level = StockLevel(
+                                item_id=item.id,
+                                branch_id=branch_id,
+                                current_quantity=quantity,
+                                reserved_quantity=0,
+                                available_quantity=quantity
+                            )
+                            db.session.add(stock_level)
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"שורה {index + 2}: {str(e)}")
+            
+            elif import_type == 'suppliers':
+                # Import suppliers
+                for index, row in df.iterrows():
+                    try:
+                        # Check if supplier already exists
+                        existing = Supplier.query.filter_by(name=str(row['name'])).first()
+                        if existing:
+                            error_count += 1
+                            errors.append(f"שורה {index + 2}: ספק כבר קיים")
+                            continue
+                        
+                        supplier = Supplier(
+                            name=str(row['name']),
+                            contact_info=str(row.get('contact', '')),
+                            email=str(row.get('email', '')),
+                            phone=str(row.get('phone', '')),
+                            address=str(row.get('address', ''))
+                        )
+                        
+                        db.session.add(supplier)
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"שורה {index + 2}: {str(e)}")
+            
+            # Commit changes
+            db.session.commit()
+            
+            # Clean up temp file
+            os.remove(temp_path)
+            
+            # Show results
+            if success_count > 0:
+                flash(f'יובאו בהצלחה {success_count} רשומות', 'success')
+            if error_count > 0:
+                flash(f'{error_count} שגיאות בייבוא. ראה פרטים למטה.', 'warning')
+                for error in errors[:10]:  # Show first 10 errors
+                    flash(error, 'error')
+            
+            return redirect(url_for('admin.stock_management'))
+            
+        except Exception as e:
+            flash(f'שגיאה בייבוא: {str(e)}', 'error')
+            return redirect(request.url)
+    
+    # GET request - show import form
+    from models import Branch
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/import_stock.html', branches=branches)
+
+@admin_bp.route('/stock/export')
+@login_required
+@require_permission('stock.view')
+def export_stock_data():
+    """Export stock data to Excel"""
+    import pandas as pd
+    from io import BytesIO
+    from flask import send_file
+    from models import StockItem, StockLevel, Supplier, Category, Branch
+    from datetime import datetime
+    
+    try:
+        export_type = request.args.get('type', 'items')
+        branch_id = request.args.get('branch_id', type=int)
+        
+        # Create Excel writer
+        output = BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            if export_type == 'items' or export_type == 'all':
+                # Export stock items
+                items_query = db.session.query(
+                    StockItem.id,
+                    StockItem.name,
+                    StockItem.description,
+                    StockItem.sku,
+                    StockItem.unit_of_measure.label('unit'),
+                    StockItem.cost_per_unit.label('cost'),
+                    StockItem.minimum_stock.label('min_stock'),
+                    StockItem.maximum_stock.label('max_stock'),
+                    Category.name.label('category')
+                ).outerjoin(Category).filter(StockItem.is_active == True)
+                
+                items_df = pd.read_sql(items_query.statement, db.engine)
+                items_df.to_excel(writer, sheet_name='Stock Items', index=False)
+            
+            if export_type == 'levels' or export_type == 'all':
+                # Export stock levels
+                levels_query = db.session.query(
+                    StockItem.name,
+                    StockItem.sku,
+                    StockLevel.current_quantity.label('quantity'),
+                    StockLevel.available_quantity.label('available'),
+                    StockLevel.reserved_quantity.label('reserved'),
+                    Branch.name_he.label('branch'),
+                    StockLevel.last_updated
+                ).join(StockItem).join(Branch)
+                
+                if branch_id:
+                    levels_query = levels_query.filter(StockLevel.branch_id == branch_id)
+                
+                levels_df = pd.read_sql(levels_query.statement, db.engine)
+                levels_df.to_excel(writer, sheet_name='Stock Levels', index=False)
+            
+            if export_type == 'suppliers' or export_type == 'all':
+                # Export suppliers
+                suppliers_query = db.session.query(
+                    Supplier.name,
+                    Supplier.contact_info.label('contact'),
+                    Supplier.email,
+                    Supplier.phone,
+                    Supplier.address
+                ).filter(Supplier.is_active == True)
+                
+                suppliers_df = pd.read_sql(suppliers_query.statement, db.engine)
+                suppliers_df.to_excel(writer, sheet_name='Suppliers', index=False)
+        
+        output.seek(0)
+        
+        # Generate filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"stock_export_{export_type}_{timestamp}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        flash(f'שגיאה בייצוא: {str(e)}', 'error')
+        return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/template/<template_type>')
+@login_required
+@require_permission('stock.view')
+def download_import_template(template_type):
+    """Download import template files"""
+    import pandas as pd
+    from io import BytesIO
+    from flask import send_file
+    
+    try:
+        # Create template based on type
+        if template_type == 'items':
+            data = {
+                'name': ['פריט דוגמה 1', 'פריט דוגמה 2'],
+                'description': ['תיאור פריט 1', 'תיאור פריט 2'],
+                'sku': ['SKU001', 'SKU002'],
+                'unit': ['יחידה', 'ק"ג'],
+                'cost': [10.50, 25.00],
+                'min_stock': [5, 2],
+                'max_stock': [100, 50],
+                'category': ['קטגוריה א', 'קטגוריה ב'],
+                'supplier': ['ספק א', 'ספק ב'],
+                'supplier_sku': ['SUP_SKU001', 'SUP_SKU002'],
+                'supplier_cost': [9.50, 23.00]
+            }
+        elif template_type == 'levels':
+            data = {
+                'name': ['פריט דוגמה 1', 'פריט דוגמה 2'],
+                'sku': ['SKU001', 'SKU002'],
+                'quantity': [50, 25]
+            }
+        elif template_type == 'suppliers':
+            data = {
+                'name': ['ספק דוגמה 1', 'ספק דוגמה 2'],
+                'contact': ['איש קשר 1', 'איש קשר 2'],
+                'email': ['supplier1@example.com', 'supplier2@example.com'],
+                'phone': ['050-1234567', '050-7654321'],
+                'address': ['כתובת 1', 'כתובת 2']
+            }
+        else:
+            flash('סוג תבנית לא ידוע', 'error')
+            return redirect(url_for('admin.import_stock_data'))
+        
+        # Create DataFrame and Excel file
+        df = pd.DataFrame(data)
+        output = BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Template', index=False)
+        
+        output.seek(0)
+        
+        filename = f"import_template_{template_type}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        flash(f'שגיאה ביצירת תבנית: {str(e)}', 'error')
+        return redirect(url_for('admin.import_stock_data'))
+

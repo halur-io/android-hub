@@ -700,3 +700,244 @@ class StockSettings(db.Model):
     
     def __repr__(self):
         return f'<StockSettings for {self.branch.name_he if self.branch else "Global"}>'
+
+# ===== ENHANCED SUPPLIER & COST MANAGEMENT =====
+
+# Receipt Storage and Processing
+class Receipt(db.Model):
+    __tablename__ = 'receipts'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # File storage
+    image_path = db.Column(db.String(500), nullable=False)  # Path to uploaded image
+    original_filename = db.Column(db.String(255))
+    file_size = db.Column(db.Integer)  # File size in bytes
+    
+    # Receipt metadata
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    receipt_date = db.Column(db.Date)
+    receipt_number = db.Column(db.String(100))
+    
+    # Financial data
+    total_amount = db.Column(db.Float)
+    tax_amount = db.Column(db.Float)
+    currency = db.Column(db.String(3), default='ILS')
+    
+    # OCR processing status
+    ocr_status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+    ocr_data = db.Column(db.JSON)  # Raw OCR extracted data
+    ocr_confidence = db.Column(db.Float)  # OCR confidence score
+    
+    # Manual verification
+    is_verified = db.Column(db.Boolean, default=False)
+    verified_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    verified_at = db.Column(db.DateTime)
+    
+    # Processing notes
+    notes = db.Column(db.Text)
+    processing_errors = db.Column(db.Text)
+    
+    # Relationships
+    supplier = db.relationship('Supplier', backref='receipts')
+    branch = db.relationship('Branch', backref='receipts')
+    verifier = db.relationship('User', backref='verified_receipts')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime)
+    
+    def __repr__(self):
+        return f'<Receipt {self.receipt_number} - {self.supplier.name if self.supplier else "Unknown"}>'
+
+# Cost Categories for expense tracking
+class CostCategory(db.Model):
+    __tablename__ = 'cost_categories'
+    id = db.Column(db.Integer, primary_key=True)
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    description_he = db.Column(db.Text)
+    description_en = db.Column(db.Text)
+    icon = db.Column(db.String(50))  # FontAwesome icon
+    color = db.Column(db.String(7))  # Hex color
+    parent_category_id = db.Column(db.Integer, db.ForeignKey('cost_categories.id'))  # For subcategories
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Relationships
+    parent_category = db.relationship('CostCategory', remote_side=[id], backref='subcategories')
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CostCategory {self.name_he}>'
+
+# Cost Entry for expense tracking
+class CostEntry(db.Model):
+    __tablename__ = 'cost_entries'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Basic information
+    description = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(3), default='ILS')
+    entry_date = db.Column(db.Date, nullable=False)
+    
+    # Categorization
+    category_id = db.Column(db.Integer, db.ForeignKey('cost_categories.id'))
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    
+    # Source tracking
+    receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'))  # If from receipt
+    file_import_id = db.Column(db.Integer, db.ForeignKey('file_imports.id'))  # If from file import
+    entry_type = db.Column(db.String(20), default='manual')  # manual, receipt, import
+    
+    # Approval workflow
+    is_approved = db.Column(db.Boolean, default=False)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    approved_at = db.Column(db.DateTime)
+    
+    # Additional metadata
+    reference_number = db.Column(db.String(100))  # Invoice/receipt number
+    payment_method = db.Column(db.String(50))  # cash, card, transfer, etc.
+    tags = db.Column(db.JSON)  # Array of custom tags
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    category = db.relationship('CostCategory', backref='cost_entries')
+    supplier = db.relationship('Supplier', backref='cost_entries')
+    branch = db.relationship('Branch', backref='cost_entries')
+    receipt = db.relationship('Receipt', backref='cost_entries')
+    approver = db.relationship('User', backref='approved_costs')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CostEntry {self.description} - ₪{self.amount}>'
+
+# Receipt Items (extracted from OCR or manually entered)
+class ReceiptItem(db.Model):
+    __tablename__ = 'receipt_items'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Receipt connection
+    receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'), nullable=False)
+    
+    # Item information
+    item_description = db.Column(db.String(255), nullable=False)  # As written on receipt
+    quantity = db.Column(db.Float)
+    unit_price = db.Column(db.Float)
+    total_price = db.Column(db.Float)
+    
+    # Stock item mapping
+    stock_item_id = db.Column(db.Integer, db.ForeignKey('stock_items.id'))  # Mapped stock item
+    mapping_confidence = db.Column(db.Float)  # AI confidence in mapping
+    
+    # Processing status
+    is_mapped = db.Column(db.Boolean, default=False)  # Whether mapped to stock item
+    is_processed = db.Column(db.Boolean, default=False)  # Whether stock was updated
+    
+    # Additional data
+    item_code = db.Column(db.String(100))  # Supplier item code if available
+    unit = db.Column(db.String(50))  # Unit from receipt
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    receipt = db.relationship('Receipt', backref='items')
+    stock_item = db.relationship('StockItem', backref='receipt_items')
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<ReceiptItem {self.item_description}>'
+
+# File Import tracking
+class FileImport(db.Model):
+    __tablename__ = 'file_imports'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # File information
+    original_filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500))  # Where file is stored
+    file_size = db.Column(db.Integer)
+    file_type = db.Column(db.String(20))  # csv, xlsx, xls
+    
+    # Import metadata
+    import_type = db.Column(db.String(50), nullable=False)  # stock_items, cost_entries, suppliers
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    
+    # Processing status
+    status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+    total_rows = db.Column(db.Integer)
+    processed_rows = db.Column(db.Integer, default=0)
+    successful_rows = db.Column(db.Integer, default=0)
+    failed_rows = db.Column(db.Integer, default=0)
+    
+    # Field mapping (JSON)
+    field_mapping = db.Column(db.JSON)  # Maps file columns to database fields
+    
+    # Results and errors
+    processing_log = db.Column(db.Text)  # Processing details and errors
+    error_details = db.Column(db.JSON)  # Detailed error information per row
+    
+    # User tracking
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Relationships
+    branch = db.relationship('Branch', backref='file_imports')
+    uploader = db.relationship('User', backref='file_imports')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    
+    def __repr__(self):
+        return f'<FileImport {self.original_filename} - {self.status}>'
+
+# Enhanced Supplier-Item relationship (many-to-many)
+class SupplierItem(db.Model):
+    __tablename__ = 'supplier_items'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Core relationship
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
+    stock_item_id = db.Column(db.Integer, db.ForeignKey('stock_items.id'), nullable=False)
+    
+    # Supplier-specific information
+    supplier_item_code = db.Column(db.String(100))  # Supplier's code for this item
+    supplier_item_name = db.Column(db.String(255))  # Supplier's name for this item
+    
+    # Pricing
+    cost_per_unit = db.Column(db.Float)
+    minimum_order_quantity = db.Column(db.Float)
+    unit_package_size = db.Column(db.Float)  # Items per package
+    
+    # Availability
+    is_available = db.Column(db.Boolean, default=True)
+    lead_time_days = db.Column(db.Integer)  # Delivery lead time
+    
+    # Priority (for multiple suppliers)
+    priority = db.Column(db.Integer, default=1)  # 1 = primary, 2 = secondary, etc.
+    
+    # Additional info
+    notes = db.Column(db.Text)
+    last_order_date = db.Column(db.Date)
+    last_order_price = db.Column(db.Float)
+    
+    # Relationships
+    supplier = db.relationship('Supplier', backref='supplier_items')
+    stock_item = db.relationship('StockItem', backref='supplier_items')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Unique constraint to prevent duplicates
+    __table_args__ = (db.UniqueConstraint('supplier_id', 'stock_item_id', name='unique_supplier_item'),)
+    
+    def __repr__(self):
+        return f'<SupplierItem {self.supplier.name} - {self.stock_item.name_he}>'

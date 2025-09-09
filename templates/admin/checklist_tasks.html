@@ -935,9 +935,10 @@
 
 .group-tasks {
     padding: 0;
-    max-height: 2000px;
+    max-height: 3000px;
     overflow: hidden;
     transition: max-height 0.3s ease-out;
+    background: #f8f9fa;
 }
 
 .group-tasks.collapsed {
@@ -945,13 +946,21 @@
     padding: 0;
 }
 
+.tasks-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px 0;
+}
+
 .group-task-item {
-    padding: 12px 20px;
+    padding: 12px 15px;
     border-bottom: 1px solid #f1f3f4;
     display: flex;
     justify-content: space-between;
     align-items: center;
     transition: background 0.2s;
+    margin: 0 auto;
+    max-width: 900px;
 }
 
 .group-task-item:last-child {
@@ -2175,7 +2184,7 @@ function renderTaskGroups() {
     filteredGroups.forEach(group => {
         html += `
             <div class="task-group">
-                <div class="group-header group-header-clickable" style="background: linear-gradient(135deg, ${group.color}, ${adjustColor(group.color, -20)})" onclick="toggleGroup(${group.id})" data-group-id="${group.id}" data-group-name="${group.name}" data-task-count="${group.task_count}">
+                <div class="group-header group-header-clickable" style="background: linear-gradient(135deg, ${group.color || getColorForShift(group.shift_type)}, ${adjustColor(group.color || getColorForShift(group.shift_type), -20)})" onclick="toggleGroup(${group.id})" data-group-id="${group.id}" data-group-name="${group.name}" data-task-count="${group.task_count}">
                     <div class="group-title">
                         <i class="fas fa-chevron-right group-chevron collapsed" id="chevron-${group.id}"></i>
                         <i class="fas fa-layer-group"></i>
@@ -2196,6 +2205,7 @@ function renderTaskGroups() {
                 </div>
                 ${group.description ? `<div style="padding: 10px 20px; background: #f8f9fa; font-style: italic;">${group.description}</div>` : ''}
                 <div class="group-tasks collapsed" id="tasks-${group.id}">
+                    <div class="tasks-container">
                     ${group.tasks.map(task => `
                         <div class="group-task-item" data-task-id="${task.id}">
                             <div class="task-checkbox-container">
@@ -2218,6 +2228,7 @@ function renderTaskGroups() {
                             </div>
                         </div>
                     `).join('')}
+                    </div>
                 </div>
             </div>
         `;
@@ -2257,6 +2268,7 @@ function renderTaskGroups() {
                             </div>
                         </div>
                     `).join('')}
+                    </div>
                 </div>
             </div>
         `;
@@ -3231,7 +3243,21 @@ async function handleGroupTaskSubmit(e) {
     }
 }
 
-// Generate random colors for groups
+// Shift colors mapping for consistent colors by shift
+const shiftColors = {
+    'morning': '#4ECDC4',  // Turquoise for morning
+    'evening': '#F7DC6F',  // Yellow for evening  
+    'closing': '#BB8FCE',  // Purple for closing
+    'night': '#45B7D1',    // Blue for night
+    'all': '#85C1E2'       // Light blue for all shifts
+};
+
+// Get color based on shift type
+function getColorForShift(shiftType) {
+    return shiftColors[shiftType] || shiftColors['all'];
+}
+
+// Generate random colors for groups (fallback)
 function getRandomGroupColor() {
     const colors = [
         '#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8',
@@ -3299,30 +3325,21 @@ function selectAllTasks() {
         checkbox.checked = true;
         selectedTasks.add(parseInt(checkbox.dataset.taskId));
     });
-    updateBulkActions();
+    updateBulkActionToolbar();
     showInfo('✅ כל המשימות נבחרו');
 }
 
 // clearSelection function moved to avoid duplicates
 
 function toggleTaskSelection(taskId) {
-    if (selectedTasks.has(taskId)) {
-        selectedTasks.delete(taskId);
-    } else {
-        selectedTasks.add(taskId);
-    }
-    updateBulkActions();
-}
-
-function updateBulkActions() {
-    const bulkBar = document.getElementById('bulkActionsBar');
-    const countElement = document.getElementById('selectedCount');
-    
-    if (selectedTasks.size > 0) {
-        bulkBar.classList.add('show');
-        countElement.textContent = selectedTasks.size;
-    } else {
-        bulkBar.classList.remove('show');
+    const checkbox = document.querySelector(`input[data-task-id="${taskId}"]`);
+    if (checkbox) {
+        if (selectedTasks.has(taskId)) {
+            selectedTasks.delete(taskId);
+        } else {
+            selectedTasks.add(taskId);
+        }
+        updateBulkActionToolbar();
     }
 }
 
@@ -4298,26 +4315,28 @@ function handleTaskSelection(taskId) {
     const checkbox = document.querySelector(`input[data-task-id="${taskId}"]`);
     const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
     
-    if (checkbox.checked) {
+    if (checkbox && checkbox.checked) {
         selectedTasks.add(taskId);
-        taskItem.classList.add('selected');
+        if (taskItem) taskItem.classList.add('selected');
     } else {
         selectedTasks.delete(taskId);
-        taskItem.classList.remove('selected');
+        if (taskItem) taskItem.classList.remove('selected');
     }
     
     updateBulkActionToolbar();
 }
 
 function updateBulkActionToolbar() {
-    const toolbar = document.getElementById('bulkActionsBar');  // Fix: Use correct ID
-    const countElement = document.getElementById('selectedCount');  // Fix: Use correct ID
+    const toolbar = document.getElementById('bulkActionToolbar');
+    const countElement = document.getElementById('selectedTaskCount');
     
-    if (selectedTasks.size > 0) {
-        toolbar.classList.add('show');
-        countElement.textContent = selectedTasks.size;  // Fix: Use just the number
-    } else {
-        toolbar.classList.remove('show');
+    if (toolbar && countElement) {
+        if (selectedTasks.size > 0) {
+            toolbar.classList.add('show');
+            countElement.textContent = selectedTasks.size;
+        } else {
+            toolbar.classList.remove('show');
+        }
     }
 }
 

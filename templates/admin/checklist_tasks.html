@@ -2591,7 +2591,7 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 html { direction: rtl; height: 100%; }
                 body { 
-                    font-family: "Segoe UI", "Tahoma", "Arial Unicode MS", Arial, sans-serif; 
+                    font-family: Arial, "Arial Hebrew", sans-serif !important; 
                     font-size: 12px; 
                     line-height: 1.15; 
                     margin: 0;
@@ -2600,9 +2600,11 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     text-align: right;
                     width: 100%;
                     height: 100%;
-                    word-spacing: 0.1em;
-                    letter-spacing: normal;
-                    unicode-bidi: bidi-override;
+                    word-spacing: 2px !important;
+                    letter-spacing: 0.3px !important;
+                    unicode-bidi: embed;
+                    text-rendering: optimizeLegibility;
+                    -webkit-font-smoothing: antialiased;
                 }
                 
                 /* Ultra-compact Header */
@@ -2675,10 +2677,10 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     direction: rtl;
                     word-wrap: break-word;
                     line-height: 1.15;
-                    word-spacing: 0.1em;
-                    letter-spacing: normal;
+                    word-spacing: 2px;
+                    letter-spacing: 0.3px;
                     white-space: normal;
-                    unicode-bidi: bidi-override;
+                    unicode-bidi: embed;
                 }
                 
                 /* Fixed Signature Section at Bottom */
@@ -4842,7 +4844,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
     return `
-        <div style="padding: ${settings.margin}mm; font-family: 'Segoe UI', 'Tahoma', 'Arial Unicode MS', Arial, sans-serif; direction: rtl; text-align: right; word-spacing: 0.1em; unicode-bidi: bidi-override;">
+        <div style="padding: ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed;">
             <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
                 <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
                 <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
@@ -4862,7 +4864,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
                         ${group.tasks.map(task => `
                             <div style="display: flex; align-items: flex-start; margin-bottom: ${compactSpacing ? '0' : '1px'}; padding: ${compactSpacing ? '0' : '1px'} 0;">
                                 <div style="width: ${settings.fontSize - 1}px; height: ${settings.fontSize - 1}px; border: 1px solid #000; margin-right: 3px; flex-shrink: 0; margin-top: 1px;"></div>
-                                <div style="font-size: ${settings.fontSize}px; flex: 1; line-height: ${compactSpacing ? '1.1' : '1.15'}; word-spacing: 0.1em; letter-spacing: normal; unicode-bidi: bidi-override; text-align: right;">${task.name}</div>
+                                <div style="font-size: ${settings.fontSize}px; flex: 1; line-height: ${compactSpacing ? '1.1' : '1.15'}; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; text-align: right;">${task.name}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -4986,18 +4988,37 @@ async function downloadAsPDF() {
         showSuccess('📄 מכין PDF...');
         
         const element = document.getElementById('printPreviewContent');
+        // Add special CSS to fix Hebrew text spacing before PDF generation
+        const element = document.getElementById('printPreviewContent');
+        const allElements = element.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (el.style) {
+                el.style.wordSpacing = '2px';
+                el.style.letterSpacing = '0.3px';
+            }
+        });
+        
         const opt = {
             margin: [printSettings.margin, printSettings.margin],
             filename: `checklist_${currentPrintData.name}_${currentPrintData.date}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
-                scale: 2, 
+                scale: 3, 
                 useCORS: true,
                 letterRendering: false,
                 allowTaint: true,
                 foreignObjectRendering: false,
                 scrollX: 0,
-                scrollY: 0
+                scrollY: 0,
+                onclone: function(clonedDoc) {
+                    // Apply Hebrew text fixes to cloned document
+                    clonedDoc.querySelectorAll('*').forEach(el => {
+                        if (el.style) {
+                            el.style.wordSpacing = '2px';
+                            el.style.letterSpacing = '0.3px';
+                        }
+                    });
+                }
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
@@ -5385,13 +5406,29 @@ function generatePDFDirectly(htmlContent, fileName) {
         tempContainer.innerHTML = htmlContent;
         document.body.appendChild(tempContainer);
         
+        // Add special CSS to fix Hebrew text spacing before PDF generation
+        const styleEl = document.createElement('style');
+        styleEl.innerHTML = `
+            * { 
+                word-spacing: 2px !important; 
+                letter-spacing: 0.3px !important;
+            }
+            body, div, span, p, h1, h2, h3, h4, h5, h6 {
+                font-family: "Arial", "Arial Hebrew", "David", sans-serif !important;
+                text-rendering: optimizeLegibility !important;
+                -webkit-font-smoothing: antialiased !important;
+                unicode-bidi: embed !important;
+            }
+        `;
+        document.head.appendChild(styleEl);
+        
         // Configure PDF options for A4 and proper RTL support
         const opt = {
             margin: [8, 8, 8, 8], // margins in mm
             filename: `${fileName}_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
-                scale: 2,
+                scale: 3,
                 useCORS: true,
                 letterRendering: false,
                 allowTaint: true,
@@ -5400,7 +5437,16 @@ function generatePDFDirectly(htmlContent, fileName) {
                 width: 794, // A4 width in pixels at 96 DPI
                 windowWidth: 794,
                 scrollX: 0,
-                scrollY: 0
+                scrollY: 0,
+                onclone: function(clonedDoc) {
+                    // Apply Hebrew text fixes to cloned document
+                    clonedDoc.querySelectorAll('*').forEach(el => {
+                        if (el.style) {
+                            el.style.wordSpacing = '2px';
+                            el.style.letterSpacing = '0.3px';
+                        }
+                    });
+                }
             },
             jsPDF: { 
                 unit: 'mm', 

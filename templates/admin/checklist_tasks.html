@@ -2591,7 +2591,7 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 html { direction: rtl; height: 100%; }
                 body { 
-                    font-family: Arial, sans-serif; 
+                    font-family: "Segoe UI", "Tahoma", "Arial Unicode MS", Arial, sans-serif; 
                     font-size: 12px; 
                     line-height: 1.15; 
                     margin: 0;
@@ -2600,6 +2600,9 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     text-align: right;
                     width: 100%;
                     height: 100%;
+                    word-spacing: 0.1em;
+                    letter-spacing: normal;
+                    unicode-bidi: bidi-override;
                 }
                 
                 /* Ultra-compact Header */
@@ -2616,10 +2619,12 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                 /* Maximize content area with 4 columns for better space usage */
                 .content-container { 
                     columns: 4;
-                    column-gap: 6px;
+                    column-gap: 8px;
                     width: 100%;
                     direction: rtl;
                     margin-bottom: 60px;
+                    text-align: right;
+                    column-fill: balance;
                 }
                 
                 .group-section { 
@@ -2670,6 +2675,10 @@ function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
                     direction: rtl;
                     word-wrap: break-word;
                     line-height: 1.15;
+                    word-spacing: 0.1em;
+                    letter-spacing: normal;
+                    white-space: normal;
+                    unicode-bidi: bidi-override;
                 }
                 
                 /* Fixed Signature Section at Bottom */
@@ -4833,7 +4842,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
     return `
-        <div style="padding: ${settings.margin}mm; font-family: Arial, sans-serif; direction: rtl;">
+        <div style="padding: ${settings.margin}mm; font-family: 'Segoe UI', 'Tahoma', 'Arial Unicode MS', Arial, sans-serif; direction: rtl; text-align: right; word-spacing: 0.1em; unicode-bidi: bidi-override;">
             <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
                 <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
                 <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
@@ -4844,7 +4853,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
                 </div>
             </div>
             
-            <div style="columns: ${settings.columns}; column-gap: ${settings.gap}px; margin-bottom: 60px;">
+            <div style="columns: ${settings.columns}; column-gap: ${settings.gap}px; margin-bottom: 60px; direction: rtl; text-align: right; column-fill: balance;">
                 ${selectedGroups.map(group => `
                     <div style="break-inside: avoid; margin-bottom: ${compactSpacing ? '5px' : '10px'}; ${borderStyle}">
                         <div style="font-weight: bold; font-size: ${settings.fontSize + 1}px; border-bottom: 1px solid #888; padding-bottom: 2px; margin-bottom: ${compactSpacing ? '2px' : '3px'};">
@@ -4853,7 +4862,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
                         ${group.tasks.map(task => `
                             <div style="display: flex; align-items: flex-start; margin-bottom: ${compactSpacing ? '0' : '1px'}; padding: ${compactSpacing ? '0' : '1px'} 0;">
                                 <div style="width: ${settings.fontSize - 1}px; height: ${settings.fontSize - 1}px; border: 1px solid #000; margin-right: 3px; flex-shrink: 0; margin-top: 1px;"></div>
-                                <div style="font-size: ${settings.fontSize}px; flex: 1; line-height: ${compactSpacing ? '1.1' : '1.15'};">${task.name}</div>
+                                <div style="font-size: ${settings.fontSize}px; flex: 1; line-height: ${compactSpacing ? '1.1' : '1.15'}; word-spacing: 0.1em; letter-spacing: normal; unicode-bidi: bidi-override; text-align: right;">${task.name}</div>
                             </div>
                         `).join('')}
                     </div>

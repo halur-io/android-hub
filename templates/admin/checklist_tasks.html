@@ -673,6 +673,14 @@
 }
 
 .group-chevron.collapsed {
+    transform: rotate(0deg);
+}
+
+.group-chevron:not(.collapsed) {
+    transform: rotate(90deg);
+}
+
+.group-chevron.collapsed {
     transform: rotate(-90deg);
 }
 
@@ -926,6 +934,14 @@
 }
 
 .group-tasks {
+    padding: 0;
+    max-height: 2000px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.group-tasks.collapsed {
+    max-height: 0;
     padding: 0;
 }
 
@@ -1400,15 +1416,7 @@
     </div>
 </div>
 
-<!-- View Toggle -->
-<div class="view-controls">
-    <button class="view-toggle active" data-view="groups" onclick="toggleView('groups')">
-        <i class="fas fa-layer-group me-2"></i> תצוגת קבוצות
-    </button>
-    <button class="view-toggle" data-view="individual" onclick="toggleView('individual')">
-        <i class="fas fa-list me-2"></i> תצוגת משימות בודדות
-    </button>
-</div>
+<!-- Groups are always shown, no toggle needed for better mobile experience -->
 
 <!-- Tasks List -->
 <div id="tasksList">
@@ -1849,7 +1857,7 @@ let branches = [];
 let templates = [];
 let taskGroups = [];
 let currentShift = 'all';
-let showByGroups = true;  // Toggle between group view and individual task view
+let showByGroups = true;  // Always show groups for better mobile experience
 
 // Hebrew translations
 const translations = {
@@ -2128,12 +2136,8 @@ function handleTemplateSelection() {
 // Render functions
 function renderTasks() {
     const container = document.getElementById('tasksList');
-    
-    if (showByGroups) {
-        renderTaskGroups();
-    } else {
-        renderIndividualTasks();
-    }
+    // Always render by groups for better organization
+    renderTaskGroups();
 }
 
 function renderTaskGroups() {
@@ -2171,9 +2175,9 @@ function renderTaskGroups() {
     filteredGroups.forEach(group => {
         html += `
             <div class="task-group">
-                <div class="group-header group-header-clickable" style="background: linear-gradient(135deg, ${group.color}, ${adjustColor(group.color, -20)})" data-group-id="${group.id}" data-group-name="${group.name}" data-task-count="${group.task_count}">
-                    <div class="group-title" onclick="toggleGroup(${group.id}); event.stopPropagation();">
-                        <i class="fas fa-chevron-down group-chevron" id="chevron-${group.id}"></i>
+                <div class="group-header group-header-clickable" style="background: linear-gradient(135deg, ${group.color}, ${adjustColor(group.color, -20)})" onclick="toggleGroup(${group.id})" data-group-id="${group.id}" data-group-name="${group.name}" data-task-count="${group.task_count}">
+                    <div class="group-title">
+                        <i class="fas fa-chevron-right group-chevron collapsed" id="chevron-${group.id}"></i>
                         <i class="fas fa-layer-group"></i>
                         <span>${group.name}</span>
                         <span class="group-badge">${group.task_count} משימות</span>
@@ -2191,7 +2195,7 @@ function renderTaskGroups() {
                     </div>
                 </div>
                 ${group.description ? `<div style="padding: 10px 20px; background: #f8f9fa; font-style: italic;">${group.description}</div>` : ''}
-                <div class="group-tasks" id="tasks-${group.id}">
+                <div class="group-tasks collapsed" id="tasks-${group.id}">
                     ${group.tasks.map(task => `
                         <div class="group-task-item" data-task-id="${task.id}">
                             <div class="task-checkbox-container">
@@ -2982,6 +2986,9 @@ function renderTemplates() {
                     <button class="btn btn-sm btn-outline-success" onclick="loadTemplate(${template.id})">
                         <i class="fas fa-download"></i> טען
                     </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="editTemplate(${template.id})">
+                        <i class="fas fa-edit"></i> ערוך
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteTemplate(${template.id})">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -3012,6 +3019,10 @@ async function handleSaveTemplate(e) {
         showError('❌ אנא בחר לפחות קבוצה אחת לתבנית');
         return;
     }
+    
+    // Check if we're editing an existing template
+    const editingId = document.getElementById('editingTemplateId')?.value;
+    const isEdit = editingId && editingId !== '';
     
     const templateData = {
         name: document.getElementById('templateName').value,
@@ -3096,6 +3107,55 @@ async function deleteTemplate(templateId) {
     } catch (error) {
         console.error('Error deleting template:', error);
         showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
+    }
+}
+
+async function editTemplate(templateId) {
+    try {
+        // Find the template
+        const template = templates.find(t => t.id === templateId);
+        if (!template) {
+            showError('❌ התבנית לא נמצאה');
+            return;
+        }
+        
+        // Populate the save template form with existing data
+        document.getElementById('templateName').value = template.name;
+        document.getElementById('templateDescription').value = template.description || '';
+        document.getElementById('templateShiftType').value = template.shift_type || '';
+        document.getElementById('templateBranch').value = template.branch_id || '';
+        document.getElementById('templateIsDefault').checked = template.is_default || false;
+        
+        // Select the appropriate groups
+        if (template.assigned_groups && template.assigned_groups.length > 0) {
+            document.querySelectorAll('input[name="templateGroups"]').forEach(checkbox => {
+                checkbox.checked = template.assigned_groups.includes(parseInt(checkbox.value));
+            });
+        }
+        
+        // Add a hidden field to track that we're editing
+        let editIdField = document.getElementById('editingTemplateId');
+        if (!editIdField) {
+            editIdField = document.createElement('input');
+            editIdField.type = 'hidden';
+            editIdField.id = 'editingTemplateId';
+            document.getElementById('saveTemplateForm').appendChild(editIdField);
+        }
+        editIdField.value = templateId;
+        
+        // Change the modal title
+        const modalTitle = document.querySelector('#saveTemplateModal .modal-header h2');
+        if (modalTitle) {
+            modalTitle.textContent = 'עריכת תבנית';
+        }
+        
+        // Show the modal
+        closeModal('templatesModal');
+        showModal('saveTemplateModal');
+        
+    } catch (error) {
+        console.error('Error editing template:', error);
+        showError('❌ שגיאה בטעינת התבנית לעריכה');
     }
 }
 
@@ -4387,12 +4447,20 @@ async function bulkMoveToGroup(groupId) {
 
 // Toggle group collapse/expand
 function toggleGroup(groupId) {
+    event.stopPropagation();
     const tasksContainer = document.getElementById(`tasks-${groupId}`);
     const chevron = document.getElementById(`chevron-${groupId}`);
     
     if (tasksContainer && chevron) {
         tasksContainer.classList.toggle('collapsed');
         chevron.classList.toggle('collapsed');
+        
+        // Rotate chevron icon
+        if (chevron.classList.contains('collapsed')) {
+            chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
+        } else {
+            chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
+        }
     }
 }
 
@@ -4406,16 +4474,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Group header click delegation
-    document.addEventListener('click', (e) => {
-        const groupHeader = e.target.closest('.group-header-clickable');
-        if (groupHeader && !e.target.closest('.group-actions')) {
-            const groupId = parseInt(groupHeader.dataset.groupId);
-            const groupName = groupHeader.dataset.groupName;
-            const taskCount = parseInt(groupHeader.dataset.taskCount);
-            showGroupQuickActionMenu(e, groupId, groupName, taskCount);
-        }
-    });
+    // Group header click delegation - disabled for now since we're using click to expand
+    // document.addEventListener('click', (e) => {
+    //     const groupHeader = e.target.closest('.group-header-clickable');
+    //     if (groupHeader && !e.target.closest('.group-actions')) {
+    //         const groupId = parseInt(groupHeader.dataset.groupId);
+    //         const groupName = groupHeader.dataset.groupName;
+    //         const taskCount = parseInt(groupHeader.dataset.taskCount);
+    //         showGroupQuickActionMenu(e, groupId, groupName, taskCount);
+    //     }
+    // });
     
     // Form event listeners
     const groupEditForm = document.getElementById('groupEditForm');

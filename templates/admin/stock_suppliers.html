@@ -127,11 +127,11 @@ function addNewSupplier() {
 }
 
 function editSupplier(id) {
-    window.location.href = `{{ url_for('admin.edit_supplier', supplier_id='') }}${id}`;
+    window.location.href = `/admin/stock-suppliers/${id}/edit`;
 }
 
 function viewSupplierItems(id) {
-    window.location.href = `{{ url_for('admin.supplier_items', supplier_id='') }}${id}`;
+    window.location.href = `/admin/stock-suppliers/${id}/items`;
 }
 
 function createOrder(id) {
@@ -145,7 +145,7 @@ function toggleSupplier(id, activate) {
         // Create a form and submit it
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `{{ url_for('admin.toggle_supplier', supplier_id='') }}${id}`;
+        form.action = `/admin/stock-suppliers/${id}/toggle`;
         
         // Add CSRF token
         const csrfInput = document.createElement('input');
@@ -164,7 +164,7 @@ function deleteSupplier(id, name) {
         // Create a form and submit it
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `{{ url_for('admin.delete_supplier', supplier_id='') }}${id}`;
+        form.action = `/admin/stock-suppliers/${id}/delete`;
         
         // Add CSRF token
         const csrfInput = document.createElement('input');

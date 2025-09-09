@@ -4947,10 +4947,13 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
                 }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
-                    font-family: Arial, sans-serif; 
+                    font-family: "Arial Hebrew", "David", "Times New Roman", Arial, sans-serif; 
                     font-size: ${settings.fontSize}px;
                     direction: rtl;
                     text-align: right;
+                    word-spacing: normal;
+                    letter-spacing: 0.05em;
+                    white-space: normal;
                 }
                 @media print {
                     body { 
@@ -4978,7 +4981,15 @@ async function downloadAsPDF() {
             margin: [printSettings.margin, printSettings.margin],
             filename: `checklist_${currentPrintData.name}_${currentPrintData.date}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true,
+                letterRendering: false,
+                allowTaint: true,
+                foreignObjectRendering: false,
+                scrollX: 0,
+                scrollY: 0
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         
@@ -5373,10 +5384,14 @@ function generatePDFDirectly(htmlContent, fileName) {
             html2canvas: { 
                 scale: 2,
                 useCORS: true,
-                letterRendering: true,
+                letterRendering: false,
+                allowTaint: true,
+                foreignObjectRendering: false,
                 logging: false,
                 width: 794, // A4 width in pixels at 96 DPI
-                windowWidth: 794
+                windowWidth: 794,
+                scrollX: 0,
+                scrollY: 0
             },
             jsPDF: { 
                 unit: 'mm', 
@@ -5428,10 +5443,13 @@ function createAlternativePDF(htmlContent, fileName) {
                             @page { size: A4; margin: 8mm; }
                         }
                         body { 
-                            font-family: Arial, sans-serif;
+                            font-family: "Arial Hebrew", "David", "Times New Roman", Arial, sans-serif;
                             direction: rtl;
                             margin: 0;
                             padding: 10px;
+                            word-spacing: normal;
+                            letter-spacing: 0.05em;
+                            white-space: normal;
                         }
                     </style>
                 </head>

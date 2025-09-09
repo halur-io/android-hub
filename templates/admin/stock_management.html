@@ -234,7 +234,7 @@
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-lg-3 col-md-6">
-            <div class="stats-card items-card">
+            <div class="stats-card items-card" onclick="goToStockItems()" style="cursor: pointer;">
                 <div class="stats-icon">
                     <i class="fas fa-cube"></i>
                 </div>
@@ -244,7 +244,7 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="stats-card alert-card position-relative">
+            <div class="stats-card alert-card position-relative" onclick="goToLowStockAlerts()" style="cursor: pointer;">
                 <div class="stats-icon">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
@@ -257,7 +257,7 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="stats-card stock-card position-relative">
+            <div class="stats-card stock-card position-relative" onclick="goToOutOfStockItems()" style="cursor: pointer;">
                 <div class="stats-icon">
                     <i class="fas fa-times-circle"></i>
                 </div>
@@ -270,7 +270,7 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="stats-card expiry-card position-relative">
+            <div class="stats-card expiry-card position-relative" onclick="goToExpiringItems()" style="cursor: pointer;">
                 <div class="stats-icon">
                     <i class="fas fa-clock"></i>
                 </div>
@@ -470,6 +470,34 @@ function goToAnalytics() {
     const url = branchId ? 
         `{{ url_for('admin.stock_analytics') }}?branch_id=${branchId}` : 
         `{{ url_for('admin.stock_analytics') }}`;
+    window.location.href = url;
+}
+
+function goToStockItems() {
+    window.location.href = `{{ url_for('admin.stock_items') }}`;
+}
+
+function goToLowStockAlerts() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_alerts') }}?branch_id=${branchId}&type=low_stock` : 
+        `{{ url_for('admin.stock_alerts') }}?type=low_stock`;
+    window.location.href = url;
+}
+
+function goToOutOfStockItems() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_levels') }}?branch_id=${branchId}&filter=out_of_stock` : 
+        `{{ url_for('admin.stock_levels') }}?filter=out_of_stock`;
+    window.location.href = url;
+}
+
+function goToExpiringItems() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.stock_alerts') }}?branch_id=${branchId}&type=expiring` : 
+        `{{ url_for('admin.stock_alerts') }}?type=expiring`;
     window.location.href = url;
 }
 </script>

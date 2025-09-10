@@ -5020,9 +5020,10 @@ function printFromPreview() {
     // Close the preview modal first to avoid blocking
     closePrintPreview();
     
-    // Use the non-blocking iframe print method
+    // Use native print method with proper RTL support
+    const fileName = `checklist_${currentPrintData.name}_${currentPrintData.date}`;
     setTimeout(() => {
-        handleIframePrint(printContent);
+        generatePDFDirectly(printContent, fileName);
     }, 100);
 }
 
@@ -5072,45 +5073,14 @@ async function downloadAsPDF() {
     if (!currentPrintData) return;
     
     try {
-        showSuccess('📄 מכין PDF...');
-        
-        // Add special CSS to fix Hebrew text spacing before PDF generation
+        // Get the content from the preview
         const element = document.getElementById('printPreviewContent');
-        const allElements = element.querySelectorAll('*');
-        allElements.forEach(el => {
-            if (el.style) {
-                el.style.wordSpacing = '2px';
-                el.style.letterSpacing = '0.3px';
-            }
-        });
+        const htmlContent = element.innerHTML;
+        const fileName = `checklist_${currentPrintData.name}_${currentPrintData.date}`;
         
-        const opt = {
-            margin: [printSettings.margin, printSettings.margin],
-            filename: `checklist_${currentPrintData.name}_${currentPrintData.date}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 3, 
-                useCORS: true,
-                letterRendering: false,
-                allowTaint: true,
-                foreignObjectRendering: false,
-                scrollX: 0,
-                scrollY: 0,
-                onclone: function(clonedDoc) {
-                    // Apply Hebrew text fixes to cloned document
-                    clonedDoc.querySelectorAll('*').forEach(el => {
-                        if (el.style) {
-                            el.style.wordSpacing = '2px';
-                            el.style.letterSpacing = '0.3px';
-                        }
-                    });
-                }
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+        // Use native print function
+        generatePDFDirectly(htmlContent, fileName);
         
-        html2pdf().set(opt).from(element).save();
-        showSuccess('✅ ה-PDF הורד בהצלחה');
     } catch (error) {
         console.error('PDF generation error:', error);
         showError('❌ שגיאה ביצירת PDF: ' + error.message);

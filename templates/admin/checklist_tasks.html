@@ -9,7 +9,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="cache-version" content="{{ cache_version }}">
 <!-- PDF Generation Library for Mobile -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v={{ cache_version }}"></script>
+<!-- Using native browser print instead of html2pdf.js -->
 {% endblock %}
 
 {% block extra_css %}
@@ -5482,149 +5482,215 @@ function tryMobilePrintDirect(encodedContent) {
 
 function generatePDFDirectly(htmlContent, fileName) {
     try {
-        showInfo('⏳ יוצר קובץ PDF...');
+        // Open new window for native printing
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showError('❌ חסום חלונות קופצים. אנא אפשר חלונות קופצים.');
+            return;
+        }
         
-        // Create a temporary container for the content
-        const tempContainer = document.createElement('div');
-        tempContainer.style.position = 'absolute';
-        tempContainer.style.left = '-9999px';
-        tempContainer.style.width = '210mm'; // A4 width
-        tempContainer.innerHTML = htmlContent;
-        document.body.appendChild(tempContainer);
+        // Extract body content if it's a full HTML document
+        const bodyContent = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] || htmlContent;
         
-        // Add special CSS to fix Hebrew text spacing before PDF generation
-        const styleEl = document.createElement('style');
-        styleEl.innerHTML = `
-            * { 
-                word-spacing: 2px !important; 
-                letter-spacing: 0.3px !important;
+        // Build complete HTML document with proper RTL support
+        const printDocument = `
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${fileName}</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            direction: rtl;
+        }
+        
+        body {
+            font-family: "Arial", "Arial Hebrew", "David", "Noto Sans Hebrew", sans-serif;
+            direction: rtl;
+            text-align: right;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #000;
+            background: white;
+            padding: 10mm;
+        }
+        
+        /* Print styles */
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm;
             }
-            body, div, span, p, h1, h2, h3, h4, h5, h6 {
-                font-family: "Arial", "Arial Hebrew", "David", sans-serif !important;
-                text-rendering: optimizeLegibility !important;
-                -webkit-font-smoothing: antialiased !important;
-                unicode-bidi: embed !important;
+            
+            body {
+                padding: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
             }
-        `;
-        document.head.appendChild(styleEl);
+            
+            /* Avoid page breaks inside elements */
+            .task-group, .category, .group-task-item {
+                page-break-inside: avoid;
+            }
+            
+            /* Force new page for each major section if needed */
+            .page-break {
+                page-break-after: always;
+            }
+            
+            /* Hide print button and other controls */
+            .no-print, button, .btn {
+                display: none !important;
+            }
+        }
         
-        // Configure PDF options for A4 and proper RTL support
-        const opt = {
-            margin: [8, 8, 8, 8], // margins in mm
-            filename: `${fileName}_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 3,
-                useCORS: true,
-                letterRendering: false,
-                allowTaint: true,
-                foreignObjectRendering: false,
-                logging: false,
-                width: 794, // A4 width in pixels at 96 DPI
-                windowWidth: 794,
-                scrollX: 0,
-                scrollY: 0,
-                onclone: function(clonedDoc) {
-                    // Apply Hebrew text fixes to cloned document
-                    clonedDoc.querySelectorAll('*').forEach(el => {
-                        if (el.style) {
-                            el.style.wordSpacing = '2px';
-                            el.style.letterSpacing = '0.3px';
-                        }
-                    });
-                }
-            },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: 'portrait',
-                compress: true
-            },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        /* Content styles */
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #333;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        h2 {
+            font-size: 20px;
+            margin: 15px 0 10px;
+            color: #444;
+        }
+        
+        h3 {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #555;
+        }
+        
+        .info {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .branch-info, .date-info, .shift-info {
+            margin: 5px 0;
+        }
+        
+        .task-group, .category {
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .group-header, .category-header {
+            background: #f0f0f0;
+            padding: 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .task-item, .group-task-item {
+            padding: 8px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            min-height: 35px;
+        }
+        
+        .task-item:last-child, .group-task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .checkbox {
+            width: 15px;
+            height: 15px;
+            border: 1px solid #333;
+            margin-left: 10px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        
+        .task-name {
+            flex: 1;
+            padding: 0 10px;
+        }
+        
+        .signatures {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+        }
+        
+        .signature {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .signature-line {
+            border-bottom: 1px solid #333;
+            margin-bottom: 5px;
+            height: 50px;
+        }
+        
+        .signature-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* Ensure Hebrew text displays properly */
+        * {
+            unicode-bidi: embed;
+        }
+    </style>
+</head>
+<body>
+    ${bodyContent}
+    <script>
+        // Auto-trigger print dialog after content loads
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+                
+                // Add help message
+                const helpDiv = document.createElement('div');
+                helpDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px; border-radius: 8px; z-index: 9999; direction: rtl; font-size: 14px;';
+                helpDiv.innerHTML = '<strong>לשמירה כ-PDF:</strong><br>1. בחר "שמור כ-PDF" במדפיס<br>2. או בחר "Microsoft Print to PDF"';
+                document.body.appendChild(helpDiv);
+            }, 250);
         };
+    </script>
+</body>
+</html>`;
         
-        // Generate PDF using html2pdf.js
-        html2pdf().set(opt).from(tempContainer).save().then(() => {
-            // Clean up
-            document.body.removeChild(tempContainer);
-            showSuccess('✅ קובץ PDF נשמר בהצלחה!');
-        }).catch(error => {
-            console.error('PDF generation error:', error);
-            document.body.removeChild(tempContainer);
-            // Fallback to HTML download if PDF generation fails
-            showError('❌ בעיה ביצירת PDF, מנסה שיטה חלופית...');
-            setTimeout(() => {
-                createAlternativePDF(htmlContent, fileName);
-            }, 1000);
-        });
+        // Write content to print window
+        printWindow.document.open();
+        printWindow.document.write(printDocument);
+        printWindow.document.close();
+        
+        showSuccess('✅ חלון הדפסה נפתח. בחר "Save as PDF" במדפסת.');
         
     } catch (error) {
         console.error('Error in generatePDFDirectly:', error);
-        showError('❌ שגיאה ביצירת PDF');
-        // Try alternative method
-        createAlternativePDF(htmlContent, fileName);
+        showError('❌ שגיאה בפתיחת חלון הדפסה');
     }
 }
 
+// Alias for backward compatibility - uses the same native print method
 function createAlternativePDF(htmlContent, fileName) {
-    try {
-        // Alternative: Open in new window with print styles for manual PDF save
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            // Add print-optimized content
-            const printOptimizedContent = `
-                <!DOCTYPE html>
-                <html dir="rtl" lang="he">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>${fileName}</title>
-                    <style>
-                        @media print {
-                            @page { size: A4; margin: 8mm; }
-                        }
-                        body { 
-                            font-family: "Arial Hebrew", "David", "Times New Roman", Arial, sans-serif;
-                            direction: rtl;
-                            margin: 0;
-                            padding: 10px;
-                            word-spacing: normal;
-                            letter-spacing: 0.05em;
-                            white-space: normal;
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] || htmlContent}
-                    <${'script'}>
-                        // Auto-trigger print dialog after load
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                                // Show instructions
-                                const instructions = document.createElement('div');
-                                instructions.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px; border-radius: 8px; z-index: 9999; direction: rtl;';
-                                instructions.innerHTML = '<strong>להורדת PDF:</strong><br>1. בחר "שמור כ-PDF" במדפיס<br>2. או לחץ על תפריט הדפדפן > שתף > הדפס';
-                                document.body.appendChild(instructions);
-                            }, 500);
-                        };
-                    </${'script'}>
-                </body>
-                </html>
-            `;
-            
-            printWindow.document.write(printOptimizedContent);
-            printWindow.document.close();
-            
-            showSuccess('📄 החלון נפתח - בחר "שמור כ-PDF" בחלון ההדפסה');
-        } else {
-            // Last fallback: download as HTML
-            handleMobileDownloadFallback(htmlContent, fileName);
-        }
-    } catch (error) {
-        console.error('Alternative PDF creation error:', error);
-        handleMobileDownloadFallback(htmlContent, fileName);
-    }
+    generatePDFDirectly(htmlContent, fileName);
 }
 </script>
 

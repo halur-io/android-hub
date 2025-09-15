@@ -1343,13 +1343,13 @@
 
 <!-- Main Action Cards -->
 <div class="main-actions">
-    <div class="action-card primary-card" id="generateChecklistBtn">
+    <div class="action-card primary-card" onclick="showGenerateModal()">
         <div class="card-icon">
             <i class="fas fa-file-alt"></i>
         </div>
         <div class="card-content">
             <h3>צור רשימת משימות</h3>
-            <p>יצירת רשימה חדשה לפי משמרת וקטגוריה</p>
+            <p>יצירת רשימה חדשה להדפסה</p>
         </div>
     </div>
     
@@ -1360,16 +1360,6 @@
         <div class="card-content">
             <h3>רשימות שמורות</h3>
             <p>צפייה והדפסה של רשימות קיימות</p>
-        </div>
-    </div>
-    
-    <div class="action-card secondary-card" id="printDesignerBtn">
-        <div class="card-icon">
-            <i class="fas fa-print"></i>
-        </div>
-        <div class="card-content">
-            <h3>מעצב הדפסה</h3>
-            <p>עיצוב מותאם אישית של טבלאות להדפסה</p>
         </div>
     </div>
     
@@ -2399,16 +2389,12 @@ function editTask(taskId) {
 }
 
 function showGenerateModal() {
-    console.log('showGenerateModal called');
     populateBranchSelect();
     populateGroupSelection();
     populateTemplateSelect();
     setDefaultDate();
     showModal('generateModal');
 }
-
-// Ensure function is available globally
-window.showGenerateModal = showGenerateModal;
 
 function showTemplatesModal() {
     loadTemplates();
@@ -2435,19 +2421,8 @@ function showGroupTaskModal() {
 }
 
 function showModal(modalId) {
-    console.log('showModal called with:', modalId);
-    const el = document.getElementById(modalId);
-    console.log('Modal element found:', !!el, el?.id, el?.className);
-    if (el) {
-        console.log('Before style change - computed display:', getComputedStyle(el).display);
-        console.log('Before style change - inline display:', el.style.display);
-        el.style.display = 'block';
-        console.log('After style change - computed display:', getComputedStyle(el).display);
-        console.log('After style change - inline display:', el.style.display);
-        document.body.style.overflow = 'hidden';
-    } else {
-        console.error('Modal element not found:', modalId);
-    }
+    document.getElementById(modalId).style.display = 'block';
+    document.body.style.overflow = 'hidden';
 }
 
 function closeModal(modalId) {
@@ -4701,8 +4676,11 @@ async function reprintChecklist(checklistId) {
 }
 
 function openPrintPreview() {
+    console.log('Opening print preview with data:', {currentPrintData, currentBranch, currentSelectedGroups, currentAllTasks});
+    
     const modal = document.getElementById('printPreviewModal');
     if (!modal) {
+        console.error('Print preview modal not found');
         showError('❌ לא ניתן לפתוח תצוגה מקדימה');
         return;
     }
@@ -4904,7 +4882,10 @@ function initializePreviewListeners() {
 }
 
 function updatePreview() {
+    console.log('updatePreview called', {currentPrintData, currentBranch, currentSelectedGroups, currentAllTasks});
+    
     if (!currentPrintData) {
+        console.error('No print data available');
         const errorHtml = '<div style="padding: 20px; text-align: center;">אין נתונים להצגה</div>';
         const desktopPreview = document.getElementById('printPreviewContent');
         const mobilePreview = document.getElementById('mobilePreviewContent');
@@ -4949,24 +4930,15 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
-    // Handle branch name properly
-    let branchName = '___________';
-    if (branch) {
-        branchName = branch.name_he || branch.name_en || branch.name || '___________';
-    }
-    
-    // Ensure data.name doesn't get cut off
-    const titleName = data && data.name ? data.name : '___________';
-    
     return `
         <div style="padding: ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed;">
             <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
-                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold; white-space: normal; overflow: visible; width: 100%;">${titleName}</h1>
-                <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; width: 100%;">
-                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>תאריך:</strong> ${data.date || '___________'}</span>
-                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>סניף:</strong> ${branchName}</span>
-                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
-                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>
+                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
+                <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+                    <span style="font-size: ${settings.fontSize}px;"><strong>תאריך:</strong> ${data.date || '___________'}</span>
+                    <span style="font-size: ${settings.fontSize}px;"><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
+                    <span style="font-size: ${settings.fontSize}px;"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
+                    <span style="font-size: ${settings.fontSize}px;"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>
                 </div>
             </div>
             
@@ -5098,149 +5070,6 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
         </body>
         </html>
     `;
-}
-
-// New function to render print HTML from template configuration
-function renderPrintHTML(config, tasks, context) {
-    const page = config.page || {};
-    const columns = config.columns || [];
-    
-    // Sort columns by order
-    const sortedColumns = [...columns].filter(c => c.visible).sort((a, b) => a.order - b.order);
-    
-    // Build table header
-    const headerCells = sortedColumns.map(col => {
-        const align = col.headerAlign || col.align || 'right';
-        const style = buildCellStyle(col, true);
-        return `<th style="${style}">${col.label || ''}</th>`;
-    }).join('');
-    
-    // Build table rows
-    const rows = tasks.map(task => {
-        const cells = sortedColumns.map(col => {
-            let content = '';
-            let align = col.align || 'right';
-            
-            // Get content based on column type
-            switch(col.type) {
-                case 'checkbox':
-                    content = '<div style="width: 18px; height: 18px; border: 2px solid #000; margin: 0 auto; border-radius: 2px;"></div>';
-                    align = 'center';
-                    break;
-                case 'text':
-                    if (col.dataPath) {
-                        content = getNestedValue(task, col.dataPath) || '';
-                    } else if (col.staticText) {
-                        content = col.staticText;
-                    }
-                    break;
-                case 'date':
-                    content = context.date || '_________';
-                    break;
-                case 'signature':
-                    content = '_____________';
-                    break;
-                case 'notes':
-                    content = '<div style="min-height: 30px; border-bottom: 1px dotted #999;"></div>';
-                    break;
-                case 'priority':
-                    content = task.priority || '';
-                    break;
-                case 'responsible':
-                    content = task.responsible || '_________';
-                    break;
-                case 'custom':
-                    content = col.staticText || '';
-                    break;
-            }
-            
-            const style = buildCellStyle(col, false);
-            return `<td style="${style}; text-align: ${align};">${content}</td>`;
-        }).join('');
-        
-        return `<tr>${cells}</tr>`;
-    }).join('');
-    
-    // Build complete HTML
-    return `
-        <div style="font-family: ${page.fontFamily || 'Arial Hebrew, Arial'}; font-size: ${page.fontSize || 12}px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2>${context.title || 'רשימת משימות'}</h2>
-                <div style="display: flex; justify-content: space-between; margin: 10px 0;">
-                    <span><strong>סניף:</strong> ${context.branch || ''}</span>
-                    <span><strong>תאריך:</strong> ${context.date || ''}</span>
-                    <span><strong>משמרת:</strong> ${context.shift || ''}</span>
-                </div>
-            </div>
-            
-            <table style="width: 100%; border-collapse: collapse; ${page.gridlines ? 'border: 1px solid #000;' : ''}">
-                <thead style="${page.headerRepeat ? 'display: table-header-group;' : ''}">
-                    <tr>${headerCells}</tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-            
-            <div style="margin-top: 40px; display: flex; justify-content: space-between;">
-                <div><strong>חתימת אחראי:</strong> _____________</div>
-                <div><strong>תאריך:</strong> _____________</div>
-            </div>
-        </div>
-    `;
-}
-
-// Helper function to build cell styles
-function buildCellStyle(column, isHeader) {
-    const styles = [];
-    
-    // Width
-    if (column.width) {
-        if (column.width.unit === 'px') {
-            styles.push(`width: ${column.width.value}px`);
-        } else if (column.width.unit === '%') {
-            styles.push(`width: ${column.width.value}%`);
-        }
-    }
-    
-    // Font styles
-    const font = column.font || {};
-    if (font.family) styles.push(`font-family: ${font.family}`);
-    if (font.size) styles.push(`font-size: ${font.size}px`);
-    if (font.bold) styles.push('font-weight: bold');
-    if (font.italic) styles.push('font-style: italic');
-    if (font.underline) styles.push('text-decoration: underline');
-    if (font.color) styles.push(`color: ${font.color}`);
-    
-    // Background
-    if (column.background) styles.push(`background-color: ${column.background}`);
-    
-    // Borders
-    const border = column.border || {};
-    if (border.top) styles.push(`border-top: ${border.top.width || '1px'} ${border.top.style || 'solid'} ${border.top.color || '#000'}`);
-    if (border.right) styles.push(`border-right: ${border.right.width || '1px'} ${border.right.style || 'solid'} ${border.right.color || '#000'}`);
-    if (border.bottom) styles.push(`border-bottom: ${border.bottom.width || '1px'} ${border.bottom.style || 'solid'} ${border.bottom.color || '#000'}`);
-    if (border.left) styles.push(`border-left: ${border.left.width || '1px'} ${border.left.style || 'solid'} ${border.left.color || '#000'}`);
-    
-    // Padding
-    if (column.padding) {
-        styles.push(`padding: ${column.padding}px`);
-    } else {
-        styles.push('padding: 5px');
-    }
-    
-    // Word wrap
-    if (column.wrap) {
-        styles.push('word-wrap: break-word');
-        styles.push('white-space: normal');
-    }
-    
-    return styles.join('; ');
-}
-
-// Helper function to get nested values from objects
-function getNestedValue(obj, path) {
-    return path.split('.').reduce((current, key) => current?.[key], obj);
 }
 
 async function downloadAsPDF() {
@@ -5841,299 +5670,304 @@ function generatePDFDirectly(htmlContent, fileName) {
 function createAlternativePDF(htmlContent, fileName) {
     generatePDFDirectly(htmlContent, fileName);
 }
-
-// ===== SIMPLE PRINT DESIGNER - REBUILT FROM SCRATCH =====
-let printDesignerData = {
-    columns: ['checkbox', 'task_name', 'category', 'priority', 'notes'],
-    pageSettings: {
-        title: 'רשימת משימות',
-        showDate: true,
-        showBranch: true,
-        showSignatures: true
-    }
-};
-
-// Simple Print Designer Functions
-function openPrintDesigner() {
-    const modal = document.getElementById('printDesignerModal');
-    if (!modal) {
-        showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
-        return;
-    }
-    
-    modal.style.display = 'block';
-    setupPrintDesignerOptions();
-}
-
-function closePrintDesigner() {
-    document.getElementById('printDesignerModal').style.display = 'none';
-}
-
-function setupPrintDesignerOptions() {
-    const columnsContainer = document.getElementById('printDesignerColumns');
-    if (!columnsContainer) return;
-    
-    const availableColumns = [
-        {id: 'checkbox', name: 'תיבת סימון', checked: true},
-        {id: 'task_name', name: 'שם המשימה', checked: true},
-        {id: 'category', name: 'קטגוריה', checked: true},
-        {id: 'priority', name: 'עדיפות', checked: false},
-        {id: 'notes', name: 'הערות', checked: false},
-        {id: 'responsible', name: 'אחראי', checked: false}
-    ];
-    
-    columnsContainer.innerHTML = availableColumns.map(col => `
-        <label style="display: flex; align-items: center; gap: 10px; padding: 8px; margin-bottom: 5px; border: 1px solid #ddd; border-radius: 5px;">
-            <input type="checkbox" ${col.checked ? 'checked' : ''} onchange="updateSelectedColumns()">
-            <span>${col.name}</span>
-        </label>
-    `).join('');
-}
-
-function updateSelectedColumns() {
-    // This will be called when checkboxes change
-    showSuccess('✅ עמודות עודכנו');
-}
-
-function applyPrintDesign() {
-    showSuccess('✅ עיצוב הטבלה הוחל בהצלחה');
-    closePrintDesigner();
-}
-
-// Setup event listeners when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    const printDesignerBtn = document.getElementById('printDesignerBtn');
-    if (printDesignerBtn) {
-        printDesignerBtn.addEventListener('click', openPrintDesigner);
-    }
-});
-
-// Expose functions globally for onclick handlers
-window.openPrintDesigner = openPrintDesigner;
-window.closePrintDesigner = closePrintDesigner;
-window.applyPrintDesign = applyPrintDesign;
-
-// ===== LEGACY COMPLEX CODE REMOVED - REBUILDING MINIMAL IMPLEMENTATION =====
-
-// ===== CLEAN MODAL HTML STARTS HERE =====
-
 </script>
 
 <!-- Saved Checklists Modal -->
 <div id="savedChecklistsModal" class="modal">
-    <div class="modal-content" style="max-width: 800px;" dir="rtl">
+    <div class="modal-content large-modal">
         <div class="modal-header">
-            <h3>
-                <i class="fas fa-list-alt me-2"></i>
-                רשימות שמורות
-            </h3>
-            <button type="button" class="close" onclick="closeModal('savedChecklistsModal')">&times;</button>
+            <h2>רשימות משימות שמורות</h2>
         </div>
-        
         <div class="modal-body">
             <div id="savedChecklistsContainer">
-                <!-- Saved checklists will be loaded here -->
-                <div style="text-align: center; padding: 40px; color: #666;">
+                <div style="text-align: center; padding: 40px; color: #999;">
                     <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
                     <p>טוען רשימות שמורות...</p>
                 </div>
             </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button type="button" class="btn btn-cancel" onclick="closeModal('savedChecklistsModal')">
-                <i class="fas fa-times me-2"></i>
-                סגור
-            </button>
+            <div class="form-buttons">
+                <button type="button" class="btn btn-cancel" onclick="closeModal('savedChecklistsModal')">
+                    <i class="fas fa-times me-2"></i> סגור
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Simple Print Designer Modal -->
-<div id="printDesignerModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;" dir="rtl">
-        <div class="modal-header">
-            <h3 style="margin: 0;">
-                <i class="fas fa-print me-2"></i>
-                עיצוב הדפסה
-            </h3>
-            <button type="button" onclick="closePrintDesigner()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-        </div>
-        
-        <div class="modal-body" style="padding: 20px;">
-            <!-- Page Settings -->
-            <div style="margin-bottom: 25px;">
-                <h4 style="margin-bottom: 15px; color: #333;">
-                    <i class="fas fa-cog me-2"></i>
-                    הגדרות דף
-                </h4>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" checked>
-                        <span>הצג כותרת</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" checked>
-                        <span>הצג תאריך</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" checked>
-                        <span>הצג סניף</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" checked>
-                        <span>הצג חתימות</span>
-                    </label>
-                </div>
-            </div>
-            
-            <!-- Column Selection -->
-            <div style="margin-bottom: 25px;">
-                <h4 style="margin-bottom: 15px; color: #333;">
-                    <i class="fas fa-columns me-2"></i>
-                    עמודות להצגה
-                </h4>
-                <div id="printDesignerColumns">
-                    <!-- Column checkboxes will be populated by JavaScript -->
-                </div>
-            </div>
-            
-            <!-- Preview -->
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 15px; color: #333;">
-                    <i class="fas fa-eye me-2"></i>
-                    תצוגה מקדימה
-                </h4>
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; background: #f9f9f9; text-align: center; color: #666;">
-                    <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 10px;"></i>
-                    <div>תצוגה מקדימה תופיע כאן</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #ddd; display: flex; gap: 10px; justify-content: flex-end;">
-            <button type="button" class="btn btn-cancel" onclick="closePrintDesigner()">
-                <i class="fas fa-times me-2"></i>
-                ביטול
-            </button>
-            <button type="button" class="btn btn-primary" onclick="applyPrintDesign()">
-                <i class="fas fa-check me-2"></i>
-                החל והדפס
-            </button>
-        </div>
-    </div>
-</div>
-
-<script>
-// ===== CLEAN JAVASCRIPT WITH PROPER SCOPING (IIFE) =====
-(function() {
-    'use strict';
-    
-    // Print Designer initialization 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Make sure our simple functions are working
-        console.log('Print Designer simple implementation loaded');
-        
-        // Test that elements exist
-        const modal = document.getElementById('printDesignerModal');
-        const button = document.getElementById('printDesignerBtn');
-        
-        if (!modal) {
-            console.error('Print Designer modal not found');
-        }
-        if (!button) {
-            console.error('Print Designer button not found');
-        } else {
-            console.log('Print Designer button found, click handler should work');
-        }
-    });
-})();
-</script>
-
-<!-- Load external Print Designer script -->
-<script src="/static/js/print_designer.js" defer></script>
-
-<!-- DIRECT BUTTON BINDING - ULTIMATE FIX -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DIRECT BUTTON BINDING STARTING ===');
-    
-    // Wait for external scripts to load then bind directly
-    setTimeout(function() {
-        const generateBtn = document.getElementById('generateChecklistBtn');
-        const printBtn = document.getElementById('printDesignerBtn');
-        
-        console.log('Generate button found:', !!generateBtn);
-        console.log('Print button found:', !!printBtn);
-        
-        if (generateBtn) {
-            generateBtn.addEventListener('click', function(e) {
-                console.log('=== GENERATE BUTTON DIRECT CLICK ===');
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof showGenerateModal === 'function') {
-                    showGenerateModal();
-                } else {
-                    console.error('showGenerateModal not available');
-                }
-            });
-            console.log('Generate button handler attached');
-        }
-        
-        if (printBtn) {
-            printBtn.addEventListener('click', function(e) {
-                console.log('=== PRINT BUTTON DIRECT CLICK ===');
-                e.preventDefault();
-                e.stopPropagation();
-                // Call the function from the external script
-                if (typeof window.openPrintDesigner === 'function') {
-                    window.openPrintDesigner();
-                } else {
-                    console.error('openPrintDesigner not available');
-                }
-            });
-            console.log('Print button handler attached');
-        }
-        
-        // Make functions globally available
-        window.showGenerateModal = showGenerateModal;
-        
-    }, 500); // Give time for external scripts to load
-});
-</script>
-
-<!-- Simplified Print Designer Modal -->
-<div id="printDesignerModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 60%; width: 60%; height: 70vh;">
-        <div class="modal-header">
-            <h2>עיצוב טבלת הדפסה מתקדם</h2>
-            <button type="button" class="btn btn-sm" onclick="closePrintDesigner()" style="position: absolute; left: 10px; top: 10px;">
+<!-- Print Preview Panel Modal -->
+<div id="printPreviewModal" class="modal" style="display: none;">
+    <div class="modal-content print-preview-modal" style="max-width: 95%; width: 95%; height: 90vh; overflow: hidden;">
+        <div class="modal-header" style="padding: 10px 15px;">
+            <h2 style="font-size: 18px; margin: 0;">תצוגה מקדימה והגדרות הדפסה</h2>
+            <button type="button" class="btn btn-sm" onclick="closePrintPreview()" style="position: absolute; left: 10px; top: 10px;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <div class="modal-body" style="display: flex; gap: 20px; height: calc(100% - 140px);">
-            <!-- Preview Panel -->
-            <div style="flex: 1; border: 1px solid #ddd; padding: 20px;">
-                <h3>תצוגה מקדימה</h3>
-                <div id="designerPreview" style="background: white; border: 1px solid #ddd; padding: 10px; min-height: 300px; overflow: auto;">
-                    <!-- Preview will be rendered here -->
+        <!-- Mobile-friendly layout with tabs -->
+        <div class="print-preview-container" style="height: calc(100% - 100px); position: relative;">
+            <!-- Mobile Tab Navigation -->
+            <div class="print-tabs" style="display: none; background: #f5f5f5; padding: 5px; border-bottom: 1px solid #ddd;">
+                <button class="tab-btn active" onclick="switchPrintTab('preview')" data-tab="preview" style="padding: 8px 15px; border: none; background: white; margin-right: 5px; border-radius: 5px;">
+                    <i class="fas fa-eye"></i> תצוגה
+                </button>
+                <button class="tab-btn" onclick="switchPrintTab('settings')" data-tab="settings" style="padding: 8px 15px; border: none; background: transparent; margin-right: 5px; border-radius: 5px;">
+                    <i class="fas fa-cog"></i> הגדרות
+                </button>
+            </div>
+            
+            <!-- Desktop Layout -->
+            <div class="modal-body desktop-layout" style="height: 100%; display: flex; gap: 20px; padding: 15px;">
+                <!-- Settings Panel -->
+                <div class="settings-panel" style="width: 250px; flex-shrink: 0; border-left: 1px solid #ddd; padding-left: 15px; overflow-y: auto;">
+                    <h3 style="margin-bottom: 15px;">הגדרות הדפסה</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">מספר עמודות:</label>
+                    <input type="range" id="columnsSlider" min="1" max="6" value="4" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>1</span>
+                        <span id="columnsValue" style="font-weight: bold;">4</span>
+                        <span>6</span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">גודל גופן משימות:</label>
+                    <input type="range" id="fontSizeSlider" min="8" max="16" value="11" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>8</span>
+                        <span id="fontSizeValue" style="font-weight: bold;">11px</span>
+                        <span>16</span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">שוליים (מ"מ):</label>
+                    <input type="range" id="marginSlider" min="3" max="20" value="5" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>3</span>
+                        <span id="marginValue" style="font-weight: bold;">5mm</span>
+                        <span>20</span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">רווח בין עמודות:</label>
+                    <input type="range" id="gapSlider" min="3" max="15" value="6" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>3</span>
+                        <span id="gapValue" style="font-weight: bold;">6px</span>
+                        <span>15</span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px;">גודל כותרת:</label>
+                    <input type="range" id="headerSizeSlider" min="14" max="24" value="18" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                        <span>14</span>
+                        <span id="headerSizeValue" style="font-weight: bold;">18px</span>
+                        <span>24</span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="showBordersCheckbox" checked>
+                        הצג מסגרות לקבוצות
+                    </label>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="compactModeCheckbox">
+                        מצב צפוף (פחות רווחים)
+                    </label>
+                </div>
+                
+                <button class="btn btn-primary" onclick="resetPrintSettings()" style="width: 100%; margin-bottom: 10px;">
+                    <i class="fas fa-undo"></i> איפוס הגדרות
+                </button>
+                </div>
+                
+                <!-- Preview Area -->
+                <div class="preview-area" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>תצוגה מקדימה (A4)</span>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-sm" onclick="zoomPreview('in')">
+                                    <i class="fas fa-search-plus"></i> הגדל
+                                </button>
+                                <button class="btn btn-sm" onclick="zoomPreview('out')">
+                                    <i class="fas fa-search-minus"></i> הקטן
+                                </button>
+                                <button class="btn btn-sm" onclick="zoomPreview('fit')">
+                                    <i class="fas fa-expand"></i> התאם
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="printPreviewContainer" style="flex: 1; overflow: auto; background: #ccc; padding: 20px; display: flex; justify-content: center; align-items: flex-start;">
+                        <div id="printPreviewContent" style="background: white; box-shadow: 0 0 10px rgba(0,0,0,0.3); width: 210mm; min-height: 297mm; transform-origin: top center; transition: transform 0.3s;">
+                            <!-- Preview content will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile Layout -->
+            <div class="modal-body mobile-layout" style="display: none; height: 100%; overflow: hidden;">
+                <!-- Mobile Preview Tab -->
+                <div class="mobile-tab-content" data-tab="preview" style="height: 100%; display: flex; flex-direction: column;">
+                    <div style="flex: 1; overflow: auto; background: #f5f5f5; padding: 10px;">
+                        <div id="mobilePreviewContent" style="background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%; padding: 10px; font-size: 10px; transform: scale(0.8); transform-origin: top center;">
+                            <!-- Mobile preview content -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Settings Tab -->
+                <div class="mobile-tab-content" data-tab="settings" style="display: none; height: 100%; overflow-y: auto; padding: 15px;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">מספר עמודות:</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-sm" onclick="setColumns(2)" style="flex: 1;">2</button>
+                            <button class="btn btn-sm" onclick="setColumns(3)" style="flex: 1;">3</button>
+                            <button class="btn btn-sm btn-primary" onclick="setColumns(4)" style="flex: 1;">4</button>
+                            <button class="btn btn-sm" onclick="setColumns(5)" style="flex: 1;">5</button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">גודל גופן:</label>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-sm" onclick="adjustFontSize(-1)">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <span id="mobileFontSize" style="flex: 1; text-align: center; padding: 5px; background: #f5f5f5; border-radius: 5px;">11px</span>
+                            <button class="btn btn-sm" onclick="adjustFontSize(1)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                            <input type="checkbox" id="mobileShowBorders" checked onchange="toggleBorders(this.checked)">
+                            <span>הצג מסגרות לקבוצות</span>
+                        </label>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                            <input type="checkbox" id="mobileCompactMode" onchange="toggleCompactMode(this.checked)">
+                            <span>מצב צפוף</span>
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="resetPrintSettings()" style="width: 100%;">
+                        <i class="fas fa-undo"></i> איפוס הגדרות
+                    </button>
                 </div>
             </div>
         </div>
         
-        <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 15px;">
-            <div>
-                <button class="btn btn-success" onclick="applyPrintDesign()">
-                    <i class="fas fa-check"></i> החל עיצוב
-                </button>
-            </div>
-            <button class="btn btn-cancel" onclick="closePrintDesigner()">
-                <i class="fas fa-times"></i> ביטול
+        <div class="form-buttons" style="padding: 15px; border-top: 1px solid #ddd;">
+            <button type="button" class="btn btn-success" onclick="printFromPreview()">
+                <i class="fas fa-print me-2"></i> הדפס עם ההגדרות הנוכחיות
+            </button>
+            <button type="button" class="btn btn-primary" onclick="downloadAsPDF()">
+                <i class="fas fa-file-pdf me-2"></i> הורד כ-PDF
+            </button>
+            <button type="button" class="btn btn-cancel" onclick="closePrintPreview()">
+                <i class="fas fa-times me-2"></i> סגור
             </button>
         </div>
     </div>
 </div>
+
+<script>
+// Dropdown functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const menuCard = document.querySelector('.menu-card');
+    const dropdown = document.getElementById('managementDropdown');
+    
+    if (menuCard && dropdown) {
+        menuCard.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function() {
+            dropdown.classList.remove('show');
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        dropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+});
+
+// Updated task selection functions for new layout
+function updateTaskControlsVisibility() {
+    const taskControls = document.getElementById('taskControls');
+    const selectedTasksCount = document.getElementById('selectedTasksCount');
+    const checkboxes = document.querySelectorAll('.task-item input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    
+    if (count > 0) {
+        taskControls.style.display = 'block';
+        selectedTasksCount.textContent = count + ' משימות נבחרו';
+    } else {
+        taskControls.style.display = 'none';
+    }
+}
+
+// Override existing functions to use new layout
+const originalSelectAllTasks = window.selectAllTasks;
+window.selectAllTasks = function() {
+    if (typeof originalSelectAllTasks === 'function') {
+        originalSelectAllTasks();
+    }
+    updateTaskControlsVisibility();
+};
+
+const originalClearSelection = window.clearSelection;
+window.clearSelection = function() {
+    if (typeof originalClearSelection === 'function') {
+        originalClearSelection();
+    }
+    updateTaskControlsVisibility();
+};
+
+// Update task controls when checkboxes change
+document.addEventListener('change', function(e) {
+    if (e.target.type === 'checkbox' && e.target.closest('.task-item')) {
+        updateTaskControlsVisibility();
+    }
+});
+
+// Override bulk operations to update controls after completion
+const originalBulkDelete = window.bulkDelete;
+window.bulkDelete = async function() {
+    if (typeof originalBulkDelete === 'function') {
+        await originalBulkDelete();
+        updateTaskControlsVisibility();
+    }
+};
+
+const originalBulkMarkComplete = window.bulkMarkComplete;
+window.bulkMarkComplete = function() {
+    if (typeof originalBulkMarkComplete === 'function') {
+        originalBulkMarkComplete();
+        updateTaskControlsVisibility();
+    }
+};
+</script>
 
 {% endblock %}

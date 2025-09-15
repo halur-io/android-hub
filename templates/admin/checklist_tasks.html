@@ -2399,6 +2399,7 @@ function editTask(taskId) {
 }
 
 function showGenerateModal() {
+    console.log('showGenerateModal called');
     populateBranchSelect();
     populateGroupSelection();
     populateTemplateSelect();
@@ -2431,8 +2432,19 @@ function showGroupTaskModal() {
 }
 
 function showModal(modalId) {
-    document.getElementById(modalId).style.display = 'block';
-    document.body.style.overflow = 'hidden';
+    console.log('showModal called with:', modalId);
+    const el = document.getElementById(modalId);
+    console.log('Modal element found:', !!el, el?.id, el?.className);
+    if (el) {
+        console.log('Before style change - computed display:', getComputedStyle(el).display);
+        console.log('Before style change - inline display:', el.style.display);
+        el.style.display = 'block';
+        console.log('After style change - computed display:', getComputedStyle(el).display);
+        console.log('After style change - inline display:', el.style.display);
+        document.body.style.overflow = 'hidden';
+    } else {
+        console.error('Modal element not found:', modalId);
+    }
 }
 
 function closeModal(modalId) {

@@ -45,10 +45,17 @@
 
     // Simple modal management
     function openPrintDesigner() {
-        console.log('Opening Print Designer');
+        console.log('openPrintDesigner called');
+        console.log('Checking for duplicate modals:', document.querySelectorAll('#printDesignerModal').length);
         const modal = document.getElementById('printDesignerModal');
+        console.log('Print Designer modal element found:', !!modal, modal?.id, modal?.className);
         if (modal) {
+            console.log('Before style change - computed display:', getComputedStyle(modal).display);
+            console.log('Before style change - inline display:', modal.style.display);
             modal.style.display = 'block';
+            console.log('After style change - computed display:', getComputedStyle(modal).display);
+            console.log('After style change - inline display:', modal.style.display);
+            console.log('Modal z-index:', getComputedStyle(modal).zIndex);
             initializeDesigner();
         } else {
             console.error('Print Designer modal not found');

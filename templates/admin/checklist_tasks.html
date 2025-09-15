@@ -5888,61 +5888,112 @@ window.openPrintDesigner = openPrintDesigner;
 window.closePrintDesigner = closePrintDesigner;
 window.applyPrintDesign = applyPrintDesign;
 
-// Add new column
-function addNewColumn() {
-    const newColumn = {
-        id: 'col_' + Date.now(),
-        key: 'col_' + Date.now(),
-        label: 'עמודה חדשה',
-        type: 'text',
-        dataPath: '',
-        width: {value: 100, unit: 'px'},
-        align: 'right',
-        order: currentPrintConfig.columns.length,
-        visible: true
-    };
-    
-    currentPrintConfig.columns.push(newColumn);
-    renderColumnsList();
-    selectColumn(newColumn.id);
-    updateDesignerPreview();
-}
+// ===== LEGACY COMPLEX CODE REMOVED - REBUILDING MINIMAL IMPLEMENTATION =====
 
-// Render columns list
-function renderColumnsList() {
-    const container = document.getElementById('columnsListContainer');
-    if (!container) return;
-    
-    const sortedColumns = [...currentPrintConfig.columns].sort((a, b) => a.order - b.order);
-    
-    container.innerHTML = sortedColumns.map((col, index) => `
-        <div class="column-item" style="padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; ${currentEditingColumn === col.id ? 'background: #e8f4f8;' : ''}" onclick="selectColumn('${col.id}')">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-grip-vertical" style="color: #999;"></i>
-                    <div>
-                        <div style="font-weight: bold;">${col.label || 'ללא כותרת'}</div>
-                        <div style="font-size: 11px; color: #666;">${getColumnTypeLabel(col.type)}</div>
-                    </div>
+// ===== CLEAN MODAL HTML STARTS HERE =====
+
+</script>
+
+<!-- Simple Print Designer Modal -->
+<div id="printDesignerModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;" dir="rtl">
+        <div class="modal-header">
+            <h3 style="margin: 0;">
+                <i class="fas fa-print me-2"></i>
+                עיצוב הדפסה
+            </h3>
+            <button type="button" onclick="closePrintDesigner()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div class="modal-body" style="padding: 20px;">
+            <!-- Page Settings -->
+            <div style="margin-bottom: 25px;">
+                <h4 style="margin-bottom: 15px; color: #333;">
+                    <i class="fas fa-cog me-2"></i>
+                    הגדרות דף
+                </h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" checked>
+                        <span>הצג כותרת</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" checked>
+                        <span>הצג תאריך</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" checked>
+                        <span>הצג סניף</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" checked>
+                        <span>הצג חתימות</span>
+                    </label>
                 </div>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn btn-sm" onclick="event.stopPropagation(); toggleColumnVisibility('${col.id}')" title="${col.visible ? 'הסתר' : 'הצג'}">
-                        <i class="fas fa-${col.visible ? 'eye' : 'eye-slash'}"></i>
-                    </button>
-                    <button class="btn btn-sm" onclick="event.stopPropagation(); moveColumn('${col.id}', -1)" ${index === 0 ? 'disabled' : ''} title="הזז למעלה">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                    <button class="btn btn-sm" onclick="event.stopPropagation(); moveColumn('${col.id}', 1)" ${index === sortedColumns.length - 1 ? 'disabled' : ''} title="הזז למטה">
-                        <i class="fas fa-arrow-down"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); removeColumn('${col.id}')" title="מחק">
-                        <i class="fas fa-trash"></i>
-                    </button>
+            </div>
+            
+            <!-- Column Selection -->
+            <div style="margin-bottom: 25px;">
+                <h4 style="margin-bottom: 15px; color: #333;">
+                    <i class="fas fa-columns me-2"></i>
+                    עמודות להצגה
+                </h4>
+                <div id="printDesignerColumns">
+                    <!-- Column checkboxes will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Preview -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 15px; color: #333;">
+                    <i class="fas fa-eye me-2"></i>
+                    תצוגה מקדימה
+                </h4>
+                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 15px; background: #f9f9f9; text-align: center; color: #666;">
+                    <i class="fas fa-file-alt" style="font-size: 48px; margin-bottom: 10px;"></i>
+                    <div>תצוגה מקדימה תופיע כאן</div>
                 </div>
             </div>
         </div>
-    `).join('');
-}
+        
+        <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #ddd; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn btn-cancel" onclick="closePrintDesigner()">
+                <i class="fas fa-times me-2"></i>
+                ביטול
+            </button>
+            <button type="button" class="btn btn-primary" onclick="applyPrintDesign()">
+                <i class="fas fa-check me-2"></i>
+                החל והדפס
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== CLEAN JAVASCRIPT WITH PROPER SCOPING (IIFE) =====
+(function() {
+    'use strict';
+    
+    // Print Designer initialization 
+    document.addEventListener('DOMContentLoaded', function() {
+        // Make sure our simple functions are working
+        console.log('Print Designer simple implementation loaded');
+        
+        // Test that elements exist
+        const modal = document.getElementById('printDesignerModal');
+        const button = document.getElementById('printDesignerBtn');
+        
+        if (!modal) {
+            console.error('Print Designer modal not found');
+        }
+        if (!button) {
+            console.error('Print Designer button not found');
+        } else {
+            console.log('Print Designer button found, click handler should work');
+        }
+    });
+})();
 
 // Get column type label in Hebrew
 function getColumnTypeLabel(type) {

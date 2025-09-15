@@ -5824,13 +5824,18 @@ let printTemplates = [];
 
 // Initialize print designer
 function openPrintDesigner() {
+    // Test if function is being called
+    alert('Opening Print Designer...');
+    
     const modal = document.getElementById('printDesignerModal');
     if (!modal) {
+        alert('Modal not found!');
         showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
         return;
     }
     
     modal.style.display = 'block';
+    alert('Modal should be visible now');
     
     // Load current config or create default
     if (!currentPrintConfig) {

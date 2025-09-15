@@ -941,3 +941,58 @@ class SupplierItem(db.Model):
     
     def __repr__(self):
         return f'<SupplierItem {self.supplier.name} - {self.stock_item.name_he}>'
+
+# Print Template for customizable checklist printing
+class PrintTemplate(db.Model):
+    __tablename__ = 'print_templates'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
+    shift_type = db.Column(db.String(50), nullable=True)  # morning, evening, closing, night, all
+    is_default = db.Column(db.Boolean, default=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # JSON configuration for the template
+    config = db.Column(db.JSON, nullable=False, default=lambda: {
+        'page': {
+            'size': 'A4',
+            'margins': {'top': 10, 'right': 10, 'bottom': 10, 'left': 10},
+            'rtl': True,
+            'rowHeight': 'auto',
+            'gridlines': True,
+            'headerRepeat': True,
+            'fontFamily': 'Arial Hebrew, Arial',
+            'fontSize': 12
+        },
+        'layout': 'table',
+        'columns': [
+            {
+                'id': 'checkbox',
+                'key': 'checkbox',
+                'label': '',
+                'type': 'checkbox',
+                'width': {'value': 20, 'unit': 'px'},
+                'align': 'center',
+                'order': 0,
+                'visible': True
+            },
+            {
+                'id': 'taskname',
+                'key': 'taskname',
+                'label': 'משימה',
+                'type': 'text',
+                'dataPath': 'name',
+                'width': {'value': 'auto', 'unit': 'auto'},
+                'align': 'right',
+                'order': 1,
+                'visible': True
+            }
+        ]
+    })
+    
+    # Relationships
+    branch = db.relationship('Branch', backref='print_templates')
+    creator = db.relationship('AdminUser', backref='created_print_templates')

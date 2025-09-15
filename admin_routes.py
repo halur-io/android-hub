@@ -2358,3 +2358,195 @@ def download_import_template(template_type):
         flash(f'שגיאה ביצירת תבנית: {str(e)}', 'error')
         return redirect(url_for('admin.import_stock_data'))
 
+# ===== PRINT TEMPLATE MANAGEMENT ROUTES =====
+
+@admin_bp.route('/api/print-templates', methods=['GET'])
+@login_required
+@require_permission('checklist.manage')
+def get_print_templates():
+    """Get all print templates"""
+    from models import PrintTemplate
+    
+    templates = PrintTemplate.query.order_by(PrintTemplate.is_default.desc(), PrintTemplate.name).all()
+    
+    return jsonify([{
+        'id': t.id,
+        'name': t.name,
+        'description': t.description,
+        'branch_id': t.branch_id,
+        'shift_type': t.shift_type,
+        'is_default': t.is_default,
+        'config': t.config,
+        'created_at': t.created_at.isoformat() if t.created_at else None,
+        'updated_at': t.updated_at.isoformat() if t.updated_at else None
+    } for t in templates])
+
+@admin_bp.route('/api/print-templates/<int:template_id>', methods=['GET'])
+@login_required
+@require_permission('checklist.manage')
+def get_print_template(template_id):
+    """Get a specific print template"""
+    from models import PrintTemplate
+    
+    template = PrintTemplate.query.get_or_404(template_id)
+    
+    return jsonify({
+        'id': template.id,
+        'name': template.name,
+        'description': template.description,
+        'branch_id': template.branch_id,
+        'shift_type': template.shift_type,
+        'is_default': template.is_default,
+        'config': template.config,
+        'created_at': template.created_at.isoformat() if template.created_at else None,
+        'updated_at': template.updated_at.isoformat() if template.updated_at else None
+    })
+
+@admin_bp.route('/api/print-templates', methods=['POST'])
+@login_required
+@require_permission('checklist.manage')
+def create_print_template():
+    """Create a new print template"""
+    from models import PrintTemplate
+    
+    data = request.get_json()
+    if not data or not data.get('name'):
+        return jsonify({'error': 'שם התבנית חובה'}), 400
+    
+    # Check if name already exists
+    existing = PrintTemplate.query.filter_by(name=data['name']).first()
+    if existing:
+        return jsonify({'error': 'תבנית עם שם זה כבר קיימת'}), 400
+    
+    # Validate config structure
+    config = data.get('config', {})
+    if not config.get('page') or not config.get('columns'):
+        return jsonify({'error': 'תצורת תבנית לא תקינה'}), 400
+    
+    template = PrintTemplate(
+        name=data['name'],
+        description=data.get('description'),
+        branch_id=data.get('branch_id'),
+        shift_type=data.get('shift_type'),
+        is_default=data.get('is_default', False),
+        created_by=current_user.id,
+        config=config
+    )
+    
+    # If setting as default, unset other defaults
+    if template.is_default:
+        PrintTemplate.query.update({'is_default': False})
+    
+    db.session.add(template)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'id': template.id,
+        'message': 'התבנית נוצרה בהצלחה'
+    }), 201
+
+@admin_bp.route('/api/print-templates/<int:template_id>', methods=['PUT'])
+@login_required
+@require_permission('checklist.manage')
+def update_print_template(template_id):
+    """Update a print template"""
+    from models import PrintTemplate
+    
+    template = PrintTemplate.query.get_or_404(template_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'נתונים חסרים'}), 400
+    
+    # Check if renaming to existing name
+    if 'name' in data and data['name'] != template.name:
+        existing = PrintTemplate.query.filter_by(name=data['name']).first()
+        if existing:
+            return jsonify({'error': 'תבנית עם שם זה כבר קיימת'}), 400
+    
+    # Update fields
+    if 'name' in data:
+        template.name = data['name']
+    if 'description' in data:
+        template.description = data['description']
+    if 'branch_id' in data:
+        template.branch_id = data['branch_id']
+    if 'shift_type' in data:
+        template.shift_type = data['shift_type']
+    if 'config' in data:
+        template.config = data['config']
+    
+    # Handle default setting
+    if 'is_default' in data:
+        if data['is_default'] and not template.is_default:
+            # Unset other defaults
+            PrintTemplate.query.filter(PrintTemplate.id != template_id).update({'is_default': False})
+        template.is_default = data['is_default']
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'התבנית עודכנה בהצלחה'
+    })
+
+@admin_bp.route('/api/print-templates/<int:template_id>', methods=['DELETE'])
+@login_required
+@require_permission('checklist.manage')
+def delete_print_template(template_id):
+    """Delete a print template"""
+    from models import PrintTemplate
+    
+    template = PrintTemplate.query.get_or_404(template_id)
+    
+    # Don't delete the default template
+    if template.is_default:
+        return jsonify({'error': 'לא ניתן למחוק תבנית ברירת מחדל'}), 400
+    
+    db.session.delete(template)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'התבנית נמחקה בהצלחה'
+    })
+
+@admin_bp.route('/api/print-templates/<int:template_id>/duplicate', methods=['POST'])
+@login_required
+@require_permission('checklist.manage')
+def duplicate_print_template(template_id):
+    """Duplicate a print template"""
+    from models import PrintTemplate
+    import copy
+    
+    original = PrintTemplate.query.get_or_404(template_id)
+    
+    # Find unique name
+    base_name = f"{original.name} - העתק"
+    name = base_name
+    counter = 1
+    while PrintTemplate.query.filter_by(name=name).first():
+        counter += 1
+        name = f"{base_name} {counter}"
+    
+    # Create duplicate
+    duplicate = PrintTemplate(
+        name=name,
+        description=original.description,
+        branch_id=original.branch_id,
+        shift_type=original.shift_type,
+        is_default=False,
+        created_by=current_user.id,
+        config=copy.deepcopy(original.config)
+    )
+    
+    db.session.add(duplicate)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'id': duplicate.id,
+        'message': 'התבנית שוכפלה בהצלחה'
+    }), 201
+

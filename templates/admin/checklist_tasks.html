@@ -5072,6 +5072,149 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
     `;
 }
 
+// New function to render print HTML from template configuration
+function renderPrintHTML(config, tasks, context) {
+    const page = config.page || {};
+    const columns = config.columns || [];
+    
+    // Sort columns by order
+    const sortedColumns = [...columns].filter(c => c.visible).sort((a, b) => a.order - b.order);
+    
+    // Build table header
+    const headerCells = sortedColumns.map(col => {
+        const align = col.headerAlign || col.align || 'right';
+        const style = buildCellStyle(col, true);
+        return `<th style="${style}">${col.label || ''}</th>`;
+    }).join('');
+    
+    // Build table rows
+    const rows = tasks.map(task => {
+        const cells = sortedColumns.map(col => {
+            let content = '';
+            let align = col.align || 'right';
+            
+            // Get content based on column type
+            switch(col.type) {
+                case 'checkbox':
+                    content = '<div style="width: 18px; height: 18px; border: 2px solid #000; margin: 0 auto; border-radius: 2px;"></div>';
+                    align = 'center';
+                    break;
+                case 'text':
+                    if (col.dataPath) {
+                        content = getNestedValue(task, col.dataPath) || '';
+                    } else if (col.staticText) {
+                        content = col.staticText;
+                    }
+                    break;
+                case 'date':
+                    content = context.date || '_________';
+                    break;
+                case 'signature':
+                    content = '_____________';
+                    break;
+                case 'notes':
+                    content = '<div style="min-height: 30px; border-bottom: 1px dotted #999;"></div>';
+                    break;
+                case 'priority':
+                    content = task.priority || '';
+                    break;
+                case 'responsible':
+                    content = task.responsible || '_________';
+                    break;
+                case 'custom':
+                    content = col.staticText || '';
+                    break;
+            }
+            
+            const style = buildCellStyle(col, false);
+            return `<td style="${style}; text-align: ${align};">${content}</td>`;
+        }).join('');
+        
+        return `<tr>${cells}</tr>`;
+    }).join('');
+    
+    // Build complete HTML
+    return `
+        <div style="font-family: ${page.fontFamily || 'Arial Hebrew, Arial'}; font-size: ${page.fontSize || 12}px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2>${context.title || 'רשימת משימות'}</h2>
+                <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                    <span><strong>סניף:</strong> ${context.branch || ''}</span>
+                    <span><strong>תאריך:</strong> ${context.date || ''}</span>
+                    <span><strong>משמרת:</strong> ${context.shift || ''}</span>
+                </div>
+            </div>
+            
+            <table style="width: 100%; border-collapse: collapse; ${page.gridlines ? 'border: 1px solid #000;' : ''}">
+                <thead style="${page.headerRepeat ? 'display: table-header-group;' : ''}">
+                    <tr>${headerCells}</tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 40px; display: flex; justify-content: space-between;">
+                <div><strong>חתימת אחראי:</strong> _____________</div>
+                <div><strong>תאריך:</strong> _____________</div>
+            </div>
+        </div>
+    `;
+}
+
+// Helper function to build cell styles
+function buildCellStyle(column, isHeader) {
+    const styles = [];
+    
+    // Width
+    if (column.width) {
+        if (column.width.unit === 'px') {
+            styles.push(`width: ${column.width.value}px`);
+        } else if (column.width.unit === '%') {
+            styles.push(`width: ${column.width.value}%`);
+        }
+    }
+    
+    // Font styles
+    const font = column.font || {};
+    if (font.family) styles.push(`font-family: ${font.family}`);
+    if (font.size) styles.push(`font-size: ${font.size}px`);
+    if (font.bold) styles.push('font-weight: bold');
+    if (font.italic) styles.push('font-style: italic');
+    if (font.underline) styles.push('text-decoration: underline');
+    if (font.color) styles.push(`color: ${font.color}`);
+    
+    // Background
+    if (column.background) styles.push(`background-color: ${column.background}`);
+    
+    // Borders
+    const border = column.border || {};
+    if (border.top) styles.push(`border-top: ${border.top.width || '1px'} ${border.top.style || 'solid'} ${border.top.color || '#000'}`);
+    if (border.right) styles.push(`border-right: ${border.right.width || '1px'} ${border.right.style || 'solid'} ${border.right.color || '#000'}`);
+    if (border.bottom) styles.push(`border-bottom: ${border.bottom.width || '1px'} ${border.bottom.style || 'solid'} ${border.bottom.color || '#000'}`);
+    if (border.left) styles.push(`border-left: ${border.left.width || '1px'} ${border.left.style || 'solid'} ${border.left.color || '#000'}`);
+    
+    // Padding
+    if (column.padding) {
+        styles.push(`padding: ${column.padding}px`);
+    } else {
+        styles.push('padding: 5px');
+    }
+    
+    // Word wrap
+    if (column.wrap) {
+        styles.push('word-wrap: break-word');
+        styles.push('white-space: normal');
+    }
+    
+    return styles.join('; ');
+}
+
+// Helper function to get nested values from objects
+function getNestedValue(obj, path) {
+    return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
 async function downloadAsPDF() {
     if (!currentPrintData) return;
     
@@ -5670,7 +5813,802 @@ function generatePDFDirectly(htmlContent, fileName) {
 function createAlternativePDF(htmlContent, fileName) {
     generatePDFDirectly(htmlContent, fileName);
 }
+
+// Print Designer Variables
+let currentPrintConfig = null;
+let currentEditingColumn = null;
+let printTemplates = [];
+
+// Initialize print designer
+function openPrintDesigner() {
+    document.getElementById('printDesignerModal').style.display = 'block';
+    
+    // Load current config or create default
+    if (!currentPrintConfig) {
+        currentPrintConfig = {
+            page: {
+                size: 'A4',
+                margins: {top: 10, right: 10, bottom: 10, left: 10},
+                rtl: true,
+                rowHeight: 'auto',
+                gridlines: true,
+                headerRepeat: true,
+                fontFamily: 'Arial Hebrew, Arial',
+                fontSize: 12
+            },
+            layout: 'table',
+            columns: [
+                {
+                    id: 'checkbox',
+                    key: 'checkbox',
+                    label: '',
+                    type: 'checkbox',
+                    width: {value: 20, unit: 'px'},
+                    align: 'center',
+                    order: 0,
+                    visible: true
+                },
+                {
+                    id: 'taskname',
+                    key: 'taskname',
+                    label: 'משימה',
+                    type: 'text',
+                    dataPath: 'name',
+                    width: {value: 'auto', unit: 'auto'},
+                    align: 'right',
+                    order: 1,
+                    visible: true
+                }
+            ]
+        };
+    }
+    
+    renderColumnsList();
+    updateDesignerPreview();
+    loadPrintTemplates();
+}
+
+function closePrintDesigner() {
+    document.getElementById('printDesignerModal').style.display = 'none';
+}
+
+// Add new column
+function addNewColumn() {
+    const newColumn = {
+        id: 'col_' + Date.now(),
+        key: 'col_' + Date.now(),
+        label: 'עמודה חדשה',
+        type: 'text',
+        dataPath: '',
+        width: {value: 100, unit: 'px'},
+        align: 'right',
+        order: currentPrintConfig.columns.length,
+        visible: true
+    };
+    
+    currentPrintConfig.columns.push(newColumn);
+    renderColumnsList();
+    selectColumn(newColumn.id);
+    updateDesignerPreview();
+}
+
+// Render columns list
+function renderColumnsList() {
+    const container = document.getElementById('columnsListContainer');
+    if (!container) return;
+    
+    const sortedColumns = [...currentPrintConfig.columns].sort((a, b) => a.order - b.order);
+    
+    container.innerHTML = sortedColumns.map((col, index) => `
+        <div class="column-item" style="padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; ${currentEditingColumn === col.id ? 'background: #e8f4f8;' : ''}" onclick="selectColumn('${col.id}')">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-grip-vertical" style="color: #999;"></i>
+                    <div>
+                        <div style="font-weight: bold;">${col.label || 'ללא כותרת'}</div>
+                        <div style="font-size: 11px; color: #666;">${getColumnTypeLabel(col.type)}</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn btn-sm" onclick="event.stopPropagation(); toggleColumnVisibility('${col.id}')" title="${col.visible ? 'הסתר' : 'הצג'}">
+                        <i class="fas fa-${col.visible ? 'eye' : 'eye-slash'}"></i>
+                    </button>
+                    <button class="btn btn-sm" onclick="event.stopPropagation(); moveColumn('${col.id}', -1)" ${index === 0 ? 'disabled' : ''} title="הזז למעלה">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="btn btn-sm" onclick="event.stopPropagation(); moveColumn('${col.id}', 1)" ${index === sortedColumns.length - 1 ? 'disabled' : ''} title="הזז למטה">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); removeColumn('${col.id}')" title="מחק">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Get column type label in Hebrew
+function getColumnTypeLabel(type) {
+    const labels = {
+        checkbox: 'תיבת סימון',
+        text: 'טקסט',
+        date: 'תאריך',
+        signature: 'חתימה',
+        notes: 'הערות',
+        priority: 'עדיפות',
+        responsible: 'אחראי',
+        custom: 'מותאם אישית'
+    };
+    return labels[type] || type;
+}
+
+// Select column for editing
+function selectColumn(columnId) {
+    const column = currentPrintConfig.columns.find(c => c.id === columnId);
+    if (!column) return;
+    
+    currentEditingColumn = columnId;
+    renderColumnsList();
+    
+    // Show editor
+    document.getElementById('columnEditorContainer').style.display = 'block';
+    document.getElementById('columnEditorWelcome').style.display = 'none';
+    
+    // Load column data into editor
+    document.getElementById('editingColumnName').textContent = column.label || 'ללא כותרת';
+    document.getElementById('columnLabel').value = column.label || '';
+    document.getElementById('columnType').value = column.type || 'text';
+    document.getElementById('columnDataPath').value = column.dataPath || '';
+    document.getElementById('columnStaticText').value = column.staticText || '';
+    document.getElementById('columnAlign').value = column.align || 'right';
+    document.getElementById('columnHeaderAlign').value = column.headerAlign || column.align || 'right';
+    
+    // Width
+    if (column.width) {
+        if (column.width.unit === 'auto') {
+            document.getElementById('columnWidth').value = '';
+            document.getElementById('columnWidthUnit').value = 'auto';
+        } else {
+            document.getElementById('columnWidth').value = column.width.value || 100;
+            document.getElementById('columnWidthUnit').value = column.width.unit || 'px';
+        }
+    }
+    
+    // Font
+    const font = column.font || {};
+    document.getElementById('columnFontFamily').value = font.family || '';
+    document.getElementById('columnFontSize').value = font.size || '';
+    document.getElementById('columnFontBold').checked = font.bold || false;
+    document.getElementById('columnFontItalic').checked = font.italic || false;
+    document.getElementById('columnFontUnderline').checked = font.underline || false;
+    document.getElementById('columnFontColor').value = font.color || '#000000';
+    
+    // Other
+    document.getElementById('columnBackground').value = column.background || '#ffffff';
+    document.getElementById('columnPadding').value = column.padding || 5;
+    document.getElementById('columnWrap').checked = column.wrap || false;
+    
+    // Borders
+    const border = column.border || {};
+    document.getElementById('borderTop').checked = !!border.top;
+    document.getElementById('borderBottom').checked = !!border.bottom;
+    document.getElementById('borderLeft').checked = !!border.left;
+    document.getElementById('borderRight').checked = !!border.right;
+    
+    // Show/hide fields based on type
+    updateFieldVisibility(column.type);
+}
+
+// Update field visibility based on column type
+function updateFieldVisibility(type) {
+    const dataPathContainer = document.getElementById('dataPathContainer');
+    const staticTextContainer = document.getElementById('staticTextContainer');
+    
+    if (type === 'text') {
+        dataPathContainer.style.display = 'block';
+        staticTextContainer.style.display = 'none';
+    } else if (type === 'custom') {
+        dataPathContainer.style.display = 'none';
+        staticTextContainer.style.display = 'block';
+    } else {
+        dataPathContainer.style.display = 'none';
+        staticTextContainer.style.display = 'none';
+    }
+}
+
+// Update column property
+function updateColumnProperty(property, value) {
+    const column = currentPrintConfig.columns.find(c => c.id === currentEditingColumn);
+    if (!column) return;
+    
+    column[property] = value;
+    
+    if (property === 'type') {
+        updateFieldVisibility(value);
+    }
+    
+    renderColumnsList();
+    updateDesignerPreview();
+}
+
+// Update column width
+function updateColumnWidth() {
+    const column = currentPrintConfig.columns.find(c => c.id === currentEditingColumn);
+    if (!column) return;
+    
+    const unit = document.getElementById('columnWidthUnit').value;
+    if (unit === 'auto') {
+        column.width = {value: 'auto', unit: 'auto'};
+    } else {
+        column.width = {
+            value: parseInt(document.getElementById('columnWidth').value) || 100,
+            unit: unit
+        };
+    }
+    
+    updateDesignerPreview();
+}
+
+// Update column font
+function updateColumnFont(property, value) {
+    const column = currentPrintConfig.columns.find(c => c.id === currentEditingColumn);
+    if (!column) return;
+    
+    if (!column.font) column.font = {};
+    column.font[property] = value;
+    
+    updateDesignerPreview();
+}
+
+// Update border
+function updateBorder(side, enabled) {
+    const column = currentPrintConfig.columns.find(c => c.id === currentEditingColumn);
+    if (!column) return;
+    
+    if (!column.border) column.border = {};
+    
+    if (enabled) {
+        column.border[side] = {style: 'solid', width: '1px', color: '#000'};
+    } else {
+        delete column.border[side];
+    }
+    
+    updateDesignerPreview();
+}
+
+// Toggle all borders
+function toggleAllBorders(enabled) {
+    ['top', 'bottom', 'left', 'right'].forEach(side => {
+        document.getElementById('border' + side.charAt(0).toUpperCase() + side.slice(1)).checked = enabled;
+        updateBorder(side, enabled);
+    });
+}
+
+// Toggle column visibility
+function toggleColumnVisibility(columnId) {
+    const column = currentPrintConfig.columns.find(c => c.id === columnId);
+    if (!column) return;
+    
+    column.visible = !column.visible;
+    renderColumnsList();
+    updateDesignerPreview();
+}
+
+// Move column
+function moveColumn(columnId, direction) {
+    const columnIndex = currentPrintConfig.columns.findIndex(c => c.id === columnId);
+    if (columnIndex === -1) return;
+    
+    const newIndex = columnIndex + direction;
+    if (newIndex < 0 || newIndex >= currentPrintConfig.columns.length) return;
+    
+    // Swap orders
+    const temp = currentPrintConfig.columns[columnIndex].order;
+    currentPrintConfig.columns[columnIndex].order = currentPrintConfig.columns[newIndex].order;
+    currentPrintConfig.columns[newIndex].order = temp;
+    
+    renderColumnsList();
+    updateDesignerPreview();
+}
+
+// Remove column
+function removeColumn(columnId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק עמודה זו?')) return;
+    
+    currentPrintConfig.columns = currentPrintConfig.columns.filter(c => c.id !== columnId);
+    
+    // Reorder remaining columns
+    currentPrintConfig.columns.forEach((col, index) => {
+        col.order = index;
+    });
+    
+    if (currentEditingColumn === columnId) {
+        currentEditingColumn = null;
+        document.getElementById('columnEditorContainer').style.display = 'none';
+        document.getElementById('columnEditorWelcome').style.display = 'block';
+    }
+    
+    renderColumnsList();
+    updateDesignerPreview();
+}
+
+// Update designer preview
+function updateDesignerPreview() {
+    const previewContainer = document.getElementById('designerPreview');
+    if (!previewContainer) return;
+    
+    // Get sample tasks
+    const sampleTasks = [
+        {name: 'בדיקת מלאי מזון', category: 'מלאי', priority: 'גבוהה'},
+        {name: 'ניקוי משטחי עבודה', category: 'ניקיון', priority: 'בינונית'},
+        {name: 'בדיקת טמפרטורות', category: 'בטיחות', priority: 'גבוהה'}
+    ];
+    
+    const context = {
+        title: 'רשימת משימות - דוגמה',
+        branch: 'סניף ראמה',
+        date: new Date().toLocaleDateString('he-IL'),
+        shift: 'משמרת בוקר'
+    };
+    
+    previewContainer.innerHTML = renderPrintHTML(currentPrintConfig, sampleTasks, context);
+}
+
+// Apply design to preview
+function applyDesignToPreview() {
+    // Update the main print preview
+    if (currentPrintData) {
+        const previewContent = renderPrintHTML(
+            currentPrintConfig,
+            currentAllTasks,
+            {
+                title: currentPrintData.name,
+                branch: currentBranch,
+                date: currentPrintData.date,
+                shift: currentPrintData.shift_manager
+            }
+        );
+        
+        document.getElementById('printPreviewContent').innerHTML = previewContent;
+        document.getElementById('mobilePreviewContent').innerHTML = previewContent;
+    }
+    
+    closePrintDesigner();
+    showSuccess('✅ העיצוב הוחל בהצלחה');
+}
+
+// Save as template
+async function saveAsTemplate() {
+    const templateName = prompt('הכנס שם לתבנית:');
+    if (!templateName) return;
+    
+    try {
+        const response = await fetch('/admin/api/print-templates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+            },
+            body: JSON.stringify({
+                name: templateName,
+                description: 'תבנית מותאמת אישית',
+                config: currentPrintConfig
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('✅ התבנית נשמרה בהצלחה');
+            loadPrintTemplates();
+        } else {
+            showError('❌ ' + (result.error || 'שגיאה בשמירת התבנית'));
+        }
+    } catch (error) {
+        console.error('Error saving template:', error);
+        showError('❌ שגיאה בשמירת התבנית');
+    }
+}
+
+// Load print templates
+async function loadPrintTemplates() {
+    try {
+        const response = await fetch('/admin/api/print-templates');
+        const templates = await response.json();
+        
+        printTemplates = templates;
+        
+        // Update template select
+        const select = document.getElementById('printTemplateSelect');
+        if (select) {
+            select.innerHTML = '<option value="">בחר תבנית...</option>' + 
+                templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error loading templates:', error);
+    }
+}
+
+// Load print template
+async function loadPrintTemplate(templateId) {
+    if (!templateId) return;
+    
+    try {
+        const response = await fetch(`/admin/api/print-templates/${templateId}`);
+        const template = await response.json();
+        
+        if (template.config) {
+            currentPrintConfig = template.config;
+            updateDesignerPreview();
+            applyDesignToPreview();
+            showSuccess('✅ התבנית נטענה בהצלחה');
+        }
+    } catch (error) {
+        console.error('Error loading template:', error);
+        showError('❌ שגיאה בטעינת התבנית');
+    }
+}
+
+// Delete current template
+async function deleteCurrentTemplate() {
+    const templateId = document.getElementById('printTemplateSelect').value;
+    if (!templateId) {
+        showError('❌ אנא בחר תבנית למחיקה');
+        return;
+    }
+    
+    if (!confirm('האם אתה בטוח שברצונך למחוק תבנית זו?')) return;
+    
+    try {
+        const response = await fetch(`/admin/api/print-templates/${templateId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('✅ התבנית נמחקה בהצלחה');
+            loadPrintTemplates();
+            document.getElementById('printTemplateSelect').value = '';
+        } else {
+            showError('❌ ' + (result.error || 'שגיאה במחיקת התבנית'));
+        }
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showError('❌ שגיאה במחיקת התבנית');
+    }
+}
+
+// Save print template
+async function savePrintTemplate() {
+    const templateName = prompt('הכנס שם לתבנית:');
+    if (!templateName) return;
+    
+    try {
+        const response = await fetch('/admin/api/print-templates', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+            },
+            body: JSON.stringify({
+                name: templateName,
+                description: 'תבנית הדפסה מותאמת',
+                config: currentPrintConfig || {
+                    page: {
+                        size: 'A4',
+                        margins: {top: printSettings.margin, right: printSettings.margin, bottom: printSettings.margin, left: printSettings.margin},
+                        rtl: true,
+                        rowHeight: 'auto',
+                        gridlines: printSettings.showBorders,
+                        headerRepeat: true,
+                        fontFamily: 'Arial Hebrew, Arial',
+                        fontSize: printSettings.fontSize
+                    },
+                    layout: 'table',
+                    columns: [
+                        {
+                            id: 'checkbox',
+                            key: 'checkbox',
+                            label: '',
+                            type: 'checkbox',
+                            width: {value: 20, unit: 'px'},
+                            align: 'center',
+                            order: 0,
+                            visible: true
+                        },
+                        {
+                            id: 'taskname',
+                            key: 'taskname',
+                            label: 'משימה',
+                            type: 'text',
+                            dataPath: 'name',
+                            width: {value: 'auto', unit: 'auto'},
+                            align: 'right',
+                            order: 1,
+                            visible: true
+                        }
+                    ]
+                }
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('✅ התבנית נשמרה בהצלחה');
+            loadPrintTemplates();
+        } else {
+            showError('❌ ' + (result.error || 'שגיאה בשמירת התבנית'));
+        }
+    } catch (error) {
+        console.error('Error saving template:', error);
+        showError('❌ שגיאה בשמירת התבנית');
+    }
+}
 </script>
+
+<!-- Print Designer Modal -->
+<div id="printDesignerModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 90%; width: 90%; height: 85vh;">
+        <div class="modal-header">
+            <h2>עיצוב טבלת הדפסה מתקדם</h2>
+            <button type="button" class="btn btn-sm" onclick="closePrintDesigner()" style="position: absolute; left: 10px; top: 10px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body" style="display: flex; gap: 20px; height: calc(100% - 140px);">
+            <!-- Column Builder Panel -->
+            <div style="width: 350px; border-left: 1px solid #ddd; padding-left: 20px; overflow-y: auto;">
+                <h3>עמודות טבלה</h3>
+                
+                <!-- Add Column Button -->
+                <button class="btn btn-primary" onclick="addNewColumn()" style="width: 100%; margin-bottom: 15px;">
+                    <i class="fas fa-plus"></i> הוסף עמודה חדשה
+                </button>
+                
+                <!-- Columns List -->
+                <div id="columnsListContainer" style="margin-bottom: 20px;">
+                    <!-- Columns will be added here dynamically -->
+                </div>
+                
+                <!-- Column Types Info -->
+                <div style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                    <h4>סוגי עמודות זמינים:</h4>
+                    <ul style="font-size: 12px; margin: 5px 0;">
+                        <li><strong>תיבת סימון</strong> - ריבוע לסימון משימה</li>
+                        <li><strong>טקסט</strong> - שם המשימה או טקסט חופשי</li>
+                        <li><strong>תאריך</strong> - שדה תאריך</li>
+                        <li><strong>חתימה</strong> - קו לחתימה</li>
+                        <li><strong>הערות</strong> - שורות להערות</li>
+                        <li><strong>עדיפות</strong> - רמת עדיפות</li>
+                        <li><strong>אחראי</strong> - שם האחראי</li>
+                        <li><strong>מותאם אישית</strong> - טקסט מותאם</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Column Editor Panel -->
+            <div style="flex: 1; padding: 0 20px; overflow-y: auto;">
+                <div id="columnEditorContainer" style="display: none;">
+                    <h3>עריכת עמודה: <span id="editingColumnName"></span></h3>
+                    
+                    <!-- Basic Settings -->
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h4>הגדרות בסיסיות</h4>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>כותרת עמודה:</label>
+                            <input type="text" id="columnLabel" style="width: 100%;" onchange="updateColumnProperty('label', this.value)">
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>סוג עמודה:</label>
+                            <select id="columnType" style="width: 100%;" onchange="updateColumnProperty('type', this.value)">
+                                <option value="checkbox">תיבת סימון</option>
+                                <option value="text">טקסט</option>
+                                <option value="date">תאריך</option>
+                                <option value="signature">חתימה</option>
+                                <option value="notes">הערות</option>
+                                <option value="priority">עדיפות</option>
+                                <option value="responsible">אחראי</option>
+                                <option value="custom">מותאם אישית</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;" id="dataPathContainer">
+                            <label>שדה נתונים:</label>
+                            <select id="columnDataPath" style="width: 100%;" onchange="updateColumnProperty('dataPath', this.value)">
+                                <option value="">ללא</option>
+                                <option value="name">שם משימה</option>
+                                <option value="category">קטגוריה</option>
+                                <option value="priority">עדיפות</option>
+                                <option value="frequency">תדירות</option>
+                                <option value="description">תיאור</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px; display: none;" id="staticTextContainer">
+                            <label>טקסט קבוע:</label>
+                            <input type="text" id="columnStaticText" style="width: 100%;" onchange="updateColumnProperty('staticText', this.value)">
+                        </div>
+                    </div>
+                    
+                    <!-- Width Settings -->
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h4>רוחב עמודה</h4>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" id="columnWidth" min="1" value="100" style="flex: 1;" onchange="updateColumnWidth()">
+                            <select id="columnWidthUnit" style="width: 100px;" onchange="updateColumnWidth()">
+                                <option value="px">פיקסלים</option>
+                                <option value="%">אחוזים</option>
+                                <option value="auto">אוטומטי</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Alignment Settings -->
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h4>יישור</h4>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>יישור תוכן:</label>
+                            <select id="columnAlign" style="width: 100%;" onchange="updateColumnProperty('align', this.value)">
+                                <option value="right">ימין</option>
+                                <option value="center">מרכז</option>
+                                <option value="left">שמאל</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>יישור כותרת:</label>
+                            <select id="columnHeaderAlign" style="width: 100%;" onchange="updateColumnProperty('headerAlign', this.value)">
+                                <option value="right">ימין</option>
+                                <option value="center">מרכז</option>
+                                <option value="left">שמאל</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Font Settings -->
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h4>גופן</h4>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>משפחת גופן:</label>
+                            <select id="columnFontFamily" style="width: 100%;" onchange="updateColumnFont('family', this.value)">
+                                <option value="">ברירת מחדל</option>
+                                <option value="Arial Hebrew, Arial">Arial Hebrew</option>
+                                <option value="David, serif">David</option>
+                                <option value="Miriam, sans-serif">Miriam</option>
+                                <option value="Times New Roman, serif">Times New Roman</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>גודל גופן:</label>
+                            <input type="number" id="columnFontSize" min="8" max="24" style="width: 100%;" onchange="updateColumnFont('size', this.value)">
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="columnFontBold" onchange="updateColumnFont('bold', this.checked)">
+                                <strong>מודגש</strong>
+                            </label>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="columnFontItalic" onchange="updateColumnFont('italic', this.checked)">
+                                <em>נטוי</em>
+                            </label>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="columnFontUnderline" onchange="updateColumnFont('underline', this.checked)">
+                                <u>קו תחתון</u>
+                            </label>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>צבע טקסט:</label>
+                            <input type="color" id="columnFontColor" value="#000000" style="width: 100%;" onchange="updateColumnFont('color', this.value)">
+                        </div>
+                    </div>
+                    
+                    <!-- Border Settings -->
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h4>גבולות</h4>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>
+                                <input type="checkbox" id="borderAll" onchange="toggleAllBorders(this.checked)">
+                                כל הגבולות
+                            </label>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label>
+                                <input type="checkbox" id="borderTop" onchange="updateBorder('top', this.checked)">
+                                עליון
+                            </label>
+                            <label>
+                                <input type="checkbox" id="borderBottom" onchange="updateBorder('bottom', this.checked)">
+                                תחתון
+                            </label>
+                            <label>
+                                <input type="checkbox" id="borderLeft" onchange="updateBorder('left', this.checked)">
+                                שמאל
+                            </label>
+                            <label>
+                                <input type="checkbox" id="borderRight" onchange="updateBorder('right', this.checked)">
+                                ימין
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Other Settings -->
+                    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h4>הגדרות נוספות</h4>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>צבע רקע:</label>
+                            <input type="color" id="columnBackground" value="#ffffff" style="width: 100%;" onchange="updateColumnProperty('background', this.value)">
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>ריפוד (padding):</label>
+                            <input type="number" id="columnPadding" min="0" max="20" value="5" style="width: 100%;" onchange="updateColumnProperty('padding', this.value)">
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label>
+                                <input type="checkbox" id="columnWrap" onchange="updateColumnProperty('wrap', this.checked)">
+                                גלישת טקסט
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Welcome Message -->
+                <div id="columnEditorWelcome" style="text-align: center; padding: 40px; color: #999;">
+                    <i class="fas fa-columns fa-3x mb-3"></i>
+                    <h3>עיצוב טבלת הדפסה</h3>
+                    <p>הוסף עמודות חדשות או בחר עמודה קיימת לעריכה</p>
+                </div>
+            </div>
+            
+            <!-- Preview Panel -->
+            <div style="width: 400px; border-right: 1px solid #ddd; padding-right: 20px;">
+                <h3>תצוגה מקדימה</h3>
+                <div id="designerPreview" style="background: white; border: 1px solid #ddd; padding: 10px; min-height: 400px; overflow: auto;">
+                    <!-- Preview will be rendered here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer" style="display: flex; justify-content: space-between; padding: 15px;">
+            <div>
+                <button class="btn btn-success" onclick="applyDesignToPreview()">
+                    <i class="fas fa-check"></i> החל עיצוב
+                </button>
+                <button class="btn btn-primary" onclick="saveAsTemplate()">
+                    <i class="fas fa-save"></i> שמור כתבנית
+                </button>
+            </div>
+            <button class="btn btn-cancel" onclick="closePrintDesigner()">
+                <i class="fas fa-times"></i> ביטול
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Saved Checklists Modal -->
 <div id="savedChecklistsModal" class="modal">
@@ -5713,6 +6651,9 @@ function createAlternativePDF(htmlContent, fileName) {
                 </button>
                 <button class="tab-btn" onclick="switchPrintTab('settings')" data-tab="settings" style="padding: 8px 15px; border: none; background: transparent; margin-right: 5px; border-radius: 5px;">
                     <i class="fas fa-cog"></i> הגדרות
+                </button>
+                <button class="tab-btn" onclick="switchPrintTab('designer')" data-tab="designer" style="padding: 8px 15px; border: none; background: transparent; margin-right: 5px; border-radius: 5px;">
+                    <i class="fas fa-columns"></i> עיצוב טבלה
                 </button>
             </div>
             
@@ -5789,6 +6730,24 @@ function createAlternativePDF(htmlContent, fileName) {
                 <button class="btn btn-primary" onclick="resetPrintSettings()" style="width: 100%; margin-bottom: 10px;">
                     <i class="fas fa-undo"></i> איפוס הגדרות
                 </button>
+                
+                <button class="btn btn-success" onclick="openPrintDesigner()" style="width: 100%; margin-bottom: 10px;">
+                    <i class="fas fa-columns"></i> עיצוב טבלה מתקדם
+                </button>
+                
+                <!-- Template Management -->
+                <div style="border-top: 1px solid #ddd; padding-top: 15px; margin-top: 15px;">
+                    <h4 style="margin-bottom: 10px;">תבניות הדפסה</h4>
+                    <select id="printTemplateSelect" style="width: 100%; margin-bottom: 10px;" onchange="loadPrintTemplate(this.value)">
+                        <option value="">בחר תבנית...</option>
+                    </select>
+                    <button class="btn btn-sm" onclick="savePrintTemplate()" style="width: 48%; margin-right: 4%;">
+                        <i class="fas fa-save"></i> שמור
+                    </button>
+                    <button class="btn btn-sm" onclick="deleteCurrentTemplate()" style="width: 48%;">
+                        <i class="fas fa-trash"></i> מחק
+                    </button>
+                </div>
                 </div>
                 
                 <!-- Preview Area -->

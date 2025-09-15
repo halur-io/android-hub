@@ -1343,7 +1343,7 @@
 
 <!-- Main Action Cards -->
 <div class="main-actions">
-    <div class="action-card primary-card" id="generateChecklistBtn" onclick="showGenerateModal()">
+    <div class="action-card primary-card" id="generateChecklistBtn">
         <div class="card-icon">
             <i class="fas fa-file-alt"></i>
         </div>
@@ -1363,7 +1363,7 @@
         </div>
     </div>
     
-    <div class="action-card secondary-card" id="printDesignerBtn" onclick="openPrintDesigner()">
+    <div class="action-card secondary-card" id="printDesignerBtn">
         <div class="card-icon">
             <i class="fas fa-print"></i>
         </div>
@@ -6053,6 +6053,49 @@ window.applyPrintDesign = applyPrintDesign;
 
 <!-- Load external Print Designer script -->
 <script src="/static/js/print_designer.js" defer></script>
+
+<!-- Modern Delegated Event System - COMPLETELY BYPASS BROKEN ONCLICK HANDLERS -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== MODERN EVENT DELEGATION SYSTEM LOADED ===');
+    
+    // Explicitly ensure functions are globally available
+    window.showGenerateModal = showGenerateModal;
+    if (typeof openPrintDesigner !== 'undefined') {
+        window.openPrintDesigner = openPrintDesigner;
+    }
+    
+    // Delegated click handler with full diagnostics
+    document.addEventListener('click', function(e) {
+        const generateBtn = document.getElementById('generateChecklistBtn');
+        const printBtn = document.getElementById('printDesignerBtn');
+        
+        // Check if click is on or inside the generate button
+        if (generateBtn && (e.target === generateBtn || generateBtn.contains(e.target))) {
+            console.log('=== GENERATE BUTTON CLICKED VIA DELEGATION ===');
+            e.preventDefault();
+            if (typeof showGenerateModal === 'function') {
+                showGenerateModal();
+            } else {
+                console.error('showGenerateModal function not available');
+            }
+        }
+        
+        // Check if click is on or inside the print button
+        if (printBtn && (e.target === printBtn || printBtn.contains(e.target))) {
+            console.log('=== PRINT DESIGNER BUTTON CLICKED VIA DELEGATION ===');
+            e.preventDefault();
+            if (typeof window.openPrintDesigner === 'function') {
+                window.openPrintDesigner();
+            } else {
+                console.error('openPrintDesigner function not available');
+            }
+        }
+    }, true); // Use capture phase to catch clicks early
+    
+    console.log('Event delegation system ready');
+});
+</script>
 
 <!-- Simplified Print Designer Modal -->
 <div id="printDesignerModal" class="modal" style="display: none;">

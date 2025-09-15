@@ -5822,13 +5822,49 @@ let printTemplates = [];
 // Initialize print designer
 function openPrintDesigner() {
     console.log('openPrintDesigner called');
-    const modal = document.getElementById('printDesignerModal');
-    if (!modal) {
-        console.error('Print Designer modal not found!');
-        showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
-        return;
+    
+    // Try multiple ways to find and show the modal
+    try {
+        // First try getElementById
+        let modal = document.getElementById('printDesignerModal');
+        console.log('Modal found by ID:', modal);
+        
+        // If not found, try querySelector  
+        if (!modal) {
+            modal = document.querySelector('#printDesignerModal');
+            console.log('Modal found by querySelector:', modal);
+        }
+        
+        // If still not found, search all modals
+        if (!modal) {
+            const allModals = document.querySelectorAll('.modal');
+            console.log('All modals found:', allModals.length);
+            for (let m of allModals) {
+                if (m.id === 'printDesignerModal') {
+                    modal = m;
+                    console.log('Modal found in modal list');
+                    break;
+                }
+            }
+        }
+        
+        if (!modal) {
+            console.error('Print Designer modal not found after all attempts!');
+            showError('❌ לא ניתן לפתוח את עיצוב הטבלה - המודל לא נמצא');
+            return;
+        }
+        
+        // Force show the modal
+        console.log('Showing modal...');
+        modal.style.display = 'block';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '10000';
+        console.log('Modal display set to:', modal.style.display);
+    } catch (error) {
+        console.error('Error opening print designer:', error);
+        showError('❌ שגיאה בפתיחת עיצוב הטבלה');
     }
-    modal.style.display = 'block';
     
     // Load current config or create default
     if (!currentPrintConfig) {

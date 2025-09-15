@@ -6054,46 +6054,52 @@ window.applyPrintDesign = applyPrintDesign;
 <!-- Load external Print Designer script -->
 <script src="/static/js/print_designer.js" defer></script>
 
-<!-- Modern Delegated Event System - COMPLETELY BYPASS BROKEN ONCLICK HANDLERS -->
+<!-- DIRECT BUTTON BINDING - ULTIMATE FIX -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== MODERN EVENT DELEGATION SYSTEM LOADED ===');
+    console.log('=== DIRECT BUTTON BINDING STARTING ===');
     
-    // Explicitly ensure functions are globally available
-    window.showGenerateModal = showGenerateModal;
-    if (typeof openPrintDesigner !== 'undefined') {
-        window.openPrintDesigner = openPrintDesigner;
-    }
-    
-    // Delegated click handler with full diagnostics
-    document.addEventListener('click', function(e) {
+    // Wait for external scripts to load then bind directly
+    setTimeout(function() {
         const generateBtn = document.getElementById('generateChecklistBtn');
         const printBtn = document.getElementById('printDesignerBtn');
         
-        // Check if click is on or inside the generate button
-        if (generateBtn && (e.target === generateBtn || generateBtn.contains(e.target))) {
-            console.log('=== GENERATE BUTTON CLICKED VIA DELEGATION ===');
-            e.preventDefault();
-            if (typeof showGenerateModal === 'function') {
-                showGenerateModal();
-            } else {
-                console.error('showGenerateModal function not available');
-            }
+        console.log('Generate button found:', !!generateBtn);
+        console.log('Print button found:', !!printBtn);
+        
+        if (generateBtn) {
+            generateBtn.addEventListener('click', function(e) {
+                console.log('=== GENERATE BUTTON DIRECT CLICK ===');
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof showGenerateModal === 'function') {
+                    showGenerateModal();
+                } else {
+                    console.error('showGenerateModal not available');
+                }
+            });
+            console.log('Generate button handler attached');
         }
         
-        // Check if click is on or inside the print button
-        if (printBtn && (e.target === printBtn || printBtn.contains(e.target))) {
-            console.log('=== PRINT DESIGNER BUTTON CLICKED VIA DELEGATION ===');
-            e.preventDefault();
-            if (typeof window.openPrintDesigner === 'function') {
-                window.openPrintDesigner();
-            } else {
-                console.error('openPrintDesigner function not available');
-            }
+        if (printBtn) {
+            printBtn.addEventListener('click', function(e) {
+                console.log('=== PRINT BUTTON DIRECT CLICK ===');
+                e.preventDefault();
+                e.stopPropagation();
+                // Call the function from the external script
+                if (typeof window.openPrintDesigner === 'function') {
+                    window.openPrintDesigner();
+                } else {
+                    console.error('openPrintDesigner not available');
+                }
+            });
+            console.log('Print button handler attached');
         }
-    }, true); // Use capture phase to catch clicks early
-    
-    console.log('Event delegation system ready');
+        
+        // Make functions globally available
+        window.showGenerateModal = showGenerateModal;
+        
+    }, 500); // Give time for external scripts to load
 });
 </script>
 

@@ -5824,24 +5824,13 @@ let printTemplates = [];
 
 // Initialize print designer
 function openPrintDesigner() {
-    try {
-        alert('Starting openPrintDesigner function...');
-        
-        const modal = document.getElementById('printDesignerModal');
-        alert('Modal found: ' + (modal ? 'Yes' : 'No'));
-        
-        if (!modal) {
-            alert('Modal not found - showing error');
-            showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
-            return;
-        }
-        
-        alert('Setting modal display to block...');
-        modal.style.display = 'block';
-        alert('Modal should be visible now!');
-    } catch (error) {
-        alert('Error in openPrintDesigner: ' + error.message);
+    const modal = document.getElementById('printDesignerModal');
+    if (!modal) {
+        showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
+        return;
     }
+    
+    modal.style.display = 'block';
     
     // Load current config or create default
     if (!currentPrintConfig) {
@@ -5891,6 +5880,14 @@ function openPrintDesigner() {
 function closePrintDesigner() {
     document.getElementById('printDesignerModal').style.display = 'none';
 }
+
+// Setup event listeners when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const printDesignerBtn = document.getElementById('printDesignerBtn');
+    if (printDesignerBtn) {
+        printDesignerBtn.addEventListener('click', openPrintDesigner);
+    }
+});
 
 // Expose functions globally for onclick handlers
 window.openPrintDesigner = openPrintDesigner;
@@ -6755,7 +6752,7 @@ async function savePrintTemplate() {
                     <i class="fas fa-undo"></i> איפוס הגדרות
                 </button>
                 
-                <button class="btn btn-success" onclick="alert('Button clicked!'); try { window.openPrintDesigner(); } catch(e) { alert('Error: ' + e.message); }" style="width: 100%; margin-bottom: 10px;">
+                <button id="printDesignerBtn" class="btn btn-success" style="width: 100%; margin-bottom: 10px;">
                     <i class="fas fa-columns"></i> עיצוב טבלה מתקדם
                 </button>
                 

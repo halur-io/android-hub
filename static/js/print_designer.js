@@ -103,6 +103,9 @@
                 e.preventDefault();
                 openPrintDesigner();
             });
+            console.log('Print Designer click handler attached');
+        } else {
+            console.error('Print Designer button not found for event binding');
         }
     });
 

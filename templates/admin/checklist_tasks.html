@@ -4676,11 +4676,8 @@ async function reprintChecklist(checklistId) {
 }
 
 function openPrintPreview() {
-    console.log('Opening print preview with data:', {currentPrintData, currentBranch, currentSelectedGroups, currentAllTasks});
-    
     const modal = document.getElementById('printPreviewModal');
     if (!modal) {
-        console.error('Print preview modal not found');
         showError('❌ לא ניתן לפתוח תצוגה מקדימה');
         return;
     }
@@ -4882,10 +4879,7 @@ function initializePreviewListeners() {
 }
 
 function updatePreview() {
-    console.log('updatePreview called', {currentPrintData, currentBranch, currentSelectedGroups, currentAllTasks});
-    
     if (!currentPrintData) {
-        console.error('No print data available');
         const errorHtml = '<div style="padding: 20px; text-align: center;">אין נתונים להצגה</div>';
         const desktopPreview = document.getElementById('printPreviewContent');
         const mobilePreview = document.getElementById('mobilePreviewContent');
@@ -4930,15 +4924,24 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
+    // Handle branch name properly
+    let branchName = '___________';
+    if (branch) {
+        branchName = branch.name_he || branch.name_en || branch.name || '___________';
+    }
+    
+    // Ensure data.name doesn't get cut off
+    const titleName = data && data.name ? data.name : '___________';
+    
     return `
         <div style="padding: ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed;">
             <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
-                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
-                <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
-                    <span style="font-size: ${settings.fontSize}px;"><strong>תאריך:</strong> ${data.date || '___________'}</span>
-                    <span style="font-size: ${settings.fontSize}px;"><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
-                    <span style="font-size: ${settings.fontSize}px;"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
-                    <span style="font-size: ${settings.fontSize}px;"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>
+                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold; white-space: normal; overflow: visible; width: 100%;">${titleName}</h1>
+                <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; width: 100%;">
+                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>תאריך:</strong> ${data.date || '___________'}</span>
+                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>סניף:</strong> ${branchName}</span>
+                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
+                    <span style="font-size: ${settings.fontSize}px; white-space: nowrap;"><strong>סה"כ:</strong> ${allTasks.length} משימות</span>
                 </div>
             </div>
             
@@ -5821,50 +5824,13 @@ let printTemplates = [];
 
 // Initialize print designer
 function openPrintDesigner() {
-    console.log('openPrintDesigner called');
-    
-    // Try multiple ways to find and show the modal
-    try {
-        // First try getElementById
-        let modal = document.getElementById('printDesignerModal');
-        console.log('Modal found by ID:', modal);
-        
-        // If not found, try querySelector  
-        if (!modal) {
-            modal = document.querySelector('#printDesignerModal');
-            console.log('Modal found by querySelector:', modal);
-        }
-        
-        // If still not found, search all modals
-        if (!modal) {
-            const allModals = document.querySelectorAll('.modal');
-            console.log('All modals found:', allModals.length);
-            for (let m of allModals) {
-                if (m.id === 'printDesignerModal') {
-                    modal = m;
-                    console.log('Modal found in modal list');
-                    break;
-                }
-            }
-        }
-        
-        if (!modal) {
-            console.error('Print Designer modal not found after all attempts!');
-            showError('❌ לא ניתן לפתוח את עיצוב הטבלה - המודל לא נמצא');
-            return;
-        }
-        
-        // Force show the modal
-        console.log('Showing modal...');
-        modal.style.display = 'block';
-        modal.style.visibility = 'visible';
-        modal.style.opacity = '1';
-        modal.style.zIndex = '10000';
-        console.log('Modal display set to:', modal.style.display);
-    } catch (error) {
-        console.error('Error opening print designer:', error);
-        showError('❌ שגיאה בפתיחת עיצוב הטבלה');
+    const modal = document.getElementById('printDesignerModal');
+    if (!modal) {
+        showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
+        return;
     }
+    
+    modal.style.display = 'block';
     
     // Load current config or create default
     if (!currentPrintConfig) {

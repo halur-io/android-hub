@@ -1315,8 +1315,10 @@
     }
     
     .print-preview-container {
-        height: calc(100vh - 220px) !important;
+        height: calc(85vh - 170px) !important;
         padding-bottom: 20px !important;
+        flex: 1 !important;
+        overflow-y: auto !important;
     }
     
     .mobile-tab-content[data-tab="preview"] {
@@ -1325,8 +1327,13 @@
     
     /* Ensure modal doesn't get cut off */
     .print-preview-modal {
-        max-height: 100vh !important;
+        max-height: calc(100vh - 100px) !important;
+        height: 85vh !important;
         overflow: hidden !important;
+        margin: 20px auto !important;
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     
     /* Mobile responsiveness for form buttons */
@@ -1349,7 +1356,7 @@
         }
         
         .print-preview-container {
-            height: calc(100vh - 180px) !important;
+            height: calc(85vh - 140px) !important;
         }
     }
     
@@ -1361,7 +1368,7 @@
         }
         
         .print-preview-container {
-            height: calc(100vh - 160px) !important;
+            height: calc(85vh - 120px) !important;
         }
     }
     
@@ -5746,7 +5753,7 @@ function createAlternativePDF(htmlContent, fileName) {
 
 <!-- Print Preview Panel Modal -->
 <div id="printPreviewModal" class="modal" style="display: none;">
-    <div class="modal-content print-preview-modal" style="max-width: 95%; width: 95%; height: 90vh; overflow: hidden;">
+    <div class="modal-content print-preview-modal" style="max-width: 95%; width: 95%; height: 85vh; max-height: calc(100vh - 100px); overflow: hidden; position: relative; top: 20px;">
         <div class="modal-header" style="padding: 10px 15px;">
             <h2 style="font-size: 18px; margin: 0;">תצוגה מקדימה והגדרות הדפסה</h2>
             <button type="button" class="btn btn-sm" onclick="closePrintPreview()" style="position: absolute; left: 10px; top: 10px;">

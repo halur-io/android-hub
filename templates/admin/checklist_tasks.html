@@ -4949,9 +4949,9 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
                             ${group.name} (${group.tasks.length})
                         </div>
                         ${group.tasks.map(task => `
-                            <div style="display: flex; align-items: flex-start; margin-bottom: ${compactSpacing ? '0' : '1px'}; padding: ${compactSpacing ? '0' : '1px'} 0;">
-                                <div style="width: ${settings.fontSize - 1}px; height: ${settings.fontSize - 1}px; border: 1px solid #000; margin-right: 3px; flex-shrink: 0; margin-top: 1px;"></div>
-                                <div style="font-size: ${settings.fontSize}px; flex: 1; line-height: ${compactSpacing ? '1.1' : '1.15'}; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; text-align: right;">${task.name}</div>
+                            <div style="display: flex; align-items: center; margin-bottom: ${compactSpacing ? '2px' : '4px'}; padding: ${compactSpacing ? '2px' : '4px'} 0; direction: rtl;">
+                                <div style="width: 18px; height: 18px; border: 2px solid #000; margin-left: 15px; margin-right: 10px; flex-shrink: 0; border-radius: 2px;"></div>
+                                <div style="font-size: ${settings.fontSize}px; flex: 1; line-height: ${compactSpacing ? '1.3' : '1.5'}; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; text-align: right;">${task.name}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -5053,6 +5053,9 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
                     word-spacing: normal;
                     letter-spacing: 0.05em;
                     white-space: normal;
+                    max-width: 210mm;
+                    margin: 0 auto;
+                    padding: 10mm;
                 }
                 @media print {
                     body { 
@@ -5491,6 +5494,8 @@ function generatePDFDirectly(htmlContent, fileName) {
             color: #000;
             background: white;
             padding: 10mm;
+            max-width: 210mm;
+            margin: 0 auto;
         }
         
         /* Print styles */
@@ -5572,11 +5577,12 @@ function generatePDFDirectly(htmlContent, fileName) {
         }
         
         .task-item, .group-task-item {
-            padding: 8px 15px;
+            padding: 10px 15px;
             border-bottom: 1px solid #eee;
             display: flex;
             align-items: center;
-            min-height: 35px;
+            min-height: 40px;
+            direction: rtl;
         }
         
         .task-item:last-child, .group-task-item:last-child {
@@ -5584,12 +5590,14 @@ function generatePDFDirectly(htmlContent, fileName) {
         }
         
         .checkbox {
-            width: 15px;
-            height: 15px;
-            border: 1px solid #333;
-            margin-left: 10px;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            margin-left: 20px;
+            margin-right: 15px;
             display: inline-block;
             flex-shrink: 0;
+            border-radius: 2px;
         }
         
         .task-name {

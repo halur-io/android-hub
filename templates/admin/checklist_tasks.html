@@ -5824,13 +5824,24 @@ let printTemplates = [];
 
 // Initialize print designer
 function openPrintDesigner() {
-    const modal = document.getElementById('printDesignerModal');
-    if (!modal) {
-        showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
-        return;
+    try {
+        alert('Starting openPrintDesigner function...');
+        
+        const modal = document.getElementById('printDesignerModal');
+        alert('Modal found: ' + (modal ? 'Yes' : 'No'));
+        
+        if (!modal) {
+            alert('Modal not found - showing error');
+            showError('❌ לא ניתן לפתוח את עיצוב הטבלה');
+            return;
+        }
+        
+        alert('Setting modal display to block...');
+        modal.style.display = 'block';
+        alert('Modal should be visible now!');
+    } catch (error) {
+        alert('Error in openPrintDesigner: ' + error.message);
     }
-    
-    modal.style.display = 'block';
     
     // Load current config or create default
     if (!currentPrintConfig) {

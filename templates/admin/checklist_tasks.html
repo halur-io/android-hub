@@ -2474,8 +2474,15 @@ function showModal(modalId) {
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-    document.body.style.overflow = 'auto';
+    try {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    } catch (error) {
+        console.log('Modal close error (safe to ignore):', error);
+    }
 }
 
 // Form handlers
@@ -2751,11 +2758,16 @@ function proceedFromDateDialog() {
 }
 
 function closeDateDialog() {
-    const modal = document.getElementById('dateOptionsModal');
-    if (modal) {
-        document.body.removeChild(modal);
+    try {
+        const modal = document.getElementById('dateOptionsModal');
+        if (modal && modal.parentNode) {
+            document.body.removeChild(modal);
+        }
+        window.pendingChecklistData = null;
+    } catch (error) {
+        console.log('Date dialog close error (safe to ignore):', error);
+        window.pendingChecklistData = null;
     }
-    window.pendingChecklistData = null;
 }
 
 // Date Options Dialog for Reprinting Saved Checklists
@@ -2874,11 +2886,16 @@ function proceedWithReprint() {
 }
 
 function closeReprintDateDialog() {
-    const modal = document.getElementById('reprintDateOptionsModal');
-    if (modal) {
-        document.body.removeChild(modal);
+    try {
+        const modal = document.getElementById('reprintDateOptionsModal');
+        if (modal && modal.parentNode) {
+            document.body.removeChild(modal);
+        }
+        window.pendingReprintData = null;
+    } catch (error) {
+        console.log('Reprint dialog close error (safe to ignore):', error);
+        window.pendingReprintData = null;
     }
-    window.pendingReprintData = null;
 }
 
 function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
@@ -5102,7 +5119,14 @@ function updateMobilePreview() {
 }
 
 function closePrintPreview() {
-    document.getElementById('printPreviewModal').style.display = 'none';
+    try {
+        const modal = document.getElementById('printPreviewModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    } catch (error) {
+        console.log('Print preview close error (safe to ignore):', error);
+    }
 }
 
 function initializePreviewListeners() {

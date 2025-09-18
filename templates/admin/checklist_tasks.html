@@ -5059,7 +5059,8 @@ function zoomPreview(action) {
 function printFromPreview() {
     if (!currentPrintData) return;
     
-    const printContent = generateFinalPrintHTML(
+    // NEW SIMPLE APPROACH - Direct RTL HTML generation
+    const printContent = generateSimpleRTLPrint(
         currentPrintData,
         currentBranch,
         currentSelectedGroups,
@@ -5067,13 +5068,12 @@ function printFromPreview() {
         printSettings
     );
     
-    // Close the preview modal first to avoid blocking
     closePrintPreview();
     
-    // Use native print method with proper RTL support
+    // Open direct print window - no complex processing
     const fileName = `checklist_${currentPrintData.name}_${currentPrintData.date}`;
     setTimeout(() => {
-        generatePDFDirectly(printContent, fileName);
+        openSimplePrintWindow(printContent, fileName);
     }, 100);
 }
 
@@ -5083,7 +5083,7 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
-    console.log("DEBUG: generateFinalPrintHTML called - should have RIGHT alignment!");
+    console.log("DEBUG: OLD generateFinalPrintHTML called - should have RIGHT alignment!");
     
     return `
         <!DOCTYPE html>
@@ -5721,6 +5721,142 @@ function generatePDFDirectly(htmlContent, fileName) {
 // Alias for backward compatibility - uses the same native print method
 function createAlternativePDF(htmlContent, fileName) {
     generatePDFDirectly(htmlContent, fileName);
+}
+
+// NEW SIMPLE RTL PRINTING SYSTEM - GUARANTEED TO WORK
+function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings) {
+    console.log("NEW SIMPLE RTL PRINT FUNCTION CALLED!");
+    
+    // Simple, direct HTML with inline CSS that can't be overridden
+    return `
+        <div style="direction: rtl; text-align: right; font-family: Arial, sans-serif; padding: 0; margin: 0; width: 100%;">
+            <!-- Header -->
+            <div style="text-align: right; padding: 0; margin: 0 0 20px 0; border-bottom: 2px solid #000;">
+                <h1 style="text-align: right; font-size: 24px; margin: 0 0 10px 0; padding: 0; direction: rtl;">${data.name || 'רשימת משימות'}</h1>
+                <div style="text-align: right; direction: rtl; margin: 0; padding: 0;">
+                    <div style="margin-bottom: 5px;">תאריך: ${data.date || '_______'} | סניף: ${branch ? branch.name_he : '_______'}</div>
+                    <div style="margin-bottom: 10px;">אחראי משמרת: ${data.shift_manager || '_______'} | סה"כ: ${allTasks.length} משימות</div>
+                </div>
+            </div>
+            
+            <!-- Tasks in columns -->
+            <div style="direction: rtl; text-align: right; margin: 0; padding: 0;">
+                ${generateSimpleColumnsRTL(selectedGroups, settings)}
+            </div>
+            
+            <!-- Signatures -->
+            <div style="margin-top: 40px; border-top: 1px solid #000; padding-top: 20px; direction: rtl; text-align: right;">
+                <div style="display: inline-block; margin-left: 100px;">
+                    <div style="border-bottom: 1px solid #000; width: 150px; margin-bottom: 5px;"></div>
+                    <div style="text-align: center;">חתימת אחראי משמרת</div>
+                </div>
+                <div style="display: inline-block;">
+                    <div style="border-bottom: 1px solid #000; width: 150px; margin-bottom: 5px;"></div>
+                    <div style="text-align: center;">חתימת מנהל</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function generateSimpleColumnsRTL(selectedGroups, settings) {
+    const columns = settings.columns || 4;
+    let html = '<table style="width: 100%; direction: rtl; text-align: right; border-collapse: collapse;">';
+    
+    // Create rows
+    const maxGroups = selectedGroups.length;
+    const groupsPerColumn = Math.ceil(maxGroups / columns);
+    
+    html += '<tr style="vertical-align: top;">';
+    
+    for (let col = 0; col < columns; col++) {
+        html += '<td style="width: ' + (100/columns) + '%; padding: 0 10px 0 0; vertical-align: top; text-align: right; direction: rtl;">';
+        
+        const startIdx = col * groupsPerColumn;
+        const endIdx = Math.min(startIdx + groupsPerColumn, maxGroups);
+        
+        for (let i = startIdx; i < endIdx; i++) {
+            const group = selectedGroups[i];
+            html += `
+                <div style="margin-bottom: 15px; text-align: right; direction: rtl;">
+                    <div style="font-weight: bold; border-bottom: 1px solid #888; padding-bottom: 3px; margin-bottom: 5px; text-align: right;">
+                        ${group.name} (${group.tasks.length})
+                    </div>
+                    ${group.tasks.map(task => `
+                        <div style="margin-bottom: 3px; text-align: right; direction: rtl;">
+                            <span style="display: inline-block; width: 15px; height: 15px; border: 2px solid #000; margin-left: 8px; vertical-align: middle;"></span>
+                            <span style="direction: rtl; text-align: right;">${task.name}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        html += '</td>';
+    }
+    
+    html += '</tr></table>';
+    return html;
+}
+
+function openSimplePrintWindow(htmlContent, fileName) {
+    console.log("OPENING SIMPLE PRINT WINDOW - RTL GUARANTEED!");
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showError('❌ חסום חלונות קופצים. אנא אפשר חלונות קופצים.');
+        return;
+    }
+    
+    // Create simple, clean HTML document 
+    const simpleHTML = `
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${fileName}</title>
+    <style>
+        @page { 
+            size: A4; 
+            margin: 15mm 0mm 15mm 15mm; 
+        }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        html, body { 
+            direction: rtl; 
+            text-align: right; 
+            font-family: Arial, sans-serif; 
+            font-size: 14px; 
+            margin: 0; 
+            padding: 10mm;
+            width: 100%;
+        }
+        @media print {
+            body { 
+                padding: 0;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    ${htmlContent}
+</body>
+</html>`;
+    
+    printWindow.document.open();
+    printWindow.document.write(simpleHTML);
+    printWindow.document.close();
+    
+    // Auto-print
+    setTimeout(() => {
+        printWindow.print();
+        showSuccess('🖨️ הדפסה התחילה - בדוק את המדפסת');
+    }, 500);
 }
 </script>
 

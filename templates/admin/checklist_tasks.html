@@ -2561,7 +2561,7 @@ async function deleteTask(taskId) {
     deleteTaskMobile(taskId);
 }
 
-// Generate checklist
+// Generate checklist - first show date options dialog
 async function generateChecklist(data) {
     const selectedGroups = taskGroups.filter(group => data.selected_groups.includes(group.id));
     const branch = branches.find(b => b.id === data.branch_id);
@@ -2570,6 +2570,13 @@ async function generateChecklist(data) {
         showError('❌ לא נמצאו קבוצות נבחרות');
         return;
     }
+    
+    // Show date options dialog instead of proceeding directly
+    showDateOptionsDialog(data, selectedGroups, branch);
+}
+
+// Continue with checklist generation after date selection
+async function proceedWithChecklistGeneration(data, selectedGroups, branch) {
     
     // Collect all tasks from selected groups
     let allSelectedTasks = [];
@@ -2618,17 +2625,17 @@ async function generateChecklist(data) {
         
         if (response.ok) {
             const result = await response.json();
-            showSuccess('💾 הרשימה נשמרה בהצלחה! עכשיו מדפיס...');
+            showSuccess('💾 הרשימה נשמרה בהצלחה! עכשיו מציג תצוגה מקדימה...');
             
-            // Generate print-ready HTML  
-            const printContent = generateMultiGroupPrintHTML(data, branch, selectedGroups, allSelectedTasks);
+            // Store data for print preview
+            currentPrintData = data;
+            currentBranch = branch;
+            currentSelectedGroups = selectedGroups;
+            currentAllTasks = allSelectedTasks;
             
-            // Mobile-aware printing with fallbacks
-            if (isMobileDevice()) {
-                handleMobilePrint(printContent, data.name);
-            } else {
-                handleDesktopPrint(printContent);
-            }
+            // Open print preview instead of direct printing
+            openPrintPreview();
+            
         } else {
             const error = await response.json();
             showError('❌ ' + (error.error || 'לא ניתן לשמור את הרשימה'));
@@ -2637,6 +2644,118 @@ async function generateChecklist(data) {
         console.error('Error saving checklist:', error);
         showError('❌ בעיה ברשת. אנא בדוק את החיבור לאינטרנט ונסה שוב.');
     }
+}
+
+// Date Options Dialog - Ask user whether to include date
+function showDateOptionsDialog(originalData, selectedGroups, branch) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.style.zIndex = '2000';
+    modal.id = 'dateOptionsModal';
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 450px; margin: 5% auto; padding: 20px; direction: rtl; text-align: right; border-radius: 10px;">
+            <h3 style="margin-bottom: 20px; text-align: center; color: #333;">⚙️ הגדרות הדפסה</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; transition: all 0.2s;">
+                    <input type="checkbox" id="includeDateCheck" checked style="margin-left: 10px; transform: scale(1.2);">
+                    <span style="font-weight: 500;">כלול תאריך ברשימה</span>
+                </label>
+            </div>
+            
+            <div id="datePickerSection" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">בחר תאריך:</label>
+                <input type="date" id="selectedDate" value="${today}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; direction: ltr; font-size: 14px;">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">שם הרשימה:</label>
+                <input type="text" id="dialogChecklistName" value="${originalData.name || 'רשימת משימות'}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; text-align: right; font-size: 14px;">
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">אחראי משמרת:</label>
+                <input type="text" id="dialogShiftManager" value="${originalData.shift_manager || ''}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; text-align: right; font-size: 14px;"
+                       placeholder="השאר ריק למילוי ידני בהדפסה">
+            </div>
+            
+            <div style="text-align: center; gap: 12px; display: flex; justify-content: center;">
+                <button onclick="proceedFromDateDialog()" class="btn btn-success" style="padding: 12px 25px; font-weight: bold; border-radius: 6px;">
+                    📋 המשך להדפסה
+                </button>
+                <button onclick="closeDateDialog()" class="btn btn-secondary" style="padding: 12px 25px; border-radius: 6px;">
+                    ❌ ביטול
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Handle checkbox toggle with smooth animation
+    const checkbox = document.getElementById('includeDateCheck');
+    const dateSection = document.getElementById('datePickerSection');
+    const checkboxLabel = checkbox.parentElement;
+    
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            dateSection.style.display = 'block';
+            dateSection.style.opacity = '1';
+            checkboxLabel.style.borderColor = '#28a745';
+            checkboxLabel.style.backgroundColor = '#f8fff8';
+        } else {
+            dateSection.style.display = 'none';
+            dateSection.style.opacity = '0';
+            checkboxLabel.style.borderColor = '#e1e5e9';
+            checkboxLabel.style.backgroundColor = 'white';
+        }
+    });
+    
+    // Store data for later use
+    window.pendingChecklistData = {
+        originalData: originalData,
+        selectedGroups: selectedGroups,
+        branch: branch
+    };
+}
+
+function proceedFromDateDialog() {
+    const includeDate = document.getElementById('includeDateCheck').checked;
+    const selectedDate = document.getElementById('selectedDate').value;
+    const checklistName = document.getElementById('dialogChecklistName').value;
+    const shiftManager = document.getElementById('dialogShiftManager').value;
+    
+    // Update the data with user choices
+    const updatedData = {
+        ...window.pendingChecklistData.originalData,
+        name: checklistName || 'רשימת משימות',
+        date: includeDate ? new Date(selectedDate).toLocaleDateString('he-IL') : null,
+        shift_manager: shiftManager
+    };
+
+    closeDateDialog();
+    
+    // Continue with checklist generation
+    proceedWithChecklistGeneration(
+        updatedData, 
+        window.pendingChecklistData.selectedGroups, 
+        window.pendingChecklistData.branch
+    );
+}
+
+function closeDateDialog() {
+    const modal = document.getElementById('dateOptionsModal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+    window.pendingChecklistData = null;
 }
 
 function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
@@ -5735,9 +5854,17 @@ function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings
     
     // Escape all user inputs for security
     const safeName = escapeHtml(data.name) || 'רשימת משימות';
-    const safeDate = escapeHtml(data.date) || '_______';
+    const safeDate = data.date ? escapeHtml(data.date) : null;
     const safeBranchName = branch ? escapeHtml(branch.name_he) : '_______';
     const safeShiftManager = escapeHtml(data.shift_manager) || '_______';
+    
+    // Build header info dynamically based on user choices
+    let headerInfo = '';
+    if (safeDate) {
+        headerInfo = `תאריך: ${safeDate} | סניף: ${safeBranchName}`;
+    } else {
+        headerInfo = `תאריך: _______ | סניף: ${safeBranchName}`;
+    }
     
     // Simple, direct HTML with inline CSS that can't be overridden
     return `
@@ -5746,7 +5873,7 @@ function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings
             <div style="text-align: right; padding: 0; margin: 0 0 20px 0; border-bottom: 2px solid #000;">
                 <h1 style="text-align: right; font-size: 24px; margin: 0 0 10px 0; padding: 0; direction: rtl;">${safeName}</h1>
                 <div style="text-align: right; direction: rtl; margin: 0; padding: 0;">
-                    <div style="margin-bottom: 5px;">תאריך: ${safeDate} | סניף: ${safeBranchName}</div>
+                    <div style="margin-bottom: 5px;">${headerInfo}</div>
                     <div style="margin-bottom: 10px;">אחראי משמרת: ${safeShiftManager} | סה"כ: ${allTasks.length} משימות</div>
                 </div>
             </div>

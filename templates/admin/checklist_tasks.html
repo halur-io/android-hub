@@ -6243,19 +6243,21 @@ function generateTableFormatRTL(selectedGroups, settings) {
     let html = `
         <div style="direction: rtl; text-align: right;">
             <!-- Header Section -->
-            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
-                <h1 style="font-size: 20px; margin-bottom: 10px; font-weight: bold;">${escapeHtml(settings.title)}</h1>
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-top: 10px;">
-                    <div style="text-align: right;">
-                        <strong>סניף:</strong> ${escapeHtml(settings.branch)}
-                    </div>
-                    <div style="text-align: center;">
-                        <strong>תאריך:</strong> ________________
-                    </div>
-                    <div style="text-align: left;">
-                        <strong>מנהל משמרת:</strong> ________________
-                    </div>
-                </div>
+            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; direction: rtl;">
+                <h1 style="font-size: 20px; margin-bottom: 15px; font-weight: bold;">${escapeHtml(settings.title)}</h1>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <tr>
+                        <td style="text-align: right; width: 33%; padding: 5px;">
+                            <strong>סניף:</strong> ${escapeHtml(settings.branch)}
+                        </td>
+                        <td style="text-align: center; width: 34%; padding: 5px;">
+                            <strong>תאריך:</strong> ________________
+                        </td>
+                        <td style="text-align: left; width: 33%; padding: 5px;">
+                            <strong>מנהל משמרת:</strong> ________________
+                        </td>
+                    </tr>
+                </table>
             </div>
             
             <table style="width: 100%; border-collapse: separate; border-spacing: 0; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px;">
@@ -6335,19 +6337,23 @@ function generateTableFormatRTL(selectedGroups, settings) {
             </table>
             
             <!-- Signature Section -->
-            <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; font-size: 12px;">
-                <div style="text-align: right;">
-                    <strong>חתימת מנהל משמרת:</strong><br>
-                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 150px; height: 20px;"></div>
-                </div>
-                <div style="text-align: center;">
-                    <strong>תאריך סיום:</strong><br>
-                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 100px; height: 20px;"></div>
-                </div>
-                <div style="text-align: left;">
-                    <strong>שעת סיום:</strong><br>
-                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 80px; height: 20px;"></div>
-                </div>
+            <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; direction: rtl;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <tr>
+                        <td style="text-align: right; width: 33%; vertical-align: top; padding: 5px;">
+                            <strong>חתימת מנהל משמרת:</strong><br>
+                            <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 150px; height: 25px;"></div>
+                        </td>
+                        <td style="text-align: center; width: 34%; vertical-align: top; padding: 5px;">
+                            <strong>תאריך סיום:</strong><br>
+                            <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 100px; height: 25px; margin: 10px auto 0;"></div>
+                        </td>
+                        <td style="text-align: left; width: 33%; vertical-align: top; padding: 5px;">
+                            <strong>שעת סיום:</strong><br>
+                            <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 80px; height: 25px; margin-left: auto;"></div>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </div>
     `;

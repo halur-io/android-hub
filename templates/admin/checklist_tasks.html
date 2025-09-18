@@ -2980,10 +2980,7 @@ function showColumnSettings() {
 }
 
 function applyColumnSettings() {
-    console.log('DEBUG: applyColumnSettings called');
-    
     const enableTable = document.getElementById('enableTableMode').checked;
-    console.log('DEBUG: enableTable =', enableTable);
     
     // Update column settings
     columnSettings.enabled = enableTable;
@@ -2992,26 +2989,20 @@ function applyColumnSettings() {
         const checkbox = document.getElementById(`col_${col.id}`);
         if (checkbox && !checkbox.disabled) {
             col.enabled = checkbox.checked;
-            console.log(`DEBUG: Column ${col.id} enabled:`, col.enabled);
         }
     });
-    
-    console.log('DEBUG: Final columnSettings:', columnSettings);
     
     closeColumnSettings();
     
     // Refresh the preview with new settings
-    console.log('DEBUG: About to call updatePreview');
     updatePreview();
     
     // Show feedback
     if (enableTable) {
         const enabledColumns = columnSettings.columns.filter(col => col.enabled).length;
         showSuccess(`✅ מצב טבלה הופעל! ${enabledColumns} עמודות נבחרו`);
-        console.log('DEBUG: Table mode enabled with', enabledColumns, 'columns');
     } else {
         showSuccess('✅ חזרה למצב רשימה רגילה');
-        console.log('DEBUG: Returned to list mode');
     }
 }
 
@@ -5346,10 +5337,6 @@ function updatePreview() {
     }
     
     try {
-        console.log('DEBUG: About to call generateSimpleColumnsRTL from updatePreview');
-        console.log('DEBUG: currentSelectedGroups:', currentSelectedGroups);
-        console.log('DEBUG: currentPrintData:', currentPrintData);
-        
         const previewContent = generateSimpleColumnsRTL(
             currentSelectedGroups, 
             {
@@ -5360,8 +5347,6 @@ function updatePreview() {
                 columns: printSettings.columns || 4
             }
         );
-        
-        console.log('DEBUG: previewContent generated, length:', previewContent.length);
         
         // Update desktop preview
         const desktopPreviewElement = document.getElementById('printPreviewContent');
@@ -6193,12 +6178,9 @@ function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings
 
 function generateSimpleColumnsRTL(selectedGroups, settings) {
     // Check if table mode is enabled
-    console.log('DEBUG: generateSimpleColumnsRTL called with columnSettings.enabled =', columnSettings.enabled);
     if (columnSettings.enabled) {
-        console.log('DEBUG: Using table format');
         return generateTableFormatRTL(selectedGroups, settings);
     } else {
-        console.log('DEBUG: Using list format');
         return generateListFormatRTL(selectedGroups, settings);
     }
 }
@@ -6260,12 +6242,12 @@ function generateTableFormatRTL(selectedGroups, settings) {
     
     let html = `
         <div style="direction: rtl; text-align: right;">
-            <table style="width: 100%; border-collapse: collapse; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px;">
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px;">
                 <!-- Table Header -->
                 <thead>
                     <tr style="background: #f8f9fa; border-bottom: 2px solid #333;">
                         ${enabledColumns.map(col => `
-                            <th style="border: 1px solid #333; padding: 8px; font-weight: bold; text-align: right; width: ${col.width};">
+                            <th style="padding: 12px 8px; font-weight: bold; text-align: right; width: ${col.width};">
                                 ${col.name}
                             </th>
                         `).join('')}
@@ -6283,17 +6265,17 @@ function generateTableFormatRTL(selectedGroups, settings) {
             currentGroup = task.groupName;
             html += `
                 <tr style="background: ${task.groupColor}20; border-top: 2px solid ${task.groupColor};">
-                    <td colspan="${enabledColumns.length}" style="border: 1px solid #333; padding: 10px; font-weight: bold; text-align: right; color: ${task.groupColor};">
+                    <td colspan="${enabledColumns.length}" style="padding: 12px 8px; font-weight: bold; text-align: right; color: ${task.groupColor};">
                         📋 ${escapeHtml(task.groupName)}
                     </td>
                 </tr>`;
         }
         
         // Add task row
-        html += `<tr style="border-bottom: 1px solid #ddd;">`;
+        html += `<tr>`;
         
         enabledColumns.forEach(col => {
-            html += `<td style="border: 1px solid #333; padding: 6px; text-align: right; vertical-align: middle;">`;
+            html += `<td style="padding: 10px 8px; text-align: right; vertical-align: middle;">`;
             
             switch(col.id) {
                 case 'checkbox':

@@ -4978,7 +4978,6 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
-    console.log("DEBUG: generateCustomPrintHTML called - using RIGHT alignment");
     
     return `
         <div style="padding: ${settings.margin}mm 0mm ${settings.margin}mm ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; margin: 0; width: 100%;">
@@ -5083,7 +5082,6 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
-    console.log("DEBUG: OLD generateFinalPrintHTML called - should have RIGHT alignment!");
     
     return `
         <!DOCTYPE html>
@@ -5723,19 +5721,33 @@ function createAlternativePDF(htmlContent, fileName) {
     generatePDFDirectly(htmlContent, fileName);
 }
 
+// HTML escaping function for security
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // NEW SIMPLE RTL PRINTING SYSTEM - GUARANTEED TO WORK
 function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings) {
     console.log("NEW SIMPLE RTL PRINT FUNCTION CALLED!");
+    
+    // Escape all user inputs for security
+    const safeName = escapeHtml(data.name) || 'רשימת משימות';
+    const safeDate = escapeHtml(data.date) || '_______';
+    const safeBranchName = branch ? escapeHtml(branch.name_he) : '_______';
+    const safeShiftManager = escapeHtml(data.shift_manager) || '_______';
     
     // Simple, direct HTML with inline CSS that can't be overridden
     return `
         <div style="direction: rtl; text-align: right; font-family: Arial, sans-serif; padding: 0; margin: 0; width: 100%;">
             <!-- Header -->
             <div style="text-align: right; padding: 0; margin: 0 0 20px 0; border-bottom: 2px solid #000;">
-                <h1 style="text-align: right; font-size: 24px; margin: 0 0 10px 0; padding: 0; direction: rtl;">${data.name || 'רשימת משימות'}</h1>
+                <h1 style="text-align: right; font-size: 24px; margin: 0 0 10px 0; padding: 0; direction: rtl;">${safeName}</h1>
                 <div style="text-align: right; direction: rtl; margin: 0; padding: 0;">
-                    <div style="margin-bottom: 5px;">תאריך: ${data.date || '_______'} | סניף: ${branch ? branch.name_he : '_______'}</div>
-                    <div style="margin-bottom: 10px;">אחראי משמרת: ${data.shift_manager || '_______'} | סה"כ: ${allTasks.length} משימות</div>
+                    <div style="margin-bottom: 5px;">תאריך: ${safeDate} | סניף: ${safeBranchName}</div>
+                    <div style="margin-bottom: 10px;">אחראי משמרת: ${safeShiftManager} | סה"כ: ${allTasks.length} משימות</div>
                 </div>
             </div>
             
@@ -5780,12 +5792,12 @@ function generateSimpleColumnsRTL(selectedGroups, settings) {
             html += `
                 <div style="margin-bottom: 15px; text-align: right; direction: rtl;">
                     <div style="font-weight: bold; border-bottom: 1px solid #888; padding-bottom: 3px; margin-bottom: 5px; text-align: right;">
-                        ${group.name} (${group.tasks.length})
+                        ${escapeHtml(group.name)} (${group.tasks.length})
                     </div>
                     ${group.tasks.map(task => `
                         <div style="margin-bottom: 3px; text-align: right; direction: rtl;">
                             <span style="display: inline-block; width: 15px; height: 15px; border: 2px solid #000; margin-left: 8px; vertical-align: middle;"></span>
-                            <span style="direction: rtl; text-align: right;">${task.name}</span>
+                            <span style="direction: rtl; text-align: right;">${escapeHtml(task.name)}</span>
                         </div>
                     `).join('')}
                 </div>

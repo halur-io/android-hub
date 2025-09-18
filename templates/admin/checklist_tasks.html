@@ -5347,6 +5347,9 @@ function updatePreview() {
     
     try {
         console.log('DEBUG: About to call generateSimpleColumnsRTL from updatePreview');
+        console.log('DEBUG: currentSelectedGroups:', currentSelectedGroups);
+        console.log('DEBUG: currentPrintData:', currentPrintData);
+        
         const previewContent = generateSimpleColumnsRTL(
             currentSelectedGroups, 
             {
@@ -5357,6 +5360,8 @@ function updatePreview() {
                 columns: printSettings.columns || 4
             }
         );
+        
+        console.log('DEBUG: previewContent generated, length:', previewContent.length);
         
         // Update desktop preview
         const desktopPreviewElement = document.getElementById('printPreviewContent');

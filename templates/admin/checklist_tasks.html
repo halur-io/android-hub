@@ -4979,7 +4979,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
     return `
-        <div style="padding: ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed;">
+        <div style="padding: ${settings.margin}mm 0mm ${settings.margin}mm ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; margin: 0; width: 100%;">
             <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
                 <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
                 <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
@@ -4990,7 +4990,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
                 </div>
             </div>
             
-            <div style="columns: ${settings.columns}; column-gap: ${settings.gap}px; margin-bottom: 60px; direction: rtl; text-align: right; column-fill: balance;">
+            <div style="columns: ${settings.columns}; column-gap: ${settings.gap}px; margin-bottom: 60px; direction: rtl; text-align: right; column-fill: balance; padding: 0; margin-left: 0; margin-right: 0; width: 100%;">
                 ${selectedGroups.map(group => `
                     <div style="break-inside: avoid; margin-bottom: ${compactSpacing ? '5px' : '10px'}; ${borderStyle}">
                         <div style="font-weight: bold; font-size: ${settings.fontSize + 1}px; border-bottom: 1px solid #888; padding-bottom: 2px; margin-bottom: ${compactSpacing ? '2px' : '3px'};">
@@ -5090,7 +5090,7 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
             <style>
                 @page { 
                     size: A4; 
-                    margin: ${settings.margin}mm; 
+                    margin: ${settings.margin}mm ${settings.margin}mm ${settings.margin}mm 0mm; 
                 }
                 * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
@@ -5101,9 +5101,9 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
                     word-spacing: normal;
                     letter-spacing: 0.05em;
                     white-space: normal;
-                    max-width: 210mm;
-                    margin: 0 auto;
-                    padding: 10mm;
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
                 }
                 @media print {
                     body { 

@@ -4980,9 +4980,9 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
     
     return `
         <div style="padding: ${settings.margin}mm 0mm ${settings.margin}mm ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; margin: 0; width: 100%;">
-            <div style="text-align: center; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
-                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold;">${data.name || '___________'}</h1>
-                <div style="display: flex; justify-content: center; gap: 30px; flex-wrap: wrap;">
+            <div style="text-align: right; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
+                <h1 style="font-size: ${settings.headerSize}px; margin-bottom: ${compactSpacing ? '2px' : '4px'}; font-weight: bold; text-align: right;">${data.name || '___________'}</h1>
+                <div style="display: flex; justify-content: flex-end; gap: 30px; flex-wrap: wrap; direction: rtl;">
                     <span style="font-size: ${settings.fontSize}px;"><strong>תאריך:</strong> ${data.date || '___________'}</span>
                     <span style="font-size: ${settings.fontSize}px;"><strong>סניף:</strong> ${branch ? (branch.name_he || branch.name) : '___________'}</span>
                     <span style="font-size: ${settings.fontSize}px;"><strong>אחראי משמרת:</strong> ${data.shift_manager || '___________'}</span>
@@ -5007,7 +5007,7 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
             </div>
             
             <div style="border-top: 1px solid #000; padding-top: 6px; margin-top: 20px;">
-                <div style="display: flex; justify-content: space-around; gap: 20px;">
+                <div style="display: flex; justify-content: flex-end; gap: 60px; direction: rtl;">
                     <div style="text-align: center; width: 180px;">
                         <div style="border-bottom: 1px solid #000; margin-top: 15px; margin-bottom: 3px;"></div>
                         <div style="font-size: ${settings.fontSize}px;">חתימת אחראי משמרת</div>

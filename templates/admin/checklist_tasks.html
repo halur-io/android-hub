@@ -4978,6 +4978,8 @@ function generateCustomPrintHTML(data, branch, selectedGroups, allTasks, setting
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
     
+    console.log("DEBUG: generateCustomPrintHTML called - using RIGHT alignment");
+    
     return `
         <div style="padding: ${settings.margin}mm 0mm ${settings.margin}mm ${settings.margin}mm; font-family: Arial, 'Arial Hebrew', sans-serif; direction: rtl; text-align: right; word-spacing: 2px; letter-spacing: 0.3px; unicode-bidi: embed; margin: 0; width: 100%;">
             <div style="text-align: right; border-bottom: 1px solid #000; padding-bottom: ${compactSpacing ? '3px' : '5px'}; margin-bottom: ${compactSpacing ? '5px' : '8px'};">
@@ -5080,6 +5082,8 @@ function generateFinalPrintHTML(data, branch, selectedGroups, allTasks, settings
     const borderStyle = settings.showBorders ? 
         `background: #f9f9f9; padding: ${compactSpacing ? '2px' : '4px'}; border: 1px solid #ddd; border-radius: 3px;` : 
         `padding: ${compactSpacing ? '1px' : '3px'};`;
+    
+    console.log("DEBUG: generateFinalPrintHTML called - should have RIGHT alignment!");
     
     return `
         <!DOCTYPE html>

@@ -2898,6 +2898,125 @@ function closeReprintDateDialog() {
     }
 }
 
+// Column Settings Dialog
+function showColumnSettings() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.style.zIndex = '2001';
+    modal.id = 'columnSettingsModal';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px; margin: 3% auto; padding: 25px; direction: rtl; text-align: right; border-radius: 12px;">
+            <h3 style="margin-bottom: 25px; text-align: center; color: #2c3e50; font-size: 22px;">
+                📊 הגדרת עמודות טבלה
+            </h3>
+            
+            <div style="margin-bottom: 20px; padding: 15px; background: #e8f4fd; border-radius: 8px; border-right: 4px solid #007bff;">
+                <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    <input type="checkbox" id="enableTableMode" ${columnSettings.enabled ? 'checked' : ''} 
+                           style="margin-left: 12px; transform: scale(1.3);">
+                    <span>🔄 הפעל מצב טבלה (במקום רשימה רגילה)</span>
+                </label>
+            </div>
+            
+            <div id="columnsContainer" style="display: ${columnSettings.enabled ? 'block' : 'none'};">
+                <h4 style="margin-bottom: 15px; color: #495057;">בחר עמודות להצגה:</h4>
+                
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px;">
+                    ${columnSettings.columns.map(col => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f1f1f1; last-child: border-bottom: none;">
+                            <div style="display: flex; align-items: center;">
+                                <input type="checkbox" id="col_${col.id}" ${col.enabled ? 'checked' : ''} 
+                                       style="margin-left: 10px; transform: scale(1.1);"
+                                       ${col.id === 'checkbox' || col.id === 'task' ? 'disabled' : ''}>
+                                <label for="col_${col.id}" style="font-weight: 500; color: #495057;">
+                                    ${col.name}
+                                </label>
+                            </div>
+                            <div style="font-size: 12px; color: #6c757d;">
+                                רוחב: ${col.width}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeaa7;">
+                    <small style="color: #856404;">
+                        💡 <strong>הסבר:</strong> מצב טבלה יוצר טבלה מקצועית עם עמודות נוספות למילוי ידני (כמות, הכנה, זמן וכו').
+                    </small>
+                </div>
+            </div>
+            
+            <div style="text-align: center; gap: 12px; display: flex; justify-content: center; margin-top: 25px;">
+                <button onclick="applyColumnSettings()" class="btn btn-success" style="padding: 12px 30px; font-weight: bold; border-radius: 6px;">
+                    ✅ החל והצג תצוגה מקדימה
+                </button>
+                <button onclick="closeColumnSettings()" class="btn btn-secondary" style="padding: 12px 25px; border-radius: 6px;">
+                    ❌ ביטול
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Handle table mode toggle
+    const enableTableCheckbox = document.getElementById('enableTableMode');
+    const columnsContainer = document.getElementById('columnsContainer');
+    
+    enableTableCheckbox.addEventListener('change', function() {
+        columnsContainer.style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            // When disabling table mode, keep only checkbox and task columns
+            columnSettings.columns.forEach(col => {
+                if (col.id !== 'checkbox' && col.id !== 'task') {
+                    const checkbox = document.getElementById(`col_${col.id}`);
+                    if (checkbox) checkbox.checked = false;
+                }
+            });
+        }
+    });
+}
+
+function applyColumnSettings() {
+    const enableTable = document.getElementById('enableTableMode').checked;
+    
+    // Update column settings
+    columnSettings.enabled = enableTable;
+    
+    columnSettings.columns.forEach(col => {
+        const checkbox = document.getElementById(`col_${col.id}`);
+        if (checkbox && !checkbox.disabled) {
+            col.enabled = checkbox.checked;
+        }
+    });
+    
+    closeColumnSettings();
+    
+    // Refresh the preview with new settings
+    updatePreview();
+    
+    // Show feedback
+    if (enableTable) {
+        const enabledColumns = columnSettings.columns.filter(col => col.enabled).length;
+        showSuccess(`✅ מצב טבלה הופעל! ${enabledColumns} עמודות נבחרו`);
+    } else {
+        showSuccess('✅ חזרה למצב רשימה רגילה');
+    }
+}
+
+function closeColumnSettings() {
+    try {
+        const modal = document.getElementById('columnSettingsModal');
+        if (modal && modal.parentNode) {
+            document.body.removeChild(modal);
+        }
+    } catch (error) {
+        console.log('Column settings dialog close error (safe to ignore):', error);
+    }
+}
+
 function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
     return `
         <!DOCTYPE html>
@@ -4910,6 +5029,21 @@ let currentSelectedGroups = null;
 let currentAllTasks = null;
 let previewZoom = 0.5;
 
+// Column settings for table format
+let columnSettings = {
+    enabled: false,
+    columns: [
+        { id: 'checkbox', name: '✓', enabled: true, width: '40px', type: 'checkbox' },
+        { id: 'task', name: 'משימה', enabled: true, width: '200px', type: 'text' },
+        { id: 'quantity', name: 'כמות', enabled: false, width: '60px', type: 'number' },
+        { id: 'preparation', name: 'הכנה', enabled: false, width: '120px', type: 'text' },
+        { id: 'time', name: 'זמן (דק\')', enabled: false, width: '60px', type: 'number' },
+        { id: 'notes', name: 'הערות', enabled: false, width: '150px', type: 'text' },
+        { id: 'priority', name: 'עדיפות', enabled: false, width: '80px', type: 'select' },
+        { id: 'responsible', name: 'אחראי', enabled: false, width: '100px', type: 'text' }
+    ]
+};
+
 // Print settings
 let printSettings = {
     columns: 4,
@@ -6040,6 +6174,15 @@ function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings
 }
 
 function generateSimpleColumnsRTL(selectedGroups, settings) {
+    // Check if table mode is enabled
+    if (columnSettings.enabled) {
+        return generateTableFormatRTL(selectedGroups, settings);
+    } else {
+        return generateListFormatRTL(selectedGroups, settings);
+    }
+}
+
+function generateListFormatRTL(selectedGroups, settings) {
     const columns = settings.columns || 4;
     let html = '<table style="width: 100%; direction: rtl; text-align: right; border-collapse: collapse;">';
     
@@ -6076,6 +6219,104 @@ function generateSimpleColumnsRTL(selectedGroups, settings) {
     }
     
     html += '</tr></table>';
+    return html;
+}
+
+function generateTableFormatRTL(selectedGroups, settings) {
+    const enabledColumns = columnSettings.columns.filter(col => col.enabled);
+    
+    // Collect all tasks from all groups
+    let allTasks = [];
+    selectedGroups.forEach(group => {
+        group.tasks.forEach(task => {
+            allTasks.push({
+                ...task,
+                groupName: group.name,
+                groupColor: group.color
+            });
+        });
+    });
+    
+    let html = `
+        <div style="direction: rtl; text-align: right;">
+            <table style="width: 100%; border-collapse: collapse; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px;">
+                <!-- Table Header -->
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #333;">
+                        ${enabledColumns.map(col => `
+                            <th style="border: 1px solid #333; padding: 8px; font-weight: bold; text-align: right; width: ${col.width};">
+                                ${col.name}
+                            </th>
+                        `).join('')}
+                    </tr>
+                </thead>
+                
+                <!-- Table Body -->
+                <tbody>`;
+    
+    // Group tasks by group and add group headers
+    let currentGroup = '';
+    allTasks.forEach((task, index) => {
+        // Add group header row when group changes
+        if (currentGroup !== task.groupName) {
+            currentGroup = task.groupName;
+            html += `
+                <tr style="background: ${task.groupColor}20; border-top: 2px solid ${task.groupColor};">
+                    <td colspan="${enabledColumns.length}" style="border: 1px solid #333; padding: 10px; font-weight: bold; text-align: right; color: ${task.groupColor};">
+                        📋 ${escapeHtml(task.groupName)}
+                    </td>
+                </tr>`;
+        }
+        
+        // Add task row
+        html += `<tr style="border-bottom: 1px solid #ddd;">`;
+        
+        enabledColumns.forEach(col => {
+            html += `<td style="border: 1px solid #333; padding: 6px; text-align: right; vertical-align: middle;">`;
+            
+            switch(col.id) {
+                case 'checkbox':
+                    html += `<span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #000; margin: 0 auto;"></span>`;
+                    break;
+                case 'task':
+                    html += `<strong>${escapeHtml(task.name)}</strong>`;
+                    break;
+                case 'quantity':
+                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 40px; height: 20px;"></span>`;
+                    break;
+                case 'preparation':
+                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 80px; height: 20px;"></span>`;
+                    break;
+                case 'time':
+                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 40px; height: 20px;"></span>`;
+                    break;
+                case 'notes':
+                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 100px; height: 20px;"></span>`;
+                    break;
+                case 'priority':
+                    const priorityText = task.priority === 'high' ? 'גבוהה' : task.priority === 'medium' ? 'בינונית' : 'נמוכה';
+                    const priorityColor = task.priority === 'high' ? '#dc3545' : task.priority === 'medium' ? '#ffc107' : '#28a745';
+                    html += `<span style="color: ${priorityColor}; font-weight: bold;">${priorityText}</span>`;
+                    break;
+                case 'responsible':
+                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 70px; height: 20px;"></span>`;
+                    break;
+                default:
+                    html += '&nbsp;';
+            }
+            
+            html += `</td>`;
+        });
+        
+        html += `</tr>`;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
     return html;
 }
 
@@ -6174,12 +6415,15 @@ function openSimplePrintWindow(htmlContent, fileName) {
         
         <!-- Action Buttons at Top for Easy Access -->
         <div class="top-action-buttons" style="padding: 15px; border-bottom: 1px solid #ddd; background: #f8f9fa;">
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button type="button" class="btn btn-success" onclick="printFromPreview()" style="flex: 1; max-width: 200px;">
-                    <i class="fas fa-print me-2"></i> הדפס עם ההגדרות הנוכחיות
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-success" onclick="printFromPreview()" style="flex: 1; max-width: 180px; min-width: 140px;">
+                    <i class="fas fa-print me-2"></i> הדפס עכשיו
                 </button>
-                <button type="button" class="btn btn-primary" onclick="downloadAsPDF()" style="flex: 1; max-width: 200px;">
-                    <i class="fas fa-file-pdf me-2"></i> הורד כ-PDF
+                <button type="button" class="btn btn-info" onclick="showColumnSettings()" style="flex: 1; max-width: 180px; min-width: 140px;">
+                    <i class="fas fa-table me-2"></i> עמודות טבלה
+                </button>
+                <button type="button" class="btn btn-primary" onclick="downloadAsPDF()" style="flex: 1; max-width: 180px; min-width: 140px;">
+                    <i class="fas fa-file-pdf me-2"></i> הורד PDF
                 </button>
             </div>
         </div>

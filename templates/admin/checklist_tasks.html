@@ -2980,7 +2980,10 @@ function showColumnSettings() {
 }
 
 function applyColumnSettings() {
+    console.log('DEBUG: applyColumnSettings called');
+    
     const enableTable = document.getElementById('enableTableMode').checked;
+    console.log('DEBUG: enableTable =', enableTable);
     
     // Update column settings
     columnSettings.enabled = enableTable;
@@ -2989,20 +2992,26 @@ function applyColumnSettings() {
         const checkbox = document.getElementById(`col_${col.id}`);
         if (checkbox && !checkbox.disabled) {
             col.enabled = checkbox.checked;
+            console.log(`DEBUG: Column ${col.id} enabled:`, col.enabled);
         }
     });
+    
+    console.log('DEBUG: Final columnSettings:', columnSettings);
     
     closeColumnSettings();
     
     // Refresh the preview with new settings
+    console.log('DEBUG: About to call updatePreview');
     updatePreview();
     
     // Show feedback
     if (enableTable) {
         const enabledColumns = columnSettings.columns.filter(col => col.enabled).length;
         showSuccess(`✅ מצב טבלה הופעל! ${enabledColumns} עמודות נבחרו`);
+        console.log('DEBUG: Table mode enabled with', enabledColumns, 'columns');
     } else {
         showSuccess('✅ חזרה למצב רשימה רגילה');
+        console.log('DEBUG: Returned to list mode');
     }
 }
 
@@ -6175,9 +6184,12 @@ function generateSimpleRTLPrint(data, branch, selectedGroups, allTasks, settings
 
 function generateSimpleColumnsRTL(selectedGroups, settings) {
     // Check if table mode is enabled
+    console.log('DEBUG: generateSimpleColumnsRTL called with columnSettings.enabled =', columnSettings.enabled);
     if (columnSettings.enabled) {
+        console.log('DEBUG: Using table format');
         return generateTableFormatRTL(selectedGroups, settings);
     } else {
+        console.log('DEBUG: Using list format');
         return generateListFormatRTL(selectedGroups, settings);
     }
 }

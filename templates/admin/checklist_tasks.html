@@ -6242,6 +6242,22 @@ function generateTableFormatRTL(selectedGroups, settings) {
     
     let html = `
         <div style="direction: rtl; text-align: right;">
+            <!-- Header Section -->
+            <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+                <h1 style="font-size: 20px; margin-bottom: 10px; font-weight: bold;">${escapeHtml(settings.title)}</h1>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-top: 10px;">
+                    <div style="text-align: right;">
+                        <strong>סניף:</strong> ${escapeHtml(settings.branch)}
+                    </div>
+                    <div style="text-align: center;">
+                        <strong>תאריך:</strong> ________________
+                    </div>
+                    <div style="text-align: left;">
+                        <strong>מנהל משמרת:</strong> ________________
+                    </div>
+                </div>
+            </div>
+            
             <table style="width: 100%; border-collapse: separate; border-spacing: 0; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px;">
                 <!-- Table Header -->
                 <thead>
@@ -6285,16 +6301,16 @@ function generateTableFormatRTL(selectedGroups, settings) {
                     html += `<strong>${escapeHtml(task.name)}</strong>`;
                     break;
                 case 'quantity':
-                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 40px; height: 20px;"></span>`;
+                    html += `&nbsp;`;
                     break;
                 case 'preparation':
-                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 80px; height: 20px;"></span>`;
+                    html += `&nbsp;`;
                     break;
                 case 'time':
-                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 40px; height: 20px;"></span>`;
+                    html += `&nbsp;`;
                     break;
                 case 'notes':
-                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 100px; height: 20px;"></span>`;
+                    html += `&nbsp;`;
                     break;
                 case 'priority':
                     const priorityText = task.priority === 'high' ? 'גבוהה' : task.priority === 'medium' ? 'בינונית' : 'נמוכה';
@@ -6302,7 +6318,7 @@ function generateTableFormatRTL(selectedGroups, settings) {
                     html += `<span style="color: ${priorityColor}; font-weight: bold;">${priorityText}</span>`;
                     break;
                 case 'responsible':
-                    html += `<span style="border-bottom: 1px solid #666; display: inline-block; width: 70px; height: 20px;"></span>`;
+                    html += `&nbsp;`;
                     break;
                 default:
                     html += '&nbsp;';
@@ -6317,6 +6333,22 @@ function generateTableFormatRTL(selectedGroups, settings) {
     html += `
                 </tbody>
             </table>
+            
+            <!-- Signature Section -->
+            <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; font-size: 12px;">
+                <div style="text-align: right;">
+                    <strong>חתימת מנהל משמרת:</strong><br>
+                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 150px; height: 20px;"></div>
+                </div>
+                <div style="text-align: center;">
+                    <strong>תאריך סיום:</strong><br>
+                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 100px; height: 20px;"></div>
+                </div>
+                <div style="text-align: left;">
+                    <strong>שעת סיום:</strong><br>
+                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 80px; height: 20px;"></div>
+                </div>
+            </div>
         </div>
     `;
     

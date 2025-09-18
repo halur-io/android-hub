@@ -5346,12 +5346,16 @@ function updatePreview() {
     }
     
     try {
-        const previewContent = generateCustomPrintHTML(
-            currentPrintData,
-            currentBranch,
-            currentSelectedGroups,
-            currentAllTasks,
-            printSettings
+        console.log('DEBUG: About to call generateSimpleColumnsRTL from updatePreview');
+        const previewContent = generateSimpleColumnsRTL(
+            currentSelectedGroups, 
+            {
+                title: currentPrintData.name,
+                branch: currentBranch ? currentBranch.name_he : 'שלוחה לא נבחרה',
+                date: currentPrintData.date || new Date().toLocaleDateString('he-IL'),
+                shift_manager: currentPrintData.shift_manager || '',
+                columns: printSettings.columns || 4
+            }
         );
         
         // Update desktop preview

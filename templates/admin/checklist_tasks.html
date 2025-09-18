@@ -6247,12 +6247,12 @@ function generateTableFormatRTL(selectedGroups, settings) {
                 <h1 style="font-size: 20px; margin: 0; font-weight: bold;">${escapeHtml(settings.title)}</h1>
             </div>
             
-            <table style="width: 100%; border-collapse: separate; border-spacing: 0; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px;">
+            <table style="width: 100%; border-collapse: collapse; direction: rtl; text-align: right; font-size: 12px; margin-top: 10px; border: 2px solid #000;">
                 <!-- Table Header -->
                 <thead>
                     <tr style="background: #f8f9fa; border-bottom: 2px solid #333;">
                         ${enabledColumns.map(col => `
-                            <th style="padding: 12px 8px; font-weight: bold; text-align: right; width: ${col.width};">
+                            <th style="border: 1px solid #333; padding: 12px 8px; font-weight: bold; text-align: right; width: ${col.width};">
                                 ${col.name}
                             </th>
                         `).join('')}
@@ -6269,18 +6269,18 @@ function generateTableFormatRTL(selectedGroups, settings) {
         if (currentGroup !== task.groupName) {
             currentGroup = task.groupName;
             html += `
-                <tr style="background: ${task.groupColor}20; border-top: 2px solid ${task.groupColor};">
-                    <td colspan="${enabledColumns.length}" style="border: 1px solid ${task.groupColor}; padding: 10px; font-weight: bold; text-align: right; color: ${task.groupColor};">
+                <tr style="background: ${task.groupColor}20;">
+                    <td colspan="${enabledColumns.length}" style="border: 2px solid ${task.groupColor}; padding: 10px; font-weight: bold; text-align: right; color: ${task.groupColor}; border-top: 3px solid ${task.groupColor};">
                         📋 ${escapeHtml(task.groupName)}
                     </td>
                 </tr>`;
         }
         
         // Add task row
-        html += `<tr style="border-bottom: 1px solid #ddd;">`;
+        html += `<tr>`;
         
         enabledColumns.forEach(col => {
-            html += `<td style="border: 1px solid #ddd; padding: 8px; text-align: right; vertical-align: middle;">`;
+            html += `<td style="border: 1px solid #333; padding: 8px; text-align: right; vertical-align: middle;">`;
             
             switch(col.id) {
                 case 'checkbox':

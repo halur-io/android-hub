@@ -2758,6 +2758,129 @@ function closeDateDialog() {
     window.pendingChecklistData = null;
 }
 
+// Date Options Dialog for Reprinting Saved Checklists
+function showReprintDateDialog(printData, branch, selectedGroups, tasks) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.style.zIndex = '2000';
+    modal.id = 'reprintDateOptionsModal';
+    
+    // Default to today's date but show the original date in a note
+    const today = new Date().toISOString().split('T')[0];
+    const originalDate = printData.date ? new Date(printData.date).toLocaleDateString('he-IL') : 'לא מוגדר';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px; margin: 5% auto; padding: 25px; direction: rtl; text-align: right; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <h3 style="margin-bottom: 20px; text-align: center; color: #2c3e50; font-size: 20px;">📋 הדפסה חוזרת - עדכון נתונים</h3>
+            
+            <div style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin-bottom: 20px; border-right: 4px solid #1976d2;">
+                <strong style="color: #1565c0;">רשימה נשמרת:</strong> ${printData.name}<br>
+                <strong style="color: #1565c0;">תאריך מקורי:</strong> ${originalDate}
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; transition: all 0.2s;">
+                    <input type="checkbox" id="reprintIncludeDateCheck" checked style="margin-left: 10px; transform: scale(1.2);">
+                    <span style="font-weight: 500;">כלול תאריך ברשימה</span>
+                </label>
+            </div>
+            
+            <div id="reprintDatePickerSection" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">בחר תאריך:</label>
+                <input type="date" id="reprintSelectedDate" value="${today}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; direction: ltr; font-size: 14px;">
+                <small style="color: #6c757d; display: block; margin-top: 5px;">💡 ברירת מחדל: תאריך היום (ניתן לשנות)</small>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">שם הרשימה:</label>
+                <input type="text" id="reprintChecklistName" value="${printData.name}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; text-align: right; font-size: 14px;">
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">אחראי משמרת:</label>
+                <input type="text" id="reprintShiftManager" value="${printData.shift_manager || ''}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; text-align: right; font-size: 14px;"
+                       placeholder="השאר ריק למילוי ידני בהדפסה">
+            </div>
+            
+            <div style="text-align: center; gap: 12px; display: flex; justify-content: center;">
+                <button onclick="proceedWithReprint()" class="btn btn-success" style="padding: 12px 30px; font-weight: bold; border-radius: 6px;">
+                    🖨️ המשך להדפסה
+                </button>
+                <button onclick="closeReprintDateDialog()" class="btn btn-secondary" style="padding: 12px 25px; border-radius: 6px;">
+                    ❌ ביטול
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Handle checkbox toggle with smooth animation
+    const checkbox = document.getElementById('reprintIncludeDateCheck');
+    const dateSection = document.getElementById('reprintDatePickerSection');
+    const checkboxLabel = checkbox.parentElement;
+    
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            dateSection.style.display = 'block';
+            dateSection.style.opacity = '1';
+            checkboxLabel.style.borderColor = '#28a745';
+            checkboxLabel.style.backgroundColor = '#f8fff8';
+        } else {
+            dateSection.style.display = 'none';
+            dateSection.style.opacity = '0';
+            checkboxLabel.style.borderColor = '#e1e5e9';
+            checkboxLabel.style.backgroundColor = 'white';
+        }
+    });
+    
+    // Store data for later use
+    window.pendingReprintData = {
+        printData: printData,
+        branch: branch,
+        selectedGroups: selectedGroups,
+        tasks: tasks
+    };
+}
+
+function proceedWithReprint() {
+    const includeDate = document.getElementById('reprintIncludeDateCheck').checked;
+    const selectedDate = document.getElementById('reprintSelectedDate').value;
+    const checklistName = document.getElementById('reprintChecklistName').value;
+    const shiftManager = document.getElementById('reprintShiftManager').value;
+    
+    // Update the print data with user choices
+    const updatedPrintData = {
+        ...window.pendingReprintData.printData,
+        name: checklistName || 'רשימת משימות',
+        date: includeDate ? new Date(selectedDate).toLocaleDateString('he-IL') : null,
+        shift_manager: shiftManager
+    };
+
+    // Store data for preview updates
+    currentPrintData = updatedPrintData;
+    currentBranch = window.pendingReprintData.branch;
+    currentSelectedGroups = window.pendingReprintData.selectedGroups;
+    currentAllTasks = window.pendingReprintData.tasks;
+    
+    closeReprintDateDialog();
+    
+    // Now open the print preview with updated data
+    openPrintPreview();
+}
+
+function closeReprintDateDialog() {
+    const modal = document.getElementById('reprintDateOptionsModal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+    window.pendingReprintData = null;
+}
+
 function generateMultiGroupPrintHTML(data, branch, selectedGroups, allTasks) {
     return `
         <!DOCTYPE html>
@@ -4823,14 +4946,8 @@ async function reprintChecklist(checklistId) {
             
             const selectedGroups = Object.values(groupedTasks);
             
-            // Store for preview updates
-            currentPrintData = printData;
-            currentBranch = branch;
-            currentSelectedGroups = selectedGroups;
-            currentAllTasks = tasks;
-            
-            // Open preview panel instead of direct printing
-            openPrintPreview();
+            // Show date dialog first - let user choose whether to keep original date or change it
+            showReprintDateDialog(printData, branch, selectedGroups, tasks);
             
         } else {
             const errorData = await response.json();

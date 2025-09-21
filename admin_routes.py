@@ -979,6 +979,220 @@ def delete_category(id):
     db.session.commit()
     return jsonify({'success': True})
 
+# ===== MENU PARSING FROM WORD DOCUMENTS =====
+
+@admin_bp.route('/menu/parse-word', methods=['GET', 'POST'])
+@login_required
+def parse_word_menu():
+    """Parse menu items from Word document content"""
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            branch_id = request.form.get('branch_id')
+            menu_content = request.form.get('menu_content')
+            
+            if not branch_id or not menu_content:
+                flash('נא לבחור סניף ולהדביק את תוכן התפריט', 'error')
+                return render_template('admin/parse_word_menu.html', branches=branches)
+            
+            # Import parser class
+            from menu_parser import MenuParser
+            parser = MenuParser()
+            
+            # Process the menu
+            result = parser.process_word_menu(
+                content=menu_content,
+                branch_id=int(branch_id),
+                uploaded_by=current_user.id
+            )
+            
+            if result['success']:
+                flash(f'✅ התפריט נוסף בהצלחה! נוספו {result["items_added"]} פריטים ב-{result["categories_added"]} קטגוריות', 'success')
+                return render_template('admin/parse_word_results.html', result=result)
+            else:
+                flash(f'❌ שגיאה בעיבוד התפריט: {result["error"]}', 'error')
+                
+        except Exception as e:
+            current_app.logger.error(f"Menu parsing error: {str(e)}")
+            flash(f'❌ שגיאה בעיבוד התפריט: {str(e)}', 'error')
+    
+    return render_template('admin/parse_word_menu.html', branches=branches)
+
+@admin_bp.route('/menu/parse-word/demo', methods=['POST'])
+@login_required
+def parse_word_menu_demo():
+    """Parse the demo menu content provided by user"""
+    try:
+        branch_id = request.form.get('branch_id')
+        if not branch_id:
+            return jsonify({'error': 'נא לבחור סניף'}), 400
+        
+        # Demo menu content from the user's Word document
+        demo_content = """ראשונות
+
+56
+הביס היפני
+לחם חלב יפני מושחם, קרם אבוקדו, סביצ'ה דג לבן בתיבול יוזו, צילי חריף ,כוסברה ונענע
+
+62
+סלט טרופי 
+מיקס חסה, בצל סגול, פרי טרופי, שירי צבעים, אבוקדו, קרוטונים אסייתים
+
+34
+קימצ'י קוריאני 
+
+52
+סלט ויאטנמי 
+אטריות זכוכית, מלפפון, כרוב סגול, גזר, בצל ירוק,נבטים סינים​ ברוטב בוטנים ויאטנמי
+
+28
+חמוצים יפנים 
+
+56/62
+הקיסר האסייתי
+חסה ליטל ג'ם, תירס אומאמי, בצל סגול, צלפים ,קלמארי פריך / עוף צלוי
+
+38
+אדממה של סומו 
+
+58
+קריספי רייס 
+4 יח' קריספי מיני מאקי במילוי טרטר סלמון פיקנטי, שמנת, עירית.
+
+42/32
+אגרול ירקות/עוף
+2 יח' אגרול ירקות/עוף - מוגש על מצע חסה אסייתית, צילי חריף, נענע, כוסברה ומתבלים אסייתיים
+
+42/32
+נאמס ירקות/עוף 
+2 יח' ספרינג רול וויאטנמי במילוי ירקות/עוף על מצע חסה אסייתית, צ'ילי חריף, נענע, כוסברה ומתבלים אסייתיים
+
+52
+שרימפס פינגרז
+שרימפס פינגרז 4 יח' עם רוטב טרטר ולימון
+
+68
+טטאקי סינטה כבושה
+סינטה עגל בכבישה קרה, איולי כמהין ,איולי יוזו, עירית קצוצה וזסט לימון
+
+58
+קלמארי פריך
+קלמרי מטוגן בציפוי פריך, מוגש עם רוטב חמוץ מתוק ו לימון​ 
+
+58
+פופ שרימפס
+קוביות שרימפס בטמפורה עטופות באיולי יוזו, תבלין אומאמי​ ,עירית
+
+ווק
+
+60
+סמוקי
+אטריות ביצים, כרוב לבן, גזר, פטריות, באק צ'וי, אווז מעושן, בצל קריספי ברוטב טריאקי מעושן - תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12
+
+56
+פאד תאי 
+אטריות אורז, כרוב, גזר, בצל ירוק, נבטים סינים, שבבי בוטנים וכוסברה  - תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12/ ביצה 5 
+
+60
+תאילנד הירוקה 
+אטריות תרד ירוקים, קוביות אננס, זוקיני, ברוקולי, באק צ'וי ובצל ירוק ברוטב קארי ירוק וחלב קוקוס – תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12
+
+85
+ים השחור
+אטריות שחורות, שרימפס, קלמארי, צילי קוריאני, שום וגנגר,בצל ירוק ונבטים סינים
+
+62
+עוף קשיו 
+עוף בטמפורה מוקפץ עם קשיו, בצל לבן, גמבה וצ'ילי מוגש עם אורז מאודה
+
+52
+פרייד רייס
+אורז מוקפץ עם גזר, בצל לבן, כרוב, גמבה ברוטב סויה כהה בתוספת ביצת עין מעל - תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12
+
+64
+החריפה 
+אטריות ביצים, עוף, בצל לבן ופטריות מוקפצים ברוטב קארי אדום וחלב קוקוס מוגש עם שבבי בוטנים וקריספי בצל אסייתי
+
+יקיטורי
+
+78
+יקיטורי עגל
+לוליפופ עגל מוגש עם באק צ'וי​ ואורז מעושן
+
+68
+יקיטורי סלמון
+גלייז צילי מותסס, צ'ימיצ'ורי יפני, ירקות חרוכים
+
+58
+יקיטורי עוף
+שיפודי עוף במרינדה אסייתית על הגריל, מיקס פטריות מוקפצות ברוטב חמאת בוטנים קוריאני
+
+78
+יקיטורי שרימפס
+יקיטורי שרימפס בתיבול ג'נג'ר שום, תבלינים יפנים ויוזו מוגש עם אבוקדו חרוך
+
+68
+יקטורי דג לבן
+שיפוד של דג לבן במרינדה של קפיר ליים, ג'נג'ר ושום, מוגש עם רוטב קארי ירוק וחלב קוקוס בתוספת אורז מאודה​ ​
+
+באנים
+
+36
+ביף באן  
+פרוסות עגל פלאנצ'ה, קרם אבוקדו, חסה, בצל סגול וצ'ילי חריף
+
+28
+ Infected mushrooms
+פטריות שינוגי פריכות, איולי קוג'י כמהין וסויט שימאגי
+
+36
+קריספי שרימפס באן
+קולסלואו אסייתי, בצל סגול, חסה ואיולי יוזו
+
+36
+סיי באן
+דג לבן טמפורה, איולי מעושן, סלט כרוב סגול אסייתי
+
+ארוחות ילדים
+
+50
+מוקפץ ילדים
+אטריות ביצים, עוף, טריאקי ושתיה קלה
+
+50
+באן שניצל
+באן שניצל, ציפס​ ושתיה קלה
+
+50
+הוט דוג קוריאני
+2 נקניקיות עוף קוריאני בציפוי דוריטוס/פנקו/טמפורה ושתיה קלה"""
+        
+        # Import parser class
+        from menu_parser import MenuParser
+        parser = MenuParser()
+        
+        # Process the demo menu
+        result = parser.process_word_menu(
+            content=demo_content,
+            branch_id=int(branch_id),
+            uploaded_by=current_user.id
+        )
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': f'✅ התפריט נוסף בהצלחה! נוספו {result["items_added"]} פריטים ב-{result["categories_added"]} קטגוריות',
+                'result': result
+            })
+        else:
+            return jsonify({'success': False, 'error': result['error']}), 500
+            
+    except Exception as e:
+        current_app.logger.error(f"Demo menu parsing error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Gallery Management
 @admin_bp.route('/gallery')
 @login_required

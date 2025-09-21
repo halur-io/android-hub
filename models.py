@@ -419,6 +419,41 @@ class Reservation(db.Model):
     def __repr__(self):
         return f'<Reservation {self.customer_name} - {self.date}>'
 
+# ===== PDF MENU PARSING MODELS =====
+
+# PDF Menu Uploads - Track uploaded PDF menus and their processing status
+class PDFMenuUpload(db.Model):
+    __tablename__ = 'pdf_menu_uploads'
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    
+    # Processing status
+    status = db.Column(db.String(50), default='uploaded')  # uploaded, processing, completed, failed
+    processing_progress = db.Column(db.Integer, default=0)  # 0-100 percentage
+    error_message = db.Column(db.Text)
+    
+    # Extraction results
+    extracted_items_count = db.Column(db.Integer, default=0)
+    items_added_to_menu = db.Column(db.Integer, default=0)
+    raw_extraction_data = db.Column(db.JSON)  # Store raw OpenAI response
+    
+    # User tracking
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    processed_at = db.Column(db.DateTime)
+    
+    # Relationships
+    branch = db.relationship('Branch', backref='pdf_menu_uploads')
+    uploader = db.relationship('AdminUser', backref='pdf_uploads')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<PDFMenuUpload {self.filename}>'
+
 # ===== STOCK MANAGEMENT MICROSERVICE MODELS =====
 
 # Stock Item Categories

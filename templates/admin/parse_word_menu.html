@@ -1,0 +1,325 @@
+{% extends "admin/base.html" %}
+{% block title %}יבוא תפריט מ-Word{% endblock %}
+{% block extra_css %}
+<style>
+.hebrew-content {
+    direction: rtl;
+    text-align: right;
+}
+
+.menu-parser-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.content-textarea {
+    min-height: 400px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    direction: rtl;
+    text-align: right;
+}
+
+.demo-section {
+    background: #f8f9fa;
+    border: 2px dashed #28a745;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.instruction-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.step-badge {
+    background: rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.btn-demo {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 12px 30px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    transition: transform 0.2s;
+}
+
+.btn-demo:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+}
+
+.category-examples {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.category-badge {
+    background: #007bff;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    margin: 2px;
+    display: inline-block;
+}
+
+.progress-container {
+    display: none;
+    margin-top: 20px;
+}
+
+.menu-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+    color: #333;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    flex: 1;
+    min-width: 150px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hebrew-content menu-parser-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">יבוא תפריט מ-Word</h1>
+        <a href="{{ url_for('admin.menu') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-right me-2"></i>חזרה לתפריט
+        </a>
+    </div>
+
+    <!-- Instructions Card -->
+    <div class="instruction-card">
+        <div class="step-badge">שלב 1</div>
+        <h4><i class="fas fa-file-word me-2"></i>איך להוסיף תפריט מ-Word</h4>
+        <p class="mb-3">העתק את תוכן התפריט מקובץ ה-Word שלך והדבק אותו בתיבת הטקסט למטה.</p>
+        
+        <div class="category-examples">
+            <strong>הקטגוריות הנתמכות:</strong><br>
+            <span class="category-badge">ראשונות</span>
+            <span class="category-badge">ווק</span>
+            <span class="category-badge">יקיטורי</span>
+            <span class="category-badge">באנים</span>
+            <span class="category-badge">ארוחות ילדים</span>
+            <span class="category-badge">קינוחים</span>
+            <span class="category-badge">שתייה חמה</span>
+            <span class="category-badge">שתייה קלה</span>
+        </div>
+    </div>
+
+    <!-- Demo Section -->
+    <div class="demo-section">
+        <h5><i class="fas fa-magic me-2"></i>נסיון מהיר עם תפריט לדוגמה</h5>
+        <p>לחץ כאן כדי לנסות את המערכת עם התפריט שסיפקת:</p>
+        
+        <form id="demo-form">
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="demo-branch" class="form-label">בחר סניף לדוגמה:</label>
+                    <select id="demo-branch" name="branch_id" class="form-select" required>
+                        <option value="">-- בחר סניף --</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-demo">
+                        <i class="fas fa-rocket me-2"></i>נסה עם תפריט לדוגמה
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Manual Input Form -->
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-keyboard me-2"></i>הדבק תוכן תפריט מ-Word</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ csrf_token() }}
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="branch_id" class="form-label">בחר סניף:</label>
+                        <select id="branch_id" name="branch_id" class="form-select" required>
+                            <option value="">-- בחר סניף --</option>
+                            {% for branch in branches %}
+                            <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="menu_content" class="form-label">תוכן התפריט (העתק והדבק מ-Word):</label>
+                    <textarea 
+                        id="menu_content" 
+                        name="menu_content" 
+                        class="form-control content-textarea" 
+                        required
+                        placeholder="הדבק כאן את תוכן התפריט...
+
+דוגמה לפורמט נכון:
+ראשונות
+
+56
+הביס היפני
+לחם חלב יפני מושחם, קרם אבוקדו, סביצ'ה דג לבן...
+
+62
+סלט טרופי
+מיקס חסה, בצל סגול, פרי טרופי...
+
+ווק
+
+60
+סמוקי
+אטריות ביצים, כרוב לבן, גזר..."></textarea>
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-upload me-2"></i>עבד תפריט
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div id="progress-container" class="progress-container">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5>מעבד תפריט...</h5>
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-animated" style="width: 0%"></div>
+                </div>
+                <p class="text-muted">אנא המתן בזמן שהמערכת מעבדת את התפריט שלך</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Demo form handling
+document.getElementById('demo-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const branchId = document.getElementById('demo-branch').value;
+    if (!branchId) {
+        alert('נא לבחור סניף');
+        return;
+    }
+    
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = progressContainer.querySelector('.progress-bar');
+    
+    // Show progress
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '30%';
+    
+    try {
+        const formData = new FormData();
+        formData.append('branch_id', branchId);
+        
+        const response = await fetch('{{ url_for("admin.parse_word_menu_demo") }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        
+        progressBar.style.width = '80%';
+        
+        const result = await response.json();
+        progressBar.style.width = '100%';
+        
+        if (result.success) {
+            // Show success message
+            showNotification('success', result.message);
+            
+            // Redirect to results or menu page after a delay
+            setTimeout(() => {
+                window.location.href = '{{ url_for("admin.menu") }}';
+            }, 2000);
+        } else {
+            throw new Error(result.error || 'שגיאה בעיבוד התפריט');
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('error', 'שגיאה: ' + error.message);
+    } finally {
+        progressContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+    }
+});
+
+function showNotification(type, message) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '9999';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+// Character counter for textarea
+const textarea = document.getElementById('menu_content');
+if (textarea) {
+    textarea.addEventListener('input', function() {
+        const length = this.value.length;
+        const words = this.value.trim().split(/\s+/).length;
+        
+        // Update some stats if needed
+        console.log(`Characters: ${length}, Words: ${words}`);
+    });
+}
+</script>
+{% endblock %}

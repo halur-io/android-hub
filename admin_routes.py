@@ -1362,11 +1362,10 @@ def finalize_direct_excel_import():
                     name_en=name,  # Default to Hebrew
                     description_he=description or '',
                     description_en=description or '',
-                    price=float(base_price),
+                    base_price=float(base_price),
                     category_id=int(category_id) if category_id else None,
-                    branch_id=int(branch_id),
                     is_available=True,
-                    preparation_time_minutes=int(preparation_time) if preparation_time else None
+                    prep_time_minutes=int(preparation_time) if preparation_time else None
                 )
                 
                 # Handle spice level
@@ -1415,7 +1414,7 @@ def finalize_direct_excel_import():
             for error in errors[:5]:  # Show first 5 errors
                 flash(f'📝 {error}', 'info')
         
-        return redirect(url_for('admin.menu_management'))
+        return redirect(url_for('admin.menu'))
         
     except Exception as e:
         current_app.logger.error(f"Direct import error: {str(e)}")

@@ -1964,6 +1964,8 @@ def api_create_menu():
         selected_items = data.get('items', [])
         layout_config = data.get('layout', {})
         print_config = data.get('print_settings', {})
+        style_config = data.get('style_settings', {})
+        page_config = data.get('page_settings', {})
         save_as_template = data.get('save_as_template', False)
         template_name = data.get('template_name', '')
         
@@ -1991,7 +1993,9 @@ def api_create_menu():
             date_created=datetime.utcnow().date(),
             created_by=current_user.id if hasattr(current_user, 'id') else None,
             menu_content=menu_content,
-            print_settings=print_config
+            print_settings=print_config,
+            style_settings=style_config,
+            page_settings=page_config
         )
         
         db.session.add(generated_menu)
@@ -2007,7 +2011,9 @@ def api_create_menu():
                 categories_config=selected_categories,
                 items_config=selected_items,
                 layout_config=layout_config,
-                print_config=print_config
+                print_config=print_config,
+                style_config=style_config,
+                page_config=page_config
             )
             db.session.add(menu_template)
             db.session.flush()  # Get the ID

@@ -389,7 +389,7 @@
                 <!-- Wizard Steps -->
                 <div class="wizard-progress bg-light p-3">
                     <div class="progress mb-2">
-                        <div class="progress-bar bg-primary" id="wizardProgress" style="width: 25%"></div>
+                        <div class="progress-bar bg-primary" id="wizardProgress" style="width: 20%"></div>
                     </div>
                     <div class="wizard-steps d-flex justify-content-between">
                         <span class="step active" data-step="1">
@@ -402,6 +402,9 @@
                             <i class="fas fa-utensils me-1"></i>בחירת מנות
                         </span>
                         <span class="step" data-step="4">
+                            <i class="fas fa-palette me-1"></i>עיצוב מתקדם
+                        </span>
+                        <span class="step" data-step="5">
                             <i class="fas fa-print me-1"></i>הגדרות והדפסה
                         </span>
                     </div>
@@ -479,10 +482,187 @@
                     </div>
                 </div>
 
-                <!-- Step 4: Print Settings -->
+                <!-- Step 4: Advanced Styling -->
                 <div class="wizard-step" id="step4" style="display: none;">
                     <div class="p-4">
-                        <h4 class="mb-4">הגדרות עיצוב והדפסה</h4>
+                        <h4 class="mb-4">עיצוב מתקדם ופריסת דפים</h4>
+                        
+                        <!-- Page Layout Section -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary">
+                                    <i class="fas fa-file-alt me-2"></i>פריסת דפים וקטגוריות
+                                </h5>
+                                <p class="text-muted small mb-3">קבע איזה קטגוריות יתחילו בדף חדש ותכנן את פריסת התפריט</p>
+                                
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">קטגוריות שיתחילו בדף חדש:</label>
+                                            <div id="pageBreakCategories" class="d-flex flex-wrap gap-2 mt-2">
+                                                <!-- Categories with page break options will be loaded here -->
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="addPageNumbers">
+                                                    <label class="form-check-label" for="addPageNumbers">
+                                                        הוסף מספרי דפים
+                                                    </label>
+                                                </div>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="addHeaders">
+                                                    <label class="form-check-label" for="addHeaders">
+                                                        הוסף כותרת עליונה לכל דף
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="addFooters">
+                                                    <label class="form-check-label" for="addFooters">
+                                                        הוסף כותרת תחתונה לכל דף
+                                                    </label>
+                                                </div>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="separateIndexPage">
+                                                    <label class="form-check-label" for="separateIndexPage">
+                                                        צור דף תוכן עניינים נפרד
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Styling Options Section -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5 class="text-success">
+                                    <i class="fas fa-palette me-2"></i>צבעים וטיפוגרפיה
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">ערכת צבעים</label>
+                                    <select class="form-select" id="colorScheme">
+                                        <option value="restaurant" selected>מסעדה קלאסית (כחול-אדום)</option>
+                                        <option value="elegant">אלגנטי (זהב-שחור)</option>
+                                        <option value="modern">מודרני (אפור-כתום)</option>
+                                        <option value="fresh">טרי (ירוק-לימון)</option>
+                                        <option value="warm">חם (חום-בז')</option>
+                                        <option value="custom">מותאם אישית</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3" id="customColors" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="form-label">צבע ראשי</label>
+                                            <input type="color" class="form-control form-control-color" id="primaryColor" value="#1B2951">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">צבע משני</label>
+                                            <input type="color" class="form-control form-control-color" id="secondaryColor" value="#C75450">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">גופן ראשי</label>
+                                    <select class="form-select" id="primaryFont">
+                                        <option value="Heebo" selected>Heebo (מומלץ לעברית)</option>
+                                        <option value="Assistant">Assistant</option>
+                                        <option value="Rubik">Rubik</option>
+                                        <option value="Varela Round">Varela Round</option>
+                                        <option value="Open Sans">Open Sans</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">גודל גופן בסיסי</label>
+                                    <select class="form-select" id="baseFontSize">
+                                        <option value="small">קטן (10pt)</option>
+                                        <option value="medium" selected>בינוני (12pt)</option>
+                                        <option value="large">גדול (14pt)</option>
+                                        <option value="extra-large">גדול מאוד (16pt)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="text-info">
+                                    <i class="fas fa-icons me-2"></i>איקונים ועיטורים
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">סגנון איקונים לקטגוריות</label>
+                                    <select class="form-select" id="iconStyle">
+                                        <option value="solid" selected>מלא (Solid)</option>
+                                        <option value="regular">קווי (Regular)</option>
+                                        <option value="light">דק (Light)</option>
+                                        <option value="duotone">דו-צבעוני (Duotone)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showCategoryIcons" checked>
+                                    <label class="form-check-label" for="showCategoryIcons">
+                                        הצג איקונים בקטגוריות
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="addDecorators">
+                                    <label class="form-check-label" for="addDecorators">
+                                        הוסף עיטורי מסגרת
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="addDividers">
+                                    <label class="form-check-label" for="addDividers">
+                                        הוסף קווי הפרדה בין קטגוריות
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">רווח בין מנות</label>
+                                    <select class="form-select" id="itemSpacing">
+                                        <option value="compact">קומפקטי</option>
+                                        <option value="normal" selected>רגיל</option>
+                                        <option value="relaxed">נינוח</option>
+                                        <option value="spacious">מרווח</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Style Preview Section -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5 class="text-warning">
+                                    <i class="fas fa-eye me-2"></i>תצוגה מקדימה
+                                </h5>
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <div id="stylePreview" class="border rounded p-3" style="min-height: 150px; background: #f8f9fa;">
+                                            <p class="text-muted">התצוגה המקדימה תעודכן כאשר תבחר אפשרויות עיצוב</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Print Settings -->
+                <div class="wizard-step" id="step5" style="display: none;">
+                    <div class="p-4">
+                        <h4 class="mb-4">הגדרות הדפסה וסיכום</h4>
                         <div class="row">
                             <div class="col-md-6">
                                 <h5>עיצוב תפריט</h5>
@@ -787,7 +967,7 @@ function goToStep(stepNumber) {
     document.getElementById(`step${stepNumber}`).style.display = 'block';
     
     // Update progress
-    const progress = (stepNumber / 4) * 100;
+    const progress = (stepNumber / 5) * 100;
     document.getElementById('wizardProgress').style.width = `${progress}%`;
     
     // Update step indicators
@@ -797,8 +977,8 @@ function goToStep(stepNumber) {
     
     // Update buttons
     document.getElementById('prevStepBtn').style.display = stepNumber === 1 ? 'none' : 'inline-block';
-    document.getElementById('nextStepBtn').style.display = stepNumber === 4 ? 'none' : 'inline-block';
-    document.getElementById('createMenuBtn').style.display = stepNumber === 4 ? 'inline-block' : 'none';
+    document.getElementById('nextStepBtn').style.display = stepNumber === 5 ? 'none' : 'inline-block';
+    document.getElementById('createMenuBtn').style.display = stepNumber === 5 ? 'inline-block' : 'none';
     
     wizardData.currentStep = stepNumber;
     
@@ -808,6 +988,8 @@ function goToStep(stepNumber) {
     } else if (stepNumber === 3) {
         loadItemsForSelection();
     } else if (stepNumber === 4) {
+        loadStylingOptions();
+    } else if (stepNumber === 5) {
         updateSummary();
     }
 }
@@ -843,6 +1025,11 @@ function validateCurrentStep() {
                 showNotification('אנא בחר לפחות מנה אחת', 'error');
                 return false;
             }
+            return true;
+            
+        case 4:
+            // Validate styling options - always valid as defaults are provided
+            collectStylingData();
             return true;
             
         default:
@@ -1058,6 +1245,195 @@ function filterItems(searchTerm) {
     });
 }
 
+// Styling Functions
+function loadStylingOptions() {
+    // Load page break options for categories
+    loadPageBreakOptions();
+    
+    // Set up color scheme change handler
+    const colorSchemeSelect = document.getElementById('colorScheme');
+    if (colorSchemeSelect) {
+        colorSchemeSelect.addEventListener('change', function() {
+            toggleCustomColors();
+            updateStylePreview();
+        });
+    }
+    
+    // Set up other change handlers for live preview
+    const styleInputs = ['primaryFont', 'baseFontSize', 'iconStyle', 'itemSpacing'];
+    styleInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('change', updateStylePreview);
+        }
+    });
+    
+    // Set up checkbox handlers
+    const checkboxes = ['showCategoryIcons', 'addDecorators', 'addDividers', 'addPageNumbers', 'addHeaders', 'addFooters', 'separateIndexPage'];
+    checkboxes.forEach(checkboxId => {
+        const checkbox = document.getElementById(checkboxId);
+        if (checkbox) {
+            checkbox.addEventListener('change', updateStylePreview);
+        }
+    });
+    
+    // Initial preview update
+    updateStylePreview();
+}
+
+function loadPageBreakOptions() {
+    const container = document.getElementById('pageBreakCategories');
+    if (!container) return;
+    
+    if (wizardData.selectedCategories.length === 0) {
+        container.innerHTML = '<p class="text-muted small">בחר קטגוריות בשלב הקודם כדי לראות אפשרויות פריסה</p>';
+        return;
+    }
+    
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    container.innerHTML = selectedCategoryData.map(category => `
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="pageBreak_${category.id}" 
+                   onchange="updatePageBreakPreview()">
+            <label class="form-check-label" for="pageBreak_${category.id}">
+                <i class="fas fa-${category.icon || 'utensils'} me-1" style="color: ${category.color || '#007bff'}"></i>
+                ${category.name_he}
+            </label>
+        </div>
+    `).join('');
+}
+
+function updatePageBreakPreview() {
+    // Update the preview when page breaks are changed
+    updateStylePreview();
+}
+
+function toggleCustomColors() {
+    const colorScheme = document.getElementById('colorScheme').value;
+    const customColorsDiv = document.getElementById('customColors');
+    
+    if (colorScheme === 'custom') {
+        customColorsDiv.style.display = 'block';
+    } else {
+        customColorsDiv.style.display = 'none';
+        // Set predefined colors based on scheme
+        setColorScheme(colorScheme);
+    }
+}
+
+function setColorScheme(scheme) {
+    const colorSchemes = {
+        'restaurant': { primary: '#1B2951', secondary: '#C75450' },
+        'elegant': { primary: '#2D2D2D', secondary: '#DAA520' },
+        'modern': { primary: '#6C757D', secondary: '#FD7E14' },
+        'fresh': { primary: '#198754', secondary: '#FFC107' },
+        'warm': { primary: '#8B4513', secondary: '#F5DEB3' }
+    };
+    
+    if (colorSchemes[scheme]) {
+        document.getElementById('primaryColor').value = colorSchemes[scheme].primary;
+        document.getElementById('secondaryColor').value = colorSchemes[scheme].secondary;
+    }
+}
+
+function updateStylePreview() {
+    const preview = document.getElementById('stylePreview');
+    if (!preview) return;
+    
+    // Get current style settings
+    const colorScheme = document.getElementById('colorScheme').value;
+    const primaryColor = document.getElementById('primaryColor').value;
+    const secondaryColor = document.getElementById('secondaryColor').value;
+    const primaryFont = document.getElementById('primaryFont').value;
+    const baseFontSize = document.getElementById('baseFontSize').value;
+    const iconStyle = document.getElementById('iconStyle').value;
+    const showIcons = document.getElementById('showCategoryIcons').checked;
+    const addDividers = document.getElementById('addDividers').checked;
+    
+    // Generate preview HTML
+    const fontSizes = {
+        'small': '10pt',
+        'medium': '12pt', 
+        'large': '14pt',
+        'extra-large': '16pt'
+    };
+    
+    const currentColors = colorScheme === 'custom' ? 
+        { primary: primaryColor, secondary: secondaryColor } :
+        { primary: primaryColor, secondary: secondaryColor };
+    
+    preview.innerHTML = `
+        <div style="font-family: '${primaryFont}', Arial; font-size: ${fontSizes[baseFontSize]}; color: ${currentColors.primary}; background: white; padding: 15px; border-radius: 8px;">
+            <h3 style="color: ${currentColors.primary}; text-align: center; margin-bottom: 15px; border-bottom: 2px solid ${currentColors.secondary}; padding-bottom: 8px;">
+                תפריט מסעדה - תצוגה מקדימה
+            </h3>
+            
+            <div style="margin-bottom: 15px;">
+                <h4 style="color: ${currentColors.secondary}; margin-bottom: 8px; ${addDividers ? 'border-bottom: 1px solid #ddd; padding-bottom: 5px;' : ''}">
+                    ${showIcons ? '<i class="fas fa-utensils" style="margin-left: 8px;"></i>' : ''}
+                    מנות עיקריות
+                </h4>
+                <div style="margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>שניצל ירושלמי</span>
+                        <span style="color: ${currentColors.secondary}; font-weight: bold;">₪65</span>
+                    </div>
+                    <div style="font-size: 0.9em; color: #666; margin-top: 2px;">
+                        שניצל עוף פרוס עם חומוס וסלט ירקות טריים
+                    </div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>קבב בפיתה</span>
+                        <span style="color: ${currentColors.secondary}; font-weight: bold;">₪45</span>
+                    </div>
+                    <div style="font-size: 0.9em; color: #666; margin-top: 2px;">
+                        קבב בקר טרי בפיתה עם טחינה וירקות
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function collectStylingData() {
+    // Collect all styling data into wizardData
+    wizardData.styleSettings = {
+        colorScheme: document.getElementById('colorScheme').value,
+        primaryColor: document.getElementById('primaryColor').value,
+        secondaryColor: document.getElementById('secondaryColor').value,
+        primaryFont: document.getElementById('primaryFont').value,
+        baseFontSize: document.getElementById('baseFontSize').value,
+        iconStyle: document.getElementById('iconStyle').value,
+        showCategoryIcons: document.getElementById('showCategoryIcons').checked,
+        addDecorators: document.getElementById('addDecorators').checked,
+        addDividers: document.getElementById('addDividers').checked,
+        itemSpacing: document.getElementById('itemSpacing').value
+    };
+    
+    wizardData.pageSettings = {
+        addPageNumbers: document.getElementById('addPageNumbers').checked,
+        addHeaders: document.getElementById('addHeaders').checked,
+        addFooters: document.getElementById('addFooters').checked,
+        separateIndexPage: document.getElementById('separateIndexPage').checked,
+        pageBreakCategories: getSelectedPageBreakCategories()
+    };
+}
+
+function getSelectedPageBreakCategories() {
+    const pageBreakCategories = [];
+    wizardData.selectedCategories.forEach(categoryId => {
+        const checkbox = document.getElementById(`pageBreak_${categoryId}`);
+        if (checkbox && checkbox.checked) {
+            pageBreakCategories.push(categoryId);
+        }
+    });
+    return pageBreakCategories;
+}
+
 function updateSummary() {
     document.getElementById('selectedCategoriesCount').textContent = wizardData.selectedCategories.length;
     document.getElementById('selectedItemsCount').textContent = wizardData.selectedItems.length;
@@ -1066,7 +1442,7 @@ function updateSummary() {
 // Create Menu Function
 async function createMenu() {
     try {
-        // Collect form data
+        // Collect form data with advanced styling
         const menuData = {
             name: wizardData.menuName,
             branch_id: wizardData.branchId,
@@ -1082,6 +1458,8 @@ async function createMenu() {
                 show_branch_info: document.getElementById('showBranchInfo').checked,
                 show_date: document.getElementById('showDate').checked
             },
+            style_settings: wizardData.styleSettings || {},
+            page_settings: wizardData.pageSettings || {},
             save_as_template: document.getElementById('saveAsTemplate').checked,
             template_name: document.getElementById('saveAsTemplate').checked ? 
                 `תבנית ${wizardData.menuName}` : ''

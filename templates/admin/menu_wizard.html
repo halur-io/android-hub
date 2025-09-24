@@ -818,6 +818,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize UI components
     initializeBranchSelect();
     displayTemplates(currentTemplates);
+    
+    // Add live preview updates for menu name
+    const menuNameInput = document.getElementById('menuName');
+    if (menuNameInput) {
+        menuNameInput.addEventListener('input', function() {
+            wizardData.menuName = this.value;
+            if (wizardData.currentStep >= 4) {
+                setTimeout(updateStylePreview, 100);
+            }
+        });
+    }
 });
 
 // API Functions

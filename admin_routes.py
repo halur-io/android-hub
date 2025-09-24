@@ -1041,14 +1041,22 @@ def simple_excel_upload():
                 base_price = price_parts[0].strip()
                 alt_price = price_parts[1].strip() if len(price_parts) > 1 else ''
                 
-                item = {
-                    'name': name,
-                    'category': category,
-                    'description': description,
-                    'base_price': base_price,
-                    'alt_price': alt_price,
-                    'has_multiple_prices': len(price_parts) > 1
-                }
+                # Create object structure that template expects
+                class SimpleItem:
+                    def __init__(self, name, category, description, base_price, alt_price, has_multiple):
+                        self.item_id = f"item_{len(processed_items)}"
+                        self.mapped_fields = {
+                            'name': name,
+                            'category': category,
+                            'description': description
+                        }
+                        self.pricing = {
+                            'base_price': base_price,
+                            'alt_price': alt_price,
+                            'has_multiple_prices': has_multiple
+                        }
+                
+                item = SimpleItem(name, category, description, base_price, alt_price, len(price_parts) > 1)
                 processed_items.append(item)
         
         current_app.logger.info(f"Processed {len(processed_items)} items")

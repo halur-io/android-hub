@@ -1,0 +1,566 @@
+{% extends "admin/base.html" %}
+
+{% block title %}אשף תפריט - Admin Panel{% endblock %}
+
+{% block extra_head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- Menu Wizard Scripts -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Clean Header */
+.clean-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 20px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.clean-header h1 {
+    color: var(--sumo-coral);
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+.clean-header p {
+    color: #666;
+    margin: 10px 0 0 0;
+    font-size: 1.1rem;
+}
+
+/* Main Action Cards */
+.main-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.action-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.action-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    text-decoration: none;
+    color: inherit;
+}
+
+.primary-card {
+    border-color: var(--sumo-coral);
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.primary-card:hover {
+    border-color: var(--sumo-coral);
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+}
+
+.secondary-card {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #fff 0%, #f0f8ff 100%);
+}
+
+.secondary-card:hover {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+}
+
+.menu-card {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #fff 0%, #f8fff9 100%);
+}
+
+.menu-card:hover {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.primary-card .card-icon {
+    background: var(--sumo-coral);
+    color: white;
+}
+
+.secondary-card .card-icon {
+    background: #007bff;
+    color: white;
+}
+
+.menu-card .card-icon {
+    background: #28a745;
+    color: white;
+}
+
+.card-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.card-content p {
+    margin: 0;
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+/* Dropdown Management Container */
+.management-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.dropdown-toggle-custom {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.dropdown-toggle-custom:hover {
+    background: #5a6268;
+}
+
+.dropdown-menu-custom {
+    display: none;
+    margin-top: 15px;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
+.dropdown-menu-custom.show {
+    display: block;
+}
+
+.management-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.management-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.management-btn:hover {
+    background: #e9ecef;
+    text-decoration: none;
+    color: #333;
+    transform: translateY(-1px);
+}
+
+.management-btn i {
+    width: 16px;
+    text-align: center;
+}
+
+/* Current Templates Display */
+.templates-preview {
+    margin-top: 30px;
+}
+
+.template-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.template-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.template-info h5 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.template-info p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.template-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .main-actions {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .action-card {
+        padding: 20px;
+    }
+    
+    .management-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .template-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .template-actions {
+        justify-content: center;
+    }
+}
+
+/* RTL Support */
+[dir="rtl"] .action-card {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dropdown-toggle-custom {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .management-btn {
+    flex-direction: row-reverse;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Clean Header -->
+    <div class="clean-header">
+        <h1><i class="fas fa-magic me-3"></i>אשף תפריט</h1>
+        <p>יצירה ועיצוב תפריטי מסעדה מותאמים אישית לכל סניף</p>
+    </div>
+
+    <!-- Main Action Cards -->
+    <div class="main-actions">
+        <!-- Create New Menu Card -->
+        <a href="#" class="action-card primary-card" onclick="createNewMenu()">
+            <div class="card-icon">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="card-content">
+                <h3>יצירת תפריט חדש</h3>
+                <p>התחל ביצירת תפריט מותאם אישית עם בחירת קטגוריות, מנות ועיצוב מקצועי להדפסה</p>
+            </div>
+        </a>
+
+        <!-- Saved Templates Card -->
+        <a href="#" class="action-card secondary-card" onclick="showSavedTemplates()">
+            <div class="card-icon">
+                <i class="fas fa-bookmark"></i>
+            </div>
+            <div class="card-content">
+                <h3>תבניות שמורות</h3>
+                <p>גש לתבניות תפריט שמורות וטען הגדרות קודמות ליצירה מהירה של תפריטים חדשים</p>
+            </div>
+        </a>
+
+        <!-- Print Management Card -->
+        <a href="#" class="action-card menu-card" onclick="togglePrintManagement()">
+            <div class="card-icon">
+                <i class="fas fa-print"></i>
+            </div>
+            <div class="card-content">
+                <h3>ניהול הדפסות</h3>
+                <p>הגדרות הדפסה מתקדמות, תבניות עיצוב והתאמות למדפסות שונות</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Dropdown Management Section -->
+    <div class="management-section">
+        <button class="dropdown-toggle-custom" onclick="toggleDropdown()" id="managementDropdown">
+            <span><i class="fas fa-cogs me-2"></i>כלי ניהול מתקדם</span>
+            <i class="fas fa-chevron-down transition-transform" id="dropdownIcon"></i>
+        </button>
+        
+        <div class="dropdown-menu-custom" id="managementMenu">
+            <div class="management-buttons">
+                <a href="#" class="management-btn" onclick="manageCategories()">
+                    <i class="fas fa-tags"></i>
+                    <span>ניהול קטגוריות</span>
+                </a>
+                <a href="#" class="management-btn" onclick="managePrintConfigs()">
+                    <i class="fas fa-cog"></i>
+                    <span>הגדרות הדפסה</span>
+                </a>
+                <a href="#" class="management-btn" onclick="exportMenuData()">
+                    <i class="fas fa-download"></i>
+                    <span>ייצוא נתונים</span>
+                </a>
+                <a href="#" class="management-btn" onclick="menuStatistics()">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>סטטיסטיקות</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Templates Preview -->
+    <div class="templates-preview" id="templatesSection" style="display: none;">
+        <h4><i class="fas fa-bookmark me-2"></i>תבניות קיימות</h4>
+        <div id="templatesList">
+            <!-- Templates will be loaded here dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Create Menu Modal (will be added later) -->
+<div class="modal fade" id="createMenuModal" tabindex="-1">
+    <!-- Modal content will be added in the next step -->
+</div>
+
+<!-- Print Configuration Modal (will be added later) -->
+<div class="modal fade" id="printConfigModal" tabindex="-1">
+    <!-- Modal content will be added in the next step -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Global variables
+let currentTemplates = [];
+let dropdownOpen = false;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadSavedTemplates();
+});
+
+// Toggle dropdown menu
+function toggleDropdown() {
+    const menu = document.getElementById('managementMenu');
+    const icon = document.getElementById('dropdownIcon');
+    
+    dropdownOpen = !dropdownOpen;
+    
+    if (dropdownOpen) {
+        menu.classList.add('show');
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        menu.classList.remove('show');
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('managementDropdown');
+    const menu = document.getElementById('managementMenu');
+    
+    if (!dropdown.contains(event.target) && !menu.contains(event.target)) {
+        if (dropdownOpen) {
+            toggleDropdown();
+        }
+    }
+});
+
+// Main action functions
+function createNewMenu() {
+    // Will be implemented in next step
+    console.log('Opening menu creation wizard...');
+    showNotification('בקרוב: אשף יצירת תפריט חדש', 'info');
+}
+
+function showSavedTemplates() {
+    const section = document.getElementById('templatesSection');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        loadSavedTemplates();
+        section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+function togglePrintManagement() {
+    // Will be implemented in next step
+    console.log('Opening print management...');
+    showNotification('בקרוב: ניהול הגדרות הדפסה', 'info');
+}
+
+// Management functions
+function manageCategories() {
+    window.location.href = '/admin/menu';
+}
+
+function managePrintConfigs() {
+    showNotification('בקרוב: ניהול הגדרות הדפסה מתקדמות', 'info');
+}
+
+function exportMenuData() {
+    showNotification('בקרוב: ייצוא נתוני תפריט', 'info');
+}
+
+function menuStatistics() {
+    showNotification('בקרוב: סטטיסטיקות תפריט', 'info');
+}
+
+// Load saved templates
+async function loadSavedTemplates() {
+    try {
+        // This will be implemented when we add the backend routes
+        console.log('Loading saved templates...');
+        
+        // Placeholder data for now
+        const templates = [
+            {
+                id: 1,
+                name: 'תפריט ראמה - סטנדרטי',
+                description: 'תפריט מלא לסניף ראמה',
+                branch: 'ראמה',
+                created_at: '2025-09-24'
+            },
+            {
+                id: 2,
+                name: 'תפריט כרמיאל - מעודכן',
+                description: 'תפריט עם מנות עונתיות לכרמיאל',
+                branch: 'כרמיאל',
+                created_at: '2025-09-23'
+            }
+        ];
+        
+        displayTemplates(templates);
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        showNotification('שגיאה בטעינת תבניות', 'error');
+    }
+}
+
+// Display templates
+function displayTemplates(templates) {
+    const templatesList = document.getElementById('templatesList');
+    
+    if (templates.length === 0) {
+        templatesList.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-bookmark fa-3x mb-3"></i>
+                <p>אין תבניות שמורות עדיין</p>
+                <p class="small">התחל ביצירת תפריט חדש כדי לשמור תבנית</p>
+            </div>
+        `;
+        return;
+    }
+    
+    templatesList.innerHTML = templates.map(template => `
+        <div class="template-card">
+            <div class="template-info">
+                <h5>${template.name}</h5>
+                <p>${template.description} • סניף: ${template.branch} • נוצר: ${formatDate(template.created_at)}</p>
+            </div>
+            <div class="template-actions">
+                <button class="btn btn-primary btn-sm" onclick="useTemplate(${template.id})">
+                    <i class="fas fa-play me-1"></i>השתמש
+                </button>
+                <button class="btn btn-info btn-sm" onclick="editTemplate(${template.id})">
+                    <i class="fas fa-edit me-1"></i>ערוך
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteTemplate(${template.id})">
+                    <i class="fas fa-trash me-1"></i>מחק
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Template actions
+function useTemplate(templateId) {
+    console.log('Using template:', templateId);
+    showNotification('בקרוב: טעינת תבנית לעריכה', 'info');
+}
+
+function editTemplate(templateId) {
+    console.log('Editing template:', templateId);
+    showNotification('בקרוב: עריכת תבנית', 'info');
+}
+
+function deleteTemplate(templateId) {
+    if (confirm('האם אתה בטוח שברצונך למחוק תבנית זו?')) {
+        console.log('Deleting template:', templateId);
+        showNotification('בקרוב: מחיקת תבנית', 'info');
+    }
+}
+
+// Utility functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('he-IL');
+}
+
+// Notification system (placeholder - will use existing notification system)
+function showNotification(message, type = 'info') {
+    // Using browser alert for now - will integrate with existing notification system
+    alert(message);
+}
+</script>
+{% endblock %}

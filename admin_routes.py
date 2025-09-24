@@ -1854,6 +1854,12 @@ def upload_gallery():
 def checklist():
     return render_template('admin/checklist_tasks.html')
 
+# Menu Wizard Management
+@admin_bp.route('/menu-wizard')
+@login_required
+def menu_wizard():
+    return render_template('admin/menu_wizard.html')
+
 # Messages Management
 @admin_bp.route('/messages')
 @login_required

@@ -1051,6 +1051,11 @@ class MenuTemplate(db.Model):
     layout_config = db.Column(db.JSON)  # Layout preferences (columns, sections, etc.)
     print_config = db.Column(db.JSON)  # Print-specific settings
     
+    # Advanced styling configurations
+    style_config = db.Column(db.JSON)  # Typography, colors, spacing, borders
+    page_config = db.Column(db.JSON)  # Page breaks, section layout, headers
+    icon_config = db.Column(db.JSON)  # Category icons, decorative elements
+    
     # Relationships
     branch = db.relationship('Branch', backref='menu_templates')
     creator = db.relationship('AdminUser', backref='created_menu_templates')
@@ -1076,6 +1081,11 @@ class GeneratedMenu(db.Model):
     # Menu content as JSON
     menu_content = db.Column(db.JSON)  # Complete menu structure for printing
     print_settings = db.Column(db.JSON)  # Print configuration used
+    
+    # Advanced styling (from template or custom)
+    style_settings = db.Column(db.JSON)  # Typography, colors, spacing, borders
+    page_settings = db.Column(db.JSON)  # Page breaks, section layout, headers
+    icon_settings = db.Column(db.JSON)  # Category icons, decorative elements
     
     # Relationships
     branch = db.relationship('Branch', backref='generated_menus')

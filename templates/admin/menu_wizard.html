@@ -810,9 +810,14 @@ let allBranches = [];
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
-    loadSavedTemplates();
-    loadBranches();
-    loadCategories();
+    // Use preloaded data instead of making API calls
+    allBranches = {{ branches|tojson }};
+    allCategories = {{ categories|tojson }};
+    currentTemplates = {{ templates|tojson }};
+    
+    // Initialize UI components
+    initializeBranchSelect();
+    displayTemplates(currentTemplates);
 });
 
 // API Functions
@@ -839,18 +844,21 @@ async function makeApiCall(url, options = {}) {
     }
 }
 
+function initializeBranchSelect() {
+    const branchSelect = document.getElementById('branchSelect');
+    if (branchSelect && allBranches) {
+        branchSelect.innerHTML = '<option value="">בחר סניף...</option>' +
+            allBranches.map(branch => 
+                `<option value="${branch.id}">${branch.name_he}</option>`
+            ).join('');
+    }
+}
+
 async function loadBranches() {
     try {
         const data = await makeApiCall('/admin/api/menu-wizard/branches');
         allBranches = data.branches;
-        
-        const branchSelect = document.getElementById('branchSelect');
-        if (branchSelect) {
-            branchSelect.innerHTML = '<option value="">בחר סניף...</option>' +
-                allBranches.map(branch => 
-                    `<option value="${branch.id}">${branch.name_he}</option>`
-                ).join('');
-        }
+        initializeBranchSelect();
     } catch (error) {
         console.error('Error loading branches:', error);
         showNotification('שגיאה בטעינת סניפים', 'error');
@@ -945,8 +953,13 @@ function togglePrintManagement() {
 // Wizard Navigation
 function nextStep() {
     if (validateCurrentStep()) {
-        if (wizardData.currentStep < 4) {
+        if (wizardData.currentStep < 5) {
             goToStep(wizardData.currentStep + 1);
+            
+            // Update preview when moving to styling step
+            if (wizardData.currentStep === 4) {
+                setTimeout(updateStylePreview, 100);
+            }
         }
     }
 }
@@ -1190,6 +1203,11 @@ function toggleItem(itemId) {
     }
     
     updateItemCard(itemId, checkbox.checked);
+    
+    // Update preview if we're on the styling step
+    if (wizardData.currentStep >= 4) {
+        setTimeout(updateStylePreview, 50);
+    }
 }
 
 function updateItemCard(itemId, selected) {
@@ -1352,6 +1370,12 @@ function updateStylePreview() {
     const iconStyle = document.getElementById('iconStyle').value;
     const showIcons = document.getElementById('showCategoryIcons').checked;
     const addDividers = document.getElementById('addDividers').checked;
+    const addDecorators = document.getElementById('addDecorators') ? document.getElementById('addDecorators').checked : false;
+    const itemSpacing = document.getElementById('itemSpacing') ? document.getElementById('itemSpacing').value : 'normal';
+    
+    // Layout settings
+    const showPrices = wizardData.layoutSettings.show_prices !== false;
+    const showDescriptions = wizardData.layoutSettings.show_descriptions !== false;
     
     // Generate preview HTML
     const fontSizes = {
@@ -1361,40 +1385,117 @@ function updateStylePreview() {
         'extra-large': '16pt'
     };
     
+    const spacing = {
+        'compact': '5px',
+        'normal': '8px',
+        'relaxed': '12px',
+        'spacious': '16px'
+    };
+    
     const currentColors = colorScheme === 'custom' ? 
         { primary: primaryColor, secondary: secondaryColor } :
         { primary: primaryColor, secondary: secondaryColor };
     
-    preview.innerHTML = `
-        <div style="font-family: '${primaryFont}', Arial; font-size: ${fontSizes[baseFontSize]}; color: ${currentColors.primary}; background: white; padding: 15px; border-radius: 8px;">
-            <h3 style="color: ${currentColors.primary}; text-align: center; margin-bottom: 15px; border-bottom: 2px solid ${currentColors.secondary}; padding-bottom: 8px;">
-                תפריט מסעדה - תצוגה מקדימה
-            </h3>
+    const currentSpacing = spacing[itemSpacing] || spacing['normal'];
+    
+    // Generate content based on selected items
+    let previewContent = '';
+    
+    if (wizardData.selectedItems && wizardData.selectedItems.length > 0) {
+        // Show actual selected menu items
+        const selectedCategories = allCategories.filter(cat => 
+            wizardData.selectedCategories.includes(cat.id)
+        );
+        
+        for (const category of selectedCategories) {
+            const categoryItems = category.items.filter(item => 
+                wizardData.selectedItems.includes(item.id)
+            );
             
+            if (categoryItems.length > 0) {
+                const iconClass = iconStyle === 'regular' ? 'far' : iconStyle === 'light' ? 'fal' : 'fas';
+                const categoryIcon = showIcons && category.icon ? 
+                    `<i class="${iconClass} fa-${category.icon}" style="margin-left: 8px;"></i>` : '';
+                
+                previewContent += `
+                    <div style="margin-bottom: ${currentSpacing};">
+                        <h4 style="color: ${currentColors.secondary}; margin-bottom: 8px; ${addDividers ? 'border-bottom: 1px solid #ddd; padding-bottom: 5px;' : ''}">
+                            ${categoryIcon}${category.name_he}
+                        </h4>
+                `;
+                
+                // Show up to 3 items per category in preview
+                const itemsToShow = categoryItems.slice(0, 3);
+                for (const item of itemsToShow) {
+                    const priceDisplay = showPrices && item.base_price ? 
+                        `<span style="color: ${currentColors.secondary}; font-weight: bold;">₪${Math.round(item.base_price)}</span>` : '';
+                    
+                    const descriptionDisplay = showDescriptions && item.description_he ? 
+                        `<div style="font-size: 0.9em; color: #666; margin-top: 2px;">${item.description_he}</div>` : '';
+                    
+                    previewContent += `
+                        <div style="margin-bottom: ${currentSpacing};">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>${item.name_he}</span>
+                                ${priceDisplay}
+                            </div>
+                            ${descriptionDisplay}
+                        </div>
+                    `;
+                }
+                
+                if (categoryItems.length > 3) {
+                    previewContent += `<div style="color: #999; font-style: italic; margin-bottom: ${currentSpacing};">... ועוד ${categoryItems.length - 3} מנות</div>`;
+                }
+                
+                previewContent += '</div>';
+            }
+        }
+    } else {
+        // Show sample content if no items selected
+        previewContent = `
             <div style="margin-bottom: 15px;">
                 <h4 style="color: ${currentColors.secondary}; margin-bottom: 8px; ${addDividers ? 'border-bottom: 1px solid #ddd; padding-bottom: 5px;' : ''}">
                     ${showIcons ? '<i class="fas fa-utensils" style="margin-left: 8px;"></i>' : ''}
                     מנות עיקריות
                 </h4>
-                <div style="margin-bottom: 8px;">
+                <div style="margin-bottom: ${currentSpacing};">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span>שניצל ירושלמי</span>
-                        <span style="color: ${currentColors.secondary}; font-weight: bold;">₪65</span>
+                        ${showPrices ? `<span style="color: ${currentColors.secondary}; font-weight: bold;">₪65</span>` : ''}
                     </div>
-                    <div style="font-size: 0.9em; color: #666; margin-top: 2px;">
-                        שניצל עוף פרוס עם חומוס וסלט ירקות טריים
-                    </div>
+                    ${showDescriptions ? '<div style="font-size: 0.9em; color: #666; margin-top: 2px;">שניצל עוף פרוס עם חומוס וסלט ירקות טריים</div>' : ''}
                 </div>
-                <div style="margin-bottom: 8px;">
+                <div style="margin-bottom: ${currentSpacing};">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span>קבב בפיתה</span>
-                        <span style="color: ${currentColors.secondary}; font-weight: bold;">₪45</span>
+                        ${showPrices ? `<span style="color: ${currentColors.secondary}; font-weight: bold;">₪45</span>` : ''}
                     </div>
-                    <div style="font-size: 0.9em; color: #666; margin-top: 2px;">
-                        קבב בקר טרי בפיתה עם טחינה וירקות
-                    </div>
+                    ${showDescriptions ? '<div style="font-size: 0.9em; color: #666; margin-top: 2px;">קבב בקר טרי בפיתה עם טחינה וירקות</div>' : ''}
                 </div>
             </div>
+        `;
+    }
+    
+    const decoratorStyle = addDecorators ? `
+        position: relative;
+        &::before {
+            content: "✦ ✧ ✦";
+            display: block;
+            text-align: center;
+            color: ${currentColors.secondary};
+            margin-bottom: 10px;
+        }
+    ` : '';
+    
+    preview.innerHTML = `
+        <div style="font-family: '${primaryFont}', Arial; font-size: ${fontSizes[baseFontSize]}; color: ${currentColors.primary}; background: white; padding: 15px; border-radius: 8px; direction: rtl; text-align: right;">
+            ${addDecorators ? `<div style="text-align: center; color: ${currentColors.secondary}; margin-bottom: 10px;">✦ ✧ ✦</div>` : ''}
+            <h3 style="color: ${currentColors.primary}; text-align: center; margin-bottom: 15px; border-bottom: 2px solid ${currentColors.secondary}; padding-bottom: 8px;">
+                ${wizardData.menuName || 'תפריט מסעדה'} - תצוגה מקדימה
+            </h3>
+            ${previewContent}
+            ${addDecorators ? `<div style="text-align: center; color: ${currentColors.secondary}; margin-top: 10px;">✦ ✧ ✦</div>` : ''}
         </div>
     `;
 }

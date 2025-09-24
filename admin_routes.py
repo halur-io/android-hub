@@ -1858,7 +1858,86 @@ def checklist():
 @admin_bp.route('/menu-wizard')
 @login_required
 def menu_wizard():
-    return render_template('admin/menu_wizard.html')
+    try:
+        # Preload branches data
+        branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+        branches_data = [
+            {
+                'id': branch.id,
+                'name_he': branch.name_he,
+                'name_en': branch.name_en,
+                'address_he': branch.address_he
+            } for branch in branches
+        ]
+        
+        # Preload categories with items
+        categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+        categories_data = []
+        
+        for category in categories:
+            items = MenuItem.query.filter_by(
+                category_id=category.id,
+                is_active=True
+            ).order_by(MenuItem.display_order).all()
+            
+            category_data = {
+                'id': category.id,
+                'name_he': category.name_he,
+                'name_en': category.name_en,
+                'icon': category.icon,
+                'color': category.color,
+                'items': []
+            }
+            
+            for item in items:
+                item_data = {
+                    'id': item.id,
+                    'name_he': item.name_he,
+                    'name_en': item.name_en,
+                    'description_he': item.description_he,
+                    'description_en': item.description_en,
+                    'base_price': float(item.base_price) if item.base_price else 0,
+                    'dietary_properties': [
+                        {
+                            'name_he': prop.name_he,
+                            'name_en': prop.name_en,
+                            'icon': prop.icon,
+                            'color': prop.color
+                        } for prop in item.dietary_properties if prop.is_active
+                    ]
+                }
+                category_data['items'].append(item_data)
+            
+            categories_data.append(category_data)
+        
+        # Preload templates
+        templates = MenuTemplate.query.order_by(MenuTemplate.created_at.desc()).all()
+        templates_data = []
+        
+        for template in templates:
+            template_data = {
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'branch_name': template.branch.name_he if template.branch else 'כללי',
+                'is_default': template.is_default,
+                'created_at': template.created_at.strftime('%Y-%m-%d'),
+                'categories_count': len(template.categories_config) if template.categories_config else 0,
+                'items_count': len(template.items_config) if template.items_config else 0
+            }
+            templates_data.append(template_data)
+        
+        return render_template('admin/menu_wizard.html', 
+                             branches=branches_data,
+                             categories=categories_data,
+                             templates=templates_data)
+                             
+    except Exception as e:
+        app.logger.error(f"Error loading menu wizard data: {str(e)}")
+        return render_template('admin/menu_wizard.html', 
+                             branches=[],
+                             categories=[],
+                             templates=[])
 
 # Menu Wizard API Routes
 @admin_bp.route('/api/menu-wizard/categories')

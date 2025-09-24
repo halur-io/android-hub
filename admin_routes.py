@@ -980,6 +980,113 @@ def delete_category(id):
     db.session.commit()
     return jsonify({'success': True})
 
+# ===== EXCEL MENU UPLOAD SYSTEM =====
+
+@admin_bp.route('/menu/excel-upload')
+@login_required  
+def excel_menu_upload():
+    """Excel menu upload interface with field mapping"""
+    branches = Branch.query.filter_by(is_active=True).all()
+    categories = MenuCategory.query.filter_by(is_active=True).all()
+    return render_template('admin/excel_menu_upload.html', 
+                         branches=branches, 
+                         categories=categories)
+
+@admin_bp.route('/menu/excel-upload/process', methods=['POST'])
+@exempt
+@login_required
+def process_excel_upload():
+    """Process uploaded Excel file and show field mapping interface"""
+    try:
+        if 'excel_file' not in request.files:
+            flash('❌ לא נבחר קובץ Excel', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        file = request.files['excel_file']
+        if file.filename == '':
+            flash('❌ לא נבחר קובץ', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            flash('❌ הקובץ חייב להיות בפורמט Excel (.xlsx או .xls)', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        # Save uploaded file temporarily
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"menu_upload_{timestamp}_{filename}"
+        
+        upload_path = os.path.join('temp_uploads', filename)
+        os.makedirs('temp_uploads', exist_ok=True)
+        file.save(upload_path)
+        
+        # Parse Excel file 
+        import pandas as pd
+        try:
+            # Try to read all sheets
+            excel_data = pd.read_excel(upload_path, sheet_name=None)
+            
+            parsed_data = {
+                'file_path': upload_path,
+                'filename': file.filename,
+                'sheets': {},
+                'suggested_mapping': {}
+            }
+            
+            # Analyze each sheet
+            for sheet_name, df in excel_data.items():
+                # Clean column names
+                df.columns = df.columns.astype(str).str.strip()
+                
+                sheet_info = {
+                    'name': sheet_name,
+                    'rows': len(df),
+                    'columns': list(df.columns),
+                    'sample_data': df.head(10).to_dict('records'),
+                    'column_types': df.dtypes.to_dict()
+                }
+                
+                parsed_data['sheets'][sheet_name] = sheet_info
+                
+                # Suggest field mapping based on column names
+                suggested_mapping = {}
+                for col in df.columns:
+                    col_lower = col.lower()
+                    if any(word in col_lower for word in ['category', 'קטגוריה', 'סוג']):
+                        suggested_mapping[col] = 'category'
+                    elif any(word in col_lower for word in ['name', 'שם', 'מנה', 'dish']):
+                        suggested_mapping[col] = 'name'
+                    elif any(word in col_lower for word in ['desc', 'תיאור', 'description']):
+                        suggested_mapping[col] = 'description' 
+                    elif any(word in col_lower for word in ['price', 'מחיר', 'cost']):
+                        suggested_mapping[col] = 'price'
+                    elif any(word in col_lower for word in ['image', 'תמונה', 'photo']):
+                        suggested_mapping[col] = 'image'
+                
+                parsed_data['suggested_mapping'][sheet_name] = suggested_mapping
+            
+            # Store in session for next step
+            from flask import session
+            session['excel_upload_data'] = parsed_data
+            
+            branches = Branch.query.filter_by(is_active=True).all()
+            categories = MenuCategory.query.filter_by(is_active=True).all()
+            
+            return render_template('admin/excel_field_mapping.html',
+                                 data=parsed_data,
+                                 branches=branches,
+                                 categories=categories)
+                                 
+        except Exception as e:
+            current_app.logger.error(f"Excel parsing error: {str(e)}")
+            flash(f'❌ שגיאה בקריאת קובץ Excel: {str(e)}', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+    except Exception as e:
+        current_app.logger.error(f"Excel upload error: {str(e)}")
+        flash(f'❌ שגיאה בהעלאת הקובץ: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
 # ===== MENU PARSING FROM WORD DOCUMENTS =====
 
 @admin_bp.route('/menu/parse-word', methods=['GET', 'POST'])

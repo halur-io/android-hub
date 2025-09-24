@@ -1096,17 +1096,7 @@ def simple_excel_upload():
             db.session.rollback()
             current_app.logger.error(f"Error committing categories: {str(e)}")
         
-        # Store data in session for the finalize step
-        session['processed_excel_items'] = {
-            'items': [
-                {
-                    'item_id': item.item_id,
-                    'mapped_fields': item.mapped_fields,
-                    'pricing': item.pricing
-                } for item in processed_items
-            ],
-            'branch_id': branch_id
-        }
+        # No session storage needed - direct form processing
         
         return render_template('admin/excel_dish_settings.html',
                              items=processed_items,
@@ -1331,6 +1321,105 @@ def process_excel_mapping():
     except Exception as e:
         current_app.logger.error(f"Mapping processing error: {str(e)}")
         flash(f'❌ שגיאה בעיבוד המיפוי: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
+@admin_bp.route('/menu/excel-upload/finalize-direct', methods=['POST'])
+@login_required
+def finalize_direct_excel_import():
+    """Direct Excel import without session storage"""
+    try:
+        branch_id = request.form.get('branch_id')
+        selected_items = request.form.getlist('selected_items[]')
+        
+        if not selected_items:
+            flash('❌ לא נבחרו מנות לייבוא', 'error')
+            return redirect(request.referrer)
+            
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for item_id in selected_items:
+            try:
+                # Get form data for this item
+                item_prefix = f'items[{item_id}]'
+                name = request.form.get(f'{item_prefix}[name]')
+                category_id = request.form.get(f'{item_prefix}[category_id]')
+                description = request.form.get(f'{item_prefix}[description]')
+                base_price = request.form.get(f'{item_prefix}[base_price]')
+                alt_price = request.form.get(f'{item_prefix}[alt_price]')
+                preparation_time = request.form.get(f'{item_prefix}[preparation_time]')
+                spice_level = request.form.get(f'{item_prefix}[spice_level]')
+                
+                if not name or not base_price:
+                    error_count += 1
+                    errors.append(f'חסרים נתונים בסיסיים עבור מנה: {name or item_id}')
+                    continue
+                
+                # Create menu item
+                menu_item = MenuItem(
+                    name_he=name,
+                    name_en=name,  # Default to Hebrew
+                    description_he=description or '',
+                    description_en=description or '',
+                    price=float(base_price),
+                    category_id=int(category_id) if category_id else None,
+                    branch_id=int(branch_id),
+                    is_available=True,
+                    preparation_time_minutes=int(preparation_time) if preparation_time else None
+                )
+                
+                # Handle spice level
+                if spice_level:
+                    menu_item.spice_level = spice_level
+                
+                # Handle alternative price
+                if alt_price and alt_price.strip():
+                    try:
+                        menu_item.alt_price = float(alt_price)
+                    except ValueError:
+                        pass
+                
+                db.session.add(menu_item)
+                db.session.flush()  # Get ID
+                
+                # Handle dietary properties
+                dietary_properties = request.form.getlist(f'{item_prefix}[dietary_properties][]')
+                for prop_id in dietary_properties:
+                    if prop_id:
+                        menu_item.dietary_properties.append(DietaryProperty.query.get(int(prop_id)))
+                
+                success_count += 1
+                current_app.logger.info(f"Successfully imported: {name}")
+                
+            except Exception as e:
+                error_count += 1
+                errors.append(f'שגיאה בייבוא {name if "name" in locals() else item_id}: {str(e)}')
+                current_app.logger.error(f"Error importing item {item_id}: {str(e)}")
+                continue
+        
+        # Commit all changes
+        try:
+            db.session.commit()
+            current_app.logger.info(f"Successfully committed {success_count} items")
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ שגיאה בשמירת הנתונים: {str(e)}', 'error')
+            return redirect(request.referrer)
+        
+        # Success message
+        if success_count > 0:
+            flash(f'✅ יובאו בהצלחה {success_count} מנות!', 'success')
+        if error_count > 0:
+            flash(f'⚠️ {error_count} מנות נכשלו בייבוא', 'warning')
+            for error in errors[:5]:  # Show first 5 errors
+                flash(f'📝 {error}', 'info')
+        
+        return redirect(url_for('admin.menu_management'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Direct import error: {str(e)}")
+        flash(f'❌ שגיאה כללית: {str(e)}', 'error')
         return redirect(url_for('admin.excel_menu_upload'))
 
 @admin_bp.route('/menu/excel-upload/finalize', methods=['POST'])

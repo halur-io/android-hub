@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import exempt
 from werkzeug.utils import secure_filename
 from database import db
 from models import *
@@ -982,6 +983,7 @@ def delete_category(id):
 # ===== MENU PARSING FROM WORD DOCUMENTS =====
 
 @admin_bp.route('/menu/parse-word', methods=['GET', 'POST'])
+@exempt
 @login_required
 def parse_word_menu():
     """Parse menu items from Word document content"""
@@ -1023,6 +1025,7 @@ def parse_word_menu():
     return render_template('admin/parse_word_menu.html', branches=branches, categories=categories)
 
 @admin_bp.route('/menu/parse-word/process-selection', methods=['POST'])
+@exempt
 @login_required  
 def process_menu_selection():
     """Process user's selected menu items"""
@@ -1061,6 +1064,7 @@ def process_menu_selection():
         return redirect(url_for('admin.parse_word_menu'))
 
 @admin_bp.route('/menu/parse-word/demo', methods=['POST'])
+@exempt
 @login_required
 def parse_word_menu_demo():
     """Parse the demo menu content provided by user"""
@@ -1213,21 +1217,20 @@ def parse_word_menu_demo():
         from menu_parser import MenuParser
         parser = MenuParser()
         
-        # Process the demo menu
-        result = parser.process_word_menu(
-            content=demo_content,
-            branch_id=int(branch_id),
-            uploaded_by=current_user.id
-        )
+        # Parse the demo menu content
+        result = parser.parse_word_menu_simple(demo_content)
         
-        if result['success']:
+        if result['potential_items']:
+            categories = MenuCategory.query.filter_by(is_active=True).all()
             return jsonify({
                 'success': True,
-                'message': f'✅ התפריט נוסף בהצלחה! נוספו {result["items_added"]} פריטים ב-{result["categories_added"]} קטגוריות',
-                'result': result
+                'message': f'🔍 נמצאו {result["total_found"]} פריטים אפשריים',
+                'items': result['potential_items'],
+                'branch_id': branch_id,
+                'categories': [{'id': c.id, 'name_he': c.name_he} for c in categories]
             })
         else:
-            return jsonify({'success': False, 'error': result['error']}), 500
+            return jsonify({'success': False, 'error': 'לא נמצאו פריטים בפורמט הנכון'}), 400
             
     except Exception as e:
         current_app.logger.error(f"Demo menu parsing error: {str(e)}")

@@ -2174,7 +2174,10 @@ def api_get_menu_template(template_id):
             'categories_config': template.categories_config or [],
             'items_config': template.items_config or [],
             'layout_config': template.layout_config or {},
-            'print_config': template.print_config or {}
+            'print_config': template.print_config or {},
+            'style_config': template.style_config or {},
+            'page_settings': template.page_settings or {},
+            'created_at': template.created_at.isoformat() if template.created_at else None
         }
         
         return jsonify({'success': True, 'template': result})
@@ -2649,90 +2652,112 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
     '''
     
     # Process categories based on page groups if available, otherwise use simple page breaks
-    if page_groups:
+    def render_category_items(category, items, cat_columns):
+        """Helper function to render category items with proper column handling"""
+        category_html = ''
+        
+        # Wrap items in proper container based on column count
+        if cat_columns > 1:
+            category_html += f'<div class="category-items" style="column-count: {cat_columns}; column-gap: 15mm; column-fill: balance;">'
+        else:
+            category_html += '<div class="category-items">'
+        
+        for item in items:
+            # Format price based on settings
+            price_html = ''
+            if show_prices and item.base_price:
+                try:
+                    price_value = int(float(item.base_price))
+                    price_html = f'<div class="item-price">₪{price_value}</div>'
+                except (ValueError, TypeError):
+                    price_html = f'<div class="item-price">₪{item.base_price}</div>'
+            
+            category_html += f'''
+                    <div class="menu-item">
+                        <div class="item-header">
+                            <div class="item-name hebrew">{item.name_he}</div>
+                            {price_html}
+                        </div>
+            '''
+            
+            # Add description if enabled
+            if show_descriptions and item.description_he:
+                category_html += f'''
+                        <div class="item-description hebrew">{item.description_he}</div>
+                '''
+            
+            # Add dietary properties with enhanced styling
+            if item.dietary_properties:
+                dietary_badges = []
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
+                        dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
+                
+                if dietary_badges:
+                    category_html += f'''
+                        <div class="dietary-properties">
+                            {''.join(dietary_badges)}
+                        </div>
+                    '''
+            
+            category_html += '</div>'
+        
+        category_html += '</div>'  # Close category-items
+        return category_html
+    
+    if page_groups and len(page_groups) > 0:
         # Use new page group system
         for group_index, group in enumerate(page_groups):
             if group_index > 0:  # Add page break before each new page group
                 html += '<div class="page-break"></div>'
             
             # Process categories in this page group
-            for category_id in group.get('categories', []):
-                if category_id in categories_with_items:
-                    data = categories_with_items[category_id]
-                    category = data['category']
-                    items = data['items']
+            categories_in_group = group.get('categories', [])
+            if categories_in_group:
+                for category_id in categories_in_group:
+                    # Handle both string and int category IDs
+                    category_key = None
+                    if str(category_id) in categories_with_items:
+                        category_key = str(category_id)
+                    elif int(category_id) in categories_with_items:
+                        category_key = int(category_id)
                     
-                    # Get column settings for this category
-                    cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
-                    cat_columns = cat_column_settings.get('columns', 1)
-                    
-                    # Generate category icon if enabled
-                    category_icon_html = ''
-                    if show_category_icons and category.icon:
-                        icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
-                        category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
-                    
-                    # Add category with column settings
-                    category_style = f'column-count: {cat_columns}; column-gap: 15mm;' if cat_columns > 1 else ''
-                    html += f'''
-                            <div class="category-section" style="{category_style}">
-                                <h2 class="category-title hebrew">
-                                    {category_icon_html}
-                                    {category.name_he}
-                                </h2>
-                    '''
-                    
-                    # Add items for this category (duplicate logic from below)
-                    for item in items:
-                        # Format price based on settings
-                        price_html = ''
-                        if show_prices and item.base_price:
-                            try:
-                                price_value = int(float(item.base_price))
-                                price_html = f'<div class="item-price">₪{price_value}</div>'
-                            except (ValueError, TypeError):
-                                price_html = f'<div class="item-price">₪{item.base_price}</div>'
+                    if category_key and category_key in categories_with_items:
+                        data = categories_with_items[category_key]
+                        category = data['category']
+                        items = data['items']
                         
+                        # Get column settings for this category
+                        cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
+                        cat_columns = cat_column_settings.get('columns', 1)
+                        
+                        # Generate category icon if enabled
+                        category_icon_html = ''
+                        if show_category_icons and category.icon:
+                            icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
+                            category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
+                        
+                        # Add category section
                         html += f'''
-                                <div class="menu-item">
-                                    <div class="item-header">
-                                        <div class="item-name hebrew">{item.name_he}</div>
-                                        {price_html}
-                                    </div>
+                                <div class="category-section">
+                                    <h2 class="category-title hebrew">
+                                        {category_icon_html}
+                                        {category.name_he}
+                                    </h2>
                         '''
                         
-                        # Add description if enabled
-                        if show_descriptions and item.description_he:
-                            html += f'''
-                                    <div class="item-description hebrew">{item.description_he}</div>
-                            '''
-                        
-                        # Add dietary properties with enhanced styling
-                        if item.dietary_properties:
-                            dietary_badges = []
-                            for prop in item.dietary_properties:
-                                if prop.is_active:
-                                    badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
-                                    dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
-                            
-                            if dietary_badges:
-                                html += f'''
-                                    <div class="dietary-properties">
-                                        {''.join(dietary_badges)}
-                                    </div>
-                                '''
-                        
-                        html += '</div>'
-                    
-                    html += '</div>'  # Close category-section
+                        # Add items using helper function
+                        html += render_category_items(category, items, cat_columns)
+                        html += '</div>'  # Close category-section
     else:
-        # Use original simple page break system
+        # Use original simple page break system or fallback for all categories
         for category_id, data in categories_with_items.items():
             category = data['category']
             items = data['items']
             
             # Check if this category should start on a new page
-            page_break_class = ' page-break' if category_id in page_break_categories else ''
+            page_break_class = ' page-break' if int(category_id) in page_break_categories else ''
             
             # Get column settings for this category
             cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
@@ -2744,58 +2769,18 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
                 category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
             
-            # Add category with column settings and page break
-            category_style = f'column-count: {cat_columns}; column-gap: 15mm;' if cat_columns > 1 else ''
+            # Add category section with page break if needed
             html += f'''
-                    <div class="category-section{page_break_class}" style="{category_style}">
+                    <div class="category-section{page_break_class}">
                         <h2 class="category-title hebrew">
                             {category_icon_html}
                             {category.name_he}
                         </h2>
             '''
             
-            for item in items:
-                # Format price based on settings
-                price_html = ''
-                if show_prices and item.base_price:
-                    try:
-                        price_value = int(float(item.base_price))
-                        price_html = f'<div class="item-price">₪{price_value}</div>'
-                    except (ValueError, TypeError):
-                        price_html = f'<div class="item-price">₪{item.base_price}</div>'
-                
-                html += f'''
-                        <div class="menu-item">
-                            <div class="item-header">
-                                <div class="item-name hebrew">{item.name_he}</div>
-                                {price_html}
-                            </div>
-                '''
-                
-                # Add description if enabled
-                if show_descriptions and item.description_he:
-                    html += f'''
-                            <div class="item-description hebrew">{item.description_he}</div>
-                    '''
-                
-                # Add dietary properties with enhanced styling
-                if item.dietary_properties:
-                    dietary_badges = []
-                    for prop in item.dietary_properties:
-                        if prop.is_active:
-                            badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
-                            dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
-                    
-                    if dietary_badges:
-                        html += f'''
-                            <div class="dietary-properties">
-                                {''.join(dietary_badges)}
-                            </div>
-                        '''
-                
-                html += '</div>'
-            
-            html += '</div>'
+            # Add items using helper function
+            html += render_category_items(category, items, cat_columns)
+            html += '</div>'  # Close category-section
     
     # Close the HTML structure
     html += '''

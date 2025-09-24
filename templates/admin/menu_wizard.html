@@ -1995,6 +1995,160 @@ function printMenu() {
     }
 }
 
+// Template Management Functions
+async function saveTemplate() {
+    try {
+        // Get template name from modal input
+        const templateNameInput = document.getElementById('templateName');
+        const templateDescInput = document.getElementById('templateDescription');
+        
+        if (!templateNameInput) {
+            showNotification('שגיאה: לא נמצא שדה שם התבנית', 'error');
+            return;
+        }
+        
+        const templateName = templateNameInput.value.trim();
+        if (!templateName) {
+            showNotification('חובה להזין שם לתבנית', 'error');
+            return;
+        }
+        
+        // Collect current wizard data
+        collectStylingData(); // Make sure all data is collected
+        
+        const templateData = {
+            name: templateName,
+            description: templateDescInput ? templateDescInput.value.trim() : '',
+            branch_id: wizardData.selectedBranch,
+            categories: wizardData.selectedCategories,
+            items: wizardData.selectedItems,
+            layout: {
+                show_prices: wizardData.showPrices,
+                show_descriptions: wizardData.showDescriptions,
+                columns: wizardData.columns
+            },
+            print_config: wizardData.printSettings || {},
+            style_config: wizardData.styleSettings || {},
+            page_settings: {
+                pageGroups: wizardData.pageGroups || [],
+                categoryColumnSettings: wizardData.categoryColumnSettings || {},
+                showMenuTitle: wizardData.showMenuTitle !== false
+            }
+        };
+        
+        const response = await fetch('/admin/api/menu-wizard/save-template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(templateData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(result.message || 'התבנית נשמרה בהצלחה!', 'success');
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
+            if (modal) {
+                modal.hide();
+            }
+            // Clear the form
+            templateNameInput.value = '';
+            if (templateDescInput) templateDescInput.value = '';
+            // Reload templates
+            loadSavedTemplates();
+        } else {
+            showNotification(result.error || 'שגיאה בשמירת התבנית', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving template:', error);
+        showNotification('שגיאה בשמירת התבנית', 'error');
+    }
+}
+
+async function editTemplate(templateId) {
+    try {
+        const response = await fetch(`/admin/api/menu-wizard/template/${templateId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const template = result.template;
+            
+            // Load template data into wizard
+            wizardData.selectedBranch = template.branch_id;
+            wizardData.selectedCategories = template.categories_config || [];
+            wizardData.selectedItems = template.items_config || [];
+            
+            // Load layout settings
+            const layout = template.layout_config || {};
+            wizardData.showPrices = layout.show_prices !== false;
+            wizardData.showDescriptions = layout.show_descriptions !== false;
+            wizardData.columns = layout.columns || 2;
+            
+            // Load page settings
+            const pageSettings = template.page_settings || {};
+            wizardData.pageGroups = pageSettings.pageGroups || [];
+            wizardData.categoryColumnSettings = pageSettings.categoryColumnSettings || {};
+            wizardData.showMenuTitle = pageSettings.showMenuTitle !== false;
+            
+            // Load style and print settings
+            wizardData.styleSettings = template.style_config || {};
+            wizardData.printSettings = template.print_config || {};
+            
+            showNotification('התבנית נטענה בהצלחה!', 'success');
+            
+            // Go to step 2 to continue editing
+            wizardData.currentStep = 2;
+            showStep(2);
+            
+            // Hide the templates section
+            document.getElementById('templatesSection').style.display = 'none';
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('wizardSteps').style.display = 'block';
+            
+        } else {
+            showNotification(result.error || 'שגיאה בטעינת התבנית', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading template:', error);
+        showNotification('שגיאה בטעינת התבנית', 'error');
+    }
+}
+
+async function deleteTemplate(templateId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את התבנית?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/menu-wizard/template/${templateId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('התבנית נמחקה בהצלחה!', 'success');
+            loadSavedTemplates(); // Reload the templates list
+        } else {
+            showNotification(result.error || 'שגיאה במחיקת התבנית', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showNotification('שגיאה במחיקת התבנית', 'error');
+    }
+}
+
+function getCsrfToken() {
+    const tokenElement = document.querySelector('meta[name="csrf-token"]');
+    return tokenElement ? tokenElement.getAttribute('content') : '';
+}
+
 // Management functions
 function manageCategories() {
     window.location.href = '/admin/menu';

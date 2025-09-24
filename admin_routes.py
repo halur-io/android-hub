@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from flask_wtf.csrf import exempt
+# from flask_wtf.csrf import exempt  # Not available in this version
 from werkzeug.utils import secure_filename
 from database import db
 from models import *
@@ -993,7 +993,6 @@ def excel_menu_upload():
                          categories=categories)
 
 @admin_bp.route('/menu/excel-upload/process', methods=['POST'])
-@exempt
 @login_required
 def process_excel_upload():
     """Process uploaded Excel file and show field mapping interface"""
@@ -1088,7 +1087,6 @@ def process_excel_upload():
         return redirect(url_for('admin.excel_menu_upload'))
 
 @admin_bp.route('/menu/excel-upload/mapping', methods=['POST'])
-@exempt
 @login_required
 def process_excel_mapping():
     """Process field mapping and show comprehensive dish settings"""
@@ -1191,10 +1189,145 @@ def process_excel_mapping():
         flash(f'❌ שגיאה בעיבוד המיפוי: {str(e)}', 'error')
         return redirect(url_for('admin.excel_menu_upload'))
 
+@admin_bp.route('/menu/excel-upload/finalize', methods=['POST'])
+@login_required
+def finalize_excel_import():
+    """Finalize Excel import by saving selected dishes to database"""
+    try:
+        from flask import session
+        processed_data = session.get('processed_excel_items')
+        if not processed_data:
+            flash('❌ לא נמצאו נתונים לייבוא. אנא התחל מחדש.', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        branch_id = request.form.get('branch_id')
+        selected_items = request.form.getlist('selected_items[]')
+        
+        if not selected_items:
+            flash('❌ לא נבחרו מנות לייבוא', 'error')
+            return redirect(request.referrer)
+            
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for item_id in selected_items:
+            try:
+                # Find original item data
+                original_item = None
+                for item in processed_data['items']:
+                    if item['item_id'] == item_id:
+                        original_item = item
+                        break
+                        
+                if not original_item:
+                    error_count += 1
+                    errors.append(f'לא נמצא פריט: {item_id}')
+                    continue
+                
+                # Get form data for this item
+                item_prefix = f'items[{item_id}]'
+                name = request.form.get(f'{item_prefix}[name]')
+                category_id = request.form.get(f'{item_prefix}[category_id]')
+                description = request.form.get(f'{item_prefix}[description]')
+                base_price = request.form.get(f'{item_prefix}[base_price]')
+                alt_price = request.form.get(f'{item_prefix}[alt_price]')
+                preparation_time = request.form.get(f'{item_prefix}[preparation_time]')
+                spice_level = request.form.get(f'{item_prefix}[spice_level]')
+                
+                if not name or not base_price:
+                    error_count += 1
+                    errors.append(f'שדות חובה חסרים עבור: {name or item_id}')
+                    continue
+                
+                # Create new menu item
+                menu_item = MenuItem(
+                    name_he=name,
+                    name_en=name,  # Default to Hebrew name
+                    description_he=description or '',
+                    description_en=description or '',
+                    price=float(base_price),
+                    category_id=int(category_id) if category_id else None,
+                    branch_id=int(branch_id),
+                    is_available=True,
+                    is_featured=False,
+                    preparation_time=int(preparation_time) if preparation_time else None,
+                    spice_level=spice_level,
+                    created_by=current_user.id
+                )
+                
+                # Handle alternative pricing if exists
+                if alt_price and alt_price.strip():
+                    menu_item.alt_price = float(alt_price)
+                
+                db.session.add(menu_item)
+                db.session.flush()  # Get the ID
+                
+                # Add dietary properties if selected
+                dietary_props = request.form.getlist(f'{item_prefix}[dietary_properties][]')
+                for prop_id in dietary_props:
+                    if prop_id:
+                        dietary_prop = DietaryProperty.query.get(int(prop_id))
+                        if dietary_prop:
+                            menu_item.dietary_properties.append(dietary_prop)
+                
+                # Handle image upload if provided
+                image_file = request.files.get(f'{item_prefix}[image]')
+                if image_file and image_file.filename:
+                    try:
+                        # Save image (implement based on your image handling system)
+                        filename = secure_filename(image_file.filename)
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        filename = f"menu_{timestamp}_{filename}"
+                        
+                        image_path = os.path.join('static', 'uploads', 'menu', filename)
+                        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                        image_file.save(image_path)
+                        
+                        menu_item.image_url = f'/static/uploads/menu/{filename}'
+                    except Exception as e:
+                        current_app.logger.warning(f"Image upload failed for {name}: {str(e)}")
+                
+                success_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                errors.append(f'שגיאה בייבוא {name or item_id}: {str(e)}')
+                current_app.logger.error(f"Item import error: {str(e)}")
+        
+        # Commit all changes
+        if success_count > 0:
+            db.session.commit()
+            
+            # Clean up temporary files
+            if processed_data.get('original_data', {}).get('file_path'):
+                try:
+                    os.remove(processed_data['original_data']['file_path'])
+                except:
+                    pass
+            
+            # Clear session data
+            session.pop('excel_upload_data', None)
+            session.pop('processed_excel_items', None)
+            
+        flash(f'✅ יובאו בהצלחה {success_count} מנות!', 'success')
+        
+        if error_count > 0:
+            flash(f'⚠️ {error_count} מנות נכשלו בייבוא', 'warning')
+            for error in errors[:5]:  # Show first 5 errors
+                flash(f'• {error}', 'warning')
+                
+        return redirect(url_for('admin.menu'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Excel import finalization error: {str(e)}")
+        flash(f'❌ שגיאה בסיום הייבוא: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
 # ===== MENU PARSING FROM WORD DOCUMENTS =====
 
 @admin_bp.route('/menu/parse-word', methods=['GET', 'POST'])
-@exempt
 @login_required
 def parse_word_menu():
     """Parse menu items from Word document content"""
@@ -1236,7 +1369,6 @@ def parse_word_menu():
     return render_template('admin/parse_word_menu.html', branches=branches, categories=categories)
 
 @admin_bp.route('/menu/parse-word/process-selection', methods=['POST'])
-@exempt
 @login_required  
 def process_menu_selection():
     """Process user's selected menu items"""
@@ -1275,7 +1407,6 @@ def process_menu_selection():
         return redirect(url_for('admin.parse_word_menu'))
 
 @admin_bp.route('/menu/parse-word/demo', methods=['POST'])
-@exempt
 @login_required
 def parse_word_menu_demo():
     """Parse the demo menu content provided by user"""

@@ -2156,7 +2156,9 @@ def api_menu_print_preview(menu_id):
             branch=branch,
             categories_with_items=categories_with_items,
             print_settings=generated_menu.print_settings or {},
-            layout_settings=menu_content.get('layout', {})
+            layout_settings=menu_content.get('layout', {}),
+            style_settings=generated_menu.style_settings or {},
+            page_settings=generated_menu.page_settings or {}
         )
         
         return jsonify({
@@ -2168,20 +2170,128 @@ def api_menu_print_preview(menu_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings):
-    """Generate Hebrew RTL-optimized print HTML for menu"""
+def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None):
+    """Generate Hebrew RTL-optimized print HTML for menu with advanced styling"""
     
     # Default settings
+    style_settings = style_settings or {}
+    page_settings = page_settings or {}
+    
+    # Layout settings
     show_prices = layout_settings.get('show_prices', True)
     show_descriptions = layout_settings.get('show_descriptions', True)
     columns = layout_settings.get('columns', 2)
+    
+    # Print settings
     paper_size = print_settings.get('paper_size', 'A4')
     show_branch_info = print_settings.get('show_branch_info', True)
     show_date = print_settings.get('show_date', True)
     
+    # Advanced style settings
+    color_scheme = style_settings.get('colorScheme', 'restaurant')
+    primary_color = style_settings.get('primaryColor', '#1B2951')
+    secondary_color = style_settings.get('secondaryColor', '#C75450')
+    primary_font = style_settings.get('primaryFont', 'Heebo')
+    base_font_size = style_settings.get('baseFontSize', 'medium')
+    icon_style = style_settings.get('iconStyle', 'solid')
+    show_category_icons = style_settings.get('showCategoryIcons', True)
+    add_decorators = style_settings.get('addDecorators', False)
+    add_dividers = style_settings.get('addDividers', False)
+    item_spacing = style_settings.get('itemSpacing', 'normal')
+    
+    # Page settings
+    add_page_numbers = page_settings.get('addPageNumbers', False)
+    add_headers = page_settings.get('addHeaders', False)
+    add_footers = page_settings.get('addFooters', False)
+    separate_index_page = page_settings.get('separateIndexPage', False)
+    page_break_categories = page_settings.get('pageBreakCategories', [])
+    
+    # Font size mapping
+    font_sizes = {
+        'small': {'base': '10pt', 'title': '18pt', 'category': '14pt', 'item': '11pt'},
+        'medium': {'base': '12pt', 'title': '24pt', 'category': '16pt', 'item': '13pt'},
+        'large': {'base': '14pt', 'title': '28pt', 'category': '18pt', 'item': '15pt'},
+        'extra-large': {'base': '16pt', 'title': '32pt', 'category': '20pt', 'item': '17pt'}
+    }
+    
+    current_fonts = font_sizes[base_font_size]
+    
+    # Spacing mapping
+    spacing_styles = {
+        'compact': {'item_margin': '4mm', 'category_margin': '15mm'},
+        'normal': {'item_margin': '8mm', 'category_margin': '20mm'},
+        'relaxed': {'item_margin': '12mm', 'category_margin': '25mm'},
+        'spacious': {'item_margin': '16mm', 'category_margin': '30mm'}
+    }
+    
+    current_spacing = spacing_styles[item_spacing]
+    
     # Generate current date in Hebrew
     from datetime import datetime
     current_date = datetime.now().strftime('%d/%m/%Y')
+    
+    # Generate enhanced CSS with advanced styling
+    font_import = f"@import url('https://fonts.googleapis.com/css2?family={primary_font.replace(' ', '+')}:wght@300;400;500;600;700&display=swap');"
+    
+    decorator_styles = ""
+    if add_decorators:
+        decorator_styles = f"""
+            .menu-header::before, .menu-header::after {{
+                content: "✦ ✧ ✦";
+                display: block;
+                color: {secondary_color};
+                font-size: 14pt;
+                margin: 5mm 0;
+            }}
+            .category-section {{
+                border: 1px solid {secondary_color}20;
+                border-radius: 3mm;
+                padding: 5mm;
+            }}
+        """
+    
+    divider_styles = ""
+    if add_dividers:
+        divider_styles = f"""
+            .category-title {{
+                border-bottom: 2px solid {secondary_color};
+                border-top: 1px solid {secondary_color}40;
+                padding: 5mm 0;
+            }}
+            .category-title::after {{
+                content: "";
+                display: block;
+                width: 50mm;
+                height: 1px;
+                background: {secondary_color};
+                margin: 2mm auto 0;
+            }}
+        """
+    
+    page_styles = ""
+    if add_page_numbers:
+        page_styles += """
+            @page {
+                @bottom-center {
+                    content: "עמוד " counter(page);
+                    font-size: 10pt;
+                    color: #666;
+                }
+            }
+        """
+    
+    if add_headers:
+        page_styles += f"""
+            @page {{
+                @top-center {{
+                    content: "{menu_name}";
+                    font-size: 12pt;
+                    color: {primary_color};
+                    border-bottom: 1px solid {secondary_color};
+                    padding-bottom: 2mm;
+                }}
+            }}
+        """
     
     html = f'''
     <!DOCTYPE html>
@@ -2191,7 +2301,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{menu_name}</title>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+            {font_import}
             
             * {{
                 margin: 0;
@@ -2200,10 +2310,10 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             }}
             
             body {{
-                font-family: 'Heebo', Arial Hebrew, Arial, sans-serif;
-                font-size: 12pt;
+                font-family: '{primary_font}', 'Heebo', Arial Hebrew, Arial, sans-serif;
+                font-size: {current_fonts['base']};
                 line-height: 1.4;
-                color: #333;
+                color: {primary_color};
                 direction: rtl;
                 text-align: right;
             }}
@@ -2211,6 +2321,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             @page {{
                 size: {paper_size};
                 margin: 15mm 0mm 15mm 15mm;
+                {page_styles}
             }}
             
             .print-container {{
@@ -2221,27 +2332,31 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             
             .menu-header {{
                 text-align: center;
-                margin-bottom: 25px;
-                border-bottom: 2px solid #C75450;
+                margin-bottom: {current_spacing['category_margin']};
+                border-bottom: 3px solid {secondary_color};
                 padding-bottom: 15px;
+                position: relative;
             }}
             
+            {decorator_styles}
+            
             .menu-title {{
-                font-size: 24pt;
+                font-size: {current_fonts['title']};
                 font-weight: 700;
-                color: #1B2951;
+                color: {primary_color};
                 margin-bottom: 8px;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
             }}
             
             .branch-info {{
-                font-size: 14pt;
-                color: #666;
+                font-size: {current_fonts['item']};
+                color: {primary_color}80;
                 margin-bottom: 5px;
             }}
             
             .print-date {{
-                font-size: 10pt;
-                color: #888;
+                font-size: calc({current_fonts['base']} * 0.8);
+                color: {primary_color}60;
             }}
             
             .menu-content {{
@@ -2252,24 +2367,37 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             
             .category-section {{
                 break-inside: avoid;
-                margin-bottom: 20mm;
+                margin-bottom: {current_spacing['category_margin']};
                 page-break-inside: avoid;
+            }}
+            
+            .page-break {{
+                page-break-before: always;
             }}
             
             .category-title {{
-                font-size: 16pt;
+                font-size: {current_fonts['category']};
                 font-weight: 600;
-                color: #C75450;
+                color: {secondary_color};
                 margin-bottom: 10mm;
                 text-align: center;
-                border-bottom: 1px solid #ddd;
                 padding-bottom: 5mm;
+                position: relative;
+            }}
+            
+            {divider_styles}
+            
+            .category-icon {{
+                font-size: calc({current_fonts['category']} * 1.2);
+                margin-left: 5mm;
+                color: {secondary_color};
             }}
             
             .menu-item {{
-                margin-bottom: 8mm;
+                margin-bottom: {current_spacing['item_margin']};
                 break-inside: avoid;
                 page-break-inside: avoid;
+                padding: 2mm 0;
             }}
             
             .item-header {{
@@ -2280,40 +2408,74 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             }}
             
             .item-name {{
-                font-size: 13pt;
+                font-size: {current_fonts['item']};
                 font-weight: 500;
-                color: #333;
+                color: {primary_color};
                 flex: 1;
                 margin-left: 5mm;
             }}
             
             .item-price {{
-                font-size: 12pt;
+                font-size: {current_fonts['item']};
                 font-weight: 600;
-                color: #C75450;
+                color: {secondary_color};
                 white-space: nowrap;
+                background: {secondary_color}10;
+                padding: 1mm 3mm;
+                border-radius: 2mm;
             }}
             
             .item-description {{
-                font-size: 10pt;
-                color: #666;
+                font-size: calc({current_fonts['base']} * 0.85);
+                color: {primary_color}70;
                 margin-top: 2mm;
                 line-height: 1.3;
+                font-style: italic;
             }}
             
             .dietary-properties {{
-                margin-top: 2mm;
+                margin-top: 3mm;
                 display: flex;
-                gap: 3mm;
+                gap: 2mm;
                 flex-wrap: wrap;
             }}
             
             .dietary-badge {{
-                background: #f0f0f0;
+                background: {secondary_color}15;
+                border: 1px solid {secondary_color}30;
                 padding: 1mm 3mm;
                 border-radius: 2mm;
-                font-size: 8pt;
-                color: #666;
+                font-size: calc({current_fonts['base']} * 0.7);
+                color: {secondary_color};
+                font-weight: 500;
+            }}
+            
+            /* Index page styles */
+            .index-page {{
+                page-break-after: always;
+                text-align: center;
+                padding: 50mm 0;
+            }}
+            
+            .index-title {{
+                font-size: calc({current_fonts['title']} * 1.5);
+                color: {primary_color};
+                margin-bottom: 20mm;
+            }}
+            
+            .index-list {{
+                list-style: none;
+                padding: 0;
+                max-width: 150mm;
+                margin: 0 auto;
+            }}
+            
+            .index-item {{
+                padding: 5mm 0;
+                border-bottom: 1px dotted {secondary_color}50;
+                display: flex;
+                justify-content: space-between;
+                font-size: {current_fonts['item']};
             }}
             
             /* Ensure proper Hebrew text rendering */
@@ -2325,7 +2487,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             /* Print-specific styles */
             @media print {{
                 body {{
-                    font-size: 11pt;
+                    font-size: calc({current_fonts['base']} * 0.9);
                 }}
                 
                 .menu-content {{
@@ -2339,11 +2501,45 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 .menu-item {{
                     break-inside: avoid;
                 }}
+                
+                .page-break {{
+                    page-break-before: always;
+                }}
             }}
         </style>
     </head>
     <body>
         <div class="print-container">
+    '''
+    
+    # Add index page if requested
+    if separate_index_page and categories_with_items:
+        html += f'''
+            <div class="index-page">
+                <h1 class="index-title hebrew">{menu_name}</h1>
+                <h2 class="hebrew" style="color: {secondary_color}; margin-bottom: 15mm;">תוכן עניינים</h2>
+                <ul class="index-list">
+        '''
+        
+        page_num = 2  # Start from page 2 (after index)
+        for category_id, data in categories_with_items.items():
+            category = data['category']
+            html += f'''
+                    <li class="index-item">
+                        <span class="hebrew">{category.name_he}</span>
+                        <span>{page_num}</span>
+                    </li>
+            '''
+            if category_id in page_break_categories:
+                page_num += 1
+        
+        html += '''
+                </ul>
+            </div>
+        '''
+    
+    # Add main menu header
+    html += f'''
             <div class="menu-header">
                 <h1 class="menu-title hebrew">{menu_name}</h1>
                 {f'<div class="branch-info hebrew">{branch.name_he}</div>' if show_branch_info and branch else ''}
@@ -2354,42 +2550,72 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             <div class="menu-content">
     '''
     
-    # Add categories and items
+    # Add categories and items with advanced styling
     for category_id, data in categories_with_items.items():
         category = data['category']
         items = data['items']
         
+        # Check if this category should start on a new page
+        page_break_class = ' page-break' if category_id in page_break_categories else ''
+        
+        # Generate category icon if enabled
+        category_icon_html = ''
+        if show_category_icons and category.icon:
+            icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
+            category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
+        
         html += f'''
-                <div class="category-section">
-                    <h2 class="category-title hebrew">{category.name_he}</h2>
+                <div class="category-section{page_break_class}">
+                    <h2 class="category-title hebrew">
+                        {category_icon_html}
+                        {category.name_he}
+                    </h2>
         '''
         
         for item in items:
+            # Format price based on settings
+            price_html = ''
+            if show_prices and item.base_price:
+                try:
+                    price_value = int(float(item.base_price))
+                    price_html = f'<div class="item-price">₪{price_value}</div>'
+                except (ValueError, TypeError):
+                    price_html = f'<div class="item-price">₪{item.base_price}</div>'
+            
             html += f'''
                     <div class="menu-item">
                         <div class="item-header">
                             <div class="item-name hebrew">{item.name_he}</div>
-                            {f'<div class="item-price">₪{int(item.base_price)}</div>' if show_prices and item.base_price else ''}
+                            {price_html}
                         </div>
             '''
             
+            # Add description if enabled
             if show_descriptions and item.description_he:
                 html += f'''
                         <div class="item-description hebrew">{item.description_he}</div>
                 '''
             
-            # Add dietary properties
+            # Add dietary properties with enhanced styling
             if item.dietary_properties:
-                html += '<div class="dietary-properties">'
+                dietary_badges = []
                 for prop in item.dietary_properties:
                     if prop.is_active:
-                        html += f'<span class="dietary-badge hebrew">{prop.name_he}</span>'
-                html += '</div>'
+                        badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
+                        dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
+                
+                if dietary_badges:
+                    html += f'''
+                        <div class="dietary-properties">
+                            {''.join(dietary_badges)}
+                        </div>
+                    '''
             
             html += '</div>'
         
         html += '</div>'
     
+    # Close the HTML structure
     html += '''
             </div>
         </div>

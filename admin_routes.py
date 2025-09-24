@@ -2442,7 +2442,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             }}
             
             .menu-content {{
-                columns: {columns};
+                /* Global columns disabled - using per-category settings */
                 column-gap: 20mm;
                 column-fill: balance;
             }}
@@ -2573,7 +2573,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 }}
                 
                 .menu-content {{
-                    columns: {columns};
+                    /* Print columns handled per-category */
                 }}
                 
                 .category-section {{

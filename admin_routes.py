@@ -1359,9 +1359,9 @@ def finalize_direct_excel_import():
                 # Create menu item
                 menu_item = MenuItem(
                     name_he=name,
-                    name_en=name,  # Default to Hebrew
+                    name_en='',  # Leave English name empty to avoid duplication
                     description_he=description or '',
-                    description_en=description or '',
+                    description_en='',  # Leave English description empty  
                     base_price=float(base_price),
                     category_id=int(category_id) if category_id else None,
                     is_available=True,

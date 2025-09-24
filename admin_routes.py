@@ -1010,6 +1010,7 @@ def simple_excel_upload():
         
         # Direct processing with pandas
         import pandas as pd
+        from flask import session
         df = pd.read_excel(file)
         
         # Your Excel structure: category name, dish name, description, price
@@ -1094,6 +1095,18 @@ def simple_excel_upload():
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Error committing categories: {str(e)}")
+        
+        # Store data in session for the finalize step
+        session['processed_excel_items'] = {
+            'items': [
+                {
+                    'item_id': item.item_id,
+                    'mapped_fields': item.mapped_fields,
+                    'pricing': item.pricing
+                } for item in processed_items
+            ],
+            'branch_id': branch_id
+        }
         
         return render_template('admin/excel_dish_settings.html',
                              items=processed_items,

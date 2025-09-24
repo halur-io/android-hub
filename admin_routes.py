@@ -1042,7 +1042,7 @@ def process_excel_upload():
                     'rows': len(df),
                     'columns': list(df.columns),
                     'sample_data': df.head(10).to_dict('records'),
-                    'column_types': df.dtypes.to_dict()
+                    'column_types': {col: str(dtype) for col, dtype in df.dtypes.to_dict().items()}
                 }
                 
                 parsed_data['sheets'][sheet_name] = sheet_info

@@ -1877,7 +1877,7 @@ def menu_wizard():
         for category in categories:
             items = MenuItem.query.filter_by(
                 category_id=category.id,
-                is_active=True
+                is_available=True
             ).order_by(MenuItem.display_order).all()
             
             category_data = {
@@ -1933,7 +1933,8 @@ def menu_wizard():
                              templates=templates_data)
                              
     except Exception as e:
-        app.logger.error(f"Error loading menu wizard data: {str(e)}")
+        from flask import current_app
+        current_app.logger.error(f"Error loading menu wizard data: {str(e)}")
         return render_template('admin/menu_wizard.html', 
                              branches=[],
                              categories=[],

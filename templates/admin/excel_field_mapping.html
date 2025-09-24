@@ -285,8 +285,7 @@
         </ul>
     </div>
 
-    <form id="mappingForm" method="POST" action="{{ url_for('admin.process_excel_mapping') }}"
-          onsubmit="console.log('Form submitting...'); return validateForm();">
+    <form id="mappingForm" method="POST" action="{{ url_for('admin.process_excel_mapping') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="branch_id" value="{{ request.form.get('branch_id') }}">
         
@@ -387,6 +386,35 @@
 // Store the parsed data for JavaScript use
 const excelData = {{ data|tojson }};
 let currentSheet = Object.keys(excelData.sheets)[0];
+
+// Global validation function
+function validateForm() {
+    const mapping = {};
+    const selectors = document.querySelectorAll(`select[name*="[${currentSheet}]"]`);
+    
+    selectors.forEach(select => {
+        const column = select.name.match(/\[([^\]]+)\]$/)[1];
+        mapping[column] = select.value;
+    });
+    
+    const mappedFields = Object.values(mapping).filter(field => field && field !== 'ignore');
+    const requiredFields = ['name', 'price'];
+    const missingRequired = requiredFields.filter(field => !mappedFields.includes(field));
+    
+    if (missingRequired.length > 0) {
+        alert(`נא למפות את השדות החובה: ${missingRequired.join(', ')}`);
+        return false;
+    }
+    
+    // Debug: log all form data
+    const formData = new FormData(document.getElementById('mappingForm'));
+    console.log('Form data being submitted:');
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ': ' + value);
+    }
+    
+    return true;
+}
 
 function switchSheet(sheetName) {
     // Update active tab
@@ -514,35 +542,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateMapping(currentSheet);
     
     // Form validation
-    function validateForm() {
-        const mapping = {};
-        const selectors = document.querySelectorAll(`select[name*="[${currentSheet}]"]`);
-        
-        selectors.forEach(select => {
-            const column = select.name.match(/\[([^\]]+)\]$/)[1];
-            mapping[column] = select.value;
-        });
-        
-        const mappedFields = Object.values(mapping).filter(field => field && field !== 'ignore');
-        const requiredFields = ['name', 'price'];
-        const missingRequired = requiredFields.filter(field => !mappedFields.includes(field));
-        
-        if (missingRequired.length > 0) {
-            alert(`נא למפות את השדות החובה: ${missingRequired.join(', ')}`);
-            return false;
-        }
-        
-        // Debug: log all form data
-        const formData = new FormData(document.getElementById('mappingForm'));
-        console.log('Form data being submitted:');
-        for (let [key, value] of formData.entries()) {
-            console.log(key + ': ' + value);
-        }
-        
-        return true;
-    }
-    
     document.getElementById('mappingForm').addEventListener('submit', function(e) {
+        console.log('Form submitting...');
         if (!validateForm()) {
             e.preventDefault();
         }

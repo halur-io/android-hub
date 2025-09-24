@@ -285,7 +285,8 @@
         </ul>
     </div>
 
-    <form id="mappingForm" method="POST" action="{{ url_for('admin.process_excel_mapping') }}">
+    <form id="mappingForm" method="POST" action="{{ url_for('admin.process_excel_mapping') }}"
+          onsubmit="console.log('Form submitting...'); return validateForm();">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="branch_id" value="{{ request.form.get('branch_id') }}">
         
@@ -324,7 +325,8 @@
                     <h6><i class="fas fa-utensils me-2"></i>שדה בתפריט</h6>
                     <select name="mapping[{{ sheet_name }}][{{ column }}]" 
                             class="field-selector"
-                            onchange="updateMapping('{{ sheet_name }}')">
+                            onchange="updateMapping('{{ sheet_name }}')"
+                            required>
                         <option value="">-- בחר שדה --</option>
                         <option value="ignore">התעלם מעמודה זו</option>
                         <optgroup label="שדות חובה">
@@ -512,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateMapping(currentSheet);
     
     // Form validation
-    document.getElementById('mappingForm').addEventListener('submit', function(e) {
+    function validateForm() {
         const mapping = {};
         const selectors = document.querySelectorAll(`select[name*="[${currentSheet}]"]`);
         
@@ -526,8 +528,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const missingRequired = requiredFields.filter(field => !mappedFields.includes(field));
         
         if (missingRequired.length > 0) {
-            e.preventDefault();
             alert(`נא למפות את השדות החובה: ${missingRequired.join(', ')}`);
+            return false;
+        }
+        
+        // Debug: log all form data
+        const formData = new FormData(document.getElementById('mappingForm'));
+        console.log('Form data being submitted:');
+        for (let [key, value] of formData.entries()) {
+            console.log(key + ': ' + value);
+        }
+        
+        return true;
+    }
+    
+    document.getElementById('mappingForm').addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
         }
     });
 });

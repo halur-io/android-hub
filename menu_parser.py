@@ -39,95 +39,39 @@ class MenuParser:
         self.category_keywords = list(self.categories_mapping.keys())
         
         # Debug mode
-        self.debug = True
+        self.debug = False  # Simplified parser doesn't need debug
     
-    def parse_word_menu(self, content, branch_id, uploaded_by=None):
-        """Parse Word document menu content and return structured data"""
+    def parse_word_menu_simple(self, content):
+        """Simple parser for user's specific format: Hebrew name + price"""
         try:
-            # Split content into lines and clean up
-            lines = [line.strip() for line in content.split('\n') if line.strip()]
+            # Find all potential menu items using simple pattern
+            # Pattern: Hebrew text followed by 1-3 digits (price)
+            pattern = r'([\u0590-\u05FF][\u0590-\u05FF\s\w\'"]+?)\s+(\d{1,3})(?=\s|$)'
             
-            categories = {}
-            current_category = None
-            current_items = []
-            skipped_lines = []  # For debugging
+            matches = re.findall(pattern, content)
             
-            if self.debug:
-                current_app.logger.info(f"Parsing {len(lines)} lines of menu content")
-            
-            i = 0
-            while i < len(lines):
-                line = lines[i].strip()
+            potential_items = []
+            for match in matches:
+                name = match[0].strip()
+                price = int(match[1])
                 
-                if self.debug and i < 20:  # Show first 20 lines
-                    current_app.logger.info(f"Line {i}: '{line}'")
-                
-                # Check if this is a category header (flexible matching)
-                detected_category = self._detect_category(line)
-                if detected_category:
-                    # Save previous category if exists
-                    if current_category and current_items:
-                        categories[current_category] = current_items
-                        if self.debug:
-                            current_app.logger.info(f"Saved category '{current_category}' with {len(current_items)} items")
+                # Filter reasonable menu items
+                if (len(name) > 2 and 
+                    10 <= price <= 300 and  # Reasonable price range
+                    not any(bad in name.lower() for bad in ['תפטעמ', 'שגומ'])):
                     
-                    current_category = detected_category
-                    current_items = []
-                    if self.debug:
-                        current_app.logger.info(f"Found category: '{detected_category}' from line: '{line}'")
-                    i += 1
-                    continue
-                
-                # Skip empty lines and decorative lines
-                if not line or line.count('־') > 5 or line.count('_') > 5 or line.count('=') > 5:
-                    i += 1
-                    continue
-                
-                # Try to parse menu item (multiple pattern attempts)
-                if current_category:
-                    item_data = self._parse_menu_item(lines, i)
-                    if item_data:
-                        current_items.append(item_data)
-                        if self.debug:
-                            current_app.logger.info(f"Parsed item: '{item_data['name_he']}' with prices {item_data['prices']}")
-                        i = item_data['next_index']
-                        continue
-                    else:
-                        # Try parsing as standalone item without strict price pattern
-                        if self._looks_like_menu_item(line):
-                            item_data = self._parse_flexible_item(lines, i)
-                            if item_data:
-                                current_items.append(item_data)
-                                if self.debug:
-                                    current_app.logger.info(f"Flexible parsed item: '{item_data['name_he']}'")
-                                i = item_data['next_index']
-                                continue
-                
-                # Track skipped lines for debugging
-                if self.debug:
-                    skipped_lines.append(f"Line {i}: '{line}'")
-                
-                i += 1
-            
-            # Add final category
-            if current_category and current_items:
-                categories[current_category] = current_items
-                if self.debug:
-                    current_app.logger.info(f"Final category '{current_category}' with {len(current_items)} items")
-            
-            if self.debug:
-                current_app.logger.info(f"Parsing complete: {len(categories)} categories, {sum(len(items) for items in categories.values())} total items")
-                if skipped_lines:
-                    current_app.logger.info(f"Skipped {len(skipped_lines)} lines - first 10: {skipped_lines[:10]}")
+                    potential_items.append({
+                        'name_he': name,
+                        'price': price,
+                        'selected': False,  # User will choose
+                        'category': '',     # User will assign
+                        'order': len(potential_items)
+                    })
             
             return {
-                'categories': categories,
-                'total_items': sum(len(items) for items in categories.values()),
-                'parsed_at': datetime.utcnow().isoformat(),
-                'debug_info': {
-                    'total_lines': len(lines),
-                    'skipped_lines': len(skipped_lines)
-                } if self.debug else {}
+                'potential_items': potential_items,
+                'total_found': len(potential_items),
+                'raw_matches': len(matches)
             }
             
         except Exception as e:
@@ -438,25 +382,58 @@ class MenuParser:
             current_app.logger.error(f"Error storing menu items: {str(e)}")
             raise e
     
-    def process_word_menu(self, content, branch_id, uploaded_by=None):
-        """Complete processing workflow for Word menu"""
+    def process_selected_items(self, selected_items, branch_id, uploaded_by=None):
+        """Process only user-selected items"""
+        from database import db
+        from models import MenuCategory, MenuItem, MenuItemPrice
+        
         try:
-            # Parse the content
-            parsed_data = self.parse_word_menu(content, branch_id, uploaded_by)
+            items_added = 0
+            categories_used = set()
             
-            # Store in database
-            result = self.store_menu_items(parsed_data, branch_id, uploaded_by)
+            for item in selected_items:
+                if not item.get('selected', False):
+                    continue
+                    
+                # Get or create category
+                category_name = item.get('category', 'כללי')
+                category = MenuCategory.query.filter_by(name_he=category_name).first()
+                
+                if not category:
+                    category = MenuCategory(
+                        name_he=category_name,
+                        name_en=category_name,
+                        icon='fas fa-utensils',
+                        color='#007bff',
+                        display_order=len(categories_used),
+                        is_active=True
+                    )
+                    db.session.add(category)
+                    db.session.flush()
+                    categories_used.add(category_name)
+                
+                # Create menu item
+                menu_item = MenuItem(
+                    category_id=category.id,
+                    name_he=item['name_he'],
+                    name_en=item.get('name_en', item['name_he']),
+                    base_price=item['price'],
+                    is_available=True,
+                    display_order=item.get('order', items_added)
+                )
+                
+                db.session.add(menu_item)
+                items_added += 1
+            
+            db.session.commit()
             
             return {
                 'success': True,
-                'parsed_items': parsed_data['total_items'],
-                'items_added': result['items_added'],
-                'categories_added': result['categories_added'],
-                'categories': list(parsed_data['categories'].keys())
+                'items_added': items_added,
+                'categories_used': len(categories_used)
             }
             
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            db.session.rollback()
+            current_app.logger.error(f"Error storing selected items: {str(e)}")
+            raise e

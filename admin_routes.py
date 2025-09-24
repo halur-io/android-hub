@@ -1001,24 +1001,64 @@ def parse_word_menu():
             from menu_parser import MenuParser
             parser = MenuParser()
             
-            # Process the menu
-            result = parser.process_word_menu(
-                content=menu_content,
-                branch_id=int(branch_id),
-                uploaded_by=current_user.id
-            )
+            # Parse and get potential items for manual selection
+            result = parser.parse_word_menu_simple(menu_content)
             
-            if result['success']:
-                flash(f'✅ התפריט נוסף בהצלחה! נוספו {result["items_added"]} פריטים ב-{result["categories_added"]} קטגוריות', 'success')
-                return render_template('admin/parse_word_results.html', result=result)
+            if result['potential_items']:
+                categories = MenuCategory.query.filter_by(is_active=True).all()
+                flash(f'🔍 נמצאו {result["total_found"]} פריטים אפשריים. בחר אילו לייבא:', 'info')
+                return render_template('admin/menu_selection.html', 
+                                     items=result['potential_items'],
+                                     branch_id=branch_id,
+                                     categories=categories,
+                                     result=result)
             else:
-                flash(f'❌ שגיאה בעיבוד התפריט: {result["error"]}', 'error')
+                flash('❌ לא נמצאו פריטים בפורמט הנכון. וודא שהמחירים מופיעים אחרי שמות המנות.', 'warning')
                 
         except Exception as e:
             current_app.logger.error(f"Menu parsing error: {str(e)}")
             flash(f'❌ שגיאה בעיבוד התפריט: {str(e)}', 'error')
     
-    return render_template('admin/parse_word_menu.html', branches=branches)
+    categories = MenuCategory.query.filter_by(is_active=True).all()
+    return render_template('admin/parse_word_menu.html', branches=branches, categories=categories)
+
+@admin_bp.route('/menu/parse-word/process-selection', methods=['POST'])
+@login_required  
+def process_menu_selection():
+    """Process user's selected menu items"""
+    try:
+        branch_id = request.form.get('branch_id')
+        selected_items_json = request.form.get('selected_items')
+        
+        if not branch_id or not selected_items_json:
+            flash('נתונים חסרים', 'error')
+            return redirect(url_for('admin.parse_word_menu'))
+        
+        import json
+        selected_items = json.loads(selected_items_json)
+        
+        # Import parser class
+        from menu_parser import MenuParser
+        parser = MenuParser()
+        
+        # Process only selected items
+        result = parser.process_selected_items(
+            selected_items=selected_items,
+            branch_id=int(branch_id),
+            uploaded_by=current_user.id
+        )
+        
+        if result['success']:
+            flash(f'✅ הייבוא הושלם! נוספו {result["items_added"]} פריטים', 'success')
+            return redirect(url_for('admin.menu'))
+        else:
+            flash('❌ שגיאה בייבוא הפריטים', 'error')
+            return redirect(url_for('admin.parse_word_menu'))
+            
+    except Exception as e:
+        current_app.logger.error(f"Selection processing error: {str(e)}")
+        flash(f'❌ שגיאה: {str(e)}', 'error')
+        return redirect(url_for('admin.parse_word_menu'))
 
 @admin_bp.route('/menu/parse-word/demo', methods=['POST'])
 @login_required

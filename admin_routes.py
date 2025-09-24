@@ -992,6 +992,78 @@ def excel_menu_upload():
                          branches=branches, 
                          categories=categories)
 
+@admin_bp.route('/menu/excel-upload/simple', methods=['POST'])
+@login_required
+def simple_excel_upload():
+    """Direct Excel processing - bypass complex mapping"""
+    try:
+        if 'excel_file' not in request.files:
+            flash('❌ לא נבחר קובץ Excel', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        file = request.files['excel_file']
+        branch_id = request.form.get('branch_id')
+        
+        if not file.filename or not branch_id:
+            flash('❌ חסרים נתונים', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+        
+        # Direct processing with pandas
+        import pandas as pd
+        df = pd.read_excel(file)
+        
+        # Your Excel structure: category name, dish name, description, price
+        df.columns = df.columns.astype(str).str.strip()
+        
+        current_app.logger.info(f"Excel columns: {list(df.columns)}")
+        current_app.logger.info(f"Excel rows: {len(df)}")
+        
+        processed_items = []
+        current_category = ''
+        
+        for index, row in df.iterrows():
+            # Handle your exact column names
+            category = str(row.get('category name', '')).strip() if pd.notna(row.get('category name')) else ''
+            name = str(row.get('dish name', '')).strip() if pd.notna(row.get('dish name')) else ''
+            description = str(row.get('description', '')).strip() if pd.notna(row.get('description')) else ''
+            price = str(row.get('price', '')).strip() if pd.notna(row.get('price')) else ''
+            
+            # Category inheritance (Excel pattern)
+            if category:
+                current_category = category
+            elif current_category:
+                category = current_category
+                
+            # Only process rows with name and price
+            if name and price:
+                # Handle complex pricing like "56/62"
+                price_parts = str(price).split('/')
+                base_price = price_parts[0].strip()
+                alt_price = price_parts[1].strip() if len(price_parts) > 1 else ''
+                
+                item = {
+                    'name': name,
+                    'category': category,
+                    'description': description,
+                    'base_price': base_price,
+                    'alt_price': alt_price,
+                    'has_multiple_prices': len(price_parts) > 1
+                }
+                processed_items.append(item)
+        
+        current_app.logger.info(f"Processed {len(processed_items)} items")
+        
+        return render_template('admin/excel_dish_settings.html',
+                             items=processed_items,
+                             categories=MenuCategory.query.filter_by(is_active=True).all(),
+                             dietary_properties=DietaryProperty.query.filter_by(is_active=True).all(),
+                             branch_id=branch_id)
+                             
+    except Exception as e:
+        current_app.logger.error(f"Simple Excel upload error: {str(e)}")
+        flash(f'❌ שגיאה: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
 @admin_bp.route('/menu/excel-upload/process', methods=['POST'])
 @login_required
 def process_excel_upload():

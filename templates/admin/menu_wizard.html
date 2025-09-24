@@ -375,14 +375,239 @@
     </div>
 </div>
 
-<!-- Create Menu Modal (will be added later) -->
+<!-- Create Menu Modal -->
 <div class="modal fade" id="createMenuModal" tabindex="-1">
-    <!-- Modal content will be added in the next step -->
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-magic me-2"></i>יצירת תפריט חדש
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Wizard Steps -->
+                <div class="wizard-progress bg-light p-3">
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-primary" id="wizardProgress" style="width: 25%"></div>
+                    </div>
+                    <div class="wizard-steps d-flex justify-content-between">
+                        <span class="step active" data-step="1">
+                            <i class="fas fa-info-circle me-1"></i>פרטים בסיסיים
+                        </span>
+                        <span class="step" data-step="2">
+                            <i class="fas fa-tags me-1"></i>בחירת קטגוריות
+                        </span>
+                        <span class="step" data-step="3">
+                            <i class="fas fa-utensils me-1"></i>בחירת מנות
+                        </span>
+                        <span class="step" data-step="4">
+                            <i class="fas fa-print me-1"></i>הגדרות והדפסה
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Basic Info -->
+                <div class="wizard-step" id="step1" style="display: block;">
+                    <div class="p-4">
+                        <h4 class="mb-4">פרטים בסיסיים לתפריט</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">שם התפריט *</label>
+                                    <input type="text" class="form-control" id="menuName" placeholder="לדוגמה: תפריט ראמה - סתיו 2025">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">סניף *</label>
+                                    <select class="form-select" id="branchSelect" required>
+                                        <option value="">בחר סניף...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">תיאור (אופציונלי)</label>
+                                    <textarea class="form-control" id="menuDescription" rows="3" placeholder="תיאור קצר של התפריט..."></textarea>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="saveAsTemplate">
+                                    <label class="form-check-label" for="saveAsTemplate">
+                                        שמור כתבנית לשימוש עתידי
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Category Selection -->
+                <div class="wizard-step" id="step2" style="display: none;">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0">בחירת קטגוריות</h4>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="selectAllCategories()">
+                                    <i class="fas fa-check-double me-1"></i>בחר הכל
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="clearAllCategories()">
+                                    <i class="fas fa-times me-1"></i>נקה הכל
+                                </button>
+                            </div>
+                        </div>
+                        <div id="categoriesGrid" class="row g-3">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Item Selection -->
+                <div class="wizard-step" id="step3" style="display: none;">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0">בחירת מנות</h4>
+                            <div class="input-group" style="width: 300px;">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="itemSearch" placeholder="חיפוש מנות...">
+                            </div>
+                        </div>
+                        <div id="itemsContainer">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                בחר קטגוריות בשלב הקודם כדי לראות את המנות הזמינות
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Print Settings -->
+                <div class="wizard-step" id="step4" style="display: none;">
+                    <div class="p-4">
+                        <h4 class="mb-4">הגדרות עיצוב והדפסה</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>עיצוב תפריט</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">מספר עמודות</label>
+                                    <select class="form-select" id="layoutColumns">
+                                        <option value="1">עמודה אחת</option>
+                                        <option value="2" selected>שתי עמודות</option>
+                                        <option value="3">שלוש עמודות</option>
+                                    </select>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showPrices" checked>
+                                    <label class="form-check-label" for="showPrices">
+                                        הצג מחירים
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showDescriptions" checked>
+                                    <label class="form-check-label" for="showDescriptions">
+                                        הצג תיאורי מנות
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>הגדרות הדפסה</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">גודל נייר</label>
+                                    <select class="form-select" id="paperSize">
+                                        <option value="A4" selected>A4</option>
+                                        <option value="A3">A3</option>
+                                        <option value="Letter">Letter</option>
+                                    </select>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showBranchInfo" checked>
+                                    <label class="form-check-label" for="showBranchInfo">
+                                        הצג פרטי סניף
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showDate" checked>
+                                    <label class="form-check-label" for="showDate">
+                                        הצג תאריך יצירה
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6>סיכום בחירות:</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <span class="badge bg-primary me-2" id="selectedCategoriesCount">0</span>קטגוריות נבחרו
+                                </div>
+                                <div class="col-6">
+                                    <span class="badge bg-success me-2" id="selectedItemsCount">0</span>מנות נבחרו
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="prevStepBtn" onclick="previousStep()">
+                    <i class="fas fa-arrow-right me-1"></i>קודם
+                </button>
+                <button type="button" class="btn btn-primary" id="nextStepBtn" onclick="nextStep()">
+                    הבא<i class="fas fa-arrow-left ms-1"></i>
+                </button>
+                <button type="button" class="btn btn-success" id="createMenuBtn" onclick="createMenu()" style="display: none;">
+                    <i class="fas fa-magic me-1"></i>צור תפריט
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Print Configuration Modal (will be added later) -->
-<div class="modal fade" id="printConfigModal" tabindex="-1">
-    <!-- Modal content will be added in the next step -->
+<!-- Template Editor Modal -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">עריכת תבנית</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">שם התבנית</label>
+                    <input type="text" class="form-control" id="templateName">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">תיאור</label>
+                    <textarea class="form-control" id="templateDescription" rows="3"></textarea>
+                </div>
+                <div id="templatePreview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="saveTemplate()">שמור תבנית</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Preview Modal -->
+<div class="modal fade" id="printPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">תצוגה מקדימה להדפסה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="printPreviewContent" class="print-preview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">סגור</button>
+                <button type="button" class="btn btn-primary" onclick="printMenu()">
+                    <i class="fas fa-print me-1"></i>הדפס
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -391,11 +616,87 @@
 // Global variables
 let currentTemplates = [];
 let dropdownOpen = false;
+let wizardData = {
+    currentStep: 1,
+    menuName: '',
+    branchId: null,
+    selectedCategories: [],
+    selectedItems: [],
+    layoutSettings: {},
+    printSettings: {}
+};
+let allCategories = [];
+let allBranches = [];
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     loadSavedTemplates();
+    loadBranches();
+    loadCategories();
 });
+
+// API Functions
+async function makeApiCall(url, options = {}) {
+    try {
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        };
+        
+        const response = await fetch(url, { ...defaultOptions, ...options });
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+    }
+}
+
+async function loadBranches() {
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/branches');
+        allBranches = data.branches;
+        
+        const branchSelect = document.getElementById('branchSelect');
+        if (branchSelect) {
+            branchSelect.innerHTML = '<option value="">בחר סניף...</option>' +
+                allBranches.map(branch => 
+                    `<option value="${branch.id}">${branch.name_he}</option>`
+                ).join('');
+        }
+    } catch (error) {
+        console.error('Error loading branches:', error);
+        showNotification('שגיאה בטעינת סניפים', 'error');
+    }
+}
+
+async function loadCategories() {
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/categories');
+        allCategories = data.categories;
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        showNotification('שגיאה בטעינת קטגוריות', 'error');
+    }
+}
+
+async function loadSavedTemplates() {
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/templates');
+        currentTemplates = data.templates;
+        displayTemplates(currentTemplates);
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        showNotification('שגיאה בטעינת תבניות', 'error');
+    }
+}
 
 // Toggle dropdown menu
 function toggleDropdown() {
@@ -427,9 +728,23 @@ document.addEventListener('click', function(event) {
 
 // Main action functions
 function createNewMenu() {
-    // Will be implemented in next step
-    console.log('Opening menu creation wizard...');
-    showNotification('בקרוב: אשף יצירת תפריט חדש', 'info');
+    // Reset wizard data
+    wizardData = {
+        currentStep: 1,
+        menuName: '',
+        branchId: null,
+        selectedCategories: [],
+        selectedItems: [],
+        layoutSettings: {},
+        printSettings: {}
+    };
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('createMenuModal'));
+    modal.show();
+    
+    // Reset to first step
+    goToStep(1);
 }
 
 function showSavedTemplates() {
@@ -444,56 +759,418 @@ function showSavedTemplates() {
 }
 
 function togglePrintManagement() {
-    // Will be implemented in next step
-    console.log('Opening print management...');
-    showNotification('בקרוב: ניהול הגדרות הדפסה', 'info');
+    showNotification('ניהול הדפסות יתווסף בקרוב', 'info');
 }
 
-// Management functions
-function manageCategories() {
-    window.location.href = '/admin/menu';
+// Wizard Navigation
+function nextStep() {
+    if (validateCurrentStep()) {
+        if (wizardData.currentStep < 4) {
+            goToStep(wizardData.currentStep + 1);
+        }
+    }
 }
 
-function managePrintConfigs() {
-    showNotification('בקרוב: ניהול הגדרות הדפסה מתקדמות', 'info');
+function previousStep() {
+    if (wizardData.currentStep > 1) {
+        goToStep(wizardData.currentStep - 1);
+    }
 }
 
-function exportMenuData() {
-    showNotification('בקרוב: ייצוא נתוני תפריט', 'info');
+function goToStep(stepNumber) {
+    // Hide all steps
+    document.querySelectorAll('.wizard-step').forEach(step => {
+        step.style.display = 'none';
+    });
+    
+    // Show current step
+    document.getElementById(`step${stepNumber}`).style.display = 'block';
+    
+    // Update progress
+    const progress = (stepNumber / 4) * 100;
+    document.getElementById('wizardProgress').style.width = `${progress}%`;
+    
+    // Update step indicators
+    document.querySelectorAll('.wizard-steps .step').forEach((step, index) => {
+        step.classList.toggle('active', index + 1 === stepNumber);
+    });
+    
+    // Update buttons
+    document.getElementById('prevStepBtn').style.display = stepNumber === 1 ? 'none' : 'inline-block';
+    document.getElementById('nextStepBtn').style.display = stepNumber === 4 ? 'none' : 'inline-block';
+    document.getElementById('createMenuBtn').style.display = stepNumber === 4 ? 'inline-block' : 'none';
+    
+    wizardData.currentStep = stepNumber;
+    
+    // Load step-specific content
+    if (stepNumber === 2) {
+        loadCategoriesForSelection();
+    } else if (stepNumber === 3) {
+        loadItemsForSelection();
+    } else if (stepNumber === 4) {
+        updateSummary();
+    }
 }
 
-function menuStatistics() {
-    showNotification('בקרוב: סטטיסטיקות תפריט', 'info');
-}
-
-// Load saved templates
-async function loadSavedTemplates() {
-    try {
-        // This will be implemented when we add the backend routes
-        console.log('Loading saved templates...');
-        
-        // Placeholder data for now
-        const templates = [
-            {
-                id: 1,
-                name: 'תפריט ראמה - סטנדרטי',
-                description: 'תפריט מלא לסניף ראמה',
-                branch: 'ראמה',
-                created_at: '2025-09-24'
-            },
-            {
-                id: 2,
-                name: 'תפריט כרמיאל - מעודכן',
-                description: 'תפריט עם מנות עונתיות לכרמיאל',
-                branch: 'כרמיאל',
-                created_at: '2025-09-23'
+function validateCurrentStep() {
+    switch (wizardData.currentStep) {
+        case 1:
+            const menuName = document.getElementById('menuName').value.trim();
+            const branchId = document.getElementById('branchSelect').value;
+            
+            if (!menuName) {
+                showNotification('אנא הזן שם לתפריט', 'error');
+                return false;
             }
-        ];
+            if (!branchId) {
+                showNotification('אנא בחר סניף', 'error');
+                return false;
+            }
+            
+            wizardData.menuName = menuName;
+            wizardData.branchId = parseInt(branchId);
+            return true;
+            
+        case 2:
+            if (wizardData.selectedCategories.length === 0) {
+                showNotification('אנא בחר לפחות קטגוריה אחת', 'error');
+                return false;
+            }
+            return true;
+            
+        case 3:
+            if (wizardData.selectedItems.length === 0) {
+                showNotification('אנא בחר לפחות מנה אחת', 'error');
+                return false;
+            }
+            return true;
+            
+        default:
+            return true;
+    }
+}
+
+// Category Selection Functions
+function loadCategoriesForSelection() {
+    const grid = document.getElementById('categoriesGrid');
+    
+    if (allCategories.length === 0) {
+        grid.innerHTML = '<div class="col-12"><div class="alert alert-warning">לא נמצאו קטגוריות פעילות במערכת</div></div>';
+        return;
+    }
+    
+    grid.innerHTML = allCategories.map(category => `
+        <div class="col-md-4 col-sm-6">
+            <div class="card category-card" onclick="toggleCategory(${category.id})">
+                <div class="card-body text-center">
+                    <div class="form-check position-absolute top-0 end-0 m-2">
+                        <input class="form-check-input" type="checkbox" id="cat_${category.id}">
+                    </div>
+                    <div class="category-icon mb-2" style="color: ${category.color || '#007bff'};">
+                        <i class="fas fa-${category.icon || 'utensils'} fa-2x"></i>
+                    </div>
+                    <h6 class="card-title">${category.name_he}</h6>
+                    <p class="card-text small text-muted">${category.items_count} מנות</p>
+                    ${category.description_he ? `<p class="card-text small">${category.description_he}</p>` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleCategory(categoryId) {
+    const checkbox = document.getElementById(`cat_${categoryId}`);
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        if (!wizardData.selectedCategories.includes(categoryId)) {
+            wizardData.selectedCategories.push(categoryId);
+        }
+    } else {
+        wizardData.selectedCategories = wizardData.selectedCategories.filter(id => id !== categoryId);
+    }
+    
+    updateCategoryCard(categoryId, checkbox.checked);
+}
+
+function updateCategoryCard(categoryId, selected) {
+    const card = document.querySelector(`#cat_${categoryId}`).closest('.category-card');
+    if (selected) {
+        card.classList.add('border-primary', 'bg-light');
+    } else {
+        card.classList.remove('border-primary', 'bg-light');
+    }
+}
+
+function selectAllCategories() {
+    allCategories.forEach(category => {
+        const checkbox = document.getElementById(`cat_${category.id}`);
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+            wizardData.selectedCategories.push(category.id);
+            updateCategoryCard(category.id, true);
+        }
+    });
+}
+
+function clearAllCategories() {
+    wizardData.selectedCategories = [];
+    allCategories.forEach(category => {
+        const checkbox = document.getElementById(`cat_${category.id}`);
+        if (checkbox) {
+            checkbox.checked = false;
+            updateCategoryCard(category.id, false);
+        }
+    });
+}
+
+// Item Selection Functions
+function loadItemsForSelection() {
+    const container = document.getElementById('itemsContainer');
+    
+    if (wizardData.selectedCategories.length === 0) {
+        container.innerHTML = '<div class="alert alert-warning">אנא בחר קטגוריות בשלב הקודם</div>';
+        return;
+    }
+    
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    container.innerHTML = selectedCategoryData.map(category => `
+        <div class="category-section mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
+                    ${category.name_he}
+                </h5>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="selectAllItems(${category.id})">
+                        בחר הכל
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearCategoryItems(${category.id})">
+                        נקה
+                    </button>
+                </div>
+            </div>
+            <div class="row g-2">
+                ${category.items.map(item => `
+                    <div class="col-md-6">
+                        <div class="card item-card" onclick="toggleItem(${item.id})">
+                            <div class="card-body">
+                                <div class="form-check position-absolute top-0 end-0 m-2">
+                                    <input class="form-check-input" type="checkbox" id="item_${item.id}">
+                                </div>
+                                <h6 class="card-title">${item.name_he}</h6>
+                                ${item.description_he ? `<p class="card-text small">${item.description_he}</p>` : ''}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-success fw-bold">₪${item.base_price}</span>
+                                    <div class="dietary-properties">
+                                        ${item.dietary_properties.map(prop => `
+                                            <span class="badge me-1" style="background-color: ${prop.color};">
+                                                <i class="fas fa-${prop.icon}"></i>
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+    
+    // Add search functionality
+    const searchInput = document.getElementById('itemSearch');
+    if (searchInput) {
+        searchInput.oninput = function() {
+            filterItems(this.value);
+        };
+    }
+}
+
+function toggleItem(itemId) {
+    const checkbox = document.getElementById(`item_${itemId}`);
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        if (!wizardData.selectedItems.includes(itemId)) {
+            wizardData.selectedItems.push(itemId);
+        }
+    } else {
+        wizardData.selectedItems = wizardData.selectedItems.filter(id => id !== itemId);
+    }
+    
+    updateItemCard(itemId, checkbox.checked);
+}
+
+function updateItemCard(itemId, selected) {
+    const card = document.querySelector(`#item_${itemId}`).closest('.item-card');
+    if (selected) {
+        card.classList.add('border-success', 'bg-light');
+    } else {
+        card.classList.remove('border-success', 'bg-light');
+    }
+}
+
+function selectAllItems(categoryId) {
+    const category = allCategories.find(cat => cat.id === categoryId);
+    if (category) {
+        category.items.forEach(item => {
+            const checkbox = document.getElementById(`item_${item.id}`);
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                wizardData.selectedItems.push(item.id);
+                updateItemCard(item.id, true);
+            }
+        });
+    }
+}
+
+function clearCategoryItems(categoryId) {
+    const category = allCategories.find(cat => cat.id === categoryId);
+    if (category) {
+        category.items.forEach(item => {
+            const checkbox = document.getElementById(`item_${item.id}`);
+            if (checkbox && checkbox.checked) {
+                checkbox.checked = false;
+                wizardData.selectedItems = wizardData.selectedItems.filter(id => id !== item.id);
+                updateItemCard(item.id, false);
+            }
+        });
+    }
+}
+
+function filterItems(searchTerm) {
+    const cards = document.querySelectorAll('.item-card');
+    searchTerm = searchTerm.toLowerCase();
+    
+    cards.forEach(card => {
+        const title = card.querySelector('.card-title').textContent.toLowerCase();
+        const description = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
         
-        displayTemplates(templates);
+        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+            card.closest('.col-md-6').style.display = 'block';
+        } else {
+            card.closest('.col-md-6').style.display = 'none';
+        }
+    });
+}
+
+function updateSummary() {
+    document.getElementById('selectedCategoriesCount').textContent = wizardData.selectedCategories.length;
+    document.getElementById('selectedItemsCount').textContent = wizardData.selectedItems.length;
+}
+
+// Create Menu Function
+async function createMenu() {
+    try {
+        // Collect form data
+        const menuData = {
+            name: wizardData.menuName,
+            branch_id: wizardData.branchId,
+            categories: wizardData.selectedCategories,
+            items: wizardData.selectedItems,
+            layout: {
+                columns: parseInt(document.getElementById('layoutColumns').value),
+                show_prices: document.getElementById('showPrices').checked,
+                show_descriptions: document.getElementById('showDescriptions').checked
+            },
+            print_settings: {
+                paper_size: document.getElementById('paperSize').value,
+                show_branch_info: document.getElementById('showBranchInfo').checked,
+                show_date: document.getElementById('showDate').checked
+            },
+            save_as_template: document.getElementById('saveAsTemplate').checked,
+            template_name: document.getElementById('saveAsTemplate').checked ? 
+                `תבנית ${wizardData.menuName}` : ''
+        };
+        
+        const result = await makeApiCall('/admin/api/menu-wizard/create-menu', {
+            method: 'POST',
+            body: JSON.stringify(menuData)
+        });
+        
+        showNotification(result.message, 'success');
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('createMenuModal')).hide();
+        
+        // Refresh templates if template was saved
+        if (result.template_id) {
+            loadSavedTemplates();
+        }
+        
+        // Show print preview
+        setTimeout(() => {
+            showPrintPreview(result.menu_id);
+        }, 500);
+        
     } catch (error) {
-        console.error('Error loading templates:', error);
-        showNotification('שגיאה בטעינת תבניות', 'error');
+        console.error('Error creating menu:', error);
+        showNotification(error.message || 'שגיאה ביצירת התפריט', 'error');
+    }
+}
+
+// Template Functions
+async function useTemplate(templateId) {
+    try {
+        const data = await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`);
+        const template = data.template;
+        
+        // Load template data into wizard
+        wizardData.selectedCategories = template.categories_config || [];
+        wizardData.selectedItems = template.items_config || [];
+        
+        // Pre-fill form
+        document.getElementById('menuName').value = `${template.name} - עותק`;
+        document.getElementById('branchSelect').value = template.branch_id || '';
+        
+        // Open wizard
+        createNewMenu();
+        
+        showNotification('התבנית נטענה בהצלחה', 'success');
+    } catch (error) {
+        console.error('Error loading template:', error);
+        showNotification('שגיאה בטעינת התבנית', 'error');
+    }
+}
+
+async function editTemplate(templateId) {
+    try {
+        const data = await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`);
+        const template = data.template;
+        
+        document.getElementById('templateName').value = template.name;
+        document.getElementById('templateDescription').value = template.description || '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+        modal.show();
+        
+        // Store template ID for editing
+        window.currentEditingTemplate = templateId;
+    } catch (error) {
+        console.error('Error loading template for editing:', error);
+        showNotification('שגיאה בטעינת התבנית לעריכה', 'error');
+    }
+}
+
+async function deleteTemplate(templateId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק תבנית זו?')) {
+        return;
+    }
+    
+    try {
+        await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`, {
+            method: 'DELETE'
+        });
+        
+        showNotification('התבנית נמחקה בהצלחה', 'success');
+        loadSavedTemplates();
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showNotification(error.message || 'שגיאה במחיקת התבנית', 'error');
     }
 }
 
@@ -516,7 +1193,8 @@ function displayTemplates(templates) {
         <div class="template-card">
             <div class="template-info">
                 <h5>${template.name}</h5>
-                <p>${template.description} • סניף: ${template.branch} • נוצר: ${formatDate(template.created_at)}</p>
+                <p>${template.description || 'אין תיאור'} • סניף: ${template.branch_name} • נוצר: ${formatDate(template.created_at)}</p>
+                <small class="text-muted">${template.categories_count} קטגוריות, ${template.items_count} מנות</small>
             </div>
             <div class="template-actions">
                 <button class="btn btn-primary btn-sm" onclick="useTemplate(${template.id})">
@@ -533,22 +1211,60 @@ function displayTemplates(templates) {
     `).join('');
 }
 
-// Template actions
-function useTemplate(templateId) {
-    console.log('Using template:', templateId);
-    showNotification('בקרוב: טעינת תבנית לעריכה', 'info');
-}
-
-function editTemplate(templateId) {
-    console.log('Editing template:', templateId);
-    showNotification('בקרוב: עריכת תבנית', 'info');
-}
-
-function deleteTemplate(templateId) {
-    if (confirm('האם אתה בטוח שברצונך למחוק תבנית זו?')) {
-        console.log('Deleting template:', templateId);
-        showNotification('בקרוב: מחיקת תבנית', 'info');
+// Print Functions
+async function showPrintPreview(menuId) {
+    try {
+        const data = await makeApiCall(`/admin/api/menu-wizard/print-preview/${menuId}`);
+        
+        // Update print preview modal content
+        document.getElementById('printPreviewContent').innerHTML = data.html;
+        
+        // Show print preview modal
+        const modal = new bootstrap.Modal(document.getElementById('printPreviewModal'));
+        modal.show();
+        
+        // Store menu ID for printing
+        window.currentPrintMenuId = menuId;
+        window.currentPrintHtml = data.html;
+        
+    } catch (error) {
+        console.error('Error loading print preview:', error);
+        showNotification('שגיאה בטעינת תצוגה מקדימה', 'error');
     }
+}
+
+function printMenu() {
+    if (window.currentPrintHtml) {
+        // Open new window for printing
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(window.currentPrintHtml);
+        printWindow.document.close();
+        
+        // Wait for content to load, then print
+        printWindow.onload = function() {
+            printWindow.print();
+            printWindow.close();
+        };
+    } else {
+        showNotification('אין תוכן להדפסה', 'error');
+    }
+}
+
+// Management functions
+function manageCategories() {
+    window.location.href = '/admin/menu';
+}
+
+function managePrintConfigs() {
+    showNotification('ניהול הגדרות הדפסה מתקדמות יתווסף בקרוב', 'info');
+}
+
+function exportMenuData() {
+    showNotification('ייצוא נתוני תפריט יתווסף בקרוב', 'info');
+}
+
+function menuStatistics() {
+    showNotification('סטטיסטיקות תפריט יתווספו בקרוב', 'info');
 }
 
 // Utility functions
@@ -557,10 +1273,28 @@ function formatDate(dateString) {
     return date.toLocaleDateString('he-IL');
 }
 
-// Notification system (placeholder - will use existing notification system)
+// Notification system
 function showNotification(message, type = 'info') {
-    // Using browser alert for now - will integrate with existing notification system
-    alert(message);
+    // Using browser alert for now - will integrate with existing notification system later
+    const alertType = type === 'error' ? 'danger' : type;
+    
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${alertType} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 </script>
 {% endblock %}

@@ -1860,6 +1860,539 @@ def checklist():
 def menu_wizard():
     return render_template('admin/menu_wizard.html')
 
+# Menu Wizard API Routes
+@admin_bp.route('/api/menu-wizard/categories')
+@login_required
+def api_menu_wizard_categories():
+    """Get all active categories with their menu items"""
+    try:
+        categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+        result = []
+        
+        for category in categories:
+            category_data = {
+                'id': category.id,
+                'name_he': category.name_he,
+                'name_en': category.name_en,
+                'description_he': category.description_he,
+                'icon': category.icon,
+                'color': category.color,
+                'items_count': len([item for item in category.menu_items if item.is_available]),
+                'items': []
+            }
+            
+            # Add available menu items
+            for item in category.menu_items:
+                if item.is_available:
+                    item_data = {
+                        'id': item.id,
+                        'name_he': item.name_he,
+                        'description_he': item.description_he,
+                        'base_price': float(item.base_price) if item.base_price else 0,
+                        'spice_level': item.spice_level,
+                        'prep_time_minutes': item.prep_time_minutes,
+                        'dietary_properties': [
+                            {
+                                'name_he': prop.name_he,
+                                'icon': prop.icon,
+                                'color': prop.color
+                            } for prop in item.dietary_properties if prop.is_active
+                        ]
+                    }
+                    category_data['items'].append(item_data)
+            
+            result.append(category_data)
+        
+        return jsonify({'success': True, 'categories': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/branches')
+@login_required
+def api_menu_wizard_branches():
+    """Get all active branches"""
+    try:
+        branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+        result = [
+            {
+                'id': branch.id,
+                'name_he': branch.name_he,
+                'name_en': branch.name_en,
+                'address_he': branch.address_he
+            } for branch in branches
+        ]
+        return jsonify({'success': True, 'branches': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/templates')
+@login_required
+def api_menu_wizard_templates():
+    """Get all menu templates"""
+    try:
+        templates = MenuTemplate.query.order_by(MenuTemplate.created_at.desc()).all()
+        result = []
+        
+        for template in templates:
+            template_data = {
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'branch_name': template.branch.name_he if template.branch else 'כללי',
+                'is_default': template.is_default,
+                'created_at': template.created_at.strftime('%Y-%m-%d'),
+                'categories_count': len(template.categories_config) if template.categories_config else 0,
+                'items_count': len(template.items_config) if template.items_config else 0
+            }
+            result.append(template_data)
+        
+        return jsonify({'success': True, 'templates': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/create-menu', methods=['POST'])
+@login_required
+def api_create_menu():
+    """Create a new menu from wizard"""
+    try:
+        data = request.get_json()
+        
+        # Extract data
+        menu_name = data.get('name', 'תפריט חדש')
+        branch_id = data.get('branch_id')
+        selected_categories = data.get('categories', [])
+        selected_items = data.get('items', [])
+        layout_config = data.get('layout', {})
+        print_config = data.get('print_settings', {})
+        save_as_template = data.get('save_as_template', False)
+        template_name = data.get('template_name', '')
+        
+        # Validate required fields
+        if not branch_id:
+            return jsonify({'success': False, 'error': 'חובה לבחור סניף'}), 400
+            
+        if not selected_items:
+            return jsonify({'success': False, 'error': 'חובה לבחור לפחות מנה אחת'}), 400
+        
+        # Build menu content
+        menu_content = {
+            'name': menu_name,
+            'branch_id': branch_id,
+            'categories': selected_categories,
+            'items': selected_items,
+            'layout': layout_config,
+            'generated_at': datetime.utcnow().isoformat()
+        }
+        
+        # Create GeneratedMenu
+        generated_menu = GeneratedMenu(
+            name=menu_name,
+            branch_id=branch_id,
+            date_created=datetime.utcnow().date(),
+            created_by=current_user.id if hasattr(current_user, 'id') else None,
+            menu_content=menu_content,
+            print_settings=print_config
+        )
+        
+        db.session.add(generated_menu)
+        
+        # Save as template if requested
+        template_id = None
+        if save_as_template and template_name:
+            menu_template = MenuTemplate(
+                name=template_name,
+                description=f'תבנית נוצרה מ-{menu_name}',
+                branch_id=branch_id,
+                created_by=current_user.id if hasattr(current_user, 'id') else None,
+                categories_config=selected_categories,
+                items_config=selected_items,
+                layout_config=layout_config,
+                print_config=print_config
+            )
+            db.session.add(menu_template)
+            db.session.flush()  # Get the ID
+            template_id = menu_template.id
+            generated_menu.template_id = template_id
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'menu_id': generated_menu.id,
+            'template_id': template_id,
+            'message': 'התפריט נוצר בהצלחה!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/save-template', methods=['POST'])
+@login_required
+def api_save_menu_template():
+    """Save menu configuration as template"""
+    try:
+        data = request.get_json()
+        
+        template_name = data.get('name')
+        description = data.get('description', '')
+        branch_id = data.get('branch_id')
+        categories_config = data.get('categories', [])
+        items_config = data.get('items', [])
+        layout_config = data.get('layout', {})
+        print_config = data.get('print_settings', {})
+        
+        if not template_name:
+            return jsonify({'success': False, 'error': 'חובה להזין שם לתבנית'}), 400
+            
+        # Check if template name already exists
+        existing = MenuTemplate.query.filter_by(name=template_name).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'תבנית עם השם הזה כבר קיימת'}), 400
+        
+        menu_template = MenuTemplate(
+            name=template_name,
+            description=description,
+            branch_id=branch_id,
+            created_by=current_user.id if hasattr(current_user, 'id') else None,
+            categories_config=categories_config,
+            items_config=items_config,
+            layout_config=layout_config,
+            print_config=print_config
+        )
+        
+        db.session.add(menu_template)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'template_id': menu_template.id,
+            'message': 'התבנית נשמרה בהצלחה!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/template/<int:template_id>')
+@login_required
+def api_get_menu_template(template_id):
+    """Get specific template configuration"""
+    try:
+        template = MenuTemplate.query.get_or_404(template_id)
+        
+        result = {
+            'id': template.id,
+            'name': template.name,
+            'description': template.description,
+            'branch_id': template.branch_id,
+            'categories_config': template.categories_config or [],
+            'items_config': template.items_config or [],
+            'layout_config': template.layout_config or {},
+            'print_config': template.print_config or {}
+        }
+        
+        return jsonify({'success': True, 'template': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/template/<int:template_id>', methods=['DELETE'])
+@login_required
+def api_delete_menu_template(template_id):
+    """Delete menu template"""
+    try:
+        template = MenuTemplate.query.get_or_404(template_id)
+        
+        # Don't allow deletion of default templates
+        if template.is_default:
+            return jsonify({'success': False, 'error': 'לא ניתן למחוק תבנית ברירת מחדל'}), 400
+        
+        db.session.delete(template)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'התבנית נמחקה בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/print-preview/<int:menu_id>')
+@login_required
+def api_menu_print_preview(menu_id):
+    """Generate print preview for menu"""
+    try:
+        generated_menu = GeneratedMenu.query.get_or_404(menu_id)
+        menu_content = generated_menu.menu_content
+        
+        # Get actual data for selected items
+        selected_items = []
+        if menu_content.get('items'):
+            items_query = MenuItem.query.filter(MenuItem.id.in_(menu_content['items']))
+            selected_items = items_query.all()
+        
+        # Get branch info
+        branch = Branch.query.get(generated_menu.branch_id)
+        
+        # Group items by category
+        categories_with_items = {}
+        for item in selected_items:
+            category = item.category
+            if category and category.id in menu_content.get('categories', []):
+                if category.id not in categories_with_items:
+                    categories_with_items[category.id] = {
+                        'category': category,
+                        'items': []
+                    }
+                categories_with_items[category.id]['items'].append(item)
+        
+        # Generate print HTML
+        print_html = generate_menu_print_html(
+            menu_name=generated_menu.name,
+            branch=branch,
+            categories_with_items=categories_with_items,
+            print_settings=generated_menu.print_settings or {},
+            layout_settings=menu_content.get('layout', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': print_html,
+            'menu_name': generated_menu.name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings):
+    """Generate Hebrew RTL-optimized print HTML for menu"""
+    
+    # Default settings
+    show_prices = layout_settings.get('show_prices', True)
+    show_descriptions = layout_settings.get('show_descriptions', True)
+    columns = layout_settings.get('columns', 2)
+    paper_size = print_settings.get('paper_size', 'A4')
+    show_branch_info = print_settings.get('show_branch_info', True)
+    show_date = print_settings.get('show_date', True)
+    
+    # Generate current date in Hebrew
+    from datetime import datetime
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    
+    html = f'''
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{menu_name}</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+            
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            
+            body {{
+                font-family: 'Heebo', Arial Hebrew, Arial, sans-serif;
+                font-size: 12pt;
+                line-height: 1.4;
+                color: #333;
+                direction: rtl;
+                text-align: right;
+            }}
+            
+            @page {{
+                size: {paper_size};
+                margin: 15mm 0mm 15mm 15mm;
+            }}
+            
+            .print-container {{
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 0;
+            }}
+            
+            .menu-header {{
+                text-align: center;
+                margin-bottom: 25px;
+                border-bottom: 2px solid #C75450;
+                padding-bottom: 15px;
+            }}
+            
+            .menu-title {{
+                font-size: 24pt;
+                font-weight: 700;
+                color: #1B2951;
+                margin-bottom: 8px;
+            }}
+            
+            .branch-info {{
+                font-size: 14pt;
+                color: #666;
+                margin-bottom: 5px;
+            }}
+            
+            .print-date {{
+                font-size: 10pt;
+                color: #888;
+            }}
+            
+            .menu-content {{
+                columns: {columns};
+                column-gap: 20mm;
+                column-fill: balance;
+            }}
+            
+            .category-section {{
+                break-inside: avoid;
+                margin-bottom: 20mm;
+                page-break-inside: avoid;
+            }}
+            
+            .category-title {{
+                font-size: 16pt;
+                font-weight: 600;
+                color: #C75450;
+                margin-bottom: 10mm;
+                text-align: center;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 5mm;
+            }}
+            
+            .menu-item {{
+                margin-bottom: 8mm;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }}
+            
+            .item-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 2mm;
+            }}
+            
+            .item-name {{
+                font-size: 13pt;
+                font-weight: 500;
+                color: #333;
+                flex: 1;
+                margin-left: 5mm;
+            }}
+            
+            .item-price {{
+                font-size: 12pt;
+                font-weight: 600;
+                color: #C75450;
+                white-space: nowrap;
+            }}
+            
+            .item-description {{
+                font-size: 10pt;
+                color: #666;
+                margin-top: 2mm;
+                line-height: 1.3;
+            }}
+            
+            .dietary-properties {{
+                margin-top: 2mm;
+                display: flex;
+                gap: 3mm;
+                flex-wrap: wrap;
+            }}
+            
+            .dietary-badge {{
+                background: #f0f0f0;
+                padding: 1mm 3mm;
+                border-radius: 2mm;
+                font-size: 8pt;
+                color: #666;
+            }}
+            
+            /* Ensure proper Hebrew text rendering */
+            .hebrew {{
+                unicode-bidi: bidi-override;
+                direction: rtl;
+            }}
+            
+            /* Print-specific styles */
+            @media print {{
+                body {{
+                    font-size: 11pt;
+                }}
+                
+                .menu-content {{
+                    columns: {columns};
+                }}
+                
+                .category-section {{
+                    break-inside: avoid;
+                }}
+                
+                .menu-item {{
+                    break-inside: avoid;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="print-container">
+            <div class="menu-header">
+                <h1 class="menu-title hebrew">{menu_name}</h1>
+                {f'<div class="branch-info hebrew">{branch.name_he}</div>' if show_branch_info and branch else ''}
+                {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
+                {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
+            </div>
+            
+            <div class="menu-content">
+    '''
+    
+    # Add categories and items
+    for category_id, data in categories_with_items.items():
+        category = data['category']
+        items = data['items']
+        
+        html += f'''
+                <div class="category-section">
+                    <h2 class="category-title hebrew">{category.name_he}</h2>
+        '''
+        
+        for item in items:
+            html += f'''
+                    <div class="menu-item">
+                        <div class="item-header">
+                            <div class="item-name hebrew">{item.name_he}</div>
+                            {f'<div class="item-price">₪{int(item.base_price)}</div>' if show_prices and item.base_price else ''}
+                        </div>
+            '''
+            
+            if show_descriptions and item.description_he:
+                html += f'''
+                        <div class="item-description hebrew">{item.description_he}</div>
+                '''
+            
+            # Add dietary properties
+            if item.dietary_properties:
+                html += '<div class="dietary-properties">'
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        html += f'<span class="dietary-badge hebrew">{prop.name_he}</span>'
+                html += '</div>'
+            
+            html += '</div>'
+        
+        html += '</div>'
+    
+    html += '''
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    
+    return html
+
 # Messages Management
 @admin_bp.route('/messages')
 @login_required

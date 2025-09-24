@@ -2279,11 +2279,14 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
     item_spacing = style_settings.get('itemSpacing', 'normal')
     
     # Page settings
+    show_menu_title = page_settings.get('showMenuTitle', True)
     add_page_numbers = page_settings.get('addPageNumbers', False)
     add_headers = page_settings.get('addHeaders', False)
     add_footers = page_settings.get('addFooters', False)
     separate_index_page = page_settings.get('separateIndexPage', False)
     page_break_categories = page_settings.get('pageBreakCategories', [])
+    page_groups = page_settings.get('pageGroups', [])
+    category_column_settings = page_settings.get('categoryColumnSettings', {})
     
     # Font size mapping
     font_sizes = {
@@ -2618,81 +2621,181 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
         '''
     
     # Add main menu header
-    html += f'''
+    menu_header_html = ''
+    if show_menu_title:
+        menu_header_html = f'''
             <div class="menu-header">
                 <h1 class="menu-title hebrew">{menu_name}</h1>
                 {f'<div class="branch-info hebrew">{branch.name_he}</div>' if show_branch_info and branch else ''}
                 {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
                 {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
             </div>
-            
+        '''
+    else:
+        # If no menu title, still show branch info and date if requested
+        branch_date_html = ''
+        if show_branch_info and branch:
+            branch_date_html += f'<div class="branch-info hebrew">{branch.name_he}</div>'
+            if branch.address_he:
+                branch_date_html += f'<div class="branch-info">{branch.address_he}</div>'
+        if show_date:
+            branch_date_html += f'<div class="print-date">תאריך הדפסה: {current_date}</div>'
+        
+        if branch_date_html:
+            menu_header_html = f'<div class="menu-header">{branch_date_html}</div>'
+    
+    html += menu_header_html + '''
             <div class="menu-content">
     '''
     
-    # Add categories and items with advanced styling
-    for category_id, data in categories_with_items.items():
-        category = data['category']
-        items = data['items']
-        
-        # Check if this category should start on a new page
-        page_break_class = ' page-break' if category_id in page_break_categories else ''
-        
-        # Generate category icon if enabled
-        category_icon_html = ''
-        if show_category_icons and category.icon:
-            icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
-            category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
-        
-        html += f'''
-                <div class="category-section{page_break_class}">
-                    <h2 class="category-title hebrew">
-                        {category_icon_html}
-                        {category.name_he}
-                    </h2>
-        '''
-        
-        for item in items:
-            # Format price based on settings
-            price_html = ''
-            if show_prices and item.base_price:
-                try:
-                    price_value = int(float(item.base_price))
-                    price_html = f'<div class="item-price">₪{price_value}</div>'
-                except (ValueError, TypeError):
-                    price_html = f'<div class="item-price">₪{item.base_price}</div>'
+    # Process categories based on page groups if available, otherwise use simple page breaks
+    if page_groups:
+        # Use new page group system
+        for group_index, group in enumerate(page_groups):
+            if group_index > 0:  # Add page break before each new page group
+                html += '<div class="page-break"></div>'
             
+            # Process categories in this page group
+            for category_id in group.get('categories', []):
+                if category_id in categories_with_items:
+                    data = categories_with_items[category_id]
+                    category = data['category']
+                    items = data['items']
+                    
+                    # Get column settings for this category
+                    cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
+                    cat_columns = cat_column_settings.get('columns', 1)
+                    
+                    # Generate category icon if enabled
+                    category_icon_html = ''
+                    if show_category_icons and category.icon:
+                        icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
+                        category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
+                    
+                    # Add category with column settings
+                    category_style = f'column-count: {cat_columns}; column-gap: 15mm;' if cat_columns > 1 else ''
+                    html += f'''
+                            <div class="category-section" style="{category_style}">
+                                <h2 class="category-title hebrew">
+                                    {category_icon_html}
+                                    {category.name_he}
+                                </h2>
+                    '''
+                    
+                    # Add items for this category (duplicate logic from below)
+                    for item in items:
+                        # Format price based on settings
+                        price_html = ''
+                        if show_prices and item.base_price:
+                            try:
+                                price_value = int(float(item.base_price))
+                                price_html = f'<div class="item-price">₪{price_value}</div>'
+                            except (ValueError, TypeError):
+                                price_html = f'<div class="item-price">₪{item.base_price}</div>'
+                        
+                        html += f'''
+                                <div class="menu-item">
+                                    <div class="item-header">
+                                        <div class="item-name hebrew">{item.name_he}</div>
+                                        {price_html}
+                                    </div>
+                        '''
+                        
+                        # Add description if enabled
+                        if show_descriptions and item.description_he:
+                            html += f'''
+                                    <div class="item-description hebrew">{item.description_he}</div>
+                            '''
+                        
+                        # Add dietary properties with enhanced styling
+                        if item.dietary_properties:
+                            dietary_badges = []
+                            for prop in item.dietary_properties:
+                                if prop.is_active:
+                                    badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
+                                    dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
+                            
+                            if dietary_badges:
+                                html += f'''
+                                    <div class="dietary-properties">
+                                        {''.join(dietary_badges)}
+                                    </div>
+                                '''
+                        
+                        html += '</div>'
+                    
+                    html += '</div>'  # Close category-section
+    else:
+        # Use original simple page break system
+        for category_id, data in categories_with_items.items():
+            category = data['category']
+            items = data['items']
+            
+            # Check if this category should start on a new page
+            page_break_class = ' page-break' if category_id in page_break_categories else ''
+            
+            # Get column settings for this category
+            cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
+            cat_columns = cat_column_settings.get('columns', 1)
+            
+            # Generate category icon if enabled
+            category_icon_html = ''
+            if show_category_icons and category.icon:
+                icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
+                category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
+            
+            # Add category with column settings and page break
+            category_style = f'column-count: {cat_columns}; column-gap: 15mm;' if cat_columns > 1 else ''
             html += f'''
-                    <div class="menu-item">
-                        <div class="item-header">
-                            <div class="item-name hebrew">{item.name_he}</div>
-                            {price_html}
-                        </div>
+                    <div class="category-section{page_break_class}" style="{category_style}">
+                        <h2 class="category-title hebrew">
+                            {category_icon_html}
+                            {category.name_he}
+                        </h2>
             '''
             
-            # Add description if enabled
-            if show_descriptions and item.description_he:
-                html += f'''
-                        <div class="item-description hebrew">{item.description_he}</div>
-                '''
-            
-            # Add dietary properties with enhanced styling
-            if item.dietary_properties:
-                dietary_badges = []
-                for prop in item.dietary_properties:
-                    if prop.is_active:
-                        badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
-                        dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
+            for item in items:
+                # Format price based on settings
+                price_html = ''
+                if show_prices and item.base_price:
+                    try:
+                        price_value = int(float(item.base_price))
+                        price_html = f'<div class="item-price">₪{price_value}</div>'
+                    except (ValueError, TypeError):
+                        price_html = f'<div class="item-price">₪{item.base_price}</div>'
                 
-                if dietary_badges:
+                html += f'''
+                        <div class="menu-item">
+                            <div class="item-header">
+                                <div class="item-name hebrew">{item.name_he}</div>
+                                {price_html}
+                            </div>
+                '''
+                
+                # Add description if enabled
+                if show_descriptions and item.description_he:
                     html += f'''
-                        <div class="dietary-properties">
-                            {''.join(dietary_badges)}
-                        </div>
+                            <div class="item-description hebrew">{item.description_he}</div>
                     '''
+                
+                # Add dietary properties with enhanced styling
+                if item.dietary_properties:
+                    dietary_badges = []
+                    for prop in item.dietary_properties:
+                        if prop.is_active:
+                            badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
+                            dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
+                    
+                    if dietary_badges:
+                        html += f'''
+                            <div class="dietary-properties">
+                                {''.join(dietary_badges)}
+                            </div>
+                        '''
+                
+                html += '</div>'
             
             html += '</div>'
-        
-        html += '</div>'
     
     # Close the HTML structure
     html += '''

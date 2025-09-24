@@ -491,21 +491,40 @@
                         <div class="row mb-4">
                             <div class="col-12">
                                 <h5 class="text-primary">
-                                    <i class="fas fa-file-alt me-2"></i>פריסת דפים וקטגוריות
+                                    <i class="fas fa-file-alt me-2"></i>פריסת דפים וקטגוריות מתקדמת
                                 </h5>
-                                <p class="text-muted small mb-3">קבע איזה קטגוריות יתחילו בדף חדש ותכנן את פריסת התפריט</p>
+                                <p class="text-muted small mb-3">תכנן את פריסת התפריט - קבע דפים, סדר קטגוריות ועמודות</p>
                                 
                                 <div class="card">
                                     <div class="card-body">
+                                        <!-- Page Groups Management -->
+                                        <div class="mb-4">
+                                            <h6 class="fw-bold">קיבוץ קטגוריות לדפים:</h6>
+                                            <p class="text-muted small">גרור קטגוריות לארגן אותן בדפים שונים</p>
+                                            <div id="pageGroupsContainer">
+                                                <!-- Page groups will be loaded here -->
+                                            </div>
+                                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addNewPage()">
+                                                <i class="fas fa-plus me-1"></i>הוסף דף חדש
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Column Layout Settings -->
                                         <div class="mb-3">
-                                            <label class="form-label">קטגוריות שיתחילו בדף חדש:</label>
-                                            <div id="pageBreakCategories" class="d-flex flex-wrap gap-2 mt-2">
-                                                <!-- Categories with page break options will be loaded here -->
+                                            <h6 class="fw-bold">הגדרות עמודות לכל קטגוריה:</h6>
+                                            <div id="categoryColumnSettings">
+                                                <!-- Column settings will be loaded here -->
                                             </div>
                                         </div>
                                         
                                         <div class="row">
                                             <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="showMenuTitle" checked>
+                                                    <label class="form-check-label" for="showMenuTitle">
+                                                        הצג שם התפריט בראש הדף
+                                                    </label>
+                                                </div>
                                                 <div class="form-check mb-2">
                                                     <input class="form-check-input" type="checkbox" id="addPageNumbers">
                                                     <label class="form-check-label" for="addPageNumbers">
@@ -1298,7 +1317,7 @@ function loadStylingOptions() {
     });
     
     // Set up checkbox handlers
-    const checkboxes = ['showCategoryIcons', 'addDecorators', 'addDividers', 'addPageNumbers', 'addHeaders', 'addFooters', 'separateIndexPage'];
+    const checkboxes = ['showCategoryIcons', 'addDecorators', 'addDividers', 'showMenuTitle', 'addPageNumbers', 'addHeaders', 'addFooters', 'separateIndexPage'];
     checkboxes.forEach(checkboxId => {
         const checkbox = document.getElementById(checkboxId);
         if (checkbox) {
@@ -1311,7 +1330,13 @@ function loadStylingOptions() {
 }
 
 function loadPageBreakOptions() {
-    const container = document.getElementById('pageBreakCategories');
+    loadPageGroups();
+    loadCategoryColumnSettings();
+}
+
+// Initialize page groups with first group containing all categories
+function loadPageGroups() {
+    const container = document.getElementById('pageGroupsContainer');
     if (!container) return;
     
     if (wizardData.selectedCategories.length === 0) {
@@ -1319,20 +1344,237 @@ function loadPageBreakOptions() {
         return;
     }
     
+    // Initialize page groups if not exists
+    if (!wizardData.pageGroups) {
+        wizardData.pageGroups = [{
+            id: 'page1',
+            name: 'דף 1',
+            categories: [...wizardData.selectedCategories]
+        }];
+    }
+    
+    renderPageGroups();
+}
+
+function renderPageGroups() {
+    const container = document.getElementById('pageGroupsContainer');
     const selectedCategoryData = allCategories.filter(cat => 
         wizardData.selectedCategories.includes(cat.id)
     );
     
+    container.innerHTML = wizardData.pageGroups.map((group, groupIndex) => {
+        const groupCategories = selectedCategoryData.filter(cat => 
+            group.categories.includes(cat.id)
+        );
+        
+        return `
+            <div class="page-group-card mb-3" data-group-id="${group.id}">
+                <div class="card border-primary">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-file-alt text-primary"></i>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="${group.name}" style="width: 120px;"
+                                   onchange="updatePageGroupName(${groupIndex}, this.value)">
+                        </div>
+                        <div>
+                            ${wizardData.pageGroups.length > 1 ? `
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="removePageGroup(${groupIndex})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="available-categories mb-2">
+                            <small class="text-muted">קטגוריות זמינות:</small>
+                            <div class="d-flex flex-wrap gap-1 mt-1" id="availableCategories_${groupIndex}">
+                                ${getAvailableCategories(groupIndex).map(cat => `
+                                    <span class="badge bg-secondary category-badge" 
+                                          draggable="true" 
+                                          data-category-id="${cat.id}"
+                                          ondragstart="dragCategory(event, ${cat.id})">
+                                        <i class="fas fa-${cat.icon || 'utensils'} me-1"></i>
+                                        ${cat.name_he}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="page-categories" 
+                             ondrop="dropCategory(event, ${groupIndex})" 
+                             ondragover="allowDrop(event)">
+                            <small class="text-muted">קטגוריות בדף:</small>
+                            <div class="d-flex flex-wrap gap-1 mt-1 min-height-40" 
+                                 style="min-height: 40px; border: 2px dashed #dee2e6; border-radius: 5px; padding: 5px;">
+                                ${groupCategories.map(cat => `
+                                    <span class="badge bg-primary category-badge" 
+                                          draggable="true" 
+                                          data-category-id="${cat.id}"
+                                          ondragstart="dragCategory(event, ${cat.id})">
+                                        <i class="fas fa-${cat.icon || 'utensils'} me-1"></i>
+                                        ${cat.name_he}
+                                        <i class="fas fa-times ms-1" 
+                                           onclick="removeCategoryFromPage(${groupIndex}, ${cat.id})"
+                                           style="cursor: pointer;"></i>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Drag and drop functions
+function dragCategory(event, categoryId) {
+    event.dataTransfer.setData('text/plain', categoryId);
+}
+
+function allowDrop(event) {
+    event.preventDefault();
+}
+
+function dropCategory(event, groupIndex) {
+    event.preventDefault();
+    const categoryId = parseInt(event.dataTransfer.getData('text/plain'));
+    
+    // Remove from all other groups
+    wizardData.pageGroups.forEach((group, index) => {
+        if (index !== groupIndex) {
+            group.categories = group.categories.filter(id => id !== categoryId);
+        }
+    });
+    
+    // Add to target group if not already there
+    if (!wizardData.pageGroups[groupIndex].categories.includes(categoryId)) {
+        wizardData.pageGroups[groupIndex].categories.push(categoryId);
+    }
+    
+    renderPageGroups();
+    updatePageBreakPreview();
+}
+
+function getAvailableCategories(excludeGroupIndex) {
+    const usedCategories = wizardData.pageGroups
+        .filter((_, index) => index !== excludeGroupIndex)
+        .flatMap(group => group.categories);
+    
+    return allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id) && 
+        !usedCategories.includes(cat.id)
+    );
+}
+
+function addNewPage() {
+    const newPageNum = wizardData.pageGroups.length + 1;
+    wizardData.pageGroups.push({
+        id: `page${newPageNum}`,
+        name: `דף ${newPageNum}`,
+        categories: []
+    });
+    renderPageGroups();
+}
+
+function removePageGroup(groupIndex) {
+    if (wizardData.pageGroups.length <= 1) return;
+    
+    // Move categories back to first group
+    const categoriesToMove = wizardData.pageGroups[groupIndex].categories;
+    wizardData.pageGroups[0].categories.push(...categoriesToMove);
+    
+    wizardData.pageGroups.splice(groupIndex, 1);
+    renderPageGroups();
+    updatePageBreakPreview();
+}
+
+function updatePageGroupName(groupIndex, newName) {
+    wizardData.pageGroups[groupIndex].name = newName;
+}
+
+function removeCategoryFromPage(groupIndex, categoryId) {
+    wizardData.pageGroups[groupIndex].categories = 
+        wizardData.pageGroups[groupIndex].categories.filter(id => id !== categoryId);
+    renderPageGroups();
+    updatePageBreakPreview();
+}
+
+// Load column settings for each category
+function loadCategoryColumnSettings() {
+    const container = document.getElementById('categoryColumnSettings');
+    if (!container) return;
+    
+    if (wizardData.selectedCategories.length === 0) {
+        container.innerHTML = '<p class="text-muted small">בחר קטגוריות בשלב הקודם</p>';
+        return;
+    }
+    
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    // Initialize column settings if not exists
+    if (!wizardData.categoryColumnSettings) {
+        wizardData.categoryColumnSettings = {};
+        selectedCategoryData.forEach(cat => {
+            wizardData.categoryColumnSettings[cat.id] = {
+                columns: 1,
+                showItemsInOrder: true
+            };
+        });
+    }
+    
     container.innerHTML = selectedCategoryData.map(category => `
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="pageBreak_${category.id}" 
-                   onchange="updatePageBreakPreview()">
-            <label class="form-check-label" for="pageBreak_${category.id}">
-                <i class="fas fa-${category.icon || 'utensils'} me-1" style="color: ${category.color || '#007bff'}"></i>
-                ${category.name_he}
-            </label>
+        <div class="row mb-2 p-2 border rounded">
+            <div class="col-md-4 d-flex align-items-center">
+                <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
+                <strong>${category.name_he}</strong>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">מספר עמודות:</label>
+                <select class="form-select form-select-sm" 
+                        onchange="updateCategoryColumns(${category.id}, this.value)">
+                    <option value="1" ${wizardData.categoryColumnSettings[category.id]?.columns === 1 ? 'selected' : ''}>עמודה אחת</option>
+                    <option value="2" ${wizardData.categoryColumnSettings[category.id]?.columns === 2 ? 'selected' : ''}>שתי עמודות</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-check-sm mt-4">
+                    <input class="form-check-input" type="checkbox" 
+                           id="orderItems_${category.id}"
+                           ${wizardData.categoryColumnSettings[category.id]?.showItemsInOrder ? 'checked' : ''}
+                           onchange="updateCategoryOrdering(${category.id}, this.checked)">
+                    <label class="form-check-label small" for="orderItems_${category.id}">
+                        סדר מנות לפי סדר
+                    </label>
+                </div>
+            </div>
         </div>
     `).join('');
+}
+
+function updateCategoryColumns(categoryId, columns) {
+    if (!wizardData.categoryColumnSettings) {
+        wizardData.categoryColumnSettings = {};
+    }
+    if (!wizardData.categoryColumnSettings[categoryId]) {
+        wizardData.categoryColumnSettings[categoryId] = {};
+    }
+    wizardData.categoryColumnSettings[categoryId].columns = parseInt(columns);
+    updatePageBreakPreview();
+}
+
+function updateCategoryOrdering(categoryId, showInOrder) {
+    if (!wizardData.categoryColumnSettings) {
+        wizardData.categoryColumnSettings = {};
+    }
+    if (!wizardData.categoryColumnSettings[categoryId]) {
+        wizardData.categoryColumnSettings[categoryId] = {};
+    }
+    wizardData.categoryColumnSettings[categoryId].showItemsInOrder = showInOrder;
+    updatePageBreakPreview();
 }
 
 function updatePageBreakPreview() {
@@ -1499,12 +1741,17 @@ function updateStylePreview() {
         }
     ` : '';
     
+    const showMenuTitle = document.getElementById('showMenuTitle').checked;
+    const menuTitleHtml = showMenuTitle ? `
+        <h3 style="color: ${currentColors.primary}; text-align: center; margin-bottom: 15px; border-bottom: 2px solid ${currentColors.secondary}; padding-bottom: 8px;">
+            ${wizardData.menuName || 'תפריט מסעדה'} - תצוגה מקדימה
+        </h3>
+    ` : '';
+    
     preview.innerHTML = `
         <div style="font-family: '${primaryFont}', Arial; font-size: ${fontSizes[baseFontSize]}; color: ${currentColors.primary}; background: white; padding: 15px; border-radius: 8px; direction: rtl; text-align: right;">
             ${addDecorators ? `<div style="text-align: center; color: ${currentColors.secondary}; margin-bottom: 10px;">✦ ✧ ✦</div>` : ''}
-            <h3 style="color: ${currentColors.primary}; text-align: center; margin-bottom: 15px; border-bottom: 2px solid ${currentColors.secondary}; padding-bottom: 8px;">
-                ${wizardData.menuName || 'תפריט מסעדה'} - תצוגה מקדימה
-            </h3>
+            ${menuTitleHtml}
             ${previewContent}
             ${addDecorators ? `<div style="text-align: center; color: ${currentColors.secondary}; margin-top: 10px;">✦ ✧ ✦</div>` : ''}
         </div>
@@ -1527,22 +1774,30 @@ function collectStylingData() {
     };
     
     wizardData.pageSettings = {
+        showMenuTitle: document.getElementById('showMenuTitle').checked,
         addPageNumbers: document.getElementById('addPageNumbers').checked,
         addHeaders: document.getElementById('addHeaders').checked,
         addFooters: document.getElementById('addFooters').checked,
         separateIndexPage: document.getElementById('separateIndexPage').checked,
-        pageBreakCategories: getSelectedPageBreakCategories()
+        pageBreakCategories: getSelectedPageBreakCategories(),
+        pageGroups: wizardData.pageGroups || [],
+        categoryColumnSettings: wizardData.categoryColumnSettings || {}
     };
 }
 
 function getSelectedPageBreakCategories() {
+    // Convert page groups to page break format
     const pageBreakCategories = [];
-    wizardData.selectedCategories.forEach(categoryId => {
-        const checkbox = document.getElementById(`pageBreak_${categoryId}`);
-        if (checkbox && checkbox.checked) {
-            pageBreakCategories.push(categoryId);
+    
+    // First page doesn't need page break, subsequent pages do
+    for (let i = 1; i < wizardData.pageGroups.length; i++) {
+        const group = wizardData.pageGroups[i];
+        if (group.categories.length > 0) {
+            // Add page break before the first category of each new page
+            pageBreakCategories.push(group.categories[0]);
         }
-    });
+    }
+    
     return pageBreakCategories;
 }
 

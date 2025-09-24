@@ -1114,6 +1114,9 @@ def process_excel_mapping():
                         mapping_data[sheet_name] = {}
                     mapping_data[sheet_name][column_name] = value
         
+        # Debug: log the mapping data
+        current_app.logger.info(f"Mapping data received: {mapping_data}")
+        
         # Process Excel data with mapping
         import pandas as pd
         processed_items = []
@@ -1128,6 +1131,9 @@ def process_excel_mapping():
             
             # Reverse mapping for easier access
             field_to_column = {v: k for k, v in mapping.items() if v and v != 'ignore'}
+            
+            # Debug: log the field mapping
+            current_app.logger.info(f"Field to column mapping for {sheet_name}: {field_to_column}")
             
             current_category = ''
             
@@ -1150,6 +1156,10 @@ def process_excel_mapping():
                 elif current_category:
                     item_data['mapped_fields']['category'] = current_category
                 
+                # Debug: log mapped fields for first few items
+                if index < 3:
+                    current_app.logger.info(f"Row {index} mapped fields: {item_data['mapped_fields']}")
+                
                 # Only include items with required fields
                 if 'name' in item_data['mapped_fields'] and 'price' in item_data['mapped_fields']:
                     # Handle complex pricing (like "56/62")
@@ -1166,6 +1176,13 @@ def process_excel_mapping():
                     item_data['item_id'] = f"{sheet_name}_{index}"
                     
                     processed_items.append(item_data)
+                else:
+                    # Debug: log why item was skipped
+                    if index < 5:
+                        current_app.logger.info(f"Row {index} skipped - missing required fields. Has name: {'name' in item_data['mapped_fields']}, Has price: {'price' in item_data['mapped_fields']}")
+        
+        # Debug: log final count
+        current_app.logger.info(f"Total processed items: {len(processed_items)}")
         
         # Store processed data in session
         session['processed_excel_items'] = {

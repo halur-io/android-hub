@@ -28,6 +28,11 @@ csrf = CSRFProtect(app)
 csrf.exempt('admin.toggle_dietary_property')
 csrf.exempt('admin.delete_dietary_property')
 
+# Exempt menu parsing routes from CSRF
+csrf.exempt('admin.parse_word_menu')
+csrf.exempt('admin.process_menu_selection')
+csrf.exempt('admin.parse_word_menu_demo')
+
 # Exempt API blueprint from CSRF
 try:
     from api_routes import api_bp

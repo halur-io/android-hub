@@ -1087,6 +1087,110 @@ def process_excel_upload():
         flash(f'❌ שגיאה בהעלאת הקובץ: {str(e)}', 'error')
         return redirect(url_for('admin.excel_menu_upload'))
 
+@admin_bp.route('/menu/excel-upload/mapping', methods=['POST'])
+@exempt
+@login_required
+def process_excel_mapping():
+    """Process field mapping and show comprehensive dish settings"""
+    try:
+        from flask import session
+        excel_data = session.get('excel_upload_data')
+        if not excel_data:
+            flash('❌ לא נמצאו נתוני Excel. אנא התחל מחדש.', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        branch_id = request.form.get('branch_id')
+        if not branch_id:
+            flash('❌ לא נבחר סניף', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        # Parse mapping from form data
+        mapping_data = {}
+        for key, value in request.form.items():
+            if key.startswith('mapping['):
+                # Extract sheet and column from key like "mapping[Sheet1][column_name]"
+                parts = key.replace('mapping[', '').replace(']', '').split('][')
+                if len(parts) == 2:
+                    sheet_name, column_name = parts
+                    if sheet_name not in mapping_data:
+                        mapping_data[sheet_name] = {}
+                    mapping_data[sheet_name][column_name] = value
+        
+        # Process Excel data with mapping
+        import pandas as pd
+        processed_items = []
+        
+        for sheet_name, mapping in mapping_data.items():
+            if sheet_name not in excel_data['sheets']:
+                continue
+                
+            # Read the Excel file again with proper handling
+            df = pd.read_excel(excel_data['file_path'], sheet_name=sheet_name)
+            df.columns = df.columns.astype(str).str.strip()
+            
+            # Reverse mapping for easier access
+            field_to_column = {v: k for k, v in mapping.items() if v and v != 'ignore'}
+            
+            current_category = ''
+            
+            for index, row in df.iterrows():
+                item_data = {
+                    'sheet_name': sheet_name,
+                    'row_index': index,
+                    'original_data': dict(row),
+                    'mapped_fields': {}
+                }
+                
+                # Map fields according to user's mapping
+                for field, column in field_to_column.items():
+                    if column in row and pd.notna(row[column]) and str(row[column]).strip():
+                        item_data['mapped_fields'][field] = str(row[column]).strip()
+                
+                # Handle category grouping (Excel pattern where category appears once)
+                if 'category' in item_data['mapped_fields']:
+                    current_category = item_data['mapped_fields']['category']
+                elif current_category:
+                    item_data['mapped_fields']['category'] = current_category
+                
+                # Only include items with required fields
+                if 'name' in item_data['mapped_fields'] and 'price' in item_data['mapped_fields']:
+                    # Handle complex pricing (like "56/62")
+                    price_str = item_data['mapped_fields']['price']
+                    price_parts = str(price_str).split('/')
+                    
+                    item_data['pricing'] = {
+                        'base_price': price_parts[0].strip() if price_parts else '',
+                        'alt_price': price_parts[1].strip() if len(price_parts) > 1 else '',
+                        'has_multiple_prices': len(price_parts) > 1
+                    }
+                    
+                    # Generate unique ID for each item
+                    item_data['item_id'] = f"{sheet_name}_{index}"
+                    
+                    processed_items.append(item_data)
+        
+        # Store processed data in session
+        session['processed_excel_items'] = {
+            'items': processed_items,
+            'branch_id': branch_id,
+            'original_data': excel_data
+        }
+        
+        # Get categories and other data for the settings interface
+        categories = MenuCategory.query.filter_by(is_active=True).all()
+        dietary_properties = DietaryProperty.query.filter_by(is_active=True).all()
+        
+        return render_template('admin/excel_dish_settings.html',
+                             items=processed_items,
+                             categories=categories, 
+                             dietary_properties=dietary_properties,
+                             branch_id=branch_id)
+        
+    except Exception as e:
+        current_app.logger.error(f"Mapping processing error: {str(e)}")
+        flash(f'❌ שגיאה בעיבוד המיפוי: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
 # ===== MENU PARSING FROM WORD DOCUMENTS =====
 
 @admin_bp.route('/menu/parse-word', methods=['GET', 'POST'])

@@ -1234,6 +1234,12 @@ function toggleItem(itemId) {
     
     updateItemCard(itemId, checkbox.checked);
     
+    // Update selected items count display immediately
+    const countElement = document.getElementById('selectedItemsCount');
+    if (countElement) {
+        countElement.textContent = wizardData.selectedItems.length;
+    }
+    
     // Update preview if we're on the styling step
     if (wizardData.currentStep >= 4) {
         setTimeout(updateStylePreview, 50);
@@ -1260,6 +1266,12 @@ function selectAllItems(categoryId) {
                 updateItemCard(item.id, true);
             }
         });
+        
+        // Update selected items count display
+        const countElement = document.getElementById('selectedItemsCount');
+        if (countElement) {
+            countElement.textContent = wizardData.selectedItems.length;
+        }
     }
 }
 
@@ -1274,6 +1286,12 @@ function clearCategoryItems(categoryId) {
                 updateItemCard(item.id, false);
             }
         });
+        
+        // Update selected items count display
+        const countElement = document.getElementById('selectedItemsCount');
+        if (countElement) {
+            countElement.textContent = wizardData.selectedItems.length;
+        }
     }
 }
 
@@ -2027,8 +2045,8 @@ async function saveTemplate() {
                 show_descriptions: wizardData.showDescriptions,
                 columns: wizardData.columns
             },
-            print_config: wizardData.printSettings || {},
-            style_config: wizardData.styleSettings || {},
+            print_settings: wizardData.printSettings || {},
+            style_settings: wizardData.styleSettings || {},
             page_settings: {
                 pageGroups: wizardData.pageGroups || [],
                 categoryColumnSettings: wizardData.categoryColumnSettings || {},

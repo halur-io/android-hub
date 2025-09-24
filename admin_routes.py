@@ -2126,6 +2126,8 @@ def api_save_menu_template():
         items_config = data.get('items', [])
         layout_config = data.get('layout', {})
         print_config = data.get('print_settings', {})
+        style_config = data.get('style_settings', {})
+        page_config = data.get('page_settings', {})
         
         if not template_name:
             return jsonify({'success': False, 'error': 'חובה להזין שם לתבנית'}), 400
@@ -2143,7 +2145,9 @@ def api_save_menu_template():
             categories_config=categories_config,
             items_config=items_config,
             layout_config=layout_config,
-            print_config=print_config
+            print_config=print_config,
+            style_config=style_config,
+            page_config=page_config
         )
         
         db.session.add(menu_template)
@@ -2176,7 +2180,7 @@ def api_get_menu_template(template_id):
             'layout_config': template.layout_config or {},
             'print_config': template.print_config or {},
             'style_config': template.style_config or {},
-            'page_settings': template.page_settings or {},
+            'page_settings': template.page_config or {},
             'created_at': template.created_at.isoformat() if template.created_at else None
         }
         

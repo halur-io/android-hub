@@ -242,6 +242,7 @@
 
     <!-- Upload Form -->
     <form id="uploadForm" method="POST" action="{{ url_for('admin.process_excel_upload') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <!-- Branch Selection -->
         <div class="branch-selection">
             <h5 class="mb-3"><i class="fas fa-map-marker-alt me-2"></i>בחר סניף</h5>

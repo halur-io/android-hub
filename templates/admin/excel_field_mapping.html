@@ -286,6 +286,7 @@
     </div>
 
     <form id="mappingForm" method="POST" action="{{ url_for('admin.process_excel_mapping') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="branch_id" value="{{ request.form.get('branch_id') }}">
         
         {% for sheet_name, sheet_info in data.sheets.items() %}

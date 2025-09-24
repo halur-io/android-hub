@@ -432,6 +432,7 @@
 
     <!-- Items Grid -->
     <form id="dishSettingsForm" method="POST" action="{{ url_for('admin.finalize_excel_import') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input type="hidden" name="branch_id" value="{{ branch_id }}">
         
         <div class="items-grid" id="itemsContainer">

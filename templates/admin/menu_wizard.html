@@ -821,6 +821,7 @@ let wizardData = {
     branchId: null,
     selectedCategories: [],
     selectedItems: [],
+    selectedItemsSet: new Set(),
     layoutSettings: {},
     printSettings: {}
 };
@@ -1220,30 +1221,44 @@ function loadItemsForSelection() {
     }
 }
 
-function toggleItem(itemId) {
-    const checkbox = document.getElementById(`item_${itemId}`);
-    checkbox.checked = !checkbox.checked;
+// Centralized item selection state management
+function setItemSelected(itemId, selected) {
+    // Ensure selectedItems is a Set for reliable state management
+    if (!wizardData.selectedItemsSet) {
+        wizardData.selectedItemsSet = new Set(wizardData.selectedItems || []);
+    }
     
-    if (checkbox.checked) {
-        if (!wizardData.selectedItems.includes(itemId)) {
-            wizardData.selectedItems.push(itemId);
-        }
+    if (selected) {
+        wizardData.selectedItemsSet.add(itemId);
     } else {
-        wizardData.selectedItems = wizardData.selectedItems.filter(id => id !== itemId);
+        wizardData.selectedItemsSet.delete(itemId);
     }
     
-    updateItemCard(itemId, checkbox.checked);
+    // Update the array from the Set to maintain backward compatibility
+    wizardData.selectedItems = Array.from(wizardData.selectedItemsSet);
     
-    // Update selected items count display immediately
-    const countElement = document.getElementById('selectedItemsCount');
-    if (countElement) {
-        countElement.textContent = wizardData.selectedItems.length;
+    // Update UI elements
+    const checkbox = document.getElementById(`item_${itemId}`);
+    if (checkbox) {
+        checkbox.checked = selected;
     }
+    
+    updateItemCard(itemId, selected);
+    updateSummary();
     
     // Update preview if we're on the styling step
     if (wizardData.currentStep >= 4) {
         setTimeout(updateStylePreview, 50);
     }
+}
+
+function toggleItem(itemId) {
+    const checkbox = document.getElementById(`item_${itemId}`);
+    const currentlySelected = wizardData.selectedItemsSet ? 
+        wizardData.selectedItemsSet.has(itemId) : 
+        wizardData.selectedItems.includes(itemId);
+    
+    setItemSelected(itemId, !currentlySelected);
 }
 
 function updateItemCard(itemId, selected) {
@@ -1259,19 +1274,8 @@ function selectAllItems(categoryId) {
     const category = allCategories.find(cat => cat.id === categoryId);
     if (category) {
         category.items.forEach(item => {
-            const checkbox = document.getElementById(`item_${item.id}`);
-            if (checkbox && !checkbox.checked) {
-                checkbox.checked = true;
-                wizardData.selectedItems.push(item.id);
-                updateItemCard(item.id, true);
-            }
+            setItemSelected(item.id, true);
         });
-        
-        // Update selected items count display
-        const countElement = document.getElementById('selectedItemsCount');
-        if (countElement) {
-            countElement.textContent = wizardData.selectedItems.length;
-        }
     }
 }
 
@@ -1279,19 +1283,8 @@ function clearCategoryItems(categoryId) {
     const category = allCategories.find(cat => cat.id === categoryId);
     if (category) {
         category.items.forEach(item => {
-            const checkbox = document.getElementById(`item_${item.id}`);
-            if (checkbox && checkbox.checked) {
-                checkbox.checked = false;
-                wizardData.selectedItems = wizardData.selectedItems.filter(id => id !== item.id);
-                updateItemCard(item.id, false);
-            }
+            setItemSelected(item.id, false);
         });
-        
-        // Update selected items count display
-        const countElement = document.getElementById('selectedItemsCount');
-        if (countElement) {
-            countElement.textContent = wizardData.selectedItems.length;
-        }
     }
 }
 
@@ -1885,6 +1878,7 @@ async function useTemplate(templateId) {
         // Load template data into wizard
         wizardData.selectedCategories = template.categories_config || [];
         wizardData.selectedItems = template.items_config || [];
+        wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
         
         // Pre-fill form
         document.getElementById('menuName').value = `${template.name} - עותק`;
@@ -2098,6 +2092,7 @@ async function editTemplate(templateId) {
             wizardData.selectedBranch = template.branch_id;
             wizardData.selectedCategories = template.categories_config || [];
             wizardData.selectedItems = template.items_config || [];
+            wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
             
             // Load layout settings
             const layout = template.layout_config || {};

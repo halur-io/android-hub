@@ -1933,8 +1933,7 @@ def menu_wizard():
                              templates=templates_data)
                              
     except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f"Error loading menu wizard data: {str(e)}")
+        print(f"Error loading menu wizard data: {str(e)}")
         return render_template('admin/menu_wizard.html', 
                              branches=[],
                              categories=[],

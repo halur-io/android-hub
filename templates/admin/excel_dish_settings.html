@@ -476,7 +476,7 @@
                             <option value="">בחר קטגוריה</option>
                             {% for category in categories %}
                             <option value="{{ category.id }}" 
-                                {% if category.name_he == item.mapped_fields.get('category') %}selected{% endif %}>
+                                {% if category.id == item.category_id or category.name_he == item.mapped_fields.get('category') %}selected{% endif %}>
                                 {{ category.name_he }}
                             </option>
                             {% endfor %}

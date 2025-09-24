@@ -1020,6 +1020,7 @@ def simple_excel_upload():
         
         processed_items = []
         current_category = ''
+        categories_created = {}  # Track created categories
         
         for index, row in df.iterrows():
             # Handle your exact column names
@@ -1036,6 +1037,30 @@ def simple_excel_upload():
                 
             # Only process rows with name and price
             if name and price:
+                # Auto-create category if needed
+                category_id = None
+                if category and category not in categories_created:
+                    # Check if category exists in database
+                    existing_cat = MenuCategory.query.filter_by(name_he=category).first()
+                    if existing_cat:
+                        category_id = existing_cat.id
+                        categories_created[category] = existing_cat.id
+                    else:
+                        # Create new category
+                        new_category = MenuCategory(
+                            name_he=category,
+                            name_en=category,  # Default to same as Hebrew
+                            display_order=len(categories_created) + 1,
+                            is_active=True
+                        )
+                        db.session.add(new_category)
+                        db.session.flush()  # Get ID without committing
+                        category_id = new_category.id
+                        categories_created[category] = category_id
+                        current_app.logger.info(f"Created category: {category} with ID: {category_id}")
+                elif category in categories_created:
+                    category_id = categories_created[category]
+                
                 # Handle complex pricing like "56/62"
                 price_parts = str(price).split('/')
                 base_price = price_parts[0].strip()
@@ -1043,7 +1068,7 @@ def simple_excel_upload():
                 
                 # Create object structure that template expects
                 class SimpleItem:
-                    def __init__(self, name, category, description, base_price, alt_price, has_multiple):
+                    def __init__(self, name, category, description, base_price, alt_price, has_multiple, cat_id):
                         self.item_id = f"item_{len(processed_items)}"
                         self.mapped_fields = {
                             'name': name,
@@ -1055,11 +1080,20 @@ def simple_excel_upload():
                             'alt_price': alt_price,
                             'has_multiple_prices': has_multiple
                         }
+                        self.category_id = cat_id  # Store category ID for selection
                 
-                item = SimpleItem(name, category, description, base_price, alt_price, len(price_parts) > 1)
+                item = SimpleItem(name, category, description, base_price, alt_price, len(price_parts) > 1, category_id)
                 processed_items.append(item)
         
         current_app.logger.info(f"Processed {len(processed_items)} items")
+        current_app.logger.info(f"Created {len(categories_created)} categories: {list(categories_created.keys())}")
+        
+        # Commit all category creations
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error committing categories: {str(e)}")
         
         return render_template('admin/excel_dish_settings.html',
                              items=processed_items,

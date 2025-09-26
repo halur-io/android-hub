@@ -378,7 +378,7 @@
                     <i class="fas fa-tags"></i>
                     <span>ניהול קטגוריות</span>
                 </a>
-                <a href="#" class="management-btn" onclick="viewSavedMenus()">
+                <a href="#" class="management-btn" onclick="viewSavedMenus(event)">
                     <i class="fas fa-save"></i>
                     <span>תפריטים שמורים</span>
                 </a>
@@ -920,6 +920,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function makeApiCall(url, options = {}) {
     try {
         const defaultOptions = {
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
@@ -2275,21 +2276,38 @@ function printMenu() {
 }
 
 // Saved Menus Functions
-async function viewSavedMenus() {
+async function viewSavedMenus(evt) {
+    // Prevent default link behavior
+    if (evt) evt.preventDefault();
+    
+    // Show the section immediately, before API call
+    document.getElementById('templatesSection').style.display = 'none';
+    document.getElementById('savedMenusSection').style.display = 'block';
+    document.getElementById('managementMenu').style.display = 'none';
+    
     try {
         const data = await makeApiCall('/admin/api/menu-wizard/saved-menus');
+        
+        // Validate response
+        if (!data || !Array.isArray(data.menus)) {
+            throw new Error('Invalid response format');
+        }
+        
         displaySavedMenus(data.menus);
-        
-        // Hide templates section and show saved menus section
-        document.getElementById('templatesSection').style.display = 'none';
-        document.getElementById('savedMenusSection').style.display = 'block';
-        
-        // Hide management menu
-        document.getElementById('managementMenu').style.display = 'none';
         
     } catch (error) {
         console.error('Error loading saved menus:', error);
-        showNotification('שגיאה בטעינת תפריטים שמורים', 'error');
+        showNotification('שגיאה בטעינת תפריטים שמורים: ' + error.message, 'error');
+        
+        // Show error message in the panel
+        document.getElementById('savedMenusList').innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <p>שגיאה בטעינת תפריטים שמורים</p>
+                <p class="small">${error.message}</p>
+                <button class="btn btn-primary btn-sm mt-2" onclick="viewSavedMenus()">נסה שנית</button>
+            </div>
+        `;
     }
 }
 
@@ -2628,5 +2646,8 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 }
+
+// Make functions globally accessible
+window.viewSavedMenus = viewSavedMenus;
 </script>
 {% endblock %}

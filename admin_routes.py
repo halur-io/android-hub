@@ -2368,7 +2368,7 @@ def api_menu_simple_print(menu_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None):
-    """Generate two-column Hebrew RTL print HTML for menu with proper column splitting"""
+    """Generate multi-page Hebrew RTL print HTML for menu with proper pagination and two columns per page"""
     
     # Default settings
     print_settings = print_settings or {}
@@ -2403,7 +2403,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     from datetime import datetime
     current_date = datetime.now().strftime('%d/%m/%Y')
     
-    # Collect all items for proper two-column splitting
+    # Collect all items for proper pagination
     all_items = []
     for category_id, data in categories_with_items.items():
         category = data['category']
@@ -2426,11 +2426,15 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 'show_descriptions': show_descriptions
             })
     
-    # Split items into two columns
-    total_items = len(all_items)
-    mid_point = (total_items + 1) // 2  # Ensure left column gets extra item if odd number
-    left_column_items = all_items[:mid_point]
-    right_column_items = all_items[mid_point:]
+    # Calculate items per page (estimate based on content)
+    # Each menu item takes roughly 3-4 lines, category headers take 2-3 lines
+    # Assuming ~40-50 lines per page in two columns (20-25 lines per column)
+    items_per_page = 20  # Conservative estimate for items + categories per page
+    
+    # Split all items into pages
+    pages = []
+    for i in range(0, len(all_items), items_per_page):
+        pages.append(all_items[i:i + items_per_page])
     
     # Helper function to render items in a column
     def render_column_items(column_items, primary_color, secondary_color, current_fonts):
@@ -2493,7 +2497,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
         
         return column_html
     
-    # Build HTML with two-column layout
+    # Build HTML with multi-page layout
     html = f'''
     <!DOCTYPE html>
     <html dir="rtl" lang="he">
@@ -2525,6 +2529,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 gap: 15pt;
                 direction: rtl;
                 min-height: calc(100vh - 40mm);
+                padding-bottom: 20pt;
             }}
             
             .print-page:last-child {{
@@ -2622,29 +2627,40 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
         </style>
     </head>
     <body>
-        <div class="print-page">
     '''
     
-    # Add header if enabled
-    if show_menu_title and menu_name:
+    # Generate multiple pages
+    for page_index, page_items in enumerate(pages):
+        html += f'<div class="print-page">'
+        
+        # Add header only on first page
+        if page_index == 0 and show_menu_title and menu_name:
+            html += f'''
+                <div class="menu-header">
+                    <div class="menu-title">{menu_name}</div>
+                    {f'<div class="branch-info">{branch.name_he}</div>' if show_branch_info and branch else ''}
+                    {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
+                    {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
+                </div>
+            '''
+        
+        # Split page items into two columns
+        mid_point = (len(page_items) + 1) // 2  # Ensure left column gets extra item if odd
+        left_column_items = page_items[:mid_point]
+        right_column_items = page_items[mid_point:]
+        
+        # Add two columns for this page
         html += f'''
-            <div class="menu-header">
-                <div class="menu-title">{menu_name}</div>
-                {f'<div class="branch-info">{branch.name_he}</div>' if show_branch_info and branch else ''}
-                {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
-                {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
+                <div class="column-left">
+                    {render_column_items(left_column_items, primary_color, secondary_color, current_fonts)}
+                </div>
+                <div class="column-right">
+                    {render_column_items(right_column_items, primary_color, secondary_color, current_fonts)}
+                </div>
             </div>
         '''
     
-    # Add two columns
-    html += f'''
-            <div class="column-left">
-                {render_column_items(left_column_items, primary_color, secondary_color, current_fonts)}
-            </div>
-            <div class="column-right">
-                {render_column_items(right_column_items, primary_color, secondary_color, current_fonts)}
-            </div>
-        </div>
+    html += '''
     </body>
     </html>
     '''

@@ -2114,10 +2114,15 @@ async function createMenu() {
             loadSavedTemplates();
         }
         
+        // Automatically load and show saved menus
+        setTimeout(() => {
+            viewSavedMenus();
+        }, 300);
+        
         // Show print preview
         setTimeout(() => {
             showPrintPreview(result.menu_id);
-        }, 500);
+        }, 800);
         
     } catch (error) {
         console.error('Error creating menu:', error);

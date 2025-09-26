@@ -2368,7 +2368,7 @@ def api_menu_simple_print(menu_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None):
-    """Generate multi-page Hebrew RTL print HTML for menu with proper pagination and two columns per page"""
+    """Generate reliable multi-page Hebrew RTL print HTML using block layout instead of CSS Grid"""
     
     # Default settings
     print_settings = print_settings or {}
@@ -2426,10 +2426,8 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 'show_descriptions': show_descriptions
             })
     
-    # Calculate items per page (estimate based on content)
-    # Each menu item takes roughly 3-4 lines, category headers take 2-3 lines
-    # Assuming ~40-50 lines per page in two columns (20-25 lines per column)
-    items_per_page = 20  # Conservative estimate for items + categories per page
+    # Calculate items per page - more conservative for reliable pagination
+    items_per_page = 16  # Conservative estimate for better pagination
     
     # Split all items into pages
     pages = []
@@ -2453,7 +2451,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                     category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
                 
                 column_html += f'''
-                    <h3 class="category-title">
+                    <h3 class="category-title no-break">
                         {category_icon_html}{category.name_he}
                     </h3>
                 '''
@@ -2493,11 +2491,23 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                     if dietary_badges:
                         item_content += f'<div class="dietary-props">{"".join(dietary_badges)}</div>'
                 
-                column_html += f'<div class="menu-item">{item_content}</div>'
+                column_html += f'<div class="menu-item no-break">{item_content}</div>'
         
         return column_html
     
-    # Build HTML with multi-page layout
+    # Build header HTML
+    header_html = ''
+    if show_menu_title and menu_name:
+        header_html = f'''
+            <div class="menu-header no-break">
+                <div class="menu-title">{menu_name}</div>
+                {f'<div class="branch-info">{branch.name_he}</div>' if show_branch_info and branch else ''}
+                {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
+                {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
+            </div>
+        '''
+    
+    # Build HTML with reliable block layout (no CSS Grid/Flex)
     html = f'''
     <!DOCTYPE html>
     <html dir="rtl" lang="he">
@@ -2506,43 +2516,98 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
         <title>תפריט - {menu_name}</title>
         <link href="https://fonts.googleapis.com/css2?family={primary_font.replace(' ', '+')}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <style>
-            @page {{
-                size: A4;
-                margin: 15mm 0mm 15mm 15mm;
-            }}
-            
+            /* Screen styles */
             body {{
                 direction: rtl;
                 font-family: '{primary_font}', 'Noto Sans Hebrew', Arial, sans-serif;
                 font-size: {current_fonts['base']};
                 line-height: 1.25;
-                margin: 0;
+                margin: 20pt;
                 padding: 0;
                 color: {primary_color};
             }}
             
-            .print-page {{
-                break-after: page;
-                page-break-after: always;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 15pt;
+            #print-root {{
                 direction: rtl;
-                min-height: calc(100vh - 40mm);
-                padding-bottom: 20pt;
+                display: block;
             }}
             
-            .print-page:last-child {{
-                break-after: auto;
-                page-break-after: auto;
+            .print-page {{
+                display: block;
+                margin-bottom: 40pt;
+                min-height: 80vh;
             }}
             
             .menu-header {{
-                grid-column: 1 / -1;
                 text-align: center;
                 margin-bottom: 20pt;
                 border-bottom: 2px solid {primary_color};
                 padding-bottom: 10pt;
+            }}
+            
+            .col {{
+                width: 48%;
+                vertical-align: top;
+                direction: rtl;
+                text-align: right;
+                padding: 0 10pt;
+            }}
+            
+            /* Print styles - this is key for reliable pagination */
+            @media print {{
+                @page {{
+                    size: A4;
+                    margin: 12mm;
+                }}
+                
+                /* Hide everything except print content */
+                body * {{
+                    visibility: hidden;
+                }}
+                
+                #print-root,
+                #print-root * {{
+                    visibility: visible;
+                }}
+                
+                /* Force block layout (no grid/flex) */
+                #print-root {{
+                    display: block !important;
+                    position: static !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }}
+                
+                .print-page {{
+                    display: block !important;
+                    break-after: page;
+                    page-break-after: always;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    min-height: auto;
+                }}
+                
+                .print-page:last-child {{
+                    break-after: auto;
+                    page-break-after: auto;
+                }}
+                
+                /* Two columns using inline-block (not grid/flex) */
+                .col {{
+                    display: inline-block !important;
+                    width: 49% !important;
+                    vertical-align: top !important;
+                    direction: rtl;
+                    text-align: right;
+                    margin: 0 !important;
+                    padding: 0 5pt !important;
+                }}
+                
+                /* Prevent breaks inside items */
+                .no-break {{
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }}
             }}
             
             .menu-title {{
@@ -2564,10 +2629,6 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 margin-top: 5pt;
             }}
             
-            .column-left, .column-right {{
-                padding: 0 5pt;
-            }}
-            
             .category-title {{
                 font-size: {current_fonts['category']};
                 font-weight: bold;
@@ -2575,12 +2636,10 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 margin: 15pt 0 10pt 0;
                 padding: 5pt 0;
                 border-bottom: 1px solid {primary_color};
-                break-inside: avoid;
             }}
             
             .menu-item {{
                 margin-bottom: 8pt;
-                break-inside: avoid;
             }}
             
             .item-name {{
@@ -2627,40 +2686,36 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
         </style>
     </head>
     <body>
+        <div id="print-root">
     '''
     
-    # Generate multiple pages
+    # Generate multiple pages using simple block layout
     for page_index, page_items in enumerate(pages):
         html += f'<div class="print-page">'
         
         # Add header only on first page
-        if page_index == 0 and show_menu_title and menu_name:
-            html += f'''
-                <div class="menu-header">
-                    <div class="menu-title">{menu_name}</div>
-                    {f'<div class="branch-info">{branch.name_he}</div>' if show_branch_info and branch else ''}
-                    {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
-                    {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
-                </div>
-            '''
+        if page_index == 0:
+            html += header_html
         
         # Split page items into two columns
         mid_point = (len(page_items) + 1) // 2  # Ensure left column gets extra item if odd
         left_column_items = page_items[:mid_point]
         right_column_items = page_items[mid_point:]
         
-        # Add two columns for this page
+        # Add two columns using inline-block (not grid/flex)
         html += f'''
-                <div class="column-left">
-                    {render_column_items(left_column_items, primary_color, secondary_color, current_fonts)}
-                </div>
-                <div class="column-right">
-                    {render_column_items(right_column_items, primary_color, secondary_color, current_fonts)}
-                </div>
+            <div class="col">
+                {render_column_items(left_column_items, primary_color, secondary_color, current_fonts)}
+            </div><!--
+            --><div class="col">
+                {render_column_items(right_column_items, primary_color, secondary_color, current_fonts)}
             </div>
         '''
+        
+        html += '</div>'  # Close print-page
     
     html += '''
+        </div>
     </body>
     </html>
     '''

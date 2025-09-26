@@ -2256,6 +2256,69 @@ def api_menu_print_preview(menu_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@admin_bp.route('/api/menu-wizard/saved-menus')
+@login_required
+def api_saved_menus():
+    """Get all saved generated menus"""
+    try:
+        menus = GeneratedMenu.query.order_by(GeneratedMenu.date_created.desc()).all()
+        result = []
+        
+        for menu in menus:
+            menu_data = {
+                'id': menu.id,
+                'name': menu.name,
+                'branch_name': menu.branch.name_he if menu.branch else 'לא צוין',
+                'date_created': menu.date_created.strftime('%Y-%m-%d'),
+                'items_count': len(menu.menu_content.get('items', [])) if menu.menu_content else 0,
+                'categories_count': len(menu.menu_content.get('categories', [])) if menu.menu_content else 0,
+                'has_print_settings': bool(menu.print_settings),
+                'has_style_settings': bool(menu.style_settings),
+                'has_page_settings': bool(menu.page_settings)
+            }
+            result.append(menu_data)
+        
+        return jsonify({'success': True, 'menus': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/saved-menu/<int:menu_id>')
+@login_required
+def api_get_saved_menu(menu_id):
+    """Get a saved menu by ID"""
+    try:
+        menu = GeneratedMenu.query.get_or_404(menu_id)
+        
+        menu_data = {
+            'id': menu.id,
+            'name': menu.name,
+            'branch_id': menu.branch_id,
+            'branch_name': menu.branch.name_he if menu.branch else 'לא צוין',
+            'date_created': menu.date_created.strftime('%Y-%m-%d'),
+            'menu_content': menu.menu_content,
+            'print_settings': menu.print_settings,
+            'style_settings': menu.style_settings,
+            'page_settings': menu.page_settings
+        }
+        
+        return jsonify({'success': True, 'menu': menu_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/delete-menu/<int:menu_id>', methods=['DELETE'])
+@login_required 
+def api_delete_saved_menu(menu_id):
+    """Delete a saved menu"""
+    try:
+        menu = GeneratedMenu.query.get_or_404(menu_id)
+        db.session.delete(menu)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'התפריט נמחק בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @admin_bp.route('/api/menu-wizard/simple-print/<int:menu_id>')
 @login_required
 def api_menu_simple_print(menu_id):
@@ -2285,11 +2348,14 @@ def api_menu_simple_print(menu_id):
                     }
                 categories_with_items[category.id]['items'].append(item)
         
-        # Generate simple print HTML
+        # Generate simple print HTML with advanced settings
         print_html = generate_simple_menu_print_html(
             menu_name=generated_menu.name,
             branch=branch,
-            categories_with_items=categories_with_items
+            categories_with_items=categories_with_items,
+            print_settings=generated_menu.print_settings or {},
+            style_settings=generated_menu.style_settings or {},
+            page_settings=generated_menu.page_settings or {}
         )
         
         return jsonify({
@@ -2301,19 +2367,50 @@ def api_menu_simple_print(menu_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
-    """Generate simple table-based Hebrew RTL print HTML for menu"""
+def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None):
+    """Generate simple table-based Hebrew RTL print HTML for menu with advanced styling support"""
+    
+    # Default settings
+    print_settings = print_settings or {}
+    style_settings = style_settings or {}
+    page_settings = page_settings or {}
+    
+    # Extract print settings
+    show_prices = print_settings.get('show_prices', True)
+    show_descriptions = print_settings.get('show_descriptions', True)
+    show_category_icons = print_settings.get('show_category_icons', True)
+    show_date = print_settings.get('show_date', True)
+    show_branch_info = print_settings.get('show_branch_info', True)
+    show_menu_title = print_settings.get('show_menu_title', True)
+    
+    # Advanced style settings
+    primary_color = style_settings.get('primaryColor', '#2c3e50')
+    secondary_color = style_settings.get('secondaryColor', '#e74c3c')
+    primary_font = style_settings.get('primaryFont', 'Heebo')
+    base_font_size = style_settings.get('baseFontSize', 'medium')
+    icon_style = style_settings.get('iconStyle', 'solid')
+    
+    # Font size mapping
+    font_sizes = {
+        'small': {'base': '10pt', 'title': '16pt', 'category': '12pt', 'item': '10pt'},
+        'medium': {'base': '11pt', 'title': '18pt', 'category': '14pt', 'item': '11pt'},
+        'large': {'base': '12pt', 'title': '20pt', 'category': '16pt', 'item': '12pt'},
+        'extra-large': {'base': '14pt', 'title': '24pt', 'category': '18pt', 'item': '14pt'}
+    }
+    
+    current_fonts = font_sizes.get(base_font_size, font_sizes['medium'])
     
     from datetime import datetime
     current_date = datetime.now().strftime('%d/%m/%Y')
     
-    # Build simple HTML with table-based layout
+    # Build HTML with advanced styling support
     html = f'''
     <!DOCTYPE html>
     <html dir="rtl" lang="he">
     <head>
         <meta charset="UTF-8">
         <title>תפריט - {menu_name}</title>
+        <link href="https://fonts.googleapis.com/css2?family={primary_font.replace(' ', '+')}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <style>
             @page {{
                 size: A4;
@@ -2322,46 +2419,47 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
             
             body {{
                 direction: rtl;
-                font-family: "Noto Sans Hebrew", Arial, sans-serif;
-                font-size: 11pt;
+                font-family: '{primary_font}', 'Noto Sans Hebrew', Arial, sans-serif;
+                font-size: {current_fonts['base']};
                 line-height: 1.25;
                 margin: 0;
                 padding: 0;
+                color: {primary_color};
             }}
             
             .menu-header {{
                 text-align: center;
                 margin-bottom: 20pt;
-                border-bottom: 2px solid #2c3e50;
+                border-bottom: 2px solid {primary_color};
                 padding-bottom: 10pt;
             }}
             
             .menu-title {{
-                font-size: 18pt;
+                font-size: {current_fonts['title']};
                 font-weight: bold;
-                color: #2c3e50;
+                color: {primary_color};
                 margin-bottom: 5pt;
             }}
             
             .branch-info {{
-                font-size: 10pt;
-                color: #34495e;
+                font-size: {int(current_fonts['base'][:-2]) - 1}pt;
+                color: {secondary_color};
                 margin: 2pt 0;
             }}
             
             .print-date {{
-                font-size: 9pt;
-                color: #34495e;
+                font-size: {int(current_fonts['base'][:-2]) - 2}pt;
+                color: {secondary_color};
                 margin-top: 5pt;
             }}
             
             .category-title {{
-                font-size: 14pt;
+                font-size: {current_fonts['category']};
                 font-weight: bold;
-                color: #2c3e50;
+                color: {primary_color};
                 margin: 15pt 0 10pt 0;
                 padding: 5pt 0;
-                border-bottom: 1px solid #2c3e50;
+                border-bottom: 1px solid {primary_color};
             }}
             
             table {{
@@ -2391,41 +2489,54 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
             .item-name {{
                 text-align: right;
                 font-weight: 500;
+                font-size: {current_fonts['item']};
+                color: {primary_color};
             }}
             
             .item-price {{
                 text-align: left;
                 font-weight: bold;
-                color: #e74c3c;
+                color: {secondary_color};
                 font-variant-numeric: tabular-nums;
+                font-size: {current_fonts['item']};
             }}
             
             .item-description {{
-                font-size: 10pt;
-                color: #34495e;
+                font-size: {int(current_fonts['item'][:-2]) - 1}pt;
+                color: {primary_color}AA;
                 margin-top: 2pt;
                 text-align: right;
             }}
             
             .dietary-badge {{
                 display: inline-block;
-                background: #2c3e50;
+                background: {primary_color};
                 color: white;
-                font-size: 8pt;
+                font-size: {int(current_fonts['item'][:-2]) - 3}pt;
                 padding: 1pt 3pt;
                 border-radius: 2pt;
                 margin-left: 3pt;
             }}
+            
+            .category-icon {{
+                margin-left: 5pt;
+                color: {primary_color};
+            }}
         </style>
     </head>
     <body>
+    '''
+    
+    # Add header only if enabled
+    if show_menu_title and menu_name:
+        html += f'''
         <div class="menu-header">
             <div class="menu-title">{menu_name}</div>
-            {f'<div class="branch-info">{branch.name_he}</div>' if branch else ''}
-            {f'<div class="branch-info">{branch.address_he}</div>' if branch and branch.address_he else ''}
-            <div class="print-date">תאריך הדפסה: {current_date}</div>
+            {f'<div class="branch-info">{branch.name_he}</div>' if show_branch_info and branch else ''}
+            {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
+            {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
         </div>
-    '''
+        '''
     
     # Add categories and items
     for category_id, data in categories_with_items.items():
@@ -2434,8 +2545,9 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
         
         # Add category title
         category_icon_html = ''
-        if category.icon:
-            category_icon_html = f'<i class="fas fa-{category.icon}"></i> '
+        if show_category_icons and category.icon:
+            icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
+            category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
         
         html += f'''
             <h2 class="category-title">
@@ -2452,7 +2564,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
         for item in items:
             # Format price
             price_html = ''
-            if item.base_price:
+            if show_prices and item.base_price:
                 try:
                     price_value = int(float(item.base_price))
                     price_html = f'<span dir="ltr">₪ {price_value}</span>'
@@ -2462,8 +2574,8 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
             # Build item content
             item_content = f'<div class="item-name">{item.name_he}</div>'
             
-            # Add description
-            if item.description_he:
+            # Add description if enabled
+            if show_descriptions and item.description_he:
                 item_content += f'<div class="item-description">{item.description_he}</div>'
             
             # Add dietary properties

@@ -2093,7 +2093,15 @@ async function createMenu() {
         // Ensure we have current values from the form
         const menuName = document.getElementById('menuName').value.trim();
         const branchSelect = document.getElementById('branchSelect');
-        const currentBranchId = branchSelect ? parseInt(branchSelect.value) : wizardData.branchId;
+        
+        // Get branch ID - check DOM first, then wizardData, ensuring we have a valid value
+        let currentBranchId = null;
+        if (branchSelect && branchSelect.value && branchSelect.value !== '') {
+            currentBranchId = parseInt(branchSelect.value);
+        } else if (wizardData.branchId) {
+            currentBranchId = parseInt(wizardData.branchId);
+        }
+        
         
         // Validate required fields
         if (!menuName) {
@@ -2101,7 +2109,7 @@ async function createMenu() {
             return;
         }
         
-        if (!currentBranchId) {
+        if (!currentBranchId || isNaN(currentBranchId)) {
             showNotification('חובה לבחור סניף', 'error');
             return;
         }
@@ -2183,16 +2191,33 @@ async function useTemplate(templateId) {
         wizardData.selectedCategories = template.categories_config || [];
         wizardData.selectedItems = template.items_config || [];
         wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
-        wizardData.branchId = template.branch_id; // Set the branch ID properly
+        wizardData.branchId = template.branch_id ? parseInt(template.branch_id) : null; // Set the branch ID properly as integer
         
-        // Pre-fill form after wizard is opened
+        // Pre-fill form after wizard is opened with longer delay to ensure DOM is ready
         setTimeout(() => {
-            document.getElementById('menuName').value = `${template.name} - עותק`;
-            if (template.branch_id) {
-                document.getElementById('branchSelect').value = template.branch_id;
-                wizardData.branchId = parseInt(template.branch_id); // Ensure it's set as integer
+            // Set menu name
+            const menuNameInput = document.getElementById('menuName');
+            if (menuNameInput) {
+                menuNameInput.value = `${template.name} - עותק`;
             }
-        }, 100);
+            
+            // Set branch selection - ensure both DOM and wizardData are set
+            if (template.branch_id) {
+                const branchSelect = document.getElementById('branchSelect');
+                if (branchSelect) {
+                    branchSelect.value = template.branch_id;
+                    // Trigger change event to ensure any event listeners are called
+                    branchSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                // Double-check wizardData has the branch set
+                wizardData.branchId = parseInt(template.branch_id);
+            }
+            
+            // Update the wizard display if needed
+            if (typeof updateSelectedCount === 'function') {
+                updateSelectedCount();
+            }
+        }, 250); // Increased delay to ensure DOM is fully ready
         
         showNotification('התבנית נטענה בהצלחה', 'success');
     } catch (error) {

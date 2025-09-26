@@ -290,6 +290,34 @@
 [dir="rtl"] .management-btn {
     flex-direction: row-reverse;
 }
+
+/* Wizard Step Styles */
+.step {
+    padding: 10px 15px;
+    color: #6c757d;
+    font-size: 14px;
+    border-radius: 20px;
+    transition: all 0.3s;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.step.active {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+}
+
+.step.clickable {
+    cursor: pointer;
+}
+
+.step.clickable:hover:not(.active) {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    color: #495057;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+}
 </style>
 {% endblock %}
 
@@ -392,19 +420,19 @@
                         <div class="progress-bar bg-primary" id="wizardProgress" style="width: 20%"></div>
                     </div>
                     <div class="wizard-steps d-flex justify-content-between">
-                        <span class="step active" data-step="1">
+                        <span class="step active clickable" data-step="1" onclick="goToStep(1)">
                             <i class="fas fa-info-circle me-1"></i>פרטים בסיסיים
                         </span>
-                        <span class="step" data-step="2">
+                        <span class="step clickable" data-step="2" onclick="goToStep(2)">
                             <i class="fas fa-tags me-1"></i>בחירת קטגוריות
                         </span>
-                        <span class="step" data-step="3">
+                        <span class="step clickable" data-step="3" onclick="goToStep(3)">
                             <i class="fas fa-utensils me-1"></i>בחירת מנות
                         </span>
-                        <span class="step" data-step="4">
+                        <span class="step clickable" data-step="4" onclick="goToStep(4)">
                             <i class="fas fa-palette me-1"></i>עיצוב מתקדם
                         </span>
-                        <span class="step" data-step="5">
+                        <span class="step clickable" data-step="5" onclick="goToStep(5)">
                             <i class="fas fa-print me-1"></i>הגדרות והדפסה
                         </span>
                     </div>
@@ -1227,6 +1255,25 @@ function renderItemsWithCurrentView(selectedCategoryData) {
     } else {
         renderItemsCardView(selectedCategoryData, container);
     }
+    
+    // Restore selection state after rendering
+    setTimeout(() => {
+        restoreItemSelectionState();
+    }, 100);
+}
+
+function restoreItemSelectionState() {
+    if (!wizardData.selectedItemsSet) {
+        wizardData.selectedItemsSet = new Set(wizardData.selectedItems || []);
+    }
+    
+    wizardData.selectedItemsSet.forEach(itemId => {
+        const checkbox = document.getElementById(`item_${itemId}`);
+        if (checkbox) {
+            checkbox.checked = true;
+            updateItemCard(itemId, true);
+        }
+    });
 }
 
 function renderItemsCardView(selectedCategoryData, container) {
@@ -1337,13 +1384,18 @@ function setItemSelected(itemId, selected) {
     // Update the array from the Set to maintain backward compatibility
     wizardData.selectedItems = Array.from(wizardData.selectedItemsSet);
     
-    // Update UI elements
+    // Update UI elements with error checking
     const checkbox = document.getElementById(`item_${itemId}`);
+    console.log(`Looking for item ${itemId}, found checkbox:`, checkbox);
+    
     if (checkbox) {
         checkbox.checked = selected;
+        updateItemCard(itemId, selected);
+    } else {
+        // Checkbox not found - might be in different view mode or not rendered yet
+        console.warn(`Checkbox for item ${itemId} not found in DOM`);
     }
     
-    updateItemCard(itemId, selected);
     updateSummary();
     
     // Update preview if we're on the styling step
@@ -1976,6 +2028,11 @@ function getSelectedPageBreakCategories() {
 function updateSummary() {
     document.getElementById('selectedCategoriesCount').textContent = wizardData.selectedCategories.length;
     document.getElementById('selectedItemsCount').textContent = wizardData.selectedItems.length;
+}
+
+// Alias function for updateSummary - used in template loading
+function updateSelectedCount() {
+    updateSummary();
 }
 
 // Create Menu Function

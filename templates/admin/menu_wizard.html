@@ -954,6 +954,7 @@ function createNewMenu() {
         branchId: null,
         selectedCategories: [],
         selectedItems: [],
+        selectedItemsSet: new Set(),
         layoutSettings: {},
         printSettings: {}
     };
@@ -2094,6 +2095,14 @@ async function editTemplate(templateId) {
             wizardData.selectedItems = template.items_config || [];
             wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
             
+            // Update branch selection UI
+            if (wizardData.selectedBranch) {
+                const branchSelect = document.getElementById('branchSelect');
+                if (branchSelect) {
+                    branchSelect.value = wizardData.selectedBranch;
+                }
+            }
+            
             // Load layout settings
             const layout = template.layout_config || {};
             wizardData.showPrices = layout.show_prices !== false;
@@ -2112,14 +2121,49 @@ async function editTemplate(templateId) {
             
             showNotification('התבנית נטענה בהצלחה!', 'success');
             
-            // Go to step 2 to continue editing
-            wizardData.currentStep = 2;
-            showStep(2);
-            
             // Hide the templates section
             document.getElementById('templatesSection').style.display = 'none';
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('wizardSteps').style.display = 'block';
+            
+            // Open the create menu modal
+            const modal = new bootstrap.Modal(document.getElementById('createMenuModal'));
+            modal.show();
+            
+            // Go to step 2 to continue editing
+            wizardData.currentStep = 2;
+            goToStep(2);
+            
+            // Wait for modal to be shown, then update UI to reflect loaded selections
+            setTimeout(() => {
+                console.log('Starting UI restoration...'); 
+                console.log('Selected categories:', wizardData.selectedCategories);
+                console.log('Selected items:', wizardData.selectedItems);
+                
+                // Update category checkboxes and visual state
+                wizardData.selectedCategories.forEach(categoryId => {
+                    const checkbox = document.getElementById(`cat_${categoryId}`);
+                    console.log(`Looking for category ${categoryId}, found checkbox:`, checkbox);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        updateCategoryCard(categoryId, true);
+                        console.log(`Updated category ${categoryId}`);
+                    }
+                });
+                
+                // Update item checkboxes and visual state
+                wizardData.selectedItems.forEach(itemId => {
+                    const checkbox = document.getElementById(`item_${itemId}`);
+                    console.log(`Looking for item ${itemId}, found checkbox:`, checkbox);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        updateItemCard(itemId, true);
+                        console.log(`Updated item ${itemId}`);
+                    }
+                });
+                
+                // Update any UI counters or summaries
+                updateSelectedCount();
+                console.log('UI restoration completed');
+            }, 500);
             
         } else {
             showNotification(result.error || 'שגיאה בטעינת התבנית', 'error');

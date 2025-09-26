@@ -2409,7 +2409,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             
             @page {{
                 size: {paper_size};
-                margin: 15mm 0mm 15mm 15mm;
+                margin: 15mm 15mm 15mm 15mm;
                 {page_styles}
             }}
             
@@ -2458,6 +2458,37 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 break-inside: avoid;
                 margin-bottom: {current_spacing['category_margin']};
                 page-break-inside: avoid;
+                position: relative;
+                max-height: calc(100vh - 60mm);
+                overflow: visible;
+            }}
+            
+            .category-section.single-page-section {{
+                page-break-before: always;
+                page-break-after: always;
+                min-height: calc(100vh - 60mm);
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+            }}
+            
+            .category-section.auto-scale {{
+                transform-origin: top right;
+            }}
+            
+            .category-section.auto-scale.scale-90 {{
+                transform: scale(0.9);
+                margin-bottom: calc({current_spacing['category_margin']} * 0.9);
+            }}
+            
+            .category-section.auto-scale.scale-80 {{
+                transform: scale(0.8);
+                margin-bottom: calc({current_spacing['category_margin']} * 0.8);
+            }}
+            
+            .category-section.auto-scale.scale-70 {{
+                transform: scale(0.7);
+                margin-bottom: calc({current_spacing['category_margin']} * 0.7);
             }}
             
             .page-break {{
@@ -2487,6 +2518,9 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 break-inside: avoid;
                 page-break-inside: avoid;
                 padding: 2mm 0;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
             }}
             
             .item-header {{
@@ -2502,6 +2536,10 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 color: {primary_color};
                 flex: 1;
                 margin-left: 5mm;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
+                line-height: 1.3;
             }}
             
             .item-price {{
@@ -2660,9 +2698,24 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
         """Helper function to render category items with proper column handling"""
         category_html = ''
         
+        # Estimate content height and determine if scaling is needed
+        item_count = len(items)
+        avg_item_height = 15  # mm - estimated height per item including margins
+        estimated_height = item_count * avg_item_height + 40  # Add category title height
+        
+        # Determine optimal column layout based on content and available space
+        max_page_height = 250  # mm - approximate usable page height for A4
+        
+        # Adjust columns based on content length
+        if item_count > 20 and cat_columns == 1:
+            cat_columns = min(2, (item_count + 9) // 10)  # Dynamic column adjustment
+        elif item_count <= 8 and cat_columns > 1:
+            cat_columns = 1  # Use single column for short lists
+        
         # Wrap items in proper container based on column count
+        column_style = f'column-count: {cat_columns}; column-gap: 15mm; column-fill: balance; break-inside: avoid;'
         if cat_columns > 1:
-            category_html += f'<div class="category-items" style="column-count: {cat_columns}; column-gap: 15mm; column-fill: balance;">'
+            category_html += f'<div class="category-items" style="{column_style}">'
         else:
             category_html += '<div class="category-items">'
         
@@ -2708,7 +2761,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             category_html += '</div>'
         
         category_html += '</div>'  # Close category-items
-        return category_html
+        return category_html, estimated_height, item_count
     
     if page_groups and len(page_groups) > 0:
         # Use new page group system
@@ -2751,8 +2804,30 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                                     </h2>
                         '''
                         
-                        # Add items using helper function
-                        html += render_category_items(category, items, cat_columns)
+                        # Add items using helper function and get content metrics
+                        category_items_html, estimated_height, item_count = render_category_items(category, items, cat_columns)
+                        
+                        # Determine CSS classes based on content length
+                        section_classes = "category-section"
+                        max_page_height = 250  # mm - approximate usable page height for A4
+                        
+                        # Apply single-page section for categories in page groups
+                        section_classes += " single-page-section"
+                        
+                        # Apply automatic scaling if content exceeds page height
+                        if estimated_height > max_page_height:
+                            section_classes += " auto-scale"
+                            if estimated_height > max_page_height * 1.4:
+                                section_classes += " scale-70"
+                            elif estimated_height > max_page_height * 1.2:
+                                section_classes += " scale-80"
+                            else:
+                                section_classes += " scale-90"
+                        
+                        # Update the category section HTML with proper classes
+                        html = html.replace('<div class="category-section">', f'<div class="{section_classes}">')
+                        
+                        html += category_items_html
                         html += '</div>'  # Close category-section
     else:
         # Use original simple page break system or fallback for all categories
@@ -2782,8 +2857,27 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                         </h2>
             '''
             
-            # Add items using helper function
-            html += render_category_items(category, items, cat_columns)
+            # Add items using helper function and get content metrics
+            category_items_html, estimated_height, item_count = render_category_items(category, items, cat_columns)
+            
+            # Determine CSS classes based on content length
+            section_classes = f"category-section{page_break_class}"
+            max_page_height = 250  # mm - approximate usable page height for A4
+            
+            # Apply automatic scaling if content exceeds page height
+            if estimated_height > max_page_height:
+                section_classes += " auto-scale"
+                if estimated_height > max_page_height * 1.4:
+                    section_classes += " scale-70"
+                elif estimated_height > max_page_height * 1.2:
+                    section_classes += " scale-80"
+                else:
+                    section_classes += " scale-90"
+            
+            # Update the category section HTML with proper classes  
+            html = html.replace(f'<div class="category-section{page_break_class}">', f'<div class="{section_classes}">')
+            
+            html += category_items_html
             html += '</div>'  # Close category-section
     
     # Close the HTML structure

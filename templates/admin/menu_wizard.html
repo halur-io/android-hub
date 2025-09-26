@@ -1003,8 +1003,12 @@ async function loadBranches() {
 
 async function loadCategories() {
     try {
+        console.log('loadCategories: Making API call...');
         const data = await makeApiCall('/admin/api/menu-wizard/categories');
+        console.log('loadCategories: API response:', data);
         allCategories = data.categories;
+        console.log('loadCategories: allCategories set to:', allCategories);
+        console.log('loadCategories: First category items_count:', allCategories[0]?.items_count);
     } catch (error) {
         console.error('Error loading categories:', error);
         showNotification('שגיאה בטעינת קטגוריות', 'error');
@@ -2515,6 +2519,9 @@ async function loadSavedMenu(menuId) {
         
         showNotification('התפריט נטען בהצלחה!', 'success');
         
+        // Refresh categories data to ensure counts are loaded BEFORE opening modal
+        await loadCategories();
+        
         // Hide saved menus section
         document.getElementById('savedMenusSection').style.display = 'none';
         
@@ -2523,7 +2530,27 @@ async function loadSavedMenu(menuId) {
         modal.show();
         
         // Restore UI state from the loaded menu data
-        updateUIFromWizardData();
+        setTimeout(() => {
+            // Set menu name
+            const menuNameInput = document.getElementById('menuName');
+            if (menuNameInput) {
+                menuNameInput.value = menu.name;
+            }
+            
+            // Set branch selection
+            if (menu.branch_id) {
+                const branchSelect = document.getElementById('branchSelect');
+                if (branchSelect) {
+                    branchSelect.value = menu.branch_id;
+                    branchSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            
+            // Update selected count
+            if (typeof updateSelectedCount === 'function') {
+                updateSelectedCount();
+            }
+        }, 100);
         
     } catch (error) {
         console.error('Error loading saved menu:', error);

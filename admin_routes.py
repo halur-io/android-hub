@@ -2723,7 +2723,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     return html
 
 def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None):
-    """Generate Hebrew RTL-optimized print HTML for menu with advanced styling"""
+    """Generate simple 2-column table-based print HTML with proper page breaks"""
     
     # Default settings
     style_settings = style_settings or {}
@@ -2732,131 +2732,31 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
     # Layout settings
     show_prices = layout_settings.get('show_prices', True)
     show_descriptions = layout_settings.get('show_descriptions', True)
-    columns = layout_settings.get('columns', 2)
     
     # Print settings
     paper_size = print_settings.get('paper_size', 'A4')
     show_branch_info = print_settings.get('show_branch_info', True)
     show_date = print_settings.get('show_date', True)
     
-    # Advanced style settings
-    color_scheme = style_settings.get('colorScheme', 'restaurant')
+    # Style settings
     primary_color = style_settings.get('primaryColor', '#1B2951')
     secondary_color = style_settings.get('secondaryColor', '#C75450')
-    primary_font = style_settings.get('primaryFont', 'Heebo')
-    base_font_size = style_settings.get('baseFontSize', 'medium')
-    icon_style = style_settings.get('iconStyle', 'solid')
-    show_category_icons = style_settings.get('showCategoryIcons', True)
-    add_decorators = style_settings.get('addDecorators', False)
-    add_dividers = style_settings.get('addDividers', False)
-    item_spacing = style_settings.get('itemSpacing', 'normal')
     
     # Page settings
-    show_menu_title = page_settings.get('showMenuTitle', True)
-    add_page_numbers = page_settings.get('addPageNumbers', False)
-    add_headers = page_settings.get('addHeaders', False)
-    add_footers = page_settings.get('addFooters', False)
-    separate_index_page = page_settings.get('separateIndexPage', False)
     page_break_categories = page_settings.get('pageBreakCategories', [])
-    page_groups = page_settings.get('pageGroups', [])
-    category_column_settings = page_settings.get('categoryColumnSettings', {})
     
-    # Font size mapping
-    font_sizes = {
-        'small': {'base': '10pt', 'title': '18pt', 'category': '14pt', 'item': '11pt'},
-        'medium': {'base': '12pt', 'title': '24pt', 'category': '16pt', 'item': '13pt'},
-        'large': {'base': '14pt', 'title': '28pt', 'category': '18pt', 'item': '15pt'},
-        'extra-large': {'base': '16pt', 'title': '32pt', 'category': '20pt', 'item': '17pt'}
-    }
-    
-    current_fonts = font_sizes[base_font_size]
-    
-    # Spacing mapping
-    spacing_styles = {
-        'compact': {'item_margin': '4mm', 'category_margin': '15mm'},
-        'normal': {'item_margin': '8mm', 'category_margin': '20mm'},
-        'relaxed': {'item_margin': '12mm', 'category_margin': '25mm'},
-        'spacious': {'item_margin': '16mm', 'category_margin': '30mm'}
-    }
-    
-    current_spacing = spacing_styles[item_spacing]
-    
-    # Generate current date in Hebrew
     from datetime import datetime
     current_date = datetime.now().strftime('%d/%m/%Y')
     
-    # Generate enhanced CSS with advanced styling
-    font_import = f"@import url('https://fonts.googleapis.com/css2?family={primary_font.replace(' ', '+')}:wght@300;400;500;600;700&display=swap');"
-    
-    decorator_styles = ""
-    if add_decorators:
-        decorator_styles = f"""
-            .menu-header::before, .menu-header::after {{
-                content: "✦ ✧ ✦";
-                display: block;
-                color: {secondary_color};
-                font-size: 14pt;
-                margin: 5mm 0;
-            }}
-            .category-section {{
-                border: 1px solid {secondary_color}20;
-                border-radius: 3mm;
-                padding: 5mm;
-            }}
-        """
-    
-    divider_styles = ""
-    if add_dividers:
-        divider_styles = f"""
-            .category-title {{
-                border-bottom: 2px solid {secondary_color};
-                border-top: 1px solid {secondary_color}40;
-                padding: 5mm 0;
-            }}
-            .category-title::after {{
-                content: "";
-                display: block;
-                width: 50mm;
-                height: 1px;
-                background: {secondary_color};
-                margin: 2mm auto 0;
-            }}
-        """
-    
-    page_styles = ""
-    if add_page_numbers:
-        page_styles += """
-            @page {
-                @bottom-center {
-                    content: "עמוד " counter(page);
-                    font-size: 10pt;
-                    color: #666;
-                }
-            }
-        """
-    
-    if add_headers:
-        page_styles += f"""
-            @page {{
-                @top-center {{
-                    content: "{menu_name}";
-                    font-size: 12pt;
-                    color: {primary_color};
-                    border-bottom: 1px solid {secondary_color};
-                    padding-bottom: 2mm;
-                }}
-            }}
-        """
-    
+    # Create HTML with proper 2-column table layout and page breaks
     html = f'''
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{menu_name}</title>
         <style>
-            {font_import}
+            @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap');
             
             * {{
                 margin: 0;
@@ -2865,8 +2765,8 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             }}
             
             body {{
-                font-family: '{primary_font}', 'Heebo', Arial Hebrew, Arial, sans-serif;
-                font-size: {current_fonts['base']};
+                font-family: 'Heebo', Arial, sans-serif;
+                font-size: 12pt;
                 line-height: 1.4;
                 color: {primary_color};
                 direction: rtl;
@@ -2875,432 +2775,202 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             
             @page {{
                 size: {paper_size};
-                margin: 15mm 15mm 15mm 15mm;
-                {page_styles}
-            }}
-            
-            .print-container {{
-                max-width: 100%;
-                margin: 0 auto;
-                padding: 0;
-            }}
-            
-            .menu-header {{
-                text-align: center;
-                margin-bottom: {current_spacing['category_margin']};
-                border-bottom: 3px solid {secondary_color};
-                padding-bottom: 15px;
-                position: relative;
-            }}
-            
-            {decorator_styles}
-            
-            .menu-title {{
-                font-size: {current_fonts['title']};
-                font-weight: 700;
-                color: {primary_color};
-                margin-bottom: 8px;
-                text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-            }}
-            
-            .branch-info {{
-                font-size: {current_fonts['item']};
-                color: {primary_color}80;
-                margin-bottom: 5px;
-            }}
-            
-            .print-date {{
-                font-size: calc({current_fonts['base']} * 0.8);
-                color: {primary_color}60;
-            }}
-            
-            .menu-content {{
-                /* Global columns disabled - using per-category settings */
-                column-gap: 20mm;
-                column-fill: balance;
-            }}
-            
-            .category-section {{
-                break-inside: avoid;
-                margin-bottom: {current_spacing['category_margin']};
-                page-break-inside: avoid;
-                position: relative;
-                max-height: calc(100vh - 60mm);
-                overflow: visible;
-            }}
-            
-            .category-section.single-page-section {{
-                page-break-before: always;
-                page-break-after: always;
-                min-height: calc(100vh - 60mm);
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start;
-            }}
-            
-            .category-section.auto-scale {{
-                transform-origin: top right;
-            }}
-            
-            .category-section.auto-scale.scale-90 {{
-                transform: scale(0.9);
-                margin-bottom: calc({current_spacing['category_margin']} * 0.9);
-            }}
-            
-            .category-section.auto-scale.scale-80 {{
-                transform: scale(0.8);
-                margin-bottom: calc({current_spacing['category_margin']} * 0.8);
-            }}
-            
-            .category-section.auto-scale.scale-70 {{
-                transform: scale(0.7);
-                margin-bottom: calc({current_spacing['category_margin']} * 0.7);
+                margin: 15mm 0mm 15mm 15mm;
             }}
             
             .page-break {{
                 page-break-before: always;
+                break-before: page;
+            }}
+            
+            .menu-header {{
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 3px solid {secondary_color};
+                padding-bottom: 15px;
+            }}
+            
+            .menu-title {{
+                font-size: 24pt;
+                font-weight: 700;
+                color: {primary_color};
+                margin-bottom: 8px;
+            }}
+            
+            .branch-info {{
+                font-size: 14pt;
+                color: {primary_color};
+                margin-bottom: 5px;
+            }}
+            
+            .print-date {{
+                font-size: 11pt;
+                color: #666;
             }}
             
             .category-title {{
-                font-size: {current_fonts['category']};
+                font-size: 18pt;
                 font-weight: 600;
                 color: {secondary_color};
-                margin-bottom: 10mm;
                 text-align: center;
-                padding-bottom: 5mm;
-                position: relative;
+                margin: 20px 0 15px 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid {secondary_color};
             }}
             
-            {divider_styles}
+            .two-column-table {{
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                margin-bottom: 15px;
+            }}
             
-            .category-icon {{
-                font-size: calc({current_fonts['category']} * 1.2);
-                margin-left: 5mm;
-                color: {secondary_color};
+            .two-column-table td {{
+                width: 50%;
+                vertical-align: top;
+                padding: 0 10px;
+                border: none;
             }}
             
             .menu-item {{
-                margin-bottom: {current_spacing['item_margin']};
-                break-inside: avoid;
+                margin-bottom: 8px;
+                padding: 3px 0;
                 page-break-inside: avoid;
-                padding: 2mm 0;
-                word-wrap: break-word;
-                overflow-wrap: break-word;
-                hyphens: auto;
+                break-inside: avoid;
             }}
             
             .item-header {{
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-bottom: 2mm;
+                margin-bottom: 2px;
             }}
             
             .item-name {{
-                font-size: {current_fonts['item']};
+                font-size: 13pt;
                 font-weight: 500;
                 color: {primary_color};
                 flex: 1;
-                margin-left: 5mm;
-                word-wrap: break-word;
-                overflow-wrap: break-word;
-                hyphens: auto;
-                line-height: 1.3;
+                margin-left: 5px;
             }}
             
             .item-price {{
-                font-size: {current_fonts['item']};
+                font-size: 13pt;
                 font-weight: 600;
                 color: {secondary_color};
                 white-space: nowrap;
-                background: {secondary_color}10;
-                padding: 1mm 3mm;
-                border-radius: 2mm;
             }}
             
             .item-description {{
-                font-size: calc({current_fonts['base']} * 0.85);
-                color: {primary_color}70;
-                margin-top: 2mm;
-                line-height: 1.3;
+                font-size: 10pt;
+                color: #666;
+                margin-top: 2px;
                 font-style: italic;
             }}
             
-            .dietary-properties {{
-                margin-top: 3mm;
-                display: flex;
-                gap: 2mm;
-                flex-wrap: wrap;
-            }}
-            
-            .dietary-badge {{
-                background: {secondary_color}15;
-                border: 1px solid {secondary_color}30;
-                padding: 1mm 3mm;
-                border-radius: 2mm;
-                font-size: calc({current_fonts['base']} * 0.7);
-                color: {secondary_color};
-                font-weight: 500;
-            }}
-            
-            /* Index page styles */
-            .index-page {{
-                page-break-after: always;
-                text-align: center;
-                padding: 50mm 0;
-            }}
-            
-            .index-title {{
-                font-size: calc({current_fonts['title']} * 1.5);
-                color: {primary_color};
-                margin-bottom: 20mm;
-            }}
-            
-            .index-list {{
-                list-style: none;
-                padding: 0;
-                max-width: 150mm;
-                margin: 0 auto;
-            }}
-            
-            .index-item {{
-                padding: 5mm 0;
-                border-bottom: 1px dotted {secondary_color}50;
-                display: flex;
-                justify-content: space-between;
-                font-size: {current_fonts['item']};
-            }}
-            
-            /* Ensure proper Hebrew text rendering */
-            .hebrew {{
-                unicode-bidi: bidi-override;
-                direction: rtl;
-            }}
-            
-            /* Print-specific styles */
+            /* Print optimizations */
             @media print {{
-                body {{
-                    font-size: calc({current_fonts['base']} * 0.9);
+                .page-break {{
+                    page-break-before: always !important;
+                    break-before: page !important;
                 }}
                 
-                .menu-content {{
-                    /* Print columns handled per-category */
+                .two-column-table {{
+                    width: 100% !important;
+                    table-layout: fixed !important;
                 }}
                 
-                .category-section {{
-                    break-inside: avoid;
+                .two-column-table td {{
+                    width: 50% !important;
+                    padding: 0 8px !important;
                 }}
                 
                 .menu-item {{
-                    break-inside: avoid;
-                }}
-                
-                .page-break {{
-                    page-break-before: always;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
                 }}
             }}
         </style>
     </head>
     <body>
-        <div class="print-container">
+        <!-- Header -->
+        <div class="menu-header">
+            <h1 class="menu-title">{menu_name}</h1>
     '''
     
-    # Add index page if requested
-    if separate_index_page and categories_with_items:
-        html += f'''
-            <div class="index-page">
-                <h1 class="index-title hebrew">{menu_name}</h1>
-                <h2 class="hebrew" style="color: {secondary_color}; margin-bottom: 15mm;">תוכן עניינים</h2>
-                <ul class="index-list">
-        '''
-        
-        page_num = 2  # Start from page 2 (after index)
-        for category_id, data in categories_with_items.items():
-            category = data['category']
-            html += f'''
-                    <li class="index-item">
-                        <span class="hebrew">{category.name_he}</span>
-                        <span>{page_num}</span>
-                    </li>
-            '''
-            if category_id in page_break_categories:
-                page_num += 1
-        
-        html += '''
-                </ul>
-            </div>
-        '''
+    if show_branch_info and branch:
+        html += f'<div class="branch-info">{branch.name_he}</div>'
     
-    # Add main menu header
-    menu_header_html = ''
-    if show_menu_title:
-        menu_header_html = f'''
-            <div class="menu-header">
-                <h1 class="menu-title hebrew">{menu_name}</h1>
-                {f'<div class="branch-info hebrew">{branch.name_he}</div>' if show_branch_info and branch else ''}
-                {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
-                {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
-            </div>
-        '''
-    else:
-        # If no menu title, still show branch info and date if requested
-        branch_date_html = ''
-        if show_branch_info and branch:
-            branch_date_html += f'<div class="branch-info hebrew">{branch.name_he}</div>'
-            if branch.address_he:
-                branch_date_html += f'<div class="branch-info">{branch.address_he}</div>'
-        if show_date:
-            branch_date_html += f'<div class="print-date">תאריך הדפסה: {current_date}</div>'
-        
-        if branch_date_html:
-            menu_header_html = f'<div class="menu-header">{branch_date_html}</div>'
+    if show_date:
+        html += f'<div class="print-date">תאריך: {current_date}</div>'
     
-    html += menu_header_html + '''
-            <div class="menu-content">
-    '''
+    html += '</div>'
     
-    # Process categories based on page groups if available, otherwise use simple page breaks
-    def render_category_items(category, items, cat_columns):
-        """Helper function to render category items with proper column handling"""
-        category_html = ''
+    # Process categories
+    for category_index, (category_id, data) in enumerate(categories_with_items.items()):
+        category = data['category']
+        items = data['items']
         
-        # Wrap items in proper container based on column count
-        if cat_columns > 1:
-            category_html += f'<div class="category-items" style="column-count: {cat_columns}; column-gap: 15mm; column-fill: balance;">'
-        else:
-            category_html += '<div class="category-items">'
+        # Add page break for specified categories
+        if int(category_id) in page_break_categories and category_index > 0:
+            html += '<div class="page-break"></div>'
         
-        for item in items:
-            # Format price based on settings
-            price_html = ''
-            if show_prices and item.base_price:
-                try:
-                    price_value = int(float(item.base_price))
-                    price_html = f'<div class="item-price">₪{price_value}</div>'
-                except (ValueError, TypeError):
-                    price_html = f'<div class="item-price">₪{item.base_price}</div>'
-            
-            category_html += f'''
-                    <div class="menu-item">
-                        <div class="item-header">
-                            <div class="item-name hebrew">{item.name_he}</div>
-                            {price_html}
-                        </div>
-            '''
-            
-            # Add description if enabled
-            if show_descriptions and item.description_he:
-                category_html += f'''
-                        <div class="item-description hebrew">{item.description_he}</div>
-                '''
-            
-            # Add dietary properties with enhanced styling
-            if item.dietary_properties:
-                dietary_badges = []
-                for prop in item.dietary_properties:
-                    if prop.is_active:
-                        badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
-                        dietary_badges.append(f'<span class="dietary-badge hebrew">{badge_icon}{prop.name_he}</span>')
-                
-                if dietary_badges:
-                    category_html += f'''
-                        <div class="dietary-properties">
-                            {''.join(dietary_badges)}
-                        </div>
-                    '''
-            
-            category_html += '</div>'
+        # Add category title
+        html += f'<h2 class="category-title">{category.name_he}</h2>'
         
-        category_html += '</div>'  # Close category-items
-        return category_html
+        # Create 2-column table for items
+        if items:
+            # Split items into 2 columns
+            mid_point = (len(items) + 1) // 2
+            left_column = items[:mid_point]
+            right_column = items[mid_point:]
+            
+            html += '<table class="two-column-table"><tr>'
+            
+            # Left column
+            html += '<td>'
+            for item in left_column:
+                html += format_menu_item(item, show_prices, show_descriptions, primary_color, secondary_color)
+            html += '</td>'
+            
+            # Right column
+            html += '<td>'
+            for item in right_column:
+                html += format_menu_item(item, show_prices, show_descriptions, primary_color, secondary_color)
+            html += '</td>'
+            
+            html += '</tr></table>'
     
-    if page_groups and len(page_groups) > 0:
-        # Use new page group system
-        for group_index, group in enumerate(page_groups):
-            if group_index > 0:  # Add page break before each new page group
-                html += '<div class="page-break"></div>'
-            
-            # Process categories in this page group
-            categories_in_group = group.get('categories', [])
-            if categories_in_group:
-                for category_id in categories_in_group:
-                    # Handle both string and int category IDs
-                    category_key = None
-                    if str(category_id) in categories_with_items:
-                        category_key = str(category_id)
-                    elif int(category_id) in categories_with_items:
-                        category_key = int(category_id)
-                    
-                    if category_key and category_key in categories_with_items:
-                        data = categories_with_items[category_key]
-                        category = data['category']
-                        items = data['items']
-                        
-                        # Get column settings for this category
-                        cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
-                        cat_columns = cat_column_settings.get('columns', 1)
-                        
-                        # Generate category icon if enabled
-                        category_icon_html = ''
-                        if show_category_icons and category.icon:
-                            icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
-                            category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
-                        
-                        # Add category section
-                        html += f'''
-                                <div class="category-section">
-                                    <h2 class="category-title hebrew">
-                                        {category_icon_html}
-                                        {category.name_he}
-                                    </h2>
-                        '''
-                        
-                        # Add items using helper function
-                        category_items_html = render_category_items(category, items, cat_columns)
-                        html += category_items_html
-                        html += '</div>'  # Close category-section
-    else:
-        # Use original simple page break system or fallback for all categories
-        for category_id, data in categories_with_items.items():
-            category = data['category']
-            items = data['items']
-            
-            # Check if this category should start on a new page
-            page_break_class = ' page-break' if int(category_id) in page_break_categories else ''
-            
-            # Get column settings for this category
-            cat_column_settings = category_column_settings.get(str(category_id), {'columns': 1})
-            cat_columns = cat_column_settings.get('columns', 1)
-            
-            # Generate category icon if enabled
-            category_icon_html = ''
-            if show_category_icons and category.icon:
-                icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
-                category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
-            
-            # Add category section with page break if needed
-            html += f'''
-                    <div class="category-section{page_break_class}">
-                        <h2 class="category-title hebrew">
-                            {category_icon_html}
-                            {category.name_he}
-                        </h2>
-            '''
-            
-            # Add items using helper function
-            category_items_html = render_category_items(category, items, cat_columns)
-            html += category_items_html
-            html += '</div>'  # Close category-section
-    
-    # Close the HTML structure
     html += '''
-            </div>
-        </div>
     </body>
     </html>
     '''
     
     return html
+
+def format_menu_item(item, show_prices, show_descriptions, primary_color, secondary_color):
+    """Format a single menu item for display"""
+    item_html = '<div class="menu-item">'
+    
+    # Item header with name and price
+    item_html += '<div class="item-header">'
+    item_html += f'<span class="item-name">{item.name_he}</span>'
+    
+    if show_prices and item.base_price:
+        try:
+            price_value = int(float(item.base_price))
+            item_html += f'<span class="item-price">₪ {price_value}</span>'
+        except (ValueError, TypeError):
+            pass
+    
+    item_html += '</div>'
+    
+    # Item description
+    if show_descriptions and item.description_he:
+        item_html += f'<div class="item-description">{item.description_he}</div>'
+    
+    item_html += '</div>'
+    return item_html
 
 # Messages Management
 @admin_bp.route('/messages')

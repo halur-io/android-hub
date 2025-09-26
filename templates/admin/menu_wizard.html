@@ -276,6 +276,149 @@
     .template-actions {
         justify-content: center;
     }
+    
+    /* Wizard Mobile Optimization */
+    .modal-xl {
+        max-width: 95vw;
+        margin: 10px;
+    }
+    
+    .wizard-steps {
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center !important;
+    }
+    
+    .wizard-steps .step {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: auto;
+        flex: 1;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    
+    .wizard-steps .step i {
+        display: block;
+        margin: 0 0 2px 0 !important;
+        font-size: 14px;
+    }
+    
+    /* Make form elements mobile-friendly */
+    .wizard-step .row {
+        margin: 0;
+    }
+    
+    .wizard-step .col-md-6,
+    .wizard-step .col-md-4,
+    .wizard-step .col-md-8 {
+        padding: 0 15px;
+        margin-bottom: 20px;
+    }
+    
+    .form-control,
+    .form-select {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 12px;
+    }
+    
+    .btn {
+        padding: 12px 20px;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .btn-sm {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+    
+    /* Category and item cards mobile layout */
+    .category-card,
+    .item-card {
+        margin-bottom: 15px;
+    }
+    
+    .category-header {
+        padding: 15px;
+        font-size: 16px;
+    }
+    
+    .items-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+    
+    .item-card {
+        padding: 15px;
+    }
+    
+    .item-card h6 {
+        font-size: 14px;
+    }
+    
+    .item-card p {
+        font-size: 12px;
+    }
+    
+    /* Step navigation buttons */
+    .modal-footer {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .modal-footer .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    /* Advanced styling options mobile */
+    .style-section {
+        margin-bottom: 25px;
+    }
+    
+    .color-picker-group {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .color-option {
+        margin-bottom: 15px;
+    }
+    
+    /* Print settings mobile */
+    .print-settings-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+    }
+    
+    .setting-group {
+        margin-bottom: 20px;
+    }
+    
+    /* Dropdown improvements */
+    .dropdown-menu {
+        position: static !important;
+        transform: none !important;
+        width: 100%;
+        margin-top: 10px;
+        border-radius: 8px;
+    }
+    
+    .management-menu {
+        position: static !important;
+        transform: none !important;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    /* Touch-friendly interactions */
+    .clickable {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 
 /* RTL Support */
@@ -2280,39 +2423,171 @@ function printMenu() {
 }
 
 function printOnMobile() {
-    // Store original content
-    const originalContent = document.body.innerHTML;
-    const originalTitle = document.title;
+    if (!window.currentPrintHtml) {
+        showNotification('אין תוכן להדפסה', 'error');
+        return;
+    }
+
+    // Show user instruction for mobile
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     
-    // Create mobile print styles
-    const printStyles = `
-        <style>
-            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @media print {
-                body { margin: 0; padding: 0; }
-                .no-print { display: none !important; }
-            }
-        </style>
-    `;
-    
-    // Replace body content with print content
-    document.body.innerHTML = printStyles + window.currentPrintHtml;
-    document.title = 'תפריט להדפסה';
-    
-    // Print
-    setTimeout(() => {
-        window.print();
+    if (isIOS || isSafari) {
+        // For iOS Safari - use a different approach
+        printMobileWithDataURL();
+    } else {
+        // For other mobile browsers
+        printMobileWithBlobURL();
+    }
+}
+
+function printMobileWithDataURL() {
+    try {
+        // Create a complete HTML document
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html dir="rtl" lang="he">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>תפריט להדפסה</title>
+                <style>
+                    body { 
+                        margin: 0; 
+                        padding: 20px; 
+                        font-family: 'Heebo', Arial, sans-serif;
+                        direction: rtl;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    * { 
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    @media print {
+                        body { margin: 0; padding: 15mm; }
+                        .no-print { display: none !important; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${window.currentPrintHtml}
+                <script>
+                    window.onload = function() {
+                        setTimeout(() => {
+                            window.print();
+                        }, 1000);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
         
-        // Restore original content after print dialog
+        // Create data URL and open in new tab
+        const dataURL = 'data:text/html;charset=utf-8,' + encodeURIComponent(fullHtml);
+        const printWindow = window.open(dataURL, '_blank');
+        
+        if (!printWindow) {
+            // Fallback: create downloadable HTML file
+            downloadHTMLFile(fullHtml);
+        }
+        
+    } catch (error) {
+        console.error('Mobile print error:', error);
+        downloadHTMLFile(window.currentPrintHtml);
+    }
+}
+
+function printMobileWithBlobURL() {
+    try {
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html dir="rtl" lang="he">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>תפריט להדפסה</title>
+                <style>
+                    body { 
+                        margin: 0; 
+                        padding: 20px; 
+                        font-family: 'Heebo', Arial, sans-serif;
+                        direction: rtl;
+                    }
+                    @media print {
+                        body { margin: 0; padding: 15mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${window.currentPrintHtml}
+            </body>
+            </html>
+        `;
+        
+        const blob = new Blob([fullHtml], { type: 'text/html' });
+        const blobURL = URL.createObjectURL(blob);
+        
+        const printWindow = window.open(blobURL, '_blank');
+        
+        if (!printWindow) {
+            downloadHTMLFile(fullHtml);
+        } else {
+            setTimeout(() => {
+                URL.revokeObjectURL(blobURL);
+            }, 10000);
+        }
+        
+    } catch (error) {
+        console.error('Blob print error:', error);
+        downloadHTMLFile(window.currentPrintHtml);
+    }
+}
+
+function downloadHTMLFile(htmlContent) {
+    try {
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html dir="rtl" lang="he">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>תפריט להדפסה</title>
+                <style>
+                    body { 
+                        margin: 0; 
+                        padding: 20px; 
+                        font-family: 'Heebo', Arial, sans-serif;
+                        direction: rtl;
+                    }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+            </body>
+            </html>
+        `;
+        
+        const blob = new Blob([fullHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'menu-print.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
         setTimeout(() => {
-            document.body.innerHTML = originalContent;
-            document.title = originalTitle;
-            
-            // Re-attach event listeners by reloading the page
-            window.location.reload();
-        }, 1000);
-    }, 500);
+            URL.revokeObjectURL(url);
+        }, 100);
+        
+        showNotification('קובץ HTML הורד בהצלחה - פתח אותו ולחץ על הדפסה או שמירה כ-PDF', 'success');
+        
+    } catch (error) {
+        console.error('Download fallback error:', error);
+        showNotification('שגיאה בהדפסה במובייל. נסה מהמחשב', 'error');
+    }
 }
 
 function printOnDesktop() {

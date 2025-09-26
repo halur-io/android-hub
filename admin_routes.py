@@ -2368,7 +2368,7 @@ def api_menu_simple_print(menu_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None):
-    """Generate reliable multi-page Hebrew RTL print HTML using block layout instead of CSS Grid"""
+    """Generate 2-column print HTML with separate pages per category"""
     
     # Default settings
     print_settings = print_settings or {}
@@ -2390,338 +2390,232 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     base_font_size = style_settings.get('baseFontSize', 'medium')
     icon_style = style_settings.get('iconStyle', 'solid')
     
-    # Font size mapping
-    font_sizes = {
-        'small': {'base': '10pt', 'title': '16pt', 'category': '12pt', 'item': '10pt'},
-        'medium': {'base': '11pt', 'title': '18pt', 'category': '14pt', 'item': '11pt'},
-        'large': {'base': '12pt', 'title': '20pt', 'category': '16pt', 'item': '12pt'},
-        'extra-large': {'base': '14pt', 'title': '24pt', 'category': '18pt', 'item': '14pt'}
-    }
-    
-    current_fonts = font_sizes.get(base_font_size, font_sizes['medium'])
-    
     from datetime import datetime
     current_date = datetime.now().strftime('%d/%m/%Y')
     
-    # Collect all items for proper pagination
-    all_items = []
-    for category_id, data in categories_with_items.items():
-        category = data['category']
-        items = data['items']
+    # Helper function to format a menu item
+    def format_menu_item(item, show_prices, show_descriptions):
+        item_html = '<div class="menu-item">'
         
-        # Add category header as an item
-        all_items.append({
-            'type': 'category',
-            'category': category,
-            'show_icons': show_category_icons,
-            'icon_style': icon_style
-        })
+        # Item header with name and price
+        item_html += '<div class="item-header">'
+        item_html += f'<span class="item-name">{item.name_he}</span>'
         
-        # Add all menu items
-        for item in items:
-            all_items.append({
-                'type': 'item',
-                'item': item,
-                'show_prices': show_prices,
-                'show_descriptions': show_descriptions
-            })
-    
-    # Calculate items per page - more conservative for reliable pagination
-    items_per_page = 16  # Conservative estimate for better pagination
-    
-    # Split all items into pages
-    pages = []
-    for i in range(0, len(all_items), items_per_page):
-        pages.append(all_items[i:i + items_per_page])
-    
-    # Helper function to render items in a column
-    def render_column_items(column_items, primary_color, secondary_color, current_fonts):
-        column_html = ''
+        if show_prices and item.base_price:
+            try:
+                price_value = int(float(item.base_price))
+                item_html += f'<span class="item-price">₪ {price_value}</span>'
+            except (ValueError, TypeError):
+                pass
         
-        for item_data in column_items:
-            if item_data['type'] == 'category':
-                category = item_data['category']
-                show_icons = item_data['show_icons']
-                icon_style = item_data['icon_style']
-                
-                # Add category title
-                category_icon_html = ''
-                if show_icons and category.icon:
-                    icon_class = f"fa{icon_style[0] if icon_style else 's'}"  # fas, far, fal, etc.
-                    category_icon_html = f'<i class="{icon_class} fa-{category.icon} category-icon"></i>'
-                
-                column_html += f'''
-                    <h3 class="category-title no-break">
-                        {category_icon_html}{category.name_he}
-                    </h3>
-                '''
-                
-            elif item_data['type'] == 'item':
-                item = item_data['item']
-                show_prices = item_data['show_prices']
-                show_descriptions = item_data['show_descriptions']
-                
-                # Format price
-                price_html = ''
-                if show_prices and item.base_price:
-                    try:
-                        price_value = int(float(item.base_price))
-                        price_html = f'<span class="item-price" dir="ltr">₪ {price_value}</span>'
-                    except (ValueError, TypeError):
-                        price_html = f'<span class="item-price" dir="ltr">₪ {item.base_price}</span>'
-                
-                # Build item content
-                item_content = f'<div class="item-name">{item.name_he}'
-                if price_html:
-                    item_content += f' {price_html}'
-                item_content += '</div>'
-                
-                # Add description if enabled
-                if show_descriptions and item.description_he:
-                    item_content += f'<div class="item-description">{item.description_he}</div>'
-                
-                # Add dietary properties
-                if item.dietary_properties:
-                    dietary_badges = []
-                    for prop in item.dietary_properties:
-                        if prop.is_active:
-                            badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
-                            dietary_badges.append(f'<span class="dietary-badge">{badge_icon}{prop.name_he}</span>')
-                    
-                    if dietary_badges:
-                        item_content += f'<div class="dietary-props">{"".join(dietary_badges)}</div>'
-                
-                column_html += f'<div class="menu-item no-break">{item_content}</div>'
+        item_html += '</div>'
         
-        return column_html
+        # Item description
+        if show_descriptions and item.description_he:
+            item_html += f'<div class="item-description">{item.description_he}</div>'
+        
+        item_html += '</div>'
+        return item_html
     
-    # Build header HTML
-    header_html = ''
-    if show_menu_title and menu_name:
-        header_html = f'''
-            <div class="menu-header no-break">
-                <div class="menu-title">{menu_name}</div>
-                {f'<div class="branch-info">{branch.name_he}</div>' if show_branch_info and branch else ''}
-                {f'<div class="branch-info">{branch.address_he}</div>' if show_branch_info and branch and branch.address_he else ''}
-                {f'<div class="print-date">תאריך הדפסה: {current_date}</div>' if show_date else ''}
-            </div>
-        '''
-    
-    # Build HTML with reliable block layout (no CSS Grid/Flex)
+    # Create HTML with 2-column table layout and separate pages per category
     html = f'''
     <!DOCTYPE html>
-    <html dir="rtl" lang="he">
+    <html lang="he" dir="rtl">
     <head>
         <meta charset="UTF-8">
-        <title>תפריט - {menu_name}</title>
-        <link href="https://fonts.googleapis.com/css2?family={primary_font.replace(' ', '+')}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <title>{menu_name}</title>
         <style>
-            /* Screen styles */
-            body {{
-                direction: rtl;
-                font-family: '{primary_font}', 'Noto Sans Hebrew', Arial, sans-serif;
-                font-size: {current_fonts['base']};
-                line-height: 1.25;
-                margin: 20pt;
+            @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap');
+            
+            * {{
+                margin: 0;
                 padding: 0;
+                box-sizing: border-box;
+            }}
+            
+            body {{
+                font-family: 'Heebo', Arial, sans-serif;
+                font-size: 12pt;
+                line-height: 1.4;
                 color: {primary_color};
-            }}
-            
-            #print-root {{
                 direction: rtl;
-                display: block;
+                text-align: right;
             }}
             
-            .print-page {{
-                display: block;
-                margin-bottom: 40pt;
-                min-height: 80vh;
+            @page {{
+                size: A4;
+                margin: 15mm 0mm 15mm 15mm;
+            }}
+            
+            .page-break {{
+                page-break-before: always;
+                break-before: page;
             }}
             
             .menu-header {{
                 text-align: center;
-                margin-bottom: 20pt;
-                border-bottom: 2px solid {primary_color};
-                padding-bottom: 10pt;
-            }}
-            
-            .col {{
-                width: 48%;
-                vertical-align: top;
-                direction: rtl;
-                text-align: right;
-                padding: 0 10pt;
-            }}
-            
-            /* Print styles - this is key for reliable pagination */
-            @media print {{
-                @page {{
-                    size: A4;
-                    margin: 12mm;
-                }}
-                
-                /* Hide everything except print content */
-                body * {{
-                    visibility: hidden;
-                }}
-                
-                #print-root,
-                #print-root * {{
-                    visibility: visible;
-                }}
-                
-                /* Force block layout (no grid/flex) */
-                #print-root {{
-                    display: block !important;
-                    position: static !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                }}
-                
-                .print-page {{
-                    display: block !important;
-                    break-after: page;
-                    page-break-after: always;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    min-height: auto;
-                }}
-                
-                .print-page:last-child {{
-                    break-after: auto;
-                    page-break-after: auto;
-                }}
-                
-                /* Two columns using inline-block (not grid/flex) */
-                .col {{
-                    display: inline-block !important;
-                    width: 49% !important;
-                    vertical-align: top !important;
-                    direction: rtl;
-                    text-align: right;
-                    margin: 0 !important;
-                    padding: 0 5pt !important;
-                }}
-                
-                /* Prevent breaks inside items */
-                .no-break {{
-                    break-inside: avoid;
-                    page-break-inside: avoid;
-                }}
+                margin-bottom: 20px;
+                border-bottom: 3px solid {secondary_color};
+                padding-bottom: 15px;
             }}
             
             .menu-title {{
-                font-size: {current_fonts['title']};
-                font-weight: bold;
+                font-size: 24pt;
+                font-weight: 700;
                 color: {primary_color};
-                margin-bottom: 5pt;
+                margin-bottom: 8px;
             }}
             
             .branch-info {{
-                font-size: {int(current_fonts['base'][:-2]) - 1}pt;
-                color: {secondary_color};
-                margin: 2pt 0;
+                font-size: 14pt;
+                color: {primary_color};
+                margin-bottom: 5px;
             }}
             
             .print-date {{
-                font-size: {int(current_fonts['base'][:-2]) - 2}pt;
-                color: {secondary_color};
-                margin-top: 5pt;
+                font-size: 11pt;
+                color: #666;
             }}
             
             .category-title {{
-                font-size: {current_fonts['category']};
-                font-weight: bold;
-                color: {primary_color};
-                margin: 15pt 0 10pt 0;
-                padding: 5pt 0;
-                border-bottom: 1px solid {primary_color};
+                font-size: 18pt;
+                font-weight: 600;
+                color: {secondary_color};
+                text-align: center;
+                margin: 20px 0 15px 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid {secondary_color};
+            }}
+            
+            .two-column-table {{
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                margin-bottom: 15px;
+            }}
+            
+            .two-column-table td {{
+                width: 50%;
+                vertical-align: top;
+                padding: 0 10px;
+                border: none;
             }}
             
             .menu-item {{
-                margin-bottom: 8pt;
+                margin-bottom: 8px;
+                padding: 3px 0;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }}
+            
+            .item-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 2px;
             }}
             
             .item-name {{
-                text-align: right;
+                font-size: 13pt;
                 font-weight: 500;
-                font-size: {current_fonts['item']};
                 color: {primary_color};
-                line-height: 1.3;
+                flex: 1;
+                margin-left: 5px;
             }}
             
             .item-price {{
+                font-size: 13pt;
+                font-weight: 600;
                 color: {secondary_color};
-                font-weight: bold;
-                font-variant-numeric: tabular-nums;
-                margin-right: 5pt;
+                white-space: nowrap;
             }}
             
             .item-description {{
-                font-size: {int(current_fonts['item'][:-2]) - 1}pt;
-                color: {primary_color}AA;
-                margin-top: 2pt;
-                text-align: right;
-                line-height: 1.2;
+                font-size: 10pt;
+                color: #666;
+                margin-top: 2px;
+                font-style: italic;
             }}
             
-            .dietary-props {{
-                margin-top: 3pt;
-            }}
-            
-            .dietary-badge {{
-                display: inline-block;
-                background: {primary_color};
-                color: white;
-                font-size: {int(current_fonts['item'][:-2]) - 3}pt;
-                padding: 1pt 3pt;
-                border-radius: 2pt;
-                margin-left: 3pt;
-            }}
-            
-            .category-icon {{
-                margin-left: 5pt;
-                color: {primary_color};
+            /* Print optimizations */
+            @media print {{
+                .page-break {{
+                    page-break-before: always !important;
+                    break-before: page !important;
+                }}
+                
+                .two-column-table {{
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                }}
+                
+                .two-column-table td {{
+                    width: 50% !important;
+                    padding: 0 8px !important;
+                }}
+                
+                .menu-item {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }}
             }}
         </style>
     </head>
     <body>
-        <div id="print-root">
+        <!-- Header -->
+        <div class="menu-header">
+            <h1 class="menu-title">{menu_name}</h1>
     '''
     
-    # Generate multiple pages using simple block layout
-    for page_index, page_items in enumerate(pages):
-        html += f'<div class="print-page">'
+    if show_branch_info and branch:
+        html += f'<div class="branch-info">{branch.name_he}</div>'
+    
+    if show_date:
+        html += f'<div class="print-date">תאריך: {current_date}</div>'
+    
+    html += '</div>'
+    
+    # Process each category on separate page
+    for category_index, (category_id, data) in enumerate(categories_with_items.items()):
+        category = data['category']
+        items = data['items']
         
-        # Add header only on first page
-        if page_index == 0:
-            html += header_html
+        # Add page break for each category except the first
+        if category_index > 0:
+            html += '<div class="page-break"></div>'
         
-        # Split page items into two columns
-        mid_point = (len(page_items) + 1) // 2  # Ensure left column gets extra item if odd
-        left_column_items = page_items[:mid_point]
-        right_column_items = page_items[mid_point:]
+        # Add category title
+        html += f'<h2 class="category-title">{category.name_he}</h2>'
         
-        # Add two columns using inline-block (not grid/flex)
-        html += f'''
-            <div class="col">
-                {render_column_items(left_column_items, primary_color, secondary_color, current_fonts)}
-            </div><!--
-            --><div class="col">
-                {render_column_items(right_column_items, primary_color, secondary_color, current_fonts)}
-            </div>
-        '''
-        
-        html += '</div>'  # Close print-page
+        # Create 2-column table for items
+        if items:
+            # Split items into 2 columns
+            mid_point = (len(items) + 1) // 2
+            left_column = items[:mid_point]
+            right_column = items[mid_point:]
+            
+            html += '<table class="two-column-table"><tr>'
+            
+            # Left column
+            html += '<td>'
+            for item in left_column:
+                html += format_menu_item(item, show_prices, show_descriptions)
+            html += '</td>'
+            
+            # Right column  
+            html += '<td>'
+            for item in right_column:
+                html += format_menu_item(item, show_prices, show_descriptions)
+            html += '</td>'
+            
+            html += '</tr></table>'
     
     html += '''
-        </div>
     </body>
     </html>
     '''
     
     return html
-
 def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None):
     """Generate simple 2-column table-based print HTML with proper page breaks"""
     

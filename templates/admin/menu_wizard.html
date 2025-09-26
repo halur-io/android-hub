@@ -468,9 +468,34 @@
                     <div class="p-4">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h4 class="mb-0">בחירת מנות</h4>
-                            <div class="input-group" style="width: 300px;">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                <input type="text" class="form-control" id="itemSearch" placeholder="חיפוש מנות...">
+                            <div class="d-flex gap-3 align-items-center">
+                                <!-- View Toggle -->
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="viewMode" id="cardView" autocomplete="off" checked>
+                                    <label class="btn btn-outline-primary btn-sm" for="cardView">
+                                        <i class="fas fa-th-large me-1"></i>כרטיסים
+                                    </label>
+                                    <input type="radio" class="btn-check" name="viewMode" id="listView" autocomplete="off">
+                                    <label class="btn btn-outline-primary btn-sm" for="listView">
+                                        <i class="fas fa-list me-1"></i>רשימה
+                                    </label>
+                                </div>
+                                
+                                <!-- Global Selection Controls -->
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-success btn-sm" onclick="selectAllItemsGlobal()">
+                                        <i class="fas fa-check-double me-1"></i>בחר הכל
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="clearAllItemsGlobal()">
+                                        <i class="fas fa-times me-1"></i>נקה הכל
+                                    </button>
+                                </div>
+                                
+                                <!-- Search -->
+                                <div class="input-group" style="width: 300px;">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="itemSearch" placeholder="חיפוש מנות...">
+                                </div>
                             </div>
                         </div>
                         <div id="itemsContainer">
@@ -1169,12 +1194,48 @@ function loadItemsForSelection() {
         wizardData.selectedCategories.includes(cat.id)
     );
     
+    renderItemsWithCurrentView(selectedCategoryData);
+    
+    // Add search functionality
+    const searchInput = document.getElementById('itemSearch');
+    if (searchInput) {
+        searchInput.oninput = function() {
+            filterItems(this.value);
+        };
+    }
+    
+    // Add view mode change listeners
+    document.getElementById('cardView').addEventListener('change', function() {
+        if (this.checked) {
+            renderItemsWithCurrentView(selectedCategoryData);
+        }
+    });
+    
+    document.getElementById('listView').addEventListener('change', function() {
+        if (this.checked) {
+            renderItemsWithCurrentView(selectedCategoryData);
+        }
+    });
+}
+
+function renderItemsWithCurrentView(selectedCategoryData) {
+    const container = document.getElementById('itemsContainer');
+    const isListView = document.getElementById('listView')?.checked;
+    
+    if (isListView) {
+        renderItemsListView(selectedCategoryData, container);
+    } else {
+        renderItemsCardView(selectedCategoryData, container);
+    }
+}
+
+function renderItemsCardView(selectedCategoryData, container) {
     container.innerHTML = selectedCategoryData.map(category => `
         <div class="category-section mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0">
                     <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
-                    ${category.name_he}
+                    ${category.name_he} (${category.items.length} מנות)
                 </h5>
                 <div>
                     <button class="btn btn-outline-primary btn-sm" onclick="selectAllItems(${category.id})">
@@ -1212,14 +1273,52 @@ function loadItemsForSelection() {
             </div>
         </div>
     `).join('');
-    
-    // Add search functionality
-    const searchInput = document.getElementById('itemSearch');
-    if (searchInput) {
-        searchInput.oninput = function() {
-            filterItems(this.value);
-        };
-    }
+}
+
+function renderItemsListView(selectedCategoryData, container) {
+    container.innerHTML = selectedCategoryData.map(category => `
+        <div class="category-section mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
+                    ${category.name_he} (${category.items.length} מנות)
+                </h5>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="selectAllItems(${category.id})">
+                        בחר הכל
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearCategoryItems(${category.id})">
+                        נקה
+                    </button>
+                </div>
+            </div>
+            <div class="list-group">
+                ${category.items.map(item => `
+                    <div class="list-group-item list-group-item-action item-list" onclick="toggleItem(${item.id})" style="cursor: pointer;">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" id="item_${item.id}">
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">${item.name_he}</h6>
+                                    ${item.description_he ? `<p class="mb-1 text-muted small">${item.description_he}</p>` : ''}
+                                    <div class="dietary-properties">
+                                        ${item.dietary_properties.map(prop => `
+                                            <span class="badge me-1" style="background-color: ${prop.color};">
+                                                <i class="fas fa-${prop.icon}"></i> ${prop.name_he}
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-success fw-bold">₪${item.base_price}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
 }
 
 // Centralized item selection state management
@@ -1263,11 +1362,27 @@ function toggleItem(itemId) {
 }
 
 function updateItemCard(itemId, selected) {
-    const card = document.querySelector(`#item_${itemId}`).closest('.item-card');
-    if (selected) {
-        card.classList.add('border-success', 'bg-light');
-    } else {
-        card.classList.remove('border-success', 'bg-light');
+    const checkbox = document.getElementById(`item_${itemId}`);
+    if (checkbox) {
+        // Handle both card view and list view
+        const cardElement = checkbox.closest('.item-card');
+        const listElement = checkbox.closest('.item-list');
+        
+        if (cardElement) {
+            if (selected) {
+                cardElement.classList.add('border-success', 'bg-light');
+            } else {
+                cardElement.classList.remove('border-success', 'bg-light');
+            }
+        }
+        
+        if (listElement) {
+            if (selected) {
+                listElement.classList.add('active');
+            } else {
+                listElement.classList.remove('active');
+            }
+        }
     }
 }
 
@@ -1289,10 +1404,43 @@ function clearCategoryItems(categoryId) {
     }
 }
 
+// Global item selection functions
+function selectAllItemsGlobal() {
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    selectedCategoryData.forEach(category => {
+        category.items.forEach(item => {
+            setItemSelected(item.id, true);
+        });
+    });
+    
+    showNotification('כל המנות נבחרו בהצלחה', 'success');
+}
+
+function clearAllItemsGlobal() {
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    selectedCategoryData.forEach(category => {
+        category.items.forEach(item => {
+            setItemSelected(item.id, false);
+        });
+    });
+    
+    showNotification('כל המנות בוטלו', 'info');
+}
+
 function filterItems(searchTerm) {
-    const cards = document.querySelectorAll('.item-card');
     searchTerm = searchTerm.toLowerCase();
     
+    // Handle both card view and list view
+    const cards = document.querySelectorAll('.item-card');
+    const listItems = document.querySelectorAll('.item-list');
+    
+    // Filter cards (card view)
     cards.forEach(card => {
         const title = card.querySelector('.card-title').textContent.toLowerCase();
         const description = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
@@ -1301,6 +1449,18 @@ function filterItems(searchTerm) {
             card.closest('.col-md-6').style.display = 'block';
         } else {
             card.closest('.col-md-6').style.display = 'none';
+        }
+    });
+    
+    // Filter list items (list view)
+    listItems.forEach(listItem => {
+        const title = listItem.querySelector('h6').textContent.toLowerCase();
+        const description = listItem.querySelector('p')?.textContent.toLowerCase() || '';
+        
+        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+            listItem.style.display = 'block';
+        } else {
+            listItem.style.display = 'none';
         }
     });
 }

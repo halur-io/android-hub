@@ -2256,6 +2256,243 @@ def api_menu_print_preview(menu_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@admin_bp.route('/api/menu-wizard/simple-print/<int:menu_id>')
+@login_required
+def api_menu_simple_print(menu_id):
+    """Generate simple table-based print HTML for menu"""
+    try:
+        generated_menu = GeneratedMenu.query.get_or_404(menu_id)
+        menu_content = generated_menu.menu_content
+        
+        # Get actual data for selected items
+        selected_items = []
+        if menu_content.get('items'):
+            items_query = MenuItem.query.filter(MenuItem.id.in_(menu_content['items']))
+            selected_items = items_query.all()
+        
+        # Get branch info
+        branch = Branch.query.get(generated_menu.branch_id)
+        
+        # Group items by category
+        categories_with_items = {}
+        for item in selected_items:
+            category = item.category
+            if category and category.id in menu_content.get('categories', []):
+                if category.id not in categories_with_items:
+                    categories_with_items[category.id] = {
+                        'category': category,
+                        'items': []
+                    }
+                categories_with_items[category.id]['items'].append(item)
+        
+        # Generate simple print HTML
+        print_html = generate_simple_menu_print_html(
+            menu_name=generated_menu.name,
+            branch=branch,
+            categories_with_items=categories_with_items
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': print_html,
+            'menu_name': generated_menu.name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def generate_simple_menu_print_html(menu_name, branch, categories_with_items):
+    """Generate simple table-based Hebrew RTL print HTML for menu"""
+    
+    from datetime import datetime
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    
+    # Build simple HTML with table-based layout
+    html = f'''
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+        <meta charset="UTF-8">
+        <title>תפריט - {menu_name}</title>
+        <style>
+            @page {{
+                size: A4;
+                margin: 10mm;
+            }}
+            
+            body {{
+                direction: rtl;
+                font-family: "Noto Sans Hebrew", Arial, sans-serif;
+                font-size: 11pt;
+                line-height: 1.25;
+                margin: 0;
+                padding: 0;
+            }}
+            
+            .menu-header {{
+                text-align: center;
+                margin-bottom: 20pt;
+                border-bottom: 2px solid #2c3e50;
+                padding-bottom: 10pt;
+            }}
+            
+            .menu-title {{
+                font-size: 18pt;
+                font-weight: bold;
+                color: #2c3e50;
+                margin-bottom: 5pt;
+            }}
+            
+            .branch-info {{
+                font-size: 10pt;
+                color: #34495e;
+                margin: 2pt 0;
+            }}
+            
+            .print-date {{
+                font-size: 9pt;
+                color: #34495e;
+                margin-top: 5pt;
+            }}
+            
+            .category-title {{
+                font-size: 14pt;
+                font-weight: bold;
+                color: #2c3e50;
+                margin: 15pt 0 10pt 0;
+                padding: 5pt 0;
+                border-bottom: 1px solid #2c3e50;
+            }}
+            
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                margin-bottom: 10pt;
+            }}
+            
+            colgroup col:first-child {{
+                width: 75%;
+            }}
+            
+            colgroup col:last-child {{
+                width: 25%;
+            }}
+            
+            tr {{
+                break-inside: avoid;
+            }}
+            
+            td {{
+                padding: 3pt 0;
+                vertical-align: top;
+            }}
+            
+            .item-name {{
+                text-align: right;
+                font-weight: 500;
+            }}
+            
+            .item-price {{
+                text-align: left;
+                font-weight: bold;
+                color: #e74c3c;
+                font-variant-numeric: tabular-nums;
+            }}
+            
+            .item-description {{
+                font-size: 10pt;
+                color: #34495e;
+                margin-top: 2pt;
+                text-align: right;
+            }}
+            
+            .dietary-badge {{
+                display: inline-block;
+                background: #2c3e50;
+                color: white;
+                font-size: 8pt;
+                padding: 1pt 3pt;
+                border-radius: 2pt;
+                margin-left: 3pt;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="menu-header">
+            <div class="menu-title">{menu_name}</div>
+            {f'<div class="branch-info">{branch.name_he}</div>' if branch else ''}
+            {f'<div class="branch-info">{branch.address_he}</div>' if branch and branch.address_he else ''}
+            <div class="print-date">תאריך הדפסה: {current_date}</div>
+        </div>
+    '''
+    
+    # Add categories and items
+    for category_id, data in categories_with_items.items():
+        category = data['category']
+        items = data['items']
+        
+        # Add category title
+        category_icon_html = ''
+        if category.icon:
+            category_icon_html = f'<i class="fas fa-{category.icon}"></i> '
+        
+        html += f'''
+            <h2 class="category-title">
+                {category_icon_html}{category.name_he}
+            </h2>
+            <table>
+                <colgroup>
+                    <col>
+                    <col>
+                </colgroup>
+        '''
+        
+        # Add items
+        for item in items:
+            # Format price
+            price_html = ''
+            if item.base_price:
+                try:
+                    price_value = int(float(item.base_price))
+                    price_html = f'<span dir="ltr">₪ {price_value}</span>'
+                except (ValueError, TypeError):
+                    price_html = f'<span dir="ltr">₪ {item.base_price}</span>'
+            
+            # Build item content
+            item_content = f'<div class="item-name">{item.name_he}</div>'
+            
+            # Add description
+            if item.description_he:
+                item_content += f'<div class="item-description">{item.description_he}</div>'
+            
+            # Add dietary properties
+            if item.dietary_properties:
+                dietary_badges = []
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        badge_icon = f'<i class="fas fa-{prop.icon}"></i> ' if prop.icon else ''
+                        dietary_badges.append(f'<span class="dietary-badge">{badge_icon}{prop.name_he}</span>')
+                
+                if dietary_badges:
+                    item_content += f'<div>{"".join(dietary_badges)}</div>'
+            
+            html += f'''
+                <tr>
+                    <td>{item_content}</td>
+                    <td class="item-price">{price_html}</td>
+                </tr>
+            '''
+        
+        html += '</table>'
+    
+    html += '''
+    </body>
+    </html>
+    '''
+    
+    return html
+
 def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None):
     """Generate Hebrew RTL-optimized print HTML for menu with advanced styling"""
     

@@ -2038,10 +2038,36 @@ function updateSelectedCount() {
 // Create Menu Function
 async function createMenu() {
     try {
+        // Ensure we have current values from the form
+        const menuName = document.getElementById('menuName').value.trim();
+        const branchSelect = document.getElementById('branchSelect');
+        const currentBranchId = branchSelect ? parseInt(branchSelect.value) : wizardData.branchId;
+        
+        // Validate required fields
+        if (!menuName) {
+            showNotification('אנא הזן שם לתפריט', 'error');
+            return;
+        }
+        
+        if (!currentBranchId) {
+            showNotification('חובה לבחור סניף', 'error');
+            return;
+        }
+        
+        if (!wizardData.selectedCategories || wizardData.selectedCategories.length === 0) {
+            showNotification('אנא בחר לפחות קטגוריה אחת', 'error');
+            return;
+        }
+        
+        if (!wizardData.selectedItems || wizardData.selectedItems.length === 0) {
+            showNotification('אנא בחר לפחות מנה אחת', 'error');
+            return;
+        }
+        
         // Collect form data with advanced styling
         const menuData = {
-            name: wizardData.menuName,
-            branch_id: wizardData.branchId,
+            name: menuName,
+            branch_id: currentBranchId,
             categories: wizardData.selectedCategories,
             items: wizardData.selectedItems,
             layout: {
@@ -2093,17 +2119,23 @@ async function useTemplate(templateId) {
         const data = await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`);
         const template = data.template;
         
-        // Load template data into wizard
+        // Open wizard first to initialize the modal
+        createNewMenu();
+        
+        // Now load template data into wizard (after reset)
         wizardData.selectedCategories = template.categories_config || [];
         wizardData.selectedItems = template.items_config || [];
         wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
+        wizardData.branchId = template.branch_id; // Set the branch ID properly
         
-        // Pre-fill form
-        document.getElementById('menuName').value = `${template.name} - עותק`;
-        document.getElementById('branchSelect').value = template.branch_id || '';
-        
-        // Open wizard
-        createNewMenu();
+        // Pre-fill form after wizard is opened
+        setTimeout(() => {
+            document.getElementById('menuName').value = `${template.name} - עותק`;
+            if (template.branch_id) {
+                document.getElementById('branchSelect').value = template.branch_id;
+                wizardData.branchId = parseInt(template.branch_id); // Ensure it's set as integer
+            }
+        }, 100);
         
         showNotification('התבנית נטענה בהצלחה', 'success');
     } catch (error) {

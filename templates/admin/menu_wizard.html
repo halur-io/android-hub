@@ -1003,12 +1003,8 @@ async function loadBranches() {
 
 async function loadCategories() {
     try {
-        console.log('loadCategories: Making API call...');
         const data = await makeApiCall('/admin/api/menu-wizard/categories');
-        console.log('loadCategories: API response:', data);
         allCategories = data.categories;
-        console.log('loadCategories: allCategories set to:', allCategories);
-        console.log('loadCategories: First category items_count:', allCategories[0]?.items_count);
     } catch (error) {
         console.error('Error loading categories:', error);
         showNotification('שגיאה בטעינת קטגוריות', 'error');
@@ -2504,6 +2500,12 @@ function displaySavedMenus(menus) {
 
 async function loadSavedMenu(menuId) {
     try {
+        // Input validation
+        if (!menuId) {
+            showNotification('שגיאה: מזהה תפריט לא תקין', 'error');
+            return;
+        }
+        
         const data = await makeApiCall(`/admin/api/menu-wizard/saved-menu/${menuId}`);
         const menu = data.menu;
         

@@ -97,7 +97,26 @@ document.addEventListener('DOMContentLoaded', function() {
         Sortable.create(sortableList, {
             handle: '.drag-handle',
             animation: 150,
+            touchStartThreshold: 5, // Prevent accidental drags on mobile
+            delay: 200, // Increased delay for better mobile experience
+            delayOnTouchStart: true, // Only apply delay on touch devices
+            fallbackOnBody: true,
+            fallbackTolerance: 3, // Better mobile multi-select support
+            swapThreshold: 0.65,
+            scroll: true, // Enable auto-scrolling
+            scrollSensitivity: 100,
+            bubbleScroll: true, // Bubble scroll events
+            onChoose: function() {
+                // Prevent page scrolling during drag on mobile
+                document.body.style.overflow = 'hidden';
+            },
+            onUnchoose: function() {
+                // Re-enable page scrolling
+                document.body.style.overflow = '';
+            },
             onEnd: function(evt) {
+                // Re-enable page scrolling
+                document.body.style.overflow = '';
                 // Get new order
                 const propertyIds = Array.from(sortableList.children).map(item => item.dataset.id);
                 
@@ -244,10 +263,33 @@ document.addEventListener('DOMContentLoaded', function() {
 .drag-handle {
     cursor: grab;
     padding: 10px;
+    min-height: 44px; /* Minimum touch target size for mobile */
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .drag-handle:active {
     cursor: grabbing;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .drag-handle {
+        padding: 15px;
+        min-height: 48px;
+        min-width: 48px;
+    }
+    
+    .sortable-ghost {
+        opacity: 0.3;
+        background: #007bff;
+        border: 2px dashed #0056b3;
+    }
 }
 
 .sortable-ghost {
@@ -257,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .sortable-chosen {
     transform: scale(1.02);
+    touch-action: none; /* Prevent scrolling while dragging on mobile */
 }
 </style>
 {% endblock %}

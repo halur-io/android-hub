@@ -657,6 +657,19 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        
+                                        <!-- Categories per page setting -->
+                                        <div class="mt-3">
+                                            <label class="form-label" for="categoriesPerPage">מספר קטגוריות בדף:</label>
+                                            <select class="form-select" id="categoriesPerPage">
+                                                <option value="1">קטגוריה אחת בכל דף</option>
+                                                <option value="2" selected>שתי קטגוריות בדף</option>
+                                                <option value="3">שלוש קטגוריות בדף</option>
+                                                <option value="4">ארבע קטגוריות בדף</option>
+                                                <option value="999">כל הקטגוריות בדף אחד</option>
+                                            </select>
+                                            <div class="form-text">בחר כמה קטגוריות יופיעו בכל דף בהדפסה</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1216,9 +1229,16 @@ function loadCategoriesForSelection() {
 }
 
 function toggleCategory(categoryId) {
-    const checkbox = document.getElementById(`cat_${categoryId}`);
-    checkbox.checked = !checkbox.checked;
+    // Ensure categoryId is a number for consistent type handling
+    categoryId = parseInt(categoryId);
     
+    const checkbox = document.getElementById(`cat_${categoryId}`);
+    if (!checkbox) {
+        console.error(`ERROR: Checkbox not found for category ${categoryId}`);
+        return;
+    }
+    
+    // Browser's default click behavior already toggled the checkbox
     if (checkbox.checked) {
         if (!wizardData.selectedCategories.includes(categoryId)) {
             wizardData.selectedCategories.push(categoryId);
@@ -2056,6 +2076,7 @@ function collectStylingData() {
         addFooters: document.getElementById('addFooters').checked,
         separateIndexPage: document.getElementById('separateIndexPage').checked,
         pageBreakCategories: getSelectedPageBreakCategories(),
+        categoriesPerPage: parseInt(document.getElementById('categoriesPerPage')?.value || 2),
         pageGroups: wizardData.pageGroups || [],
         categoryColumnSettings: wizardData.categoryColumnSettings || {}
     };
@@ -2125,6 +2146,8 @@ async function createMenu() {
         }
         
         // Collect form data with advanced styling
+        const showMenuTitleValue = document.getElementById('showMenuTitle').checked;
+        
         const menuData = {
             name: menuName,
             branch_id: currentBranchId,
@@ -2138,7 +2161,8 @@ async function createMenu() {
             print_settings: {
                 paper_size: document.getElementById('paperSize').value,
                 show_branch_info: document.getElementById('showBranchInfo').checked,
-                show_date: document.getElementById('showDate').checked
+                show_date: document.getElementById('showDate').checked,
+                show_menu_title: showMenuTitleValue
             },
             style_settings: wizardData.styleSettings || {},
             page_settings: wizardData.pageSettings || {},
@@ -2167,9 +2191,19 @@ async function createMenu() {
             viewSavedMenus();
         }, 300);
         
-        // Show print preview
+        // Show print preview with current settings
         setTimeout(() => {
-            showPrintPreview(result.menu_id);
+            const currentPrintSettings = {
+                print_settings: {
+                    show_menu_title: showMenuTitleValue,
+                    show_branch_info: document.getElementById('showBranchInfo').checked,
+                    show_date: document.getElementById('showDate').checked,
+                    paper_size: document.getElementById('paperSize').value
+                },
+                page_settings: wizardData.pageSettings || {},
+                style_settings: wizardData.styleSettings || {}
+            };
+            showPrintPreview(result.menu_id, currentPrintSettings);
         }, 800);
         
     } catch (error) {
@@ -2301,9 +2335,45 @@ function displayTemplates(templates) {
 }
 
 // Print Functions
-async function showPrintPreview(menuId) {
+async function showPrintPreview(menuId, passedSettings = null) {
     try {
-        const data = await makeApiCall(`/admin/api/menu-wizard/simple-print/${menuId}`);
+        // Use passed settings or collect current print settings from the form (if available)
+        let currentSettings = passedSettings || {};
+        
+        if (!passedSettings) {
+            // Check if we're in the wizard and have access to current form values
+            const showMenuTitleEl = document.getElementById('showMenuTitle');
+            const showBranchInfoEl = document.getElementById('showBranchInfo'); 
+            const showDateEl = document.getElementById('showDate');
+            const categoriesPerPageEl = document.getElementById('categoriesPerPage');
+            
+            if (showMenuTitleEl) {
+                // We're in the wizard, collect current form settings
+                currentSettings = {
+                    print_settings: {
+                        show_menu_title: showMenuTitleEl.checked,
+                        show_branch_info: showBranchInfoEl ? showBranchInfoEl.checked : true,
+                        show_date: showDateEl ? showDateEl.checked : true,
+                        paper_size: document.getElementById('paperSize')?.value || 'A4'
+                    },
+                    page_settings: {
+                        categoriesPerPage: categoriesPerPageEl ? parseInt(categoriesPerPageEl.value) : 2
+                    },
+                    style_settings: wizardData.styleSettings || {}
+                };
+            }
+        }
+        
+        // Use current settings for live preview when available
+        
+        // Use POST if we have current settings, otherwise GET for saved menu preview
+        const url = `/admin/api/menu-wizard/simple-print/${menuId}`;
+        const data = Object.keys(currentSettings).length > 0 
+            ? await makeApiCall(url, {
+                method: 'POST',
+                body: JSON.stringify(currentSettings)
+            })
+            : await makeApiCall(url);
         
         // Update print preview modal content
         document.getElementById('printPreviewContent').innerHTML = data.html;
@@ -2687,6 +2757,14 @@ async function editTemplate(templateId) {
             wizardData.pageGroups = pageSettings.pageGroups || [];
             wizardData.categoryColumnSettings = pageSettings.categoryColumnSettings || {};
             wizardData.showMenuTitle = pageSettings.showMenuTitle !== false;
+            
+            // Load UI elements for page settings
+            if (pageSettings.categoriesPerPage !== undefined) {
+                const categoriesPerPageSelect = document.getElementById('categoriesPerPage');
+                if (categoriesPerPageSelect) {
+                    categoriesPerPageSelect.value = pageSettings.categoriesPerPage;
+                }
+            }
             
             // Load style and print settings
             wizardData.styleSettings = template.style_config || {};

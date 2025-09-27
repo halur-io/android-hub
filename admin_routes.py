@@ -2319,13 +2319,21 @@ def api_delete_saved_menu(menu_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@admin_bp.route('/api/menu-wizard/simple-print/<int:menu_id>')
+@admin_bp.route('/api/menu-wizard/simple-print/<int:menu_id>', methods=['GET', 'POST'])
 @login_required
 def api_menu_simple_print(menu_id):
     """Generate simple table-based print HTML for menu"""
     try:
         generated_menu = GeneratedMenu.query.get_or_404(menu_id)
         menu_content = generated_menu.menu_content
+        
+        # Get current settings from request (for live preview) or use saved settings
+        request_data = request.get_json() if request.method == 'POST' else {}
+        current_print_settings = request_data.get('print_settings', generated_menu.print_settings or {})
+        current_style_settings = request_data.get('style_settings', generated_menu.style_settings or {})
+        current_page_settings = request_data.get('page_settings', generated_menu.page_settings or {})
+        
+        # Settings ready for print generation
         
         # Get actual data for selected items
         selected_items = []
@@ -2336,7 +2344,7 @@ def api_menu_simple_print(menu_id):
         # Get branch info
         branch = Branch.query.get(generated_menu.branch_id)
         
-        # Group items by category
+        # Group items by category, preserving order from menu_content
         categories_with_items = {}
         for item in selected_items:
             category = item.category
@@ -2348,14 +2356,20 @@ def api_menu_simple_print(menu_id):
                     }
                 categories_with_items[category.id]['items'].append(item)
         
-        # Generate simple print HTML with advanced settings
+        # Create ordered list of categories based on menu_content order
+        ordered_categories = []
+        for category_id in menu_content.get('categories', []):
+            if category_id in categories_with_items:
+                ordered_categories.append((category_id, categories_with_items[category_id]))
+        
+        # Generate simple print HTML with current settings (from request or saved)
         print_html = generate_simple_menu_print_html(
             menu_name=generated_menu.name,
             branch=branch,
-            categories_with_items=categories_with_items,
-            print_settings=generated_menu.print_settings or {},
-            style_settings=generated_menu.style_settings or {},
-            page_settings=generated_menu.page_settings or {}
+            categories_with_items=ordered_categories,
+            print_settings=current_print_settings,
+            style_settings=current_style_settings,
+            page_settings=current_page_settings
         )
         
         return jsonify({
@@ -2368,7 +2382,7 @@ def api_menu_simple_print(menu_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None):
-    """Generate 2-column print HTML with separate pages per category"""
+    """Generate 2-column print HTML with configurable page breaks"""
     
     # Default settings
     print_settings = print_settings or {}
@@ -2382,6 +2396,10 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     show_date = print_settings.get('show_date', True)
     show_branch_info = print_settings.get('show_branch_info', True)
     show_menu_title = print_settings.get('show_menu_title', True)
+    
+    # Extract page settings
+    page_break_categories = page_settings.get('pageBreakCategories', [])
+    categories_per_page = page_settings.get('categoriesPerPage', 1)  # Default to 1 for backward compatibility
     
     # Advanced style settings
     primary_color = style_settings.get('primaryColor', '#2c3e50')
@@ -2564,8 +2582,11 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     <body>
         <!-- Header -->
         <div class="menu-header">
-            <h1 class="menu-title">{menu_name}</h1>
     '''
+    
+    # Only show title if setting is enabled
+    if show_menu_title:
+        html += f'<h1 class="menu-title">{menu_name}</h1>'
     
     if show_branch_info and branch:
         html += f'<div class="branch-info">{branch.name_he}</div>'
@@ -2575,13 +2596,19 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     
     html += '</div>'
     
-    # Process each category on separate page
-    for category_index, (category_id, data) in enumerate(categories_with_items.items()):
+    # Process categories with flexible page breaks
+    for category_index, (category_id, data) in enumerate(categories_with_items):
         category = data['category']
         items = data['items']
         
-        # Add page break for each category except the first
-        if category_index > 0:
+        # Add page break only if this category is in the page break list
+        # Or if we're starting a new page group based on categories_per_page
+        should_break = (
+            category_id in page_break_categories or 
+            (categories_per_page > 1 and category_index > 0 and category_index % categories_per_page == 0)
+        )
+        
+        if should_break and category_index > 0:
             html += '<div class="page-break"></div>'
         
         # Add category title

@@ -2398,6 +2398,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     show_menu_title = print_settings.get('show_menu_title', True)
     
     # Extract page settings
+    page_groups = page_settings.get('pageGroups', [])
     page_break_categories = page_settings.get('pageBreakCategories', [])
     categories_per_page = page_settings.get('categoriesPerPage', 1)  # Default to 1 for backward compatibility
     
@@ -2503,6 +2504,8 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 margin: 20px 0 15px 0;
                 padding-bottom: 10px;
                 border-bottom: 2px solid {secondary_color};
+                page-break-after: avoid;
+                break-after: avoid;
             }}
             
             .two-column-table {{
@@ -2596,46 +2599,92 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     
     html += '</div>'
     
-    # Process categories with flexible page breaks
-    for category_index, (category_id, data) in enumerate(categories_with_items):
-        category = data['category']
-        items = data['items']
-        
-        # Add page break only if this category is in the page break list
-        # Or if we're starting a new page group based on categories_per_page
-        should_break = (
-            category_id in page_break_categories or 
-            (categories_per_page > 1 and category_index > 0 and category_index % categories_per_page == 0)
-        )
-        
-        if should_break and category_index > 0:
-            html += '<div class="page-break"></div>'
-        
-        # Add category title
-        html += f'<h2 class="category-title">{category.name_he}</h2>'
-        
-        # Create 2-column table for items
-        if items:
-            # Split items into 2 columns
-            mid_point = (len(items) + 1) // 2
-            left_column = items[:mid_point]
-            right_column = items[mid_point:]
+    # Create a mapping of category_id to category data for quick lookup
+    category_data_map = {category_id: data for category_id, data in categories_with_items}
+    
+    # If we have page groups, use them to organize the layout
+    if page_groups and len(page_groups) > 0:
+        # Process each page group
+        for group_index, group in enumerate(page_groups):
+            group_categories = group.get('categories', [])
             
-            html += '<table class="two-column-table"><tr>'
+            # Add page break before each new page group (except the first)
+            if group_index > 0:
+                html += '<div class="page-break"></div>'
             
-            # Left column
-            html += '<td>'
-            for item in left_column:
-                html += format_menu_item(item, show_prices, show_descriptions)
-            html += '</td>'
+            # Process each category in this page group
+            for cat_index, category_id in enumerate(group_categories):
+                if category_id in category_data_map:
+                    data = category_data_map[category_id]
+                    category = data['category']
+                    items = data['items']
+                    
+                    # Add category title
+                    html += f'<h2 class="category-title">{category.name_he}</h2>'
+                    
+                    # Create 2-column table for items
+                    if items:
+                        # Split items into 2 columns
+                        mid_point = (len(items) + 1) // 2
+                        left_column = items[:mid_point]
+                        right_column = items[mid_point:]
+                        
+                        html += '<table class="two-column-table"><tr>'
+                        
+                        # Left column
+                        html += '<td>'
+                        for item in left_column:
+                            html += format_menu_item(item, show_prices, show_descriptions)
+                        html += '</td>'
+                        
+                        # Right column  
+                        html += '<td>'
+                        for item in right_column:
+                            html += format_menu_item(item, show_prices, show_descriptions)
+                        html += '</td>'
+                        
+                        html += '</tr></table>'
+    else:
+        # Fallback to old logic if no page groups defined
+        for category_index, (category_id, data) in enumerate(categories_with_items):
+            category = data['category']
+            items = data['items']
             
-            # Right column  
-            html += '<td>'
-            for item in right_column:
-                html += format_menu_item(item, show_prices, show_descriptions)
-            html += '</td>'
+            # Add page break only if this category is in the page break list
+            # Or if we're starting a new page group based on categories_per_page
+            should_break = (
+                category_id in page_break_categories or 
+                (categories_per_page > 1 and category_index > 0 and category_index % categories_per_page == 0)
+            )
             
-            html += '</tr></table>'
+            if should_break and category_index > 0:
+                html += '<div class="page-break"></div>'
+            
+            # Add category title
+            html += f'<h2 class="category-title">{category.name_he}</h2>'
+            
+            # Create 2-column table for items
+            if items:
+                # Split items into 2 columns
+                mid_point = (len(items) + 1) // 2
+                left_column = items[:mid_point]
+                right_column = items[mid_point:]
+                
+                html += '<table class="two-column-table"><tr>'
+                
+                # Left column
+                html += '<td>'
+                for item in left_column:
+                    html += format_menu_item(item, show_prices, show_descriptions)
+                html += '</td>'
+                
+                # Right column  
+                html += '<td>'
+                for item in right_column:
+                    html += format_menu_item(item, show_prices, show_descriptions)
+                html += '</td>'
+                
+                html += '</tr></table>'
     
     html += '''
     </body>
@@ -2737,6 +2786,8 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 margin: 20px 0 15px 0;
                 padding-bottom: 10px;
                 border-bottom: 2px solid {secondary_color};
+                page-break-after: avoid;
+                break-after: avoid;
             }}
             
             .two-column-table {{

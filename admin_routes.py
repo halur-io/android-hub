@@ -2433,6 +2433,17 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
         if show_descriptions and item.description_he:
             item_html += f'<div class="item-description">{item.description_he}</div>'
         
+        # Dietary properties icons
+        if item.dietary_properties:
+            item_html += '<div class="dietary-icons">'
+            for prop in item.dietary_properties:
+                if prop.is_active:
+                    icon_color = prop.color or '#666'
+                    item_html += f'<span class="dietary-icon" style="color: {icon_color};" title="{prop.name_he}">'
+                    item_html += f'<i class="fas fa-{prop.icon}"></i>'
+                    item_html += '</span>'
+            item_html += '</div>'
+        
         item_html += '</div>'
         return item_html
     
@@ -2556,6 +2567,23 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 color: #666;
                 margin-top: 2px;
                 font-style: italic;
+            }}
+            
+            .dietary-icons {{
+                display: flex;
+                gap: 6px;
+                margin-top: 4px;
+                align-items: center;
+            }}
+            
+            .dietary-icon {{
+                font-size: 11pt;
+                display: inline-flex;
+                align-items: center;
+            }}
+            
+            .dietary-icon i {{
+                margin: 0;
             }}
             
             /* Print optimizations */
@@ -2838,6 +2866,23 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 color: #666;
                 margin-top: 2px;
                 font-style: italic;
+            }}
+            
+            .dietary-icons {{
+                display: flex;
+                gap: 6px;
+                margin-top: 4px;
+                align-items: center;
+            }}
+            
+            .dietary-icon {{
+                font-size: 11pt;
+                display: inline-flex;
+                align-items: center;
+            }}
+            
+            .dietary-icon i {{
+                margin: 0;
             }}
             
             /* Print optimizations */

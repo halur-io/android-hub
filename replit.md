@@ -38,7 +38,8 @@ Preferred communication style: Simple, everyday language.
 ### Feature Specifications
 -   **Stock Management**: Comprehensive system with real-time analytics, alerts, and optimized database queries.
 -   **Checklist System**: Shift-based task organization with templates, group task creation, and printable checklists.
--   **Menu Management**: Customizable dietary properties, drag-and-drop reordering, and CSV/Excel import functionality.
+-   **Menu Management**: Customizable dietary properties with icons (hot, gluten-free, vegan, etc.), drag-and-drop reordering, CSV/Excel import functionality, and comprehensive menu wizard with page grouping and 2-column print layout.
+-   **Dietary Properties System**: Full admin interface for managing meal attributes with custom FontAwesome icons, color coding, and Hebrew/English names. Properties display in both digital menus and printed menus with proper icon rendering.
 -   **Admin Panel**: Mobile-responsive design with comprehensive Role-Based Access Control (RBAC) and granular permissions.
 
 ### System Design Choices

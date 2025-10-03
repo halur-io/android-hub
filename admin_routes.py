@@ -2600,6 +2600,13 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                     break-before: page !important;
                 }}
                 
+                .page-group-container {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }}
+                
                 .two-column-table {{
                     width: 100% !important;
                     table-layout: fixed !important;
@@ -2613,6 +2620,11 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 .menu-item {{
                     page-break-inside: avoid !important;
                     break-inside: avoid !important;
+                }}
+                
+                .category-title {{
+                    page-break-after: avoid !important;
+                    break-after: avoid !important;
                 }}
             }}
         </style>
@@ -2909,6 +2921,13 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                     break-before: page !important;
                 }}
                 
+                .page-group-container {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }}
+                
                 .two-column-table {{
                     width: 100% !important;
                     table-layout: fixed !important;
@@ -2922,6 +2941,11 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 .menu-item {{
                     page-break-inside: avoid !important;
                     break-inside: avoid !important;
+                }}
+                
+                .category-title {{
+                    page-break-after: avoid !important;
+                    break-after: avoid !important;
                 }}
             }}
         </style>

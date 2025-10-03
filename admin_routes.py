@@ -2344,11 +2344,11 @@ def api_menu_simple_print(menu_id):
         # Get branch info
         branch = Branch.query.get(generated_menu.branch_id)
         
-        # Group items by category, preserving order from menu_content
+        # Group items by category
         categories_with_items = {}
         for item in selected_items:
             category = item.category
-            if category and category.id in menu_content.get('categories', []):
+            if category:
                 if category.id not in categories_with_items:
                     categories_with_items[category.id] = {
                         'category': category,
@@ -2356,11 +2356,24 @@ def api_menu_simple_print(menu_id):
                     }
                 categories_with_items[category.id]['items'].append(item)
         
-        # Create ordered list of categories based on menu_content order
+        # Create ordered list of categories based on page_settings if available
+        # This prevents duplicates and respects the user's exact page configuration
         ordered_categories = []
-        for category_id in menu_content.get('categories', []):
-            if category_id in categories_with_items:
-                ordered_categories.append((category_id, categories_with_items[category_id]))
+        if current_page_settings.get('pageGroups'):
+            # Extract unique categories from page groups in order
+            seen_categories = set()
+            for group in current_page_settings['pageGroups']:
+                for category_id in group.get('categories', []):
+                    if category_id not in seen_categories and category_id in categories_with_items:
+                        ordered_categories.append((category_id, categories_with_items[category_id]))
+                        seen_categories.add(category_id)
+        else:
+            # Fallback to menu_content order, but remove duplicates
+            seen_categories = set()
+            for category_id in menu_content.get('categories', []):
+                if category_id not in seen_categories and category_id in categories_with_items:
+                    ordered_categories.append((category_id, categories_with_items[category_id]))
+                    seen_categories.add(category_id)
         
         # Generate simple print HTML with current settings (from request or saved)
         print_html = generate_simple_menu_print_html(

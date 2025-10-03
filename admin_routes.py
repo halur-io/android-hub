@@ -2454,6 +2454,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     <head>
         <meta charset="UTF-8">
         <title>{menu_name}</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap');
             
@@ -2474,7 +2475,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
             
             @page {{
                 size: A4;
-                margin: 15mm 0mm 15mm 15mm;
+                margin: 15mm 15mm 15mm 15mm;
             }}
             
             .page-break {{
@@ -2505,6 +2506,13 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
             .print-date {{
                 font-size: 11pt;
                 color: #666;
+            }}
+            
+            .page-group-container {{
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-after: avoid;
+                break-after: avoid;
             }}
             
             .category-title {{
@@ -2632,13 +2640,16 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     
     # If we have page groups, use them to organize the layout
     if page_groups and len(page_groups) > 0:
-        # Process each page group
+        # Process each page group - EACH GROUP GETS ITS OWN PAGE
         for group_index, group in enumerate(page_groups):
             group_categories = group.get('categories', [])
             
             # Add page break before each new page group (except the first)
             if group_index > 0:
                 html += '<div class="page-break"></div>'
+            
+            # Wrap the entire page group in a container to keep it together
+            html += '<div class="page-group-container">'
             
             # Process each category in this page group
             for cat_index, category_id in enumerate(group_categories):
@@ -2672,6 +2683,9 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                         html += '</td>'
                         
                         html += '</tr></table>'
+            
+            # Close page group container
+            html += '</div>'
     else:
         # Fallback to old logic if no page groups defined
         for category_index, (category_id, data) in enumerate(categories_with_items):
@@ -2753,6 +2767,7 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
     <head>
         <meta charset="UTF-8">
         <title>{menu_name}</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap');
             
@@ -2804,6 +2819,13 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             .print-date {{
                 font-size: 11pt;
                 color: #666;
+            }}
+            
+            .page-group-container {{
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-after: avoid;
+                break-after: avoid;
             }}
             
             .category-title {{

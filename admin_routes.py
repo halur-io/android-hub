@@ -2329,9 +2329,18 @@ def api_menu_simple_print(menu_id):
         
         # Get current settings from request (for live preview) or use saved settings
         request_data = request.get_json() if request.method == 'POST' else {}
+        
+        # DEBUG: Check what's in the database
+        import logging
+        logging.debug(f"=== SETTINGS DEBUG for menu {menu_id} ===")
+        logging.debug(f"Request data: {request_data}")
+        logging.debug(f"Database page_settings: {generated_menu.page_settings}")
+        
         current_print_settings = request_data.get('print_settings', generated_menu.print_settings or {})
         current_style_settings = request_data.get('style_settings', generated_menu.style_settings or {})
         current_page_settings = request_data.get('page_settings', generated_menu.page_settings or {})
+        
+        logging.debug(f"Final current_page_settings: {current_page_settings}")
         
         # Settings ready for print generation
         

@@ -2662,6 +2662,13 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     # Create a mapping of category_id to category data for quick lookup
     category_data_map = {category_id: data for category_id, data in categories_with_items}
     
+    # DEBUG: Log what we received
+    import logging
+    logging.debug(f"=== PRINT DEBUG ===")
+    logging.debug(f"Page groups: {page_groups}")
+    logging.debug(f"Categories with items (order): {[cat_id for cat_id, _ in categories_with_items]}")
+    logging.debug(f"Category data map keys: {list(category_data_map.keys())}")
+    
     # If we have page groups, use them to organize the layout
     if page_groups and len(page_groups) > 0:
         # Process each page group - EACH GROUP GETS ITS OWN PAGE

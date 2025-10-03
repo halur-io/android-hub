@@ -2400,7 +2400,6 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
     # Extract page settings
     page_groups = page_settings.get('pageGroups', [])
     page_break_categories = page_settings.get('pageBreakCategories', [])
-    categories_per_page = page_settings.get('categoriesPerPage', 1)  # Default to 1 for backward compatibility
     
     # Advanced style settings
     primary_color = style_settings.get('primaryColor', '#2c3e50')
@@ -2693,11 +2692,7 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
             items = data['items']
             
             # Add page break only if this category is in the page break list
-            # Or if we're starting a new page group based on categories_per_page
-            should_break = (
-                category_id in page_break_categories or 
-                (categories_per_page > 1 and category_index > 0 and category_index % categories_per_page == 0)
-            )
+            should_break = category_id in page_break_categories
             
             if should_break and category_index > 0:
                 html += '<div class="page-break"></div>'
@@ -3007,6 +3002,17 @@ def format_menu_item(item, show_prices, show_descriptions, primary_color, second
     # Item description
     if show_descriptions and item.description_he:
         item_html += f'<div class="item-description">{item.description_he}</div>'
+    
+    # Dietary property icons
+    if hasattr(item, 'dietary_properties') and item.dietary_properties:
+        active_properties = [prop for prop in item.dietary_properties if prop.is_active]
+        if active_properties:
+            item_html += '<div class="dietary-icons">'
+            for prop in active_properties:
+                icon_class = prop.icon or 'fa-circle'
+                color_style = f'color: {prop.color};' if prop.color else ''
+                item_html += f'<span class="dietary-icon" style="{color_style}" title="{prop.name_he}"><i class="fas {icon_class}"></i></span>'
+            item_html += '</div>'
     
     item_html += '</div>'
     return item_html

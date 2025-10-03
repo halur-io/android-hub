@@ -1640,13 +1640,29 @@ function loadPageGroups() {
         return;
     }
     
-    // Initialize page groups if not exists
-    if (!wizardData.pageGroups) {
+    // Initialize page groups if not exists OR if empty
+    if (!wizardData.pageGroups || wizardData.pageGroups.length === 0) {
         wizardData.pageGroups = [{
             id: 'page1',
             name: 'דף 1',
             categories: [...wizardData.selectedCategories]
         }];
+    } else {
+        // Page groups exist from template - validate they contain valid categories
+        // Remove any categories that are no longer selected
+        wizardData.pageGroups = wizardData.pageGroups.map(group => ({
+            ...group,
+            categories: group.categories.filter(catId => wizardData.selectedCategories.includes(catId))
+        })).filter(group => group.categories.length > 0); // Remove empty groups
+        
+        // If all groups became empty, reinitialize
+        if (wizardData.pageGroups.length === 0) {
+            wizardData.pageGroups = [{
+                id: 'page1',
+                name: 'דף 1',
+                categories: [...wizardData.selectedCategories]
+            }];
+        }
     }
     
     renderPageGroups();
@@ -2754,7 +2770,14 @@ async function editTemplate(templateId) {
             
             // Load page settings
             const pageSettings = template.page_settings || {};
-            wizardData.pageGroups = pageSettings.pageGroups || [];
+            // IMPORTANT: Preserve page groups from template - don't set to empty array
+            if (pageSettings.pageGroups && pageSettings.pageGroups.length > 0) {
+                wizardData.pageGroups = pageSettings.pageGroups;
+                console.log('Loaded page groups from template:', wizardData.pageGroups);
+            } else {
+                // Will be initialized in loadPageGroups()
+                wizardData.pageGroups = null;
+            }
             wizardData.categoryColumnSettings = pageSettings.categoryColumnSettings || {};
             wizardData.showMenuTitle = pageSettings.showMenuTitle !== false;
             

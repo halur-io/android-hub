@@ -103,6 +103,12 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
     e.preventDefault();
     
     const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה...';
     
     try {
         const response = await fetch('{{ url_for("admin.upload_media") }}', {
@@ -110,14 +116,21 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
             body: formData
         });
         
-        if (response.ok) {
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
             alert('הקובץ הועלה בהצלחה!');
             location.reload();
         } else {
-            alert('שגיאה בהעלאת הקובץ');
+            const errorMsg = data.error || 'שגיאה לא ידועה';
+            alert('שגיאה בהעלאת הקובץ: ' + errorMsg);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         }
     } catch (error) {
-        alert('שגיאה: ' + error);
+        alert('שגיאה: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 });
 

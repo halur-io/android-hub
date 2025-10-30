@@ -2,7 +2,7 @@ from flask import render_template, request, flash, redirect, url_for, jsonify, s
 from flask_mail import Message
 from app import app, mail
 from forms import ContactForm, ReservationForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -12,6 +12,11 @@ def get_language():
     if 'lang' in request.args:
         session['language'] = request.args.get('lang')
     return session.get('language', 'he')
+
+def get_menu_setting(key, default='true'):
+    """Get menu setting value"""
+    setting = MenuSettings.query.filter_by(setting_key=key).first()
+    return setting.setting_value if setting else default
 
 def get_context_data():
     """Get common context data for all pages"""
@@ -25,7 +30,9 @@ def get_context_data():
     return {
         'settings': settings,
         'branches': branches,
-        'language': language
+        'language': language,
+        'show_images': get_menu_setting('show_images') == 'true',
+        'show_dietary_icons': get_menu_setting('show_dietary_icons') == 'true'
     }
 
 @app.route('/')

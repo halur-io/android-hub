@@ -2,57 +2,80 @@
 
 {% block title %}{{ 'תפריט' if language == 'he' else 'Menu' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
 
-{% block content %}
-<div style="height: 80px;"></div> <!-- Spacer for fixed navbar -->
+{% block description %}{{ 'גלה את המגוון הרחב של המנות הטעימות שלנו' if language == 'he' else 'Discover our wide selection of delicious dishes' }}{% endblock %}
 
-<section class="section">
+{% block content %}
+<div style="height: 80px;"></div>
+
+<!-- Hero Section -->
+<section class="menu-hero">
     <div class="container">
-        <div class="text-center mb-5">
-            <h1 class="section-title">{{ 'התפריט שלנו' if language == 'he' else 'Our Menu' }}</h1>
-            <p class="section-subtitle">{{ 'גלה את המגוון הרחב של מנותינו' if language == 'he' else 'Discover our wide selection of dishes' }}</p>
+        <div class="text-center py-5">
+            <h1 class="display-3 mb-3" style="font-family: 'Playfair Display', serif; font-weight: 700;">
+                {{ 'התפריט שלנו' if language == 'he' else 'Our Menu' }}
+            </h1>
+            <p class="lead text-muted">{{ 'גלה את המגוון הרחב של המנות הטעימות שלנו' if language == 'he' else 'Discover our wide selection of delicious dishes' }}</p>
         </div>
-        
+    </div>
+</section>
+
+<!-- Menu Content -->
+<section class="menu-section pb-5">
+    <div class="container">
         {% for category in categories %}
-        <div class="mb-5" id="category-{{ category.id }}">
-            <h2 class="mb-4">
+        <div class="menu-category mb-5" id="category-{{ category.id }}">
+            <!-- Category Header -->
+            <div class="category-header text-center mb-4">
                 {% if category.icon %}
-                <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="color: {{ category.color }}"></i>
+                <div class="category-icon mb-3">
+                    <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="font-size: 3rem; color: {{ category.color or '#d4af37' }}"></i>
+                </div>
                 {% endif %}
-                {{ category.name_he if language == 'he' else category.name_en }}
-            </h2>
+                <h2 class="category-title" style="font-family: 'Playfair Display', serif; font-weight: 700; color: #333;">
+                    {{ category.name_he if language == 'he' else category.name_en }}
+                </h2>
+                {% if category.description_he or category.description_en %}
+                <p class="category-desc text-muted mt-2">{{ category.description_he if language == 'he' else category.description_en }}</p>
+                {% endif %}
+                <div class="category-divider mx-auto"></div>
+            </div>
             
-            {% if category.description_he or category.description_en %}
-            <p class="text-muted mb-4">{{ category.description_he if language == 'he' else category.description_en }}</p>
-            {% endif %}
-            
-            <div class="menu-grid">
+            <!-- Menu Items -->
+            <div class="{% if show_images %}menu-items-grid{% else %}menu-items-list{% endif %}">
                 {% for item in category.items %}
-                <div class="menu-card">
-                    {% if item.image_path %}
-                    <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" alt="{{ item.name_he if language == 'he' else item.name_en }}" class="menu-card-img">
-                    {% else %}
-                    <div class="menu-card-img" style="background: linear-gradient(135deg, {{ category.color or '#667eea' }} 0%, #764ba2 100%);"></div>
+                <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}">
+                    {% if show_images and item.image_path %}
+                    <div class="item-image-wrapper">
+                        <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" 
+                             alt="{{ item.name_he if language == 'he' else item.name_en }}" 
+                             class="item-image">
+                    </div>
                     {% endif %}
                     
-                    <div class="menu-card-body">
-                        <h3 class="menu-card-title">{{ item.name_he if language == 'he' else item.name_en }}</h3>
-                        <p class="menu-card-desc">{{ item.description_he if language == 'he' else item.description_en }}</p>
+                    <div class="item-content">
+                        <div class="item-header">
+                            <h3 class="item-name">{{ item.name_he if language == 'he' else item.name_en }}</h3>
+                            <span class="item-price">₪{{ item.base_price }}</span>
+                        </div>
                         
-                        {% if item.dietary_properties %}
-                        <div class="dietary-icons">
+                        {% if item.description_he or item.description_en %}
+                        <p class="item-description">{{ item.description_he if language == 'he' else item.description_en }}</p>
+                        {% endif %}
+                        
+                        {% if show_dietary_icons and item.dietary_properties %}
+                        <div class="dietary-badges mt-2">
                             {% for prop in item.dietary_properties %}
-                            <span class="dietary-icon" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
+                            <span class="dietary-badge" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
                                 <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
+                                <small>{{ prop.name_he if language == 'he' else prop.name_en }}</small>
                             </span>
                             {% endfor %}
                         </div>
                         {% endif %}
                         
-                        <div class="menu-card-price">₪{{ item.base_price }}</div>
-                        
                         {% if settings.enable_online_ordering %}
-                        <button class="btn btn-primary w-100" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
-                            {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
+                        <button class="btn-add-to-order mt-3" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
+                            <i class="fas fa-plus-circle"></i> {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
                         </button>
                         {% endif %}
                     </div>
@@ -63,6 +86,166 @@
         {% endfor %}
     </div>
 </section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.menu-hero {
+    background: linear-gradient(135deg, #f5f7fa 0%, #fff 100%);
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.category-divider {
+    width: 100px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
+    margin-top: 1rem;
+}
+
+.menu-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.menu-items-list {
+    max-width: 900px;
+    margin: 2rem auto;
+}
+
+.menu-item-elegant {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.menu-item-elegant:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.menu-item-elegant.with-image {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-item-elegant.no-image {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #d4af37;
+}
+
+.item-image-wrapper {
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    position: relative;
+}
+
+.item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.menu-item-elegant:hover .item-image {
+    transform: scale(1.05);
+}
+
+.item-content {
+    padding: 1.5rem;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.item-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+}
+
+.item-price {
+    font-weight: 700;
+    color: #d4af37;
+    font-size: 1.3rem;
+    white-space: nowrap;
+}
+
+.item-description {
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.dietary-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.dietary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(212, 175, 55, 0.1);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.dietary-badge:hover {
+    background: rgba(212, 175, 55, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-add-to-order {
+    width: 100%;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #d4af37 0%, #c49933 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-add-to-order:hover {
+    background: linear-gradient(135deg, #c49933 0%, #b38929 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+@media (max-width: 768px) {
+    .menu-items-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .item-name {
+        font-size: 1.2rem;
+    }
+    
+    .item-price {
+        font-size: 1.1rem;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -85,7 +268,32 @@ function addToCart(itemId, itemName, price) {
     localStorage.setItem('cart', JSON.stringify(cart));
     updateCartCount();
     
-    alert('{{ "נוסף להזמנה!" if language == "he" else "Added to cart!" }}');
+    showNotification('{{ "נוסף להזמנה!" if language == "he" else "Added to cart!" }}');
+}
+
+function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'cart-notification';
+    notification.textContent = message;
+    notification.style.cssText = 'position: fixed; top: 90px; right: 20px; background: #d4af37; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease;';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 2000);
 }
 </script>
+
+<style>
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+</style>
 {% endblock %}

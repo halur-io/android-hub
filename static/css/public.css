@@ -1,12 +1,14 @@
-/* Root Variables */
+/* Root Variables - Premium Gold Theme */
 :root {
-    --primary-color: #d9534f;
+    --primary-color: #d4af37;
+    --primary-dark: #b38929;
     --secondary-color: #2c3e50;
-    --accent-color: #f39c12;
+    --accent-color: #c49933;
     --text-dark: #333;
     --text-light: #666;
     --bg-light: #f8f9fa;
-    --border-color: #ddd;
+    --border-color: #e8e8e8;
+    --gold-gradient: linear-gradient(135deg, #d4af37 0%, #c49933 100%);
 }
 
 /* Global Styles */
@@ -20,11 +22,41 @@ body {
     font-family: 'Inter', 'Rubik', sans-serif;
     color: var(--text-dark);
     line-height: 1.6;
+    overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', 'Rubik', serif;
     font-weight: 700;
+}
+
+/* Smooth Scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Premium Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 1s ease-out;
+}
+
+.animate-fade-in-delay {
+    animation: fadeIn 1s ease-out 0.3s both;
+}
+
+.animate-fade-in-delay-2 {
+    animation: fadeIn 1s ease-out 0.6s both;
 }
 
 /* Navbar */
@@ -39,7 +71,10 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', serif;
     font-size: 1.8rem;
     font-weight: 700;
-    color: var(--primary-color);
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .nav-link {
@@ -145,7 +180,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary-hero {
-    background: var(--primary-color);
+    background: var(--gold-gradient);
     color: white;
     border: 2px solid var(--primary-color);
 }
@@ -154,7 +189,7 @@ h1, h2, h3, h4, h5, h6 {
     background: transparent;
     color: white;
     transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(217, 83, 79, 0.3);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
 }
 
 .btn-outline-hero {

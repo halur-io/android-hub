@@ -18,342 +18,103 @@
 <!-- Menu Categories -->
 <section class="menu-section py-5">
     <div class="container">
+        {% if categories %}
         <!-- Navigation Pills -->
         <div class="row mb-5">
             <div class="col-12">
                 <ul class="nav nav-pills justify-content-center menu-nav" id="menuTabs" role="tablist">
+                    {% for category in categories %}
+                    {% if category.id in items_by_category %}
                     <li class="nav-item">
-                        <button class="nav-link active" id="japanese-tab" data-bs-toggle="pill" data-bs-target="#japanese" type="button" role="tab">
-                            יפני
+                        <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                id="cat-{{ category.id }}-tab" 
+                                data-bs-toggle="pill" 
+                                data-bs-target="#cat-{{ category.id }}" 
+                                type="button" 
+                                role="tab">
+                            {{ category.name_he }}
                         </button>
                     </li>
-                    <li class="nav-item">
-                        <button class="nav-link" id="thai-tab" data-bs-toggle="pill" data-bs-target="#thai" type="button" role="tab">
-                            תאילנדי
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" id="korean-tab" data-bs-toggle="pill" data-bs-target="#korean" type="button" role="tab">
-                            קוריאני
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" id="vietnamese-tab" data-bs-toggle="pill" data-bs-target="#vietnamese" type="button" role="tab">
-                            ויאטנמי
-                        </button>
-                    </li>
+                    {% endif %}
+                    {% endfor %}
                 </ul>
             </div>
         </div>
 
         <!-- Menu Content -->
         <div class="tab-content" id="menuTabContent">
-            <!-- Japanese Menu -->
-            <div class="tab-pane fade show active" id="japanese" role="tabpanel">
+            {% for category in categories %}
+            {% if category.id in items_by_category %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                 id="cat-{{ category.id }}" 
+                 role="tabpanel">
                 <div class="cuisine-header text-center mb-5">
-                    <h2 class="cuisine-title">מטבח יפני</h2>
-                    <p class="cuisine-description">סושי טרי, סשימי מעולה ומנות יפניות אותנטיות</p>
+                    <h2 class="cuisine-title">{{ category.name_he }}</h2>
+                    {% if category.description_he %}
+                    <p class="cuisine-description">{{ category.description_he }}</p>
+                    {% endif %}
                 </div>
                 
                 <div class="row">
+                    {% for item in items_by_category[category.id] %}
+                    {% if loop.index0 % 2 == 0 and loop.index0 > 0 %}
+                    </div><div class="row">
+                    {% endif %}
+                    
                     <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">סושי וסשימי</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">מגש סושי מיוחד</h5>
-                                    <span class="item-price">₪149</span>
-                                </div>
-                                <p class="item-description">12 חתיכות סושי עם דגים טריים וירקות</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g5669f2f38e4fc015ee4caf65b0d9342800b9e22370548e29df9d1d9c5b09db0e6b8c912387fcc0294a754e257db4ebb0a4bfd2e68e87d12152a87aefbaf8b268_1280.jpg')"></div>
+                        <div class="menu-item">
+                            <div class="item-header">
+                                <h5 class="item-name">
+                                    {{ item.name_he }}
+                                    <!-- Dietary Icons -->
+                                    {% if item.dietary_properties %}
+                                    <span class="dietary-icons ms-2">
+                                        {% for prop in item.dietary_properties %}
+                                        {% if prop.is_active %}
+                                        {% set icon_name = prop.icon if prop.icon and prop.icon.startswith('fa-') else 'fa-' + (prop.icon or 'circle') %}
+                                        <i class="fas {{ icon_name }}" 
+                                           style="color: {{ prop.color or '#666' }}; font-size: 0.9rem;" 
+                                           title="{{ prop.name_he }}"></i>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    {% endif %}
+                                </h5>
+                                {% if item.base_price or item.price %}
+                                <span class="item-price">₪{{ "%.2f"|format(item.base_price or item.price or 0)|replace('.00', '') }}</span>
+                                {% endif %}
                             </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">סשימי פרימיום</h5>
-                                    <span class="item-price">₪89</span>
-                                </div>
-                                <p class="item-description">פרוסי דג טרי ללא אורז - טונה, סלמון ודג לבן</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/gb377bd7a3e7dc03629e228cc87e933efc9681c1bbbb4ee5bec04f955d36e5a0afb2b9e7ae41f64823ffb4e0b60247d42d2b73ef3d4b39773dfa4e105287e_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">רול קליפורניה</h5>
-                                    <span class="item-price">₪52</span>
-                                </div>
-                                <p class="item-description">רול קלאסי עם סלמון, אבוקדו ומלפפון</p>
-                            </div>
+                            {% if item.description_he %}
+                            <p class="item-description">{{ item.description_he }}</p>
+                            {% endif %}
+                            {% if item.image_url %}
+                            <div class="item-image" style="background-image: url('{{ item.image_url }}')"></div>
+                            {% endif %}
                         </div>
                     </div>
                     
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">מנות חמות</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">רמן מיסו</h5>
-                                    <span class="item-price">₪58</span>
-                                </div>
-                                <p class="item-description">מרק אטריות יפני עם ביצה רכה וצ'אסיו</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g4953adba4ec42fc1168aa4710ea364947f336c6560bb615746a2c7e0b51b66d598a445c2f10ada727a5fb324b7af7552090853888ac43dd780957c61369316b1_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">טמפורה מעורבת</h5>
-                                    <span class="item-price">₪48</span>
-                                </div>
-                                <p class="item-description">ירקות ופירות ים מטוגנים בבצק קריספי</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g4e3b90b5829c3332a2f8aa36d7dfbc45c87ac9dec956bc341fb516521af2da15863db574886e8413f5453ff772e273e740224a517d3c7ac121a13e9c18551883_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">יאקיטורי</h5>
-                                    <span class="item-price">₪42</span>
-                                </div>
-                                <p class="item-description">שיפודי עוף מוגש על רוטב טריאקי</p>
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
-
-            <!-- Thai Menu -->
-            <div class="tab-pane fade" id="thai" role="tabpanel">
-                <div class="cuisine-header text-center mb-5">
-                    <h2 class="cuisine-title">מטבח תאילנדי</h2>
-                    <p class="cuisine-description">טעמים חריפים ומתוקים, ארומטיים ורעננים</p>
-                </div>
-                
-                <div class="row">
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">מנות עיקריות</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">פאד תאי מיוחד</h5>
-                                    <span class="item-price">₪58</span>
-                                </div>
-                                <p class="item-description">אטריות אורז מטוגנות עם חזרת, בוטנים ושירות וירקות</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/ged19e2d9292b7be7ddb7fb53565ebc96765e7275099ac98fcfe78701073b92192d5a65629520abf9163f732e4e3b854fc00a1b20cf8b43d7_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">קארי ירוק</h5>
-                                    <span class="item-price">₪62</span>
-                                </div>
-                                <p class="item-description">קארי חריף עם עוף, חלב קוקוס וירקות טריים</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g17d7ad12a858e8a1bdff6ecd01dbc724308ba1d287a546c8fbce279f2f6f5a9abd90a72f254d7fd0c7fe7f1e2dd9dfff04ba2d83a52d848468a1ce78c0b1dd6a_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">טום יאם גונג</h5>
-                                    <span class="item-price">₪48</span>
-                                </div>
-                                <p class="item-description">מרק חמוץ-חריף עם שרימפס ופטריות</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">סלטים ומנות קלות</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">סום טאם</h5>
-                                    <span class="item-price">₪38</span>
-                                </div>
-                                <p class="item-description">סלט פפאיה ירוקה חריף עם בוטנים</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g26c1a61768e15a539e3f16a203eff5ab2780d1f5c2d0e00ec7e1981c758ae095298cdd3c999118bc93366e1a60a57d23ce4e37a7dfa8c41ce3f04d6b320caf72_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">לארב גאי</h5>
-                                    <span class="item-price">₪45</span>
-                                </div>
-                                <p class="item-description">סלט עוף תאילנדי חריף עם נענע וכוסברה</p>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">ספרינג רול טרי</h5>
-                                    <span class="item-price">₪32</span>
-                                </div>
-                                <p class="item-description">רול ירקות טריים עם רוטב בוטנים</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g33a6882bb75792b63e45ce5c8be38fb42b5897723e4218cf4af1eec7613804241b8e8950c3cae560f9310dd1fc936913a881b9213dd9eb19a7e2766a1a40dff5_1280.jpg')"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Korean Menu -->
-            <div class="tab-pane fade" id="korean" role="tabpanel">
-                <div class="cuisine-header text-center mb-5">
-                    <h2 class="cuisine-title">מטבח קוריאני</h2>
-                    <p class="cuisine-description">מנות מותססות, צלויות ומתובלות בטעמים עזים</p>
-                </div>
-                
-                <div class="row">
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">מנות עיקריות</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">ביביבמבב מיוחד</h5>
-                                    <span class="item-price">₪52</span>
-                                </div>
-                                <p class="item-description">אורז עם ירקות צבעוניים, ביצה מטוגנת וקימצ'י</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g446b6ada36f1ee4aa417f6db9d0aa833dabb1995d5d6bffe80bae9e8ac744b287cdc0f17da17d5c40910ee601c55e8b834db9ae24ddfd5f676d544bd99a8a34f_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">בולגוגי</h5>
-                                    <span class="item-price">₪68</span>
-                                </div>
-                                <p class="item-description">בשר בקר מרינ在רוטב קוריאני מתוק</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/gf1ad6d395fd796f7d957417c250d46e43ee82024e21e867273ebb33f0951bae48ecdba361e3dc131d43c8e9605295256f6084981c5120667711d27478f9e59ac_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">קימצ'י סטיו</h5>
-                                    <span class="item-price">₪48</span>
-                                </div>
-                                <p class="item-description">מרק חריף עם קימצ'י, חזיר וטופו</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">בנצ'ן (מזון נלווה)</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">קימצ'י ביתי</h5>
-                                    <span class="item-price">₪18</span>
-                                </div>
-                                <p class="item-description">כרוב מותסס חריף בהכנה מסורתית</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g9fff9f384a3e57bf6a1fec53f244f5118cf32cb0ee777026ac806085cfd42f837f026c2384688db837f9c8d3bdc44bb36d4be17fefd87cb76328f68bcdc8b55f_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">מנדו (כיבה)</h5>
-                                    <span class="item-price">₪35</span>
-                                </div>
-                                <p class="item-description">כיבה קוריאנית במילוי בשר וירקות</p>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">טופוקי</h5>
-                                    <span class="item-price">₪28</span>
-                                </div>
-                                <p class="item-description">עוגות אורז חריפות ברוטב גוצ'וג'אנג</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/ga785be4ccbddb60839c604750a201deb8bfd51298cb3b2213dd55d5cca1a92224c9f73439e06d20d3d27c55d10d53ddd7b992f9a9afaa4db996e4000afdb975a_1280.jpg')"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vietnamese Menu -->
-            <div class="tab-pane fade" id="vietnamese" role="tabpanel">
-                <div class="cuisine-header text-center mb-5">
-                    <h2 class="cuisine-title">מטבח ויאטנמי</h2>
-                    <p class="cuisine-description">טעמים רעננים, מרקים ארומטיים ומנות קלילות</p>
-                </div>
-                
-                <div class="row">
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">מרקים ואטריות</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">פו בו (בשר בקר)</h5>
-                                    <span class="item-price">₪55</span>
-                                </div>
-                                <p class="item-description">מרק אטריות ויאטנמי עם בשר בקר ועשבי תיבול</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g3e3f31c982c47ee1a190c461301e806170a3b6bfda90925341f7c5a3ced108eaaa711a7876ba92e9850abd5293b26492c7e61b54c9cd0700c893db94f95df462_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">פו גא (עוף)</h5>
-                                    <span class="item-price">₪48</span>
-                                </div>
-                                <p class="item-description">מרק אטריות עם עוף רך ועשבי תיבול טריים</p>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">בון בו הואה</h5>
-                                    <span class="item-price">₪52</span>
-                                </div>
-                                <p class="item-description">מרק אטריות חריף עם בשר בקר ומנגו</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g6d0746034642969a13e81c2728c33e528af679127fc56447a1d6b9b9472338c67623654fd8e0dc6df840fd6130298bf22d305514e6df2459c21ded6068769298_1280.jpg')"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-6">
-                        <div class="menu-category">
-                            <h4 class="category-title">מנות קלות</h4>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">ספרינג רול טרי</h5>
-                                    <span class="item-price">₪35</span>
-                                </div>
-                                <p class="item-description">רול אורז עם שרימפס, ירקות ועשבי תיבול</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g15a94c1a813ac7ebf48ce1a00201b6b9bfcc4f9e6f0ae5a6e17875334b50a556cef3c7e9dcfe187d3479b0be5aa5def636619d35ae0f7985a5824a6f0a1c0ab1_1280.jpg')"></div>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">באן מי</h5>
-                                    <span class="item-price">₪42</span>
-                                </div>
-                                <p class="item-description">כריך ויאטנמי עם בשר, פטיה וכוסברה</p>
-                            </div>
-                            
-                            <div class="menu-item">
-                                <div class="item-header">
-                                    <h5 class="item-name">גוי קון</h5>
-                                    <span class="item-price">₪38</span>
-                                </div>
-                                <p class="item-description">סלט פפאיה ירוקה עם שרימפס ובוטנים</p>
-                                <div class="item-image" style="background-image: url('https://pixabay.com/get/g0522ef41d569c4d508b0e6b5221e81d93e469d84f0bf9a94a5e95db01a2a589d33241ebee1369c1a7f0cfa7517b68b57a902c07ec37c90b261e0cd1458050bc0_1280.jpg')"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% endif %}
+            {% endfor %}
         </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle me-2"></i>
+            אין פריטים זמינים כרגע. בקרו שוב מאוחר יותר.
+        </div>
+        {% endif %}
 
         <!-- Menu CTA -->
         <div class="text-center mt-5 pt-5">
             <h3 class="mb-4">מוכנים להזמין?</h3>
             <div class="cta-buttons">
-                <a href="{{ url_for('main.reservation') }}" class="btn btn-primary btn-lg me-3">
+                <a href="/#reservation" class="btn btn-primary btn-lg me-3">
                     <i class="fas fa-calendar-alt me-2"></i>
                     הזמנת שולחן
                 </a>
-                <a href="tel:03-1234567" class="btn btn-outline-primary btn-lg">
+                <a href="tel:{{ branch.phone if branch and branch.phone else '03-1234567' }}" class="btn btn-outline-primary btn-lg">
                     <i class="fas fa-phone me-2"></i>
                     הזמנה טלפונית
                 </a>
@@ -361,4 +122,100 @@
         </div>
     </div>
 </section>
+
+<style>
+.dietary-icons {
+    display: inline-block;
+}
+
+.dietary-icons i {
+    margin: 0 2px;
+}
+
+.menu-item {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.item-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1B2951;
+    margin: 0;
+}
+
+.item-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #C75450;
+    white-space: nowrap;
+}
+
+.item-description {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.item-image {
+    width: 100%;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+}
+
+.cuisine-header {
+    margin-bottom: 40px;
+}
+
+.cuisine-title {
+    font-size: 2rem;
+    color: #1B2951;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.cuisine-description {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.menu-nav .nav-link {
+    color: #1B2951;
+    font-weight: 600;
+    padding: 10px 20px;
+    margin: 0 5px;
+    border-radius: 25px;
+    transition: all 0.3s;
+}
+
+.menu-nav .nav-link:hover {
+    background: #f8f9fa;
+    color: #C75450;
+}
+
+.menu-nav .nav-link.active {
+    background: #C75450;
+    color: white;
+}
+
+.page-hero {
+    padding: 60px 0;
+    background: linear-gradient(135deg, #1B2951 0%, #2c3e65 100%);
+}
+
+.cta-buttons .btn {
+    border-radius: 25px;
+    padding: 12px 30px;
+    font-weight: 600;
+}
+</style>
 {% endblock %}

@@ -189,8 +189,13 @@
                                 <div class="mt-4">
                                     <h6><i class="fas fa-exclamation-triangle me-2"></i>אלרגנים</h6>
                                     <div class="mb-3">
+                                        {% set allergens_text = '' %}
+                                        {% if item.allergens and item.allergens != '[]' %}
+                                            {% set allergens_list = item.allergens|fromjson %}
+                                            {% set allergens_text = allergens_list|join(', ') %}
+                                        {% endif %}
                                         <input type="text" class="form-control" id="allergens" name="allergens" 
-                                               value="{% if item.allergens %}{{ item.allergens }}{% endif %}" 
+                                               value="{{ allergens_text }}" 
                                                placeholder="רשום אלרגנים מופרדים בפסיקים">
                                         <small class="form-text text-muted">לדוגמה: אגוזים, חלב, ביצים</small>
                                     </div>

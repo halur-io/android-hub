@@ -33,6 +33,10 @@ csrf.exempt('admin.parse_word_menu')
 csrf.exempt('admin.process_menu_selection')
 csrf.exempt('admin.parse_word_menu_demo')
 
+# Exempt gallery upload from CSRF (uses custom CSRF handling)
+csrf.exempt('admin.upload_gallery')
+csrf.exempt('admin.upload_media')
+
 # Exempt API blueprint from CSRF
 try:
     from api_routes import api_bp

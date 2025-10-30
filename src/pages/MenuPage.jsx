@@ -214,15 +214,25 @@ const MenuPage = () => {
                     </div>
                     <p className="item-desc">
                       {language === 'he' ? item.description_he : item.description_en}
-                      {(item.is_vegetarian || item.is_vegan || item.is_gluten_free || item.is_spicy) && (
-                        <span style={{marginLeft: '10px'}}>
-                          {item.is_vegetarian && '🌱 '}
-                          {item.is_vegan && '🌿 '}
-                          {item.is_gluten_free && 'GF '}
-                          {item.is_spicy && '🌶️ '}
-                        </span>
-                      )}
                     </p>
+                    {item.dietary_properties && item.dietary_properties.length > 0 && (
+                      <div className="dietary-icons" style={{marginTop: '8px', display: 'flex', gap: '8px'}}>
+                        {item.dietary_properties.map(prop => {
+                          const iconClass = prop.icon && prop.icon.startsWith('fa-') 
+                            ? prop.icon 
+                            : `fa-${prop.icon || 'circle'}`;
+                          return (
+                            <span
+                              key={prop.id}
+                              style={{ color: prop.color || '#666' }}
+                              title={language === 'he' ? prop.name_he : prop.name_en}
+                            >
+                              <i className={`fas ${iconClass}`}></i>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )) || <p>No items in this category</p>
               } else {

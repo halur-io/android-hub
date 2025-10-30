@@ -126,35 +126,102 @@
         {% endif %}
     </div>
     
-    <!-- Footer -->
-    <footer class="footer-compact">
+    <!-- Footer with Sitemap -->
+    <footer class="footer-sitemap">
         <div class="container">
-            <div class="row align-items-center py-4">
-                <div class="col-md-4 text-center text-md-start mb-3 mb-md-0">
-                    <img src="{{ url_for('static', filename='images/sumo-logo.png') }}" alt="Logo" class="footer-logo-small">
-                    <p class="footer-brand-small">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</p>
-                </div>
-                <div class="col-md-4 text-center mb-3 mb-md-0">
-                    <div class="footer-social-compact">
+            <div class="row py-5">
+                <!-- About Column -->
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <div class="footer-brand">
+                        <img src="{{ url_for('static', filename='images/sumo-logo.png') }}" alt="Logo" class="footer-logo mb-3">
+                        <h5 class="footer-title">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</h5>
+                        <p class="footer-desc">{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}</p>
+                    </div>
+                    <div class="footer-social mt-3">
                         {% if settings.facebook_url %}
-                        <a href="{{ settings.facebook_url }}" target="_blank" class="social-icon-compact">
+                        <a href="{{ settings.facebook_url }}" target="_blank" class="social-icon" aria-label="Facebook">
                             <i class="fab fa-facebook"></i>
                         </a>
                         {% endif %}
                         {% if settings.instagram_url %}
-                        <a href="{{ settings.instagram_url }}" target="_blank" class="social-icon-compact">
+                        <a href="{{ settings.instagram_url }}" target="_blank" class="social-icon" aria-label="Instagram">
                             <i class="fab fa-instagram"></i>
                         </a>
                         {% endif %}
                         {% if settings.whatsapp_number %}
-                        <a href="https://wa.me/{{ settings.whatsapp_number }}" target="_blank" class="social-icon-compact">
+                        <a href="https://wa.me/{{ settings.whatsapp_number }}" target="_blank" class="social-icon" aria-label="WhatsApp">
                             <i class="fab fa-whatsapp"></i>
                         </a>
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-md-4 text-center text-md-end">
-                    <p class="footer-copyright">&copy; 2025 {{ settings.site_name_he if language == 'he' else settings.site_name_en }}</p>
+                
+                <!-- Quick Links Column -->
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h6 class="footer-heading">{{ 'קישורים מהירים' if language == 'he' else 'Quick Links' }}</h6>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('index') }}">{{ 'בית' if language == 'he' else 'Home' }}</a></li>
+                        {% if settings.enable_menu_display %}
+                        <li><a href="{{ url_for('menu_page') }}">{{ 'תפריט' if language == 'he' else 'Menu' }}</a></li>
+                        {% endif %}
+                        {% if settings.enable_online_ordering %}
+                        <li><a href="{{ url_for('order_page') }}">{{ 'הזמנה אונליין' if language == 'he' else 'Order Online' }}</a></li>
+                        {% endif %}
+                        {% if settings.enable_gallery %}
+                        <li><a href="{{ url_for('gallery_page') }}">{{ 'גלריה' if language == 'he' else 'Gallery' }}</a></li>
+                        {% endif %}
+                        {% if settings.enable_contact_form %}
+                        <li><a href="{{ url_for('contact_page') }}">{{ 'צור קשר' if language == 'he' else 'Contact' }}</a></li>
+                        {% endif %}
+                        {% if settings.enable_table_reservations and reservation_settings and reservation_settings.enable_reservations %}
+                        <li><a href="{{ reservation_settings.reservation_system_url }}" target="_blank">{{ 'הזמנת שולחן' if language == 'he' else 'Table Reservation' }}</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                
+                <!-- Information Column -->
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h6 class="footer-heading">{{ 'מידע' if language == 'he' else 'Information' }}</h6>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('terms_page') }}">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</a></li>
+                        <li><a href="{{ url_for('index') }}#about">{{ 'אודות' if language == 'he' else 'About Us' }}</a></li>
+                        <li><a href="{{ url_for('index') }}#branches">{{ 'סניפים' if language == 'he' else 'Locations' }}</a></li>
+                        {% if settings.enable_english_language %}
+                        <li><a href="?lang={{ 'en' if language == 'he' else 'he' }}">{{ 'English' if language == 'he' else 'עברית' }}</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                
+                <!-- Contact Column -->
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h6 class="footer-heading">{{ 'צור קשר' if language == 'he' else 'Contact' }}</h6>
+                    <ul class="footer-contact">
+                        {% if branches %}
+                        <li>
+                            <i class="fas fa-phone me-2"></i>
+                            <a href="tel:{{ branches[0].phone }}">{{ branches[0].phone }}</a>
+                        </li>
+                        <li>
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            {{ branches[0].address_he if language == 'he' else branches[0].address_en }}
+                        </li>
+                        {% endif %}
+                        {% if settings.whatsapp_number %}
+                        <li>
+                            <i class="fab fa-whatsapp me-2"></i>
+                            <a href="https://wa.me/{{ settings.whatsapp_number }}">WhatsApp</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Footer Bottom -->
+            <div class="footer-bottom py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-12 text-center">
+                        <p class="footer-copyright mb-0">&copy; 2025 {{ settings.site_name_he if language == 'he' else settings.site_name_en }} - {{ 'כל הזכויות שמורות' if language == 'he' else 'All Rights Reserved' }}</p>
+                    </div>
                 </div>
             </div>
         </div>

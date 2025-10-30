@@ -1236,3 +1236,24 @@ class PaymentConfiguration(db.Model):
     
     def __repr__(self):
         return f'<PaymentConfiguration {self.provider_name}>'
+
+# Terms of Use / Legal Pages
+class TermsOfUse(db.Model):
+    __tablename__ = 'terms_of_use'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Content in both languages
+    content_he = db.Column(db.Text, nullable=False)
+    content_en = db.Column(db.Text, nullable=False)
+    
+    # Metadata
+    last_updated_by = db.Column(db.String(100))
+    is_active = db.Column(db.Boolean, default=True)
+    effective_date = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<TermsOfUse {self.id}>'

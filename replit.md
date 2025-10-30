@@ -21,6 +21,7 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX Decisions
 -   **Frontend Framework**: Flask-rendered Jinja2 templates (replaced React SPA for better SEO and simplicity).
 -   **Styling**: Bootstrap 5 RTL + custom CSS, Google Fonts (Playfair Display + Inter + Rubik), Font Awesome 6.4.0 for icons.
+-   **Color Scheme**: Navy Blue (#1a3a6e) and Red (#dc3545) from restaurant logo, replacing previous gold theme.
 -   **Responsive Design**: Mobile-first approach with 100% mobile optimization.
 -   **Language Support**: Session-based language switching with full Right-to-Left (RTL) support for Hebrew and English.
 
@@ -64,6 +65,22 @@ Preferred communication style: Simple, everyday language.
 -   **Python Packages**: Flask, Flask-Mail, Flask-WTF, WTForms, SQLAlchemy, Gunicorn.
 
 ## Recent Changes (October 30, 2025)
+
+### Brand Color Update & UX Improvements
+-   **Color Scheme Refresh**: Updated entire site from gold/yellow theme to match restaurant logo colors:
+    -   Primary: Navy Blue (#1a3a6e, #2d5492) - used for backgrounds, accordions, navigation
+    -   Accent: Red (#dc3545, #c82333) - used for CTAs, highlights, mobile nav accents
+    -   Replaced all instances of gold (#d4af37, #c49933) throughout the UI
+-   **UX Enhancements**:
+    -   Hero buttons: Red gradient primary button with improved hover states and glassmorphism effect on outline button
+    -   Mobile bottom nav: Navy blue background with red accent border, enhanced tactile feedback
+    -   Branch accordion: Navy blue expanded state with red icon accents
+    -   Social icons: Navy blue hover states with glow effects
+    -   Navigation links: Red hover color with text glow
+    -   Improved shadows, transitions, and focus states throughout for better accessibility
+    -   Better visual hierarchy and contrast for improved readability
+
+
 
 ### Initial Frontend Redesign
 -   **Complete Frontend Redesign**: Replaced React SPA with Flask-rendered templates for better SEO, simpler maintenance, and tighter integration with admin panel.

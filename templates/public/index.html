@@ -95,6 +95,74 @@
     </div>
 </section>
 
+<!-- Branches Section -->
+{% if branches %}
+<section class="section bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">{{ 'הסניפים שלנו' if language == 'he' else 'Our Branches' }}</h2>
+            <p class="section-subtitle">{{ 'בקרו אותנו באחד מסניפינו' if language == 'he' else 'Visit us at one of our locations' }}</p>
+        </div>
+        
+        <div class="row g-4">
+            {% for branch in branches %}
+            <div class="col-md-6">
+                <div class="branch-card">
+                    <div class="branch-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <h3 class="branch-name">{{ branch.name_he if language == 'he' else branch.name_en }}</h3>
+                    {% if branch.address_he or branch.address_en %}
+                    <p class="branch-address">
+                        <i class="fas fa-location-dot"></i>
+                        {{ branch.address_he if language == 'he' else branch.address_en }}
+                    </p>
+                    {% endif %}
+                    {% if branch.phone %}
+                    <p class="branch-phone">
+                        <i class="fas fa-phone"></i>
+                        <a href="tel:{{ branch.phone }}">{{ branch.phone }}</a>
+                    </p>
+                    {% endif %}
+                    {% if branch.waze_link or branch.google_maps_link %}
+                    <div class="branch-actions mt-3">
+                        {% if branch.waze_link %}
+                        <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                            <i class="fab fa-waze"></i> Waze
+                        </a>
+                        {% endif %}
+                        {% if branch.google_maps_link %}
+                        <a href="{{ branch.google_maps_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-map"></i> Google Maps
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Contact CTA Section -->
+<section class="section contact-cta">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h2 class="cta-title">{{ 'יש לכם שאלות? נשמח לעזור' if language == 'he' else 'Have Questions? We\'re Here to Help' }}</h2>
+                <p class="cta-subtitle">{{ 'צרו קשר ונחזור אליכם בהקדם' if language == 'he' else 'Get in touch and we\'ll respond as soon as possible' }}</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="{{ url_for('contact_page') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-envelope"></i> {{ 'צור קשר' if language == 'he' else 'Contact Us' }}
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Gallery Preview -->
 {% if gallery_images %}
 <section class="section bg-light">
@@ -120,6 +188,23 @@
     </div>
 </section>
 {% endif %}
+
+<!-- Floating Action Buttons -->
+<div class="floating-actions">
+    <a href="https://waze.com/ul?q={{ branches[0].address_he if branches and language == 'he' else branches[0].address_en if branches else '' }}" 
+       target="_blank" 
+       class="fab-button fab-navigate" 
+       title="{{ 'נווט אלינו' if language == 'he' else 'Navigate to us' }}">
+        <i class="fas fa-location-arrow"></i>
+    </a>
+    {% if branches and branches[0].phone %}
+    <a href="tel:{{ branches[0].phone }}" 
+       class="fab-button fab-call" 
+       title="{{ 'התקשר אלינו' if language == 'he' else 'Call us' }}">
+        <i class="fas fa-phone"></i>
+    </a>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_js %}

@@ -67,6 +67,12 @@ html {
     background-color: rgba(255, 255, 255, 0.95) !important;
 }
 
+.navbar-logo {
+    height: 45px;
+    width: auto;
+    object-fit: contain;
+}
+
 .navbar-brand .brand-text {
     font-family: 'Playfair Display', serif;
     font-size: 1.8rem;
@@ -75,6 +81,15 @@ html {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+@media (max-width: 576px) {
+    .navbar-logo {
+        height: 35px;
+    }
+    .navbar-brand .brand-text {
+        font-size: 1.4rem;
+    }
 }
 
 .nav-link {
@@ -373,6 +388,150 @@ html {
 
 .social-links a:hover {
     transform: translateY(-5px);
+}
+
+/* Branch Cards */
+.branch-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.branch-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.branch-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 1.5rem;
+    background: var(--gold-gradient);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+}
+
+.branch-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.branch-address,
+.branch-phone {
+    color: #666;
+    margin-bottom: 0.75rem;
+}
+
+.branch-phone a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.branch-phone a:hover {
+    text-decoration: underline;
+}
+
+/* Contact CTA Section */
+.contact-cta {
+    background: var(--gold-gradient);
+    color: white;
+}
+
+.cta-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.cta-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+.contact-cta .btn-light {
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    transition: all 0.3s ease;
+}
+
+.contact-cta .btn-light:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+/* Floating Action Buttons */
+.floating-actions {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    z-index: 1000;
+}
+
+.rtl .floating-actions {
+    right: auto;
+    left: 30px;
+}
+
+.fab-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.fab-navigate {
+    background: var(--gold-gradient);
+}
+
+.fab-call {
+    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+}
+
+.fab-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .floating-actions {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .rtl .floating-actions {
+        right: auto;
+        left: 20px;
+    }
+    
+    .fab-button {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
 }
 
 /* RTL Support */

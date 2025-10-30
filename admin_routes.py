@@ -1825,55 +1825,52 @@ def gallery():
     photos = GalleryPhoto.query.order_by(GalleryPhoto.display_order).all()
     return render_template('admin/gallery.html', photos=photos)
 
-@admin_bp.route('/gallery/upload', methods=['POST'])
+@admin_bp.route('/gallery/upload-single', methods=['POST'])
 @login_required
-def upload_gallery():
+def upload_single_gallery():
+    """Upload ONE image at a time - much faster and more reliable"""
     try:
-        current_app.logger.info("Gallery upload started")
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
         
-        if 'files[]' not in request.files:
-            current_app.logger.error("No files[] in request")
-            return jsonify({'error': 'No files provided'}), 400
+        file = request.files['file']
         
-        files = request.files.getlist('files[]')
-        current_app.logger.info(f"Received {len(files)} files")
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
         
-        if not files or all(f.filename == '' for f in files):
-            return jsonify({'error': 'No files selected'}), 400
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
         
-        uploaded = []
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')  # More unique timestamp
+        filename = f"gallery_{timestamp}_{filename}"
         
-        for file in files:
-            if file and file.filename and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"gallery_{timestamp}_{filename}"
-                
-                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                filepath = os.path.join(UPLOAD_FOLDER, filename)
-                
-                current_app.logger.info(f"Saving file: {filename}")
-                file.save(filepath)
-                
-                photo = GalleryPhoto(
-                    file_path=f'/static/uploads/{filename}',
-                    caption_he=request.form.get('caption_he', ''),
-                    caption_en=request.form.get('caption_en', ''),
-                    display_order=GalleryPhoto.query.count()
-                )
-                db.session.add(photo)
-                uploaded.append(photo.file_path)
-            else:
-                current_app.logger.warning(f"Invalid file: {file.filename if file else 'None'}")
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
         
+        # Save file directly - no processing
+        file.save(filepath)
+        
+        # Create database entry
+        photo = GalleryPhoto(
+            file_path=f'/static/uploads/{filename}',
+            caption_he=request.form.get('caption_he', ''),
+            caption_en=request.form.get('caption_en', ''),
+            display_order=GalleryPhoto.query.count()
+        )
+        db.session.add(photo)
         db.session.commit()
-        current_app.logger.info(f"Successfully uploaded {len(uploaded)} files")
-        return jsonify({'success': True, 'uploaded': uploaded, 'count': len(uploaded)})
+        
+        return jsonify({
+            'success': True, 
+            'file_path': photo.file_path,
+            'filename': file.filename
+        })
     
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Gallery upload error: {str(e)}", exc_info=True)
-        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+        current_app.logger.error(f"Single file upload error: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 # Checklist Management
 @admin_bp.route('/checklist')

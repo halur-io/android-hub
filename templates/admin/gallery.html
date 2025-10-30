@@ -114,11 +114,9 @@ document.getElementById('galleryUploadForm').addEventListener('submit', async fu
     progressDiv.style.display = 'block';
     fileStatusList.innerHTML = '';
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה...';
     
     let successCount = 0;
     let errorCount = 0;
-    let errors = [];
     
     // Create status items for each file
     const fileItems = {};
@@ -134,67 +132,69 @@ document.getElementById('galleryUploadForm').addEventListener('submit', async fu
         fileItems[i] = itemDiv;
     }
     
-    // Upload files using the existing multipart form
-    const formData = new FormData(this);
-    
-    try {
-        // Show all as uploading
-        for (let i = 0; i < files.length; i++) {
-            fileItems[i].innerHTML = `
-                <span><i class="fas fa-spinner fa-spin text-primary me-2"></i> ${files[i].name}</span>
-                <span class="badge bg-primary">מעלה...</span>
-            `;
-        }
+    // Upload each file ONE AT A TIME - much more reliable!
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const itemDiv = fileItems[i];
         
-        const response = await fetch('{{ url_for("admin.upload_gallery") }}', {
-            method: 'POST',
-            body: formData
-        });
+        // Update status to uploading
+        itemDiv.innerHTML = `
+            <span><i class="fas fa-spinner fa-spin text-primary me-2"></i> ${file.name}</span>
+            <span class="badge bg-primary">מעלה...</span>
+        `;
         
-        const data = await response.json();
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrf_token', '{{ csrf_token() }}');
         
-        // Update progress bar
-        progressBar.style.width = '100%';
-        progressBar.textContent = '100%';
-        progressText.textContent = `(${files.length}/${files.length})`;
-        
-        if (response.ok) {
-            // Mark all as successful
-            for (let i = 0; i < files.length; i++) {
-                fileItems[i].innerHTML = `
-                    <span><i class="fas fa-check-circle text-success me-2"></i> ${files[i].name}</span>
-                    <span class="badge bg-success">הועלה בהצלחה</span>
+        try {
+            const response = await fetch('{{ url_for("admin.upload_single_gallery") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                successCount++;
+                itemDiv.innerHTML = `
+                    <span><i class="fas fa-check-circle text-success me-2"></i> ${file.name}</span>
+                    <span class="badge bg-success">✓ הועלה</span>
                 `;
-            }
-            setTimeout(() => {
-                alert('כל ' + files.length + ' התמונות הועלו בהצלחה!');
-                location.reload();
-            }, 500);
-        } else {
-            // Mark all as failed
-            const errorMsg = data.error || 'שגיאה לא ידועה';
-            for (let i = 0; i < files.length; i++) {
-                fileItems[i].innerHTML = `
-                    <span><i class="fas fa-times-circle text-danger me-2"></i> ${files[i].name}</span>
+            } else {
+                errorCount++;
+                const errorMsg = data.error || 'Unknown error';
+                itemDiv.innerHTML = `
+                    <span><i class="fas fa-times-circle text-danger me-2"></i> ${file.name}</span>
                     <span class="badge bg-danger">${errorMsg}</span>
                 `;
             }
-            alert('שגיאה בהעלאת התמונות: ' + errorMsg);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-    } catch (error) {
-        // Mark all as failed
-        for (let i = 0; i < files.length; i++) {
-            fileItems[i].innerHTML = `
-                <span><i class="fas fa-exclamation-circle text-warning me-2"></i> ${files[i].name}</span>
-                <span class="badge bg-warning">שגיאה: ${error.message}</span>
+        } catch (error) {
+            errorCount++;
+            itemDiv.innerHTML = `
+                <span><i class="fas fa-exclamation-circle text-warning me-2"></i> ${file.name}</span>
+                <span class="badge bg-warning">שגיאה</span>
             `;
         }
-        alert('שגיאה: ' + error.message);
-        console.error('Upload error:', error);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        
+        // Update progress bar
+        const percent = Math.round(((i + 1) / files.length) * 100);
+        progressBar.style.width = percent + '%';
+        progressBar.textContent = percent + '%';
+        progressText.textContent = `(${i + 1}/${files.length})`;
+    }
+    
+    // Show final results
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+    
+    if (errorCount === 0) {
+        setTimeout(() => {
+            alert('כל ' + successCount + ' התמונות הועלו בהצלחה!');
+            location.reload();
+        }, 500);
+    } else {
+        alert(successCount + ' תמונות הועלו בהצלחה, ' + errorCount + ' נכשלו');
     }
 });
 

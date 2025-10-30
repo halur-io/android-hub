@@ -103,6 +103,29 @@
     <!-- Main Content -->
     {% block content %}{% endblock %}
     
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav">
+        <a href="{{ reservation_settings.reservation_system_url if reservation_settings and reservation_settings.enable_reservations else '#' }}" class="mobile-nav-item" target="_blank">
+            <i class="fas fa-calendar-check"></i>
+            <span>{{ 'הזמנת שולחן' if language == 'he' else 'Reserve' }}</span>
+        </a>
+        <a href="tel:{{ branches[0].phone if branches else '' }}" class="mobile-nav-item mobile-nav-primary">
+            <i class="fas fa-phone"></i>
+            <span>{{ 'התקשר' if language == 'he' else 'Call' }}</span>
+        </a>
+        {% if settings.enable_online_ordering %}
+        <a href="{{ url_for('order_page') }}" class="mobile-nav-item">
+            <i class="fas fa-shopping-bag"></i>
+            <span>{{ 'הזמנה' if language == 'he' else 'Order' }}</span>
+        </a>
+        {% else %}
+        <a href="https://waze.com/ul/hsvc5ksnm1" class="mobile-nav-item" target="_blank">
+            <i class="fas fa-map-marked-alt"></i>
+            <span>{{ 'ניווט' if language == 'he' else 'Navigate' }}</span>
+        </a>
+        {% endif %}
+    </div>
+    
     <!-- Footer -->
     <footer class="footer-enhanced">
         <div class="footer-main">

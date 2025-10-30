@@ -11,19 +11,19 @@
     <meta name="description" content="{% block description %}{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}{% endblock %}">
     <meta name="keywords" content="restaurant, food, dining, {{ settings.site_name_he if language == 'he' else settings.site_name_en }}">
     <meta name="author" content="{{ settings.site_name_he if language == 'he' else settings.site_name_en }}">
-    <link rel="canonical" href="{{ request.url }}">
+    <link rel="canonical" href="{{ request.base_url }}">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:url" content="{{ request.base_url }}">
     <meta property="og:title" content="{% block og_title %}{{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}{% endblock %}">
-    <meta property="og:image" content="{{ url_for('static', filename='images/og-image.jpg', _external=True) }}">
+    <meta property="og:image" content="{{ url_for('static', filename='videos/hero.mp4', _external=True) }}">
     <meta property="og:locale" content="{{ 'he_IL' if language == 'he' else 'en_US' }}">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="{{ request.url }}">
+    <meta property="twitter:url" content="{{ request.base_url }}">
     <meta property="twitter:title" content="{% block twitter_title %}{{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}">
     <meta property="twitter:description" content="{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}">
     

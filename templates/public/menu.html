@@ -22,6 +22,23 @@
 <!-- Menu Content -->
 <section class="menu-section pb-5">
     <div class="container">
+        {% if menu_images %}
+        <!-- Display Uploaded Menu Images -->
+        <div class="menu-images-gallery">
+            {% for image in menu_images %}
+            <div class="menu-image-card">
+                <img src="{{ url_for('static', filename=image.file_path) }}" 
+                     alt="{{ image.caption_he if language == 'he' else image.caption_en or 'Menu Image' }}" 
+                     class="menu-image-display"
+                     onclick="openImageModal(this.src)">
+                {% if image.caption_he or image.caption_en %}
+                <p class="menu-image-caption">{{ image.caption_he if language == 'he' else image.caption_en }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Display Menu Items (Fallback) -->
         {% for category in categories %}
         <div class="menu-category mb-5" id="category-{{ category.id }}">
             <!-- Category Header -->
@@ -84,8 +101,15 @@
             </div>
         </div>
         {% endfor %}
+        {% endif %}
     </div>
 </section>
+
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal" onclick="closeImageModal()">
+    <span class="modal-close">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -231,6 +255,103 @@
     box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
+/* Menu Images Gallery */
+.menu-images-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.menu-image-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.menu-image-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.menu-image-display {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.menu-image-card:hover .menu-image-display {
+    transform: scale(1.02);
+}
+
+.menu-image-caption {
+    padding: 1rem;
+    text-align: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    background: #f8f9fa;
+}
+
+/* Image Modal */
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95);
+    cursor: pointer;
+}
+
+.image-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    animation: zoomIn 0.3s;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal-close:hover {
+    color: #d4af37;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+    from { transform: scale(0.8); }
+    to { transform: scale(1); }
+}
+
 @media (max-width: 768px) {
     .menu-items-grid {
         grid-template-columns: 1fr;
@@ -243,6 +364,16 @@
     
     .item-price {
         font-size: 1.1rem;
+    }
+    
+    .menu-images-gallery {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .modal-close {
+        right: 20px;
+        font-size: 30px;
     }
 }
 </style>
@@ -283,6 +414,25 @@ function showNotification(message) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
+
+function openImageModal(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    modal.classList.add('active');
+    modalImg.src = imageSrc;
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.remove('active');
+}
+
+// Close on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeImageModal();
+    }
+});
 </script>
 
 <style>

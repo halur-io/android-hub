@@ -84,6 +84,12 @@ def menu_page():
     """Full menu page"""
     context = get_context_data()
     
+    # Get menu images uploaded by admin
+    menu_images = MediaFile.query.filter_by(
+        section='menu',
+        is_active=True
+    ).order_by(MediaFile.display_order).all()
+    
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
     # Get items for each category with dietary properties
@@ -95,7 +101,8 @@ def menu_page():
     
     return render_template('public/menu.html',
                          **context,
-                         categories=categories)
+                         categories=categories,
+                         menu_images=menu_images)
 
 @app.route('/order')
 def order_page():

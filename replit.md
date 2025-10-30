@@ -65,6 +65,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (October 30, 2025)
 
+### Initial Frontend Redesign
 -   **Complete Frontend Redesign**: Replaced React SPA with Flask-rendered templates for better SEO, simpler maintenance, and tighter integration with admin panel.
 -   **Database Enhancements**:
     -   Extended `SiteSettings` model with feature toggles (`enable_online_ordering`, `enable_english_language`, `enable_delivery`, `enable_pickup`).
@@ -72,4 +73,28 @@ Preferred communication style: Simple, everyday language.
     -   Leveraged existing `Order` and `OrderItem` models from `services/order/order_service.py`.
 -   **Public Website Structure**: Created 5 main pages (Home, Menu, Order, Gallery, Contact) all controlled via admin panel settings.
 -   **Cart System**: Client-side cart management using localStorage with server-side order processing ready for integration.
--   **Mobile-First Design**: 100% mobile-responsive layout following design guidelines in `design_guidelines.md`.
+
+### Latest Updates (October 30, 2025 - Evening)
+-   **Hero Video**: Integrated user-uploaded restaurant video (converted from .mov to .mp4 format, located at `static/videos/hero.mp4`).
+-   **Logo Integration**: Added restaurant logo (`sumo-logo.png`) to navbar with responsive sizing.
+-   **Dynamic Sections System**:
+    -   Created `CustomSection` model for admin-controlled homepage sections.
+    -   Supports three content types: plain text, HTML, and embedded content (iframes).
+    -   Sections can be reordered via `display_order` field.
+-   **Table Reservation Integration**:
+    -   Created `ReservationSettings` model with external system integration.
+    -   Connected to external reservation system: `https://tbit.be/BHWCPU`.
+    -   Admin can enable/disable, customize button text, and control visibility.
+-   **Branch Enhancements**:
+    -   Integrated existing `WorkingHours` model display on homepage.
+    -   Updated Waze navigation link to user-specific URL: `https://waze.com/ul/hsvc5ksnm1`.
+    -   Branch cards now show: name, address, phone, working hours, and navigation buttons.
+-   **Floating Action Buttons (FABs)**:
+    -   Navigate button (gold gradient) - Opens Waze with branch address.
+    -   Call button (green gradient) - Direct phone call to restaurant.
+    -   Mobile-responsive positioning with RTL support.
+-   **Mobile Optimization**:
+    -   100% mobile-responsive design across all breakpoints (768px, 576px).
+    -   Responsive hero buttons, navigation menu, and section layouts.
+    -   Optimized font sizes, spacing, and button widths for mobile devices.
+    -   Full-width buttons on mobile with centered layouts.

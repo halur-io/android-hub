@@ -15,7 +15,8 @@
             <div class="row">
                 <div class="col-md-4">
                     <label class="form-label">בחר תמונות (ניתן לבחור מספר קבצים)</label>
-                    <input type="file" class="form-control" name="files[]" multiple accept="image/*" required>
+                    <input type="file" class="form-control" id="fileInput" name="files[]" multiple accept="image/*" required>
+                    <small class="text-muted">בחר תמונות מרובות בבת אחת</small>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">כיתוב עברית</label>
@@ -31,6 +32,18 @@
                         <i class="fas fa-upload me-2"></i> העלה
                     </button>
                 </div>
+            </div>
+            
+            <!-- Upload Progress -->
+            <div id="uploadProgress" style="display: none;" class="mt-4">
+                <div class="mb-2">
+                    <strong>מעלה קבצים...</strong>
+                    <span id="progressText" class="text-muted"></span>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <div id="fileStatusList" class="list-group"></div>
             </div>
         </form>
     </div>
@@ -83,22 +96,105 @@
 document.getElementById('galleryUploadForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    const fileInput = document.getElementById('fileInput');
+    const files = fileInput.files;
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const fileStatusList = document.getElementById('fileStatusList');
+    
+    if (files.length === 0) {
+        alert('אנא בחר לפחות תמונה אחת');
+        return;
+    }
+    
+    // Show progress section
+    progressDiv.style.display = 'block';
+    fileStatusList.innerHTML = '';
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה...';
+    
+    let successCount = 0;
+    let errorCount = 0;
+    let errors = [];
+    
+    // Create status items for each file
+    const fileItems = {};
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'list-group-item d-flex justify-content-between align-items-center';
+        itemDiv.innerHTML = `
+            <span><i class="fas fa-clock text-muted me-2"></i> ${file.name}</span>
+            <span class="badge bg-secondary">ממתין</span>
+        `;
+        fileStatusList.appendChild(itemDiv);
+        fileItems[i] = itemDiv;
+    }
+    
+    // Upload files using the existing multipart form
     const formData = new FormData(this);
     
     try {
+        // Show all as uploading
+        for (let i = 0; i < files.length; i++) {
+            fileItems[i].innerHTML = `
+                <span><i class="fas fa-spinner fa-spin text-primary me-2"></i> ${files[i].name}</span>
+                <span class="badge bg-primary">מעלה...</span>
+            `;
+        }
+        
         const response = await fetch('{{ url_for("admin.upload_gallery") }}', {
             method: 'POST',
             body: formData
         });
         
+        const data = await response.json();
+        
+        // Update progress bar
+        progressBar.style.width = '100%';
+        progressBar.textContent = '100%';
+        progressText.textContent = `(${files.length}/${files.length})`;
+        
         if (response.ok) {
-            alert('התמונות הועלו בהצלחה!');
-            location.reload();
+            // Mark all as successful
+            for (let i = 0; i < files.length; i++) {
+                fileItems[i].innerHTML = `
+                    <span><i class="fas fa-check-circle text-success me-2"></i> ${files[i].name}</span>
+                    <span class="badge bg-success">הועלה בהצלחה</span>
+                `;
+            }
+            setTimeout(() => {
+                alert('כל ' + files.length + ' התמונות הועלו בהצלחה!');
+                location.reload();
+            }, 500);
         } else {
-            alert('שגיאה בהעלאת התמונות');
+            // Mark all as failed
+            const errorMsg = data.error || 'שגיאה לא ידועה';
+            for (let i = 0; i < files.length; i++) {
+                fileItems[i].innerHTML = `
+                    <span><i class="fas fa-times-circle text-danger me-2"></i> ${files[i].name}</span>
+                    <span class="badge bg-danger">${errorMsg}</span>
+                `;
+            }
+            alert('שגיאה בהעלאת התמונות: ' + errorMsg);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
         }
     } catch (error) {
-        alert('שגיאה: ' + error);
+        // Mark all as failed
+        for (let i = 0; i < files.length; i++) {
+            fileItems[i].innerHTML = `
+                <span><i class="fas fa-exclamation-circle text-warning me-2"></i> ${files[i].name}</span>
+                <span class="badge bg-warning">שגיאה: ${error.message}</span>
+            `;
+        }
+        alert('שגיאה: ' + error.message);
+        console.error('Upload error:', error);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
 });
 

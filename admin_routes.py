@@ -308,35 +308,8 @@ def upload_media():
             
             filepath = os.path.join(UPLOAD_FOLDER, filename)
             
-            # Save file in chunks to handle large files efficiently
-            with open(filepath, 'wb') as f:
-                chunk_size = 4096
-                while True:
-                    chunk = file.stream.read(chunk_size)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-            
-            # Optimize image size if it's an image
-            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
-                try:
-                    from PIL import Image
-                    img = Image.open(filepath)
-                    
-                    # Resize if image is too large (max 2000px on longest side)
-                    max_dimension = 2000
-                    if max(img.size) > max_dimension:
-                        ratio = max_dimension / max(img.size)
-                        new_size = tuple(int(dim * ratio) for dim in img.size)
-                        img = img.resize(new_size, Image.Resampling.LANCZOS)
-                    
-                    # Save with optimization
-                    if filename.lower().endswith('.png'):
-                        img.save(filepath, 'PNG', optimize=True)
-                    else:
-                        img.save(filepath, 'JPEG', quality=85, optimize=True)
-                except Exception as e:
-                    current_app.logger.warning(f"Could not optimize image: {e}")
+            # Save file directly - no processing
+            file.save(filepath)
             
             # Create database entry
             media = MediaFile(
@@ -353,7 +326,7 @@ def upload_media():
             
             return jsonify({'success': True, 'id': media.id, 'path': media.file_path})
         
-        return jsonify({'error': 'Invalid file type'}), 400
+        return jsonify({'error': 'Invalid file type. Only images and videos allowed.'}), 400
     
     except Exception as e:
         current_app.logger.error(f"Upload error: {e}")

@@ -75,13 +75,15 @@ Preferred communication style: Simple, everyday language.
 -   **Cart System**: Client-side cart management using localStorage with server-side order processing ready for integration.
 
 ### Latest Updates (October 30, 2025 - Evening)
--   **Hero Video**: Integrated user-uploaded restaurant video with aggressive performance optimization:
-    -   Original: 55MB → Mobile: 4.1MB (720p) | Desktop: 11MB (1080p) - 92% size reduction for mobile
-    -   Poster image: 107KB for instant display while video loads
+-   **Hero Video**: Integrated user-uploaded restaurant video with balanced performance optimization:
+    -   Original: 55MB (1440x2560 portrait) → Mobile: 7.4MB (720x1280, CRF 23) | Desktop: 23MB (1080x1920, CRF 20)
+    -   Poster image: 144KB for instant display while video loads
     -   Smart responsive loading: JavaScript-driven source selection based on viewport
     -   Connection-aware: Disables autoplay on 2G/slow connections and data saver mode
     -   Accessibility: Respects prefers-reduced-motion settings
     -   Admin uploads take priority over optimized defaults
+    -   CSS uses `object-fit: contain` to prevent zoom/crop issues with portrait video
+    -   Higher quality compression settings (CRF 20-23) for better visual quality
 -   **Logo Integration**: Added restaurant logo (`sumo-logo.png`) to navbar with responsive sizing (50px on mobile).
 -   **Dynamic Sections System**:
     -   Created `CustomSection` model for admin-controlled homepage sections.

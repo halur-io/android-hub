@@ -104,60 +104,64 @@
             <p class="section-subtitle">{{ 'בקרו אותנו באחד מסניפינו' if language == 'he' else 'Visit us at one of our locations' }}</p>
         </div>
         
-        <div class="row g-4">
+        <div class="accordion branches-accordion" id="branchesAccordion">
             {% for branch in branches %}
-            <div class="col-md-6">
-                <div class="branch-card">
-                    <div class="branch-icon">
-                        <i class="fas fa-map-marker-alt"></i>
-                    </div>
-                    <h3 class="branch-name">{{ branch.name_he if language == 'he' else branch.name_en }}</h3>
-                    {% if branch.address_he or branch.address_en %}
-                    <p class="branch-address">
-                        <i class="fas fa-location-dot"></i>
-                        {{ branch.address_he if language == 'he' else branch.address_en }}
-                    </p>
-                    {% endif %}
-                    {% if branch.phone %}
-                    <p class="branch-phone">
-                        <i class="fas fa-phone"></i>
-                        <a href="tel:{{ branch.phone }}">{{ branch.phone }}</a>
-                    </p>
-                    {% endif %}
-                    {% if branch.working_hours %}
-                    <div class="working-hours mt-3">
-                        <h6 class="hours-title">{{ 'שעות פעילות' if language == 'he' else 'Working Hours' }}</h6>
-                        <div class="hours-list">
-                            {% for hours in branch.working_hours %}
-                            {% if not hours.is_closed %}
-                            <div class="hours-item">
-                                <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
-                                <span class="time-range">{{ hours.open_time }} - {{ hours.close_time }}</span>
+            <div class="accordion-item branch-accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button branch-accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#branch{{ loop.index }}" aria-expanded="{{ 'true' if loop.first else 'false' }}">
+                        <i class="fas fa-map-marker-alt me-3"></i>
+                        <strong>{{ branch.name_he if language == 'he' else branch.name_en }}</strong>
+                    </button>
+                </h2>
+                <div id="branch{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" data-bs-parent="#branchesAccordion">
+                    <div class="accordion-body branch-accordion-body">
+                        {% if branch.address_he or branch.address_en %}
+                        <p class="branch-detail-accordion">
+                            <i class="fas fa-location-dot me-2"></i>
+                            {{ branch.address_he if language == 'he' else branch.address_en }}
+                        </p>
+                        {% endif %}
+                        {% if branch.phone %}
+                        <p class="branch-detail-accordion">
+                            <i class="fas fa-phone me-2"></i>
+                            <a href="tel:{{ branch.phone }}" class="branch-link">{{ branch.phone }}</a>
+                        </p>
+                        {% endif %}
+                        {% if branch.working_hours %}
+                        <div class="working-hours-accordion mt-3">
+                            <h6 class="hours-title-accordion">{{ 'שעות פעילות' if language == 'he' else 'Working Hours' }}</h6>
+                            <div class="hours-list-accordion">
+                                {% for hours in branch.working_hours %}
+                                {% if not hours.is_closed %}
+                                <div class="hours-item-accordion">
+                                    <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
+                                    <span class="time-range">{{ hours.open_time }} - {{ hours.close_time }}</span>
+                                </div>
+                                {% else %}
+                                <div class="hours-item-accordion">
+                                    <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
+                                    <span class="time-range text-muted">{{ 'סגור' if language == 'he' else 'Closed' }}</span>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
                             </div>
-                            {% else %}
-                            <div class="hours-item">
-                                <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
-                                <span class="time-range closed">{{ 'סגור' if language == 'he' else 'Closed' }}</span>
-                            </div>
-                            {% endif %}
-                            {% endfor %}
                         </div>
-                    </div>
-                    {% endif %}
-                    {% if branch.waze_link or branch.google_maps_link %}
-                    <div class="branch-actions mt-3">
-                        {% if branch.waze_link %}
-                        <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
-                            <i class="fab fa-waze"></i> Waze
-                        </a>
                         {% endif %}
-                        {% if branch.google_maps_link %}
-                        <a href="{{ branch.google_maps_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-map"></i> Google Maps
-                        </a>
+                        {% if branch.waze_link or branch.google_maps_link %}
+                        <div class="branch-actions-accordion mt-3">
+                            {% if branch.waze_link %}
+                            <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-primary me-2">
+                                <i class="fab fa-waze"></i> Waze
+                            </a>
+                            {% endif %}
+                            {% if branch.google_maps_link %}
+                            <a href="{{ branch.google_maps_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-map"></i> Google Maps
+                            </a>
+                            {% endif %}
+                        </div>
                         {% endif %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
             {% endfor %}

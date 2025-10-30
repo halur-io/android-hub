@@ -375,168 +375,165 @@ html {
     border-color: var(--primary-color);
 }
 
-/* Enhanced Footer */
-.footer-enhanced {
+/* Compact Footer */
+.footer-compact {
     background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
     color: #fff;
+    border-top: 2px solid var(--primary-color);
 }
 
-.footer-main {
-    padding: 4rem 0 2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.footer-logo {
-    height: 60px;
+.footer-logo-small {
+    height: 40px;
     width: auto;
     filter: brightness(0) invert(1);
-}
-
-.footer-brand-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.8rem;
-    font-weight: 700;
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 1rem;
-}
-
-.footer-description {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 1rem;
-    line-height: 1.6;
-}
-
-.footer-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 1.5rem;
-    position: relative;
-    padding-bottom: 0.75rem;
-}
-
-.footer-title::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 50px;
-    height: 3px;
-    background: var(--gold-gradient);
-}
-
-.rtl .footer-title::after {
-    left: auto;
-    right: 0;
-}
-
-.footer-branch-item {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.footer-branch-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.branch-name-footer {
-    color: var(--primary-color);
-    font-size: 1.1rem;
-    font-weight: 600;
     margin-bottom: 0.5rem;
 }
 
-.branch-detail {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.95rem;
-    margin-bottom: 0.4rem;
-}
-
-.branch-detail i {
+.footer-brand-small {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 600;
     color: var(--primary-color);
-}
-
-.footer-link {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-.footer-link:hover {
-    color: var(--primary-color);
-}
-
-.footer-links {
-    list-style: none;
-    padding: 0;
     margin: 0;
 }
 
-.footer-links li {
-    margin-bottom: 0.75rem;
-}
-
-.footer-links a {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    transition: all 0.3s;
-    display: inline-flex;
-    align-items: center;
-}
-
-.footer-links a:hover {
-    color: var(--primary-color);
-    padding-left: 10px;
-}
-
-.rtl .footer-links a:hover {
-    padding-left: 0;
-    padding-right: 10px;
-}
-
-.footer-links i {
-    color: var(--primary-color);
-}
-
-.footer-social {
+.footer-social-compact {
     display: flex;
     gap: 1rem;
+    justify-content: center;
 }
 
-.social-icon {
-    width: 45px;
-    height: 45px;
+.social-icon-compact {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     text-decoration: none;
     transition: all 0.3s;
 }
 
-.social-icon:hover {
+.social-icon-compact:hover {
     background: var(--gold-gradient);
-    transform: translateY(-5px);
+    transform: scale(1.1);
     color: #fff;
 }
 
-.footer-bottom {
-    padding: 1.5rem 0;
-    background: #000;
+.footer-copyright {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin: 0;
 }
 
-.footer-bottom p {
-    color: rgba(255, 255, 255, 0.6);
+/* Branches Accordion */
+.branches-accordion {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.branch-accordion-item {
+    border: none;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.branch-accordion-button {
+    background: white;
+    color: #333;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    padding: 1.5rem;
+    border: none;
+    transition: all 0.3s;
+}
+
+.branch-accordion-button:not(.collapsed) {
+    background: var(--gold-gradient);
+    color: white;
+    box-shadow: none;
+}
+
+.branch-accordion-button:focus {
+    box-shadow: none;
+    border: none;
+}
+
+.branch-accordion-button i {
+    color: var(--primary-color);
+}
+
+.branch-accordion-button:not(.collapsed) i {
+    color: white;
+}
+
+.branch-accordion-body {
+    padding: 1.5rem;
+    background: #f8f9fa;
+}
+
+.branch-detail-accordion {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 0.75rem;
+}
+
+.branch-detail-accordion i {
+    color: var(--primary-color);
+}
+
+.branch-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.branch-link:hover {
+    text-decoration: underline;
+}
+
+.hours-title-accordion {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+}
+
+.hours-list-accordion {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.hours-item-accordion {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.hours-item-accordion:last-child {
+    border-bottom: none;
+}
+
+.hours-item-accordion .day-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.hours-item-accordion .time-range {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.branch-actions-accordion .btn {
     font-size: 0.9rem;
 }
 

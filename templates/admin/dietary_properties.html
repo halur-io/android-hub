@@ -175,7 +175,8 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/admin/menu/dietary-properties/toggle/${propertyId}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({
                     is_active: isActive
@@ -184,7 +185,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => {
                 console.log('Response status:', response.status);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json().then(err => {
+                        throw new Error(err.error || `שגיאה בשרת (${response.status})`);
+                    });
                 }
                 return response.json();
             })
@@ -203,14 +206,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.querySelector('.container-fluid').insertBefore(successAlert, document.querySelector('.row'));
                     setTimeout(() => successAlert.remove(), 3000);
                 } else {
-                    throw new Error('Server returned success: false');
+                    throw new Error(data.error || 'שגיאה לא ידועה');
                 }
             })
             .catch(error => {
                 console.error('Toggle error:', error);
                 // Revert toggle if failed
                 this.checked = !isActive;
-                alert('שגיאה בעדכון הסטטוס: ' + error.message);
+                
+                // Show user-friendly error message
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                errorAlert.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    שגיאה בעדכון הסטטוס: ${error.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(errorAlert, document.querySelector('.row'));
+                setTimeout(() => errorAlert.remove(), 5000);
             });
         });
     });
@@ -225,20 +238,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 fetch(`{{ url_for("admin.delete_dietary_property", id=0) }}`.replace('0', propertyId), {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'שגיאה במחיקת התכונה');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         location.reload();
                     } else {
-                        alert('שגיאה במחיקת התכונה');
+                        throw new Error(data.error || 'שגיאה במחיקת התכונה');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('שגיאה במחיקת התכונה');
+                    const errorAlert = document.createElement('div');
+                    errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                    errorAlert.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${error.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.querySelector('.container-fluid').insertBefore(errorAlert, document.querySelector('.row'));
+                    setTimeout(() => errorAlert.remove(), 5000);
                 });
             }
         });

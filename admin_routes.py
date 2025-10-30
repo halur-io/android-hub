@@ -13,6 +13,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, URL, Optional
 from sqlalchemy.orm import joinedload
+from PIL import Image
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -1828,7 +1829,7 @@ def gallery():
 @admin_bp.route('/gallery/upload-single', methods=['POST'])
 @login_required
 def upload_single_gallery():
-    """Upload ONE image at a time - much faster and more reliable"""
+    """Upload ONE image at a time with automatic resizing for performance"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
@@ -1842,14 +1843,42 @@ def upload_single_gallery():
             return jsonify({'error': 'Invalid file type'}), 400
         
         filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')  # More unique timestamp
-        filename = f"gallery_{timestamp}_{filename}"
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        
+        # Always save as .jpg for consistency and smaller size
+        base_name = filename.rsplit('.', 1)[0]
+        filename = f"gallery_{timestamp}_{base_name}.jpg"
         
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         
-        # Save file directly - no processing
-        file.save(filepath)
+        # Resize and optimize image for web
+        try:
+            img = Image.open(file.stream)
+            
+            # Convert RGBA to RGB if needed (for PNG with transparency)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            
+            # Resize if too large - max 1920px width for web
+            max_width = 1920
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Save with optimization - 85% quality is great for web
+            img.save(filepath, 'JPEG', quality=85, optimize=True)
+            
+        except Exception as img_error:
+            current_app.logger.error(f"Image processing error: {str(img_error)}")
+            # Fall back to saving original file if processing fails
+            file.seek(0)
+            file.save(filepath)
         
         # Create database entry
         photo = GalleryPhoto(

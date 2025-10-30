@@ -8,6 +8,7 @@ import logging
 import os
 
 @app.route('/')
+@app.route('/menu')
 def index():
     # Serve the React app
     return send_from_directory('static/dist', 'index.html')

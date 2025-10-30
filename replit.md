@@ -75,8 +75,8 @@ Preferred communication style: Simple, everyday language.
 -   **Cart System**: Client-side cart management using localStorage with server-side order processing ready for integration.
 
 ### Latest Updates (October 30, 2025 - Evening)
--   **Hero Video**: Integrated user-uploaded restaurant video (converted from .mov to .mp4 format, located at `static/videos/hero.mp4`).
--   **Logo Integration**: Added restaurant logo (`sumo-logo.png`) to navbar with responsive sizing.
+-   **Hero Video**: Integrated user-uploaded restaurant video (converted from .mov to .mp4 format, located at `static/videos/hero-video.mp4`).
+-   **Logo Integration**: Added restaurant logo (`sumo-logo.png`) to navbar with responsive sizing (50px on mobile).
 -   **Dynamic Sections System**:
     -   Created `CustomSection` model for admin-controlled homepage sections.
     -   Supports three content types: plain text, HTML, and embedded content (iframes).
@@ -86,13 +86,22 @@ Preferred communication style: Simple, everyday language.
     -   Connected to external reservation system: `https://tbit.be/BHWCPU`.
     -   Admin can enable/disable, customize button text, and control visibility.
 -   **Branch Enhancements**:
+    -   Converted branch display to **Bootstrap Accordion** (collapsible sections) with elegant gold-accented design.
     -   Integrated existing `WorkingHours` model display on homepage.
     -   Updated Waze navigation link to user-specific URL: `https://waze.com/ul/hsvc5ksnm1`.
-    -   Branch cards now show: name, address, phone, working hours, and navigation buttons.
--   **Floating Action Buttons (FABs)**:
-    -   Navigate button (gold gradient) - Opens Waze with branch address.
-    -   Call button (green gradient) - Direct phone call to restaurant.
-    -   Mobile-responsive positioning with RTL support.
+    -   Branch sections show: name, address, phone, working hours, and navigation buttons.
+-   **Footer Redesign**:
+    -   Simplified footer to **single-row compact design** containing only logo, social icons, and copyright.
+    -   Removed excessive multi-column content for cleaner appearance.
+-   **Menu Images System**:
+    -   Added ability to display uploaded menu images instead of text-based menu items.
+    -   Uses existing `MediaFile` model with `section='menu'`.
+    -   Full-screen **lightbox modal** functionality for zooming in on menu images.
+    -   Falls back to traditional category-based menu items when no images are uploaded.
+-   **Mobile Bottom Navigation**:
+    -   Fixed persistent bottom navigation bar (visible on screens <768px).
+    -   Contains 3 prominent action buttons: Table Reservation, Call, and Order.
+    -   Gold gradient styling matching the site's premium design.
 -   **Mobile Optimization**:
     -   100% mobile-responsive design across all breakpoints (768px, 576px).
     -   Responsive hero buttons, navigation menu, and section layouts.

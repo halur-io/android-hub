@@ -135,6 +135,10 @@ class SiteSettings(db.Model):
     enable_english_language = db.Column(db.Boolean, default=True)
     enable_delivery = db.Column(db.Boolean, default=True)
     enable_pickup = db.Column(db.Boolean, default=True)
+    enable_menu_display = db.Column(db.Boolean, default=True)
+    enable_gallery = db.Column(db.Boolean, default=True)
+    enable_contact_form = db.Column(db.Boolean, default=True)
+    enable_table_reservations = db.Column(db.Boolean, default=True)
     
     # Order Settings
     minimum_order_amount = db.Column(db.Float, default=50)

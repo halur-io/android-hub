@@ -102,8 +102,18 @@ Preferred communication style: Simple, everyday language.
     -   Fixed persistent bottom navigation bar (visible on screens <768px).
     -   Contains 3 prominent action buttons: Table Reservation, Call, and Order.
     -   Gold gradient styling matching the site's premium design.
+-   **Interactive Backgrounds & Dividers**:
+    -   **Wave Dividers**: SVG wave transitions between major sections for smooth visual flow.
+    -   **Floating Shapes**: Animated geometric shapes in background (20s animation cycle) on About section.
+    -   **Gradient Overlays**: Subtle radial gradients on Featured Menu section.
+    -   **Animated Center Divider**: Rotating gold icon divider with horizontal lines between sections.
+    -   **Pattern Background**: Geometric pattern overlay on Branches section.
+    -   **Gold Gradient Effect**: Rotating radial gradient on Table Reservation section.
+    -   **Curved Dividers**: SVG curved transitions for elegant section separations.
+    -   All effects are CSS-only for optimal performance and fully mobile responsive.
 -   **Mobile Optimization**:
     -   100% mobile-responsive design across all breakpoints (768px, 576px).
     -   Responsive hero buttons, navigation menu, and section layouts.
     -   Optimized font sizes, spacing, and button widths for mobile devices.
     -   Full-width buttons on mobile with centered layouts.
+    -   Interactive backgrounds automatically scale and reduce opacity on mobile devices.

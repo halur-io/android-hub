@@ -1828,33 +1828,52 @@ def gallery():
 @admin_bp.route('/gallery/upload', methods=['POST'])
 @login_required
 def upload_gallery():
-    if 'files[]' not in request.files:
-        return jsonify({'error': 'No files provided'}), 400
+    try:
+        current_app.logger.info("Gallery upload started")
+        
+        if 'files[]' not in request.files:
+            current_app.logger.error("No files[] in request")
+            return jsonify({'error': 'No files provided'}), 400
+        
+        files = request.files.getlist('files[]')
+        current_app.logger.info(f"Received {len(files)} files")
+        
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'error': 'No files selected'}), 400
+        
+        uploaded = []
+        
+        for file in files:
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"gallery_{timestamp}_{filename}"
+                
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                
+                current_app.logger.info(f"Saving file: {filename}")
+                file.save(filepath)
+                
+                photo = GalleryPhoto(
+                    file_path=f'/static/uploads/{filename}',
+                    caption_he=request.form.get('caption_he', ''),
+                    caption_en=request.form.get('caption_en', ''),
+                    display_order=GalleryPhoto.query.count()
+                )
+                db.session.add(photo)
+                uploaded.append(photo.file_path)
+            else:
+                current_app.logger.warning(f"Invalid file: {file.filename if file else 'None'}")
+        
+        db.session.commit()
+        current_app.logger.info(f"Successfully uploaded {len(uploaded)} files")
+        return jsonify({'success': True, 'uploaded': uploaded, 'count': len(uploaded)})
     
-    files = request.files.getlist('files[]')
-    uploaded = []
-    
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"gallery_{timestamp}_{filename}"
-            
-            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            file.save(filepath)
-            
-            photo = GalleryPhoto(
-                file_path=f'/static/uploads/{filename}',
-                caption_he=request.form.get('caption_he', ''),
-                caption_en=request.form.get('caption_en', ''),
-                display_order=GalleryPhoto.query.count()
-            )
-            db.session.add(photo)
-            uploaded.append(photo.file_path)
-    
-    db.session.commit()
-    return jsonify({'success': True, 'uploaded': uploaded})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Gallery upload error: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 # Checklist Management
 @admin_bp.route('/checklist')

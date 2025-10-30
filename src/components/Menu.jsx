@@ -97,18 +97,23 @@ const Menu = ({ language }) => {
                       </p>
                     )}
 
-                    {item.dietary_properties.length > 0 && (
+                    {item.dietary_properties && item.dietary_properties.length > 0 && (
                       <div className="menu-item-properties">
-                        {item.dietary_properties.map(prop => (
-                          <span
-                            key={prop.id}
-                            className="dietary-property"
-                            style={{ color: prop.color }}
-                            title={language === 'he' ? prop.name_he : prop.name_en}
-                          >
-                            <i className={`fas fa-${prop.icon}`}></i>
-                          </span>
-                        ))}
+                        {item.dietary_properties.map(prop => {
+                          const iconClass = prop.icon && prop.icon.startsWith('fa-') 
+                            ? prop.icon 
+                            : `fa-${prop.icon || 'circle'}`;
+                          return (
+                            <span
+                              key={prop.id}
+                              className="dietary-property"
+                              style={{ color: prop.color }}
+                              title={language === 'he' ? prop.name_he : prop.name_en}
+                            >
+                              <i className={`fas ${iconClass}`}></i>
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

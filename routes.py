@@ -17,30 +17,6 @@ def demo():
     """Demo page showing dynamic content from admin"""
     return render_template('demo.html')
 
-@app.route('/menu')
-def menu():
-    """Dynamic menu page with database content"""
-    # Get active categories with their items
-    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
-    
-    # Get active items with dietary properties eagerly loaded
-    items_by_category = {}
-    for category in categories:
-        items = MenuItem.query.options(joinedload(MenuItem.dietary_properties))\
-            .filter_by(category_id=category.id, is_available=True)\
-            .order_by(MenuItem.display_order)\
-            .all()
-        if items:
-            items_by_category[category.id] = items
-    
-    # Get branch info (use first active branch)
-    branch = Branch.query.filter_by(is_active=True).first()
-    
-    return render_template('menu.html', 
-                         categories=categories, 
-                         items_by_category=items_by_category,
-                         branch=branch)
-
 @app.route('/assets/<path:path>')
 def serve_assets(path):
     return send_from_directory('static/dist/assets', path)

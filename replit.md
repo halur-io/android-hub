@@ -91,7 +91,35 @@ Preferred communication style: Simple, everyday language.
 -   **Public Website Structure**: Created 5 main pages (Home, Menu, Order, Gallery, Contact) all controlled via admin panel settings.
 -   **Cart System**: Client-side cart management using localStorage with server-side order processing ready for integration.
 
-### Latest Updates (October 30, 2025 - Evening)
+### Latest Updates (October 30, 2025 - Night)
+-   **Gallery Image Optimization**: Implemented automatic image resizing on upload
+    -   All images compressed to max 1920px width with 85% JPEG quality
+    -   Batch resize script converted 17 existing images: 2.2MB-9MB → 0.2MB-0.8MB (85-94% size reduction)
+    -   Sequential single-file upload system for reliability (prevents gunicorn worker timeouts)
+    -   Automatic PNG→JPEG conversion with white background for transparency handling
+-   **Admin Feature Toggles Expansion**: Added comprehensive on/off controls in SiteSettings:
+    -   `enable_menu_display` - Show/hide entire menu section
+    -   `enable_gallery` - Show/hide gallery page
+    -   `enable_contact_form` - Show/hide contact page
+    -   `enable_table_reservations` - Show/hide table reservation features
+    -   All toggles integrated into footer sitemap and navigation
+-   **Hero Video Desktop Fix**: Changed `object-fit` from `contain` to `cover` with 1.1x scale transform
+    -   Desktop: Full-screen video coverage with slight zoom for cinematic effect
+    -   Mobile: Maintains `contain` view for portrait video compatibility
+-   **Branch Accordion UX**: All branches now collapsed by default (removed auto-expand on first item)
+-   **Footer Sitemap Redesign**: Replaced compact footer with comprehensive 4-column sitemap:
+    -   Column 1: About (logo, tagline, social icons with navy/red hover effects)
+    -   Column 2: Quick Links (all pages with feature toggle respect)
+    -   Column 3: Information (Terms of Use, About, Locations, language toggle)
+    -   Column 4: Contact (phone, address, WhatsApp with icon accents)
+    -   Fully responsive with centered mobile layout
+-   **Terms of Use Page**: Created complete legal page system:
+    -   New `TermsOfUse` model with Hebrew/English bilingual content
+    -   Pre-populated with comprehensive Israeli restaurant ToU template
+    -   Accessible at `/terms` route with elegant card-based layout
+    -   Fully integrated into footer sitemap
+
+### Previous Updates (October 30, 2025 - Evening)
 -   **Hero Video**: Integrated user-uploaded restaurant video with balanced performance optimization:
     -   Original: 55MB (1440x2560 portrait) → Mobile: 7.4MB (720x1280, CRF 23) | Desktop: 23MB (1080x1920, CRF 20)
     -   Poster image: 144KB for instant display while video loads

@@ -1,0 +1,116 @@
+{% extends 'public/base.html' %}
+
+{% block title %}{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title animate-fade-in">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</h1>
+        <p class="page-subtitle animate-fade-in-delay">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</p>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="terms-content card shadow-sm p-5">
+                    {% if terms %}
+                        {{ terms.content_he|safe if language == 'he' else terms.content_en|safe }}
+                    {% else %}
+                        <p class="text-muted text-center">
+                            {{ 'תנאי השימוש יתעדכנו בקרוב' if language == 'he' else 'Terms of Use will be updated soon' }}
+                        </p>
+                    {% endif %}
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-{{ 'right' if language == 'he' else 'left' }} me-2"></i>
+                        {{ 'חזרה לדף הבית' if language == 'he' else 'Back to Home' }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.page-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 6rem 0 4rem;
+    margin-top: 70px;
+    text-align: center;
+}
+
+.page-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.page-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.terms-content {
+    background: white;
+    border-radius: 15px;
+    line-height: 1.8;
+}
+
+.terms-content h3 {
+    color: var(--primary-color);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.terms-content h4 {
+    color: var(--primary-color);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.2rem;
+}
+
+.terms-content p {
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+.terms-content ul {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+}
+
+.terms-content ul li {
+    margin-bottom: 0.5rem;
+}
+
+.terms-content small {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        padding: 5rem 0 3rem;
+        margin-top: 60px;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .page-subtitle {
+        font-size: 1rem;
+    }
+    
+    .terms-content {
+        padding: 2rem !important;
+    }
+}
+</style>
+{% endblock %}

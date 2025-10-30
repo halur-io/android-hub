@@ -2,7 +2,7 @@ from flask import render_template, request, flash, redirect, url_for, jsonify, s
 from flask_mail import Message
 from app import app, mail
 from forms import ContactForm, ReservationForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, GalleryPhoto
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -139,6 +139,18 @@ def gallery_page():
     return render_template('public/gallery.html',
                          **context,
                          gallery_images=gallery_images)
+
+@app.route('/terms')
+def terms_page():
+    """Terms of Use page"""
+    context = get_context_data()
+    
+    # Get the active terms of use
+    terms = TermsOfUse.query.filter_by(is_active=True).first()
+    
+    return render_template('public/terms.html',
+                         **context,
+                         terms=terms)
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact_page():

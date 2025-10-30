@@ -142,6 +142,40 @@ class SiteSettings(db.Model):
     
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+# Custom Sections (Dynamic Sections for Homepage)
+class CustomSection(db.Model):
+    __tablename__ = 'custom_sections'
+    id = db.Column(db.Integer, primary_key=True)
+    title_he = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200), nullable=False)
+    content_he = db.Column(db.Text)
+    content_en = db.Column(db.Text)
+    section_type = db.Column(db.String(50), default='text')  # text, html, embed
+    embed_code = db.Column(db.Text)  # For iframe or external embeds
+    background_color = db.Column(db.String(20), default='#ffffff')
+    text_color = db.Column(db.String(20), default='#333333')
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    show_on_homepage = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# Reservation Settings
+class ReservationSettings(db.Model):
+    __tablename__ = 'reservation_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    enable_reservations = db.Column(db.Boolean, default=True)
+    reservation_system_url = db.Column(db.String(500))  # External reservation system URL
+    reservation_button_text_he = db.Column(db.String(100), default='הזמינו שולחן')
+    reservation_button_text_en = db.Column(db.String(100), default='Reserve a Table')
+    section_title_he = db.Column(db.String(200), default='הזמנת שולחן')
+    section_title_en = db.Column(db.String(200), default='Table Reservation')
+    section_description_he = db.Column(db.Text, default='הזמינו שולחן מראש ותיהנו מחוויה מושלמת')
+    section_description_en = db.Column(db.Text, default='Reserve a table in advance and enjoy the perfect experience')
+    show_on_homepage = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=5)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 # Media Files
 class MediaFile(db.Model):
     __tablename__ = 'media_files'

@@ -124,6 +124,26 @@
                         <a href="tel:{{ branch.phone }}">{{ branch.phone }}</a>
                     </p>
                     {% endif %}
+                    {% if branch.working_hours %}
+                    <div class="working-hours mt-3">
+                        <h6 class="hours-title">{{ 'שעות פעילות' if language == 'he' else 'Working Hours' }}</h6>
+                        <div class="hours-list">
+                            {% for hours in branch.working_hours %}
+                            {% if not hours.is_closed %}
+                            <div class="hours-item">
+                                <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
+                                <span class="time-range">{{ hours.open_time }} - {{ hours.close_time }}</span>
+                            </div>
+                            {% else %}
+                            <div class="hours-item">
+                                <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
+                                <span class="time-range closed">{{ 'סגור' if language == 'he' else 'Closed' }}</span>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                     {% if branch.waze_link or branch.google_maps_link %}
                     <div class="branch-actions mt-3">
                         {% if branch.waze_link %}
@@ -145,6 +165,51 @@
     </div>
 </section>
 {% endif %}
+
+<!-- Table Reservation Section -->
+{% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage %}
+<section class="section reservation-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 text-center text-lg-start">
+                <h2 class="reservation-title">{{ reservation_settings.section_title_he if language == 'he' else reservation_settings.section_title_en }}</h2>
+                <p class="reservation-subtitle">{{ reservation_settings.section_description_he if language == 'he' else reservation_settings.section_description_en }}</p>
+            </div>
+            <div class="col-lg-4 text-center text-lg-end">
+                {% if reservation_settings.reservation_system_url %}
+                <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn btn-reservation btn-lg">
+                    <i class="fas fa-calendar-check"></i> {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Dynamic Custom Sections -->
+{% for section in custom_sections %}
+<section class="section custom-section" style="background-color: {{ section.background_color }}; color: {{ section.text_color }};">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 class="section-title">{{ section.title_he if language == 'he' else section.title_en }}</h2>
+        </div>
+        {% if section.section_type == 'text' %}
+        <div class="section-content">
+            <p>{{ section.content_he if language == 'he' else section.content_en }}</p>
+        </div>
+        {% elif section.section_type == 'html' %}
+        <div class="section-content">
+            {{ (section.content_he if language == 'he' else section.content_en) | safe }}
+        </div>
+        {% elif section.section_type == 'embed' and section.embed_code %}
+        <div class="section-content embed-content">
+            {{ section.embed_code | safe }}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endfor %}
 
 <!-- Contact CTA Section -->
 <section class="section contact-cta">

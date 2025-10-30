@@ -2,7 +2,7 @@ from flask import render_template, request, flash, redirect, url_for, jsonify, s
 from flask_mail import Message
 from app import app, mail
 from forms import ContactForm, ReservationForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -60,11 +60,24 @@ def index():
         is_active=True
     ).order_by(MediaFile.display_order).limit(6).all()
     
+    # Get reservation settings
+    reservation_settings = ReservationSettings.query.first()
+    if not reservation_settings:
+        reservation_settings = ReservationSettings()
+    
+    # Get custom sections
+    custom_sections = CustomSection.query.filter_by(
+        is_active=True,
+        show_on_homepage=True
+    ).order_by(CustomSection.display_order).all()
+    
     return render_template('public/index.html',
                          **context,
                          hero_video=hero_video,
                          featured_items=featured_items,
-                         gallery_images=gallery_images)
+                         gallery_images=gallery_images,
+                         reservation_settings=reservation_settings,
+                         custom_sections=custom_sections)
 
 @app.route('/menu')
 def menu_page():

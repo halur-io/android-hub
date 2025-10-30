@@ -3,13 +3,21 @@
 {% block content %}
 <!-- Hero Section with Video -->
 <section class="hero-section">
-    <!-- Hero Video -->
-    <video class="hero-video" autoplay loop muted playsinline>
+    <!-- Hero Video - Optimized for Mobile -->
+    <video 
+        class="hero-video" 
+        autoplay 
+        loop 
+        muted 
+        playsinline
+        poster="{{ url_for('static', filename='images/hero-poster.jpg') }}"
+        preload="metadata"
+        data-mobile-src="{{ url_for('static', filename='videos/hero-mobile.mp4') }}"
+        data-desktop-src="{{ url_for('static', filename='videos/hero-desktop.mp4') }}"
         {% if hero_video %}
-        <source src="{{ url_for('static', filename='uploads/' + hero_video.filename) }}" type="video/mp4">
-        {% else %}
-        <source src="{{ url_for('static', filename='videos/hero.mp4') }}" type="video/mp4">
-        {% endif %}
+        data-custom-src="{{ url_for('static', filename='uploads/' + hero_video.filename) }}"
+        {% endif %}>
+        <!-- Source will be set by JavaScript for proper responsive loading -->
     </video>
     
     <div class="hero-overlay"></div>
@@ -314,6 +322,70 @@
 
 {% block extra_js %}
 <script>
+// Smart Video Loading - Optimize for slow connections
+document.addEventListener('DOMContentLoaded', function() {
+    const heroVideo = document.querySelector('.hero-video');
+    
+    if (heroVideo) {
+        // Check if user prefers reduced motion
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        // Check connection speed if available
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const slowConnection = connection && (
+            connection.effectiveType === 'slow-2g' || 
+            connection.effectiveType === '2g' ||
+            connection.saveData === true
+        );
+        
+        // Select appropriate video source
+        function selectVideoSource() {
+            const isMobile = window.innerWidth <= 768;
+            const customSrc = heroVideo.dataset.customSrc;
+            const mobileSrc = heroVideo.dataset.mobileSrc;
+            const desktopSrc = heroVideo.dataset.desktopSrc;
+            
+            // Priority: 1. Custom uploaded video, 2. Responsive default
+            let selectedSrc;
+            if (customSrc) {
+                selectedSrc = customSrc;
+            } else {
+                selectedSrc = isMobile ? mobileSrc : desktopSrc;
+            }
+            
+            // Only load if not on slow connection
+            if (!slowConnection && !prefersReducedMotion) {
+                heroVideo.src = selectedSrc;
+                heroVideo.load();
+                console.log('Hero video loaded:', isMobile ? 'mobile' : 'desktop', 'version');
+            } else {
+                console.log('Hero video disabled for better performance');
+                heroVideo.removeAttribute('autoplay');
+            }
+        }
+        
+        // Initial load
+        selectVideoSource();
+        
+        // Handle window resize for responsive switching
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                const currentSrc = heroVideo.src;
+                const isMobile = window.innerWidth <= 768;
+                const expectedSrc = isMobile ? heroVideo.dataset.mobileSrc : heroVideo.dataset.desktopSrc;
+                
+                // Only reload if source should change (and no custom video)
+                if (!heroVideo.dataset.customSrc && currentSrc && !currentSrc.includes(expectedSrc)) {
+                    heroVideo.src = expectedSrc;
+                    heroVideo.load();
+                }
+            }, 500);
+        });
+    }
+});
+
 function addToCart(itemId, itemName, price) {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     const existingItem = cart.find(item => item.id === itemId);

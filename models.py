@@ -129,6 +129,17 @@ class SiteSettings(db.Model):
     facebook_url = db.Column(db.String(255))
     instagram_url = db.Column(db.String(255))
     whatsapp_number = db.Column(db.String(20))
+    
+    # Feature Toggles
+    enable_online_ordering = db.Column(db.Boolean, default=True)
+    enable_english_language = db.Column(db.Boolean, default=True)
+    enable_delivery = db.Column(db.Boolean, default=True)
+    enable_pickup = db.Column(db.Boolean, default=True)
+    
+    # Order Settings
+    minimum_order_amount = db.Column(db.Float, default=50)
+    tax_rate = db.Column(db.Float, default=0.17)  # 17% VAT in Israel
+    
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Media Files
@@ -1159,3 +1170,31 @@ class MenuPrintConfiguration(db.Model):
 
     def __repr__(self):
         return f'<MenuPrintConfiguration {self.name}>'
+
+# Payment Configuration
+class PaymentConfiguration(db.Model):
+    __tablename__ = 'payment_configuration'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Payment Provider Settings
+    provider_name = db.Column(db.String(50), nullable=False)  # stripe, max, bit, etc.
+    is_active = db.Column(db.Boolean, default=False)
+    display_name_he = db.Column(db.String(100))
+    display_name_en = db.Column(db.String(100))
+    display_order = db.Column(db.Integer, default=0)
+    
+    # API Configuration (stored securely)
+    api_key = db.Column(db.String(500))
+    api_secret = db.Column(db.String(500))
+    merchant_id = db.Column(db.String(200))
+    additional_config = db.Column(db.JSON)  # Provider-specific settings
+    
+    # Settings
+    min_order_amount = db.Column(db.Float, default=0)
+    max_order_amount = db.Column(db.Float)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<PaymentConfiguration {self.provider_name}>'

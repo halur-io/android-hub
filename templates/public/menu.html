@@ -1,0 +1,91 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'תפריט' if language == 'he' else 'Menu' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div> <!-- Spacer for fixed navbar -->
+
+<section class="section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h1 class="section-title">{{ 'התפריט שלנו' if language == 'he' else 'Our Menu' }}</h1>
+            <p class="section-subtitle">{{ 'גלה את המגוון הרחב של מנותינו' if language == 'he' else 'Discover our wide selection of dishes' }}</p>
+        </div>
+        
+        {% for category in categories %}
+        <div class="mb-5" id="category-{{ category.id }}">
+            <h2 class="mb-4">
+                {% if category.icon %}
+                <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="color: {{ category.color }}"></i>
+                {% endif %}
+                {{ category.name_he if language == 'he' else category.name_en }}
+            </h2>
+            
+            {% if category.description_he or category.description_en %}
+            <p class="text-muted mb-4">{{ category.description_he if language == 'he' else category.description_en }}</p>
+            {% endif %}
+            
+            <div class="menu-grid">
+                {% for item in category.items %}
+                <div class="menu-card">
+                    {% if item.image_path %}
+                    <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" alt="{{ item.name_he if language == 'he' else item.name_en }}" class="menu-card-img">
+                    {% else %}
+                    <div class="menu-card-img" style="background: linear-gradient(135deg, {{ category.color or '#667eea' }} 0%, #764ba2 100%);"></div>
+                    {% endif %}
+                    
+                    <div class="menu-card-body">
+                        <h3 class="menu-card-title">{{ item.name_he if language == 'he' else item.name_en }}</h3>
+                        <p class="menu-card-desc">{{ item.description_he if language == 'he' else item.description_en }}</p>
+                        
+                        {% if item.dietary_properties %}
+                        <div class="dietary-icons">
+                            {% for prop in item.dietary_properties %}
+                            <span class="dietary-icon" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
+                                <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="menu-card-price">₪{{ item.base_price }}</div>
+                        
+                        {% if settings.enable_online_ordering %}
+                        <button class="btn btn-primary w-100" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
+                            {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addToCart(itemId, itemName, price) {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItem = cart.find(item => item.id === itemId);
+    
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+        cart.push({
+            id: itemId,
+            name: itemName,
+            price: price,
+            quantity: 1
+        });
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartCount();
+    
+    alert('{{ "נוסף להזמנה!" if language == "he" else "Added to cart!" }}');
+}
+</script>
+{% endblock %}

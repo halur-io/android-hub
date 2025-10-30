@@ -1,26 +1,150 @@
-from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory
+from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory, session
 from flask_mail import Message
 from app import app, mail
 from forms import ContactForm, ReservationForm
-from models import MenuCategory, MenuItem, Branch
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile
 from sqlalchemy.orm import joinedload
 import logging
 import os
 
+def get_language():
+    """Get current language from session or query param"""
+    if 'lang' in request.args:
+        session['language'] = request.args.get('lang')
+    return session.get('language', 'he')
+
+def get_context_data():
+    """Get common context data for all pages"""
+    settings = SiteSettings.query.first()
+    if not settings:
+        settings = SiteSettings()
+    
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    language = get_language()
+    
+    return {
+        'settings': settings,
+        'branches': branches,
+        'language': language
+    }
+
 @app.route('/')
-@app.route('/menu')
 def index():
-    # Serve the React app
-    return send_from_directory('static/dist', 'index.html')
+    """Homepage with hero video"""
+    context = get_context_data()
+    
+    # Get hero video
+    hero_video = MediaFile.query.filter_by(
+        section='hero',
+        file_type='video',
+        is_active=True
+    ).order_by(MediaFile.display_order).first()
+    
+    # Get featured menu items
+    featured_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+        is_signature=True,
+        is_available=True
+    ).order_by(MenuItem.display_order).limit(6).all()
+    
+    # Get gallery preview images
+    gallery_images = MediaFile.query.filter_by(
+        section='gallery',
+        file_type='image',
+        is_active=True
+    ).order_by(MediaFile.display_order).limit(6).all()
+    
+    return render_template('public/index.html',
+                         **context,
+                         hero_video=hero_video,
+                         featured_items=featured_items,
+                         gallery_images=gallery_images)
 
-@app.route('/demo')
-def demo():
-    """Demo page showing dynamic content from admin"""
-    return render_template('demo.html')
+@app.route('/menu')
+def menu_page():
+    """Full menu page"""
+    context = get_context_data()
+    
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    # Get items for each category with dietary properties
+    for category in categories:
+        category.items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+            category_id=category.id,
+            is_available=True
+        ).order_by(MenuItem.display_order).all()
+    
+    return render_template('public/menu.html',
+                         **context,
+                         categories=categories)
 
-@app.route('/assets/<path:path>')
-def serve_assets(path):
-    return send_from_directory('static/dist/assets', path)
+@app.route('/order')
+def order_page():
+    """Online ordering page"""
+    context = get_context_data()
+    
+    if not context['settings'].enable_online_ordering:
+        flash('Online ordering is currently disabled.' if context['language'] == 'en' else 'ההזמנות באינטרנט כרגע מושבתות.', 'warning')
+        return redirect(url_for('index'))
+    
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    for category in categories:
+        category.items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+            category_id=category.id,
+            is_available=True
+        ).order_by(MenuItem.display_order).all()
+    
+    return render_template('public/order.html',
+                         **context,
+                         categories=categories)
+
+@app.route('/gallery')
+def gallery_page():
+    """Gallery page"""
+    context = get_context_data()
+    
+    gallery_images = MediaFile.query.filter_by(
+        section='gallery',
+        file_type='image',
+        is_active=True
+    ).order_by(MediaFile.display_order).all()
+    
+    return render_template('public/gallery.html',
+                         **context,
+                         gallery_images=gallery_images)
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact_page():
+    """Contact page"""
+    context = get_context_data()
+    form = ContactForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            msg = Message(
+                subject=f'Contact from {form.name.data}',
+                recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
+                body=f'''
+New contact message:
+
+Name: {form.name.data}
+Email: {form.email.data}
+Phone: {form.phone.data}
+
+Message:
+{form.message.data}
+'''
+            )
+            mail.send(msg)
+            flash('Message sent successfully!' if context['language'] == 'en' else 'ההודעה נשלחה בהצלחה!', 'success')
+            return redirect(url_for('contact_page'))
+        except Exception as e:
+            logging.error(f'Error sending contact email: {e}')
+            flash('Error sending message.' if context['language'] == 'en' else 'שגיאה בשליחת ההודעה.', 'error')
+    
+    return render_template('public/contact.html',
+                         **context,
+                         form=form)
 
 @app.route('/api/contact', methods=['POST'])
 def contact():

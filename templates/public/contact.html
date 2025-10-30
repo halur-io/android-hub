@@ -1,0 +1,87 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'צור קשר' if language == 'he' else 'Contact Us' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div>
+
+<section class="section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <h1 class="section-title">{{ 'צור קשר' if language == 'he' else 'Contact Us' }}</h1>
+                <p class="section-subtitle">{{ 'נשמח לשמוע ממך' if language == 'he' else 'We would love to hear from you' }}</p>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST" class="contact-form">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control", placeholder="Your name" if language == 'en' else "שמך") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control", placeholder="your@email.com" if language == 'en' else "your@email.com") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.phone.label(class="form-label") }}
+                        {{ form.phone(class="form-control", placeholder="Your phone" if language == 'en' else "מספר טלפון") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.message.label(class="form-label") }}
+                        {{ form.message(class="form-control", rows="5", placeholder="Your message..." if language == 'en' else "הודעתך...") }}
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        {{ 'שלח הודעה' if language == 'he' else 'Send Message' }}
+                    </button>
+                </form>
+            </div>
+            
+            <div class="col-lg-6">
+                <h3 class="mb-4">{{ 'הסניפים שלנו' if language == 'he' else 'Our Branches' }}</h3>
+                
+                {% for branch in branches %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ branch.name_he if language == 'he' else branch.name_en }}</h5>
+                        <p class="card-text">
+                            <i class="fas fa-map-marker-alt"></i> {{ branch.address_he if language == 'he' else branch.address_en }}<br>
+                            <i class="fas fa-phone"></i> {{ branch.phone }}<br>
+                            {% if branch.email %}
+                            <i class="fas fa-envelope"></i> {{ branch.email }}<br>
+                            {% endif %}
+                        </p>
+                        {% if branch.waze_link or branch.google_maps_link %}
+                        <div class="mt-2">
+                            {% if branch.waze_link %}
+                            <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fab fa-waze"></i> Waze
+                            </a>
+                            {% endif %}
+                            {% if branch.google_maps_link %}
+                            <a href="{{ branch.google_maps_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-map"></i> Google Maps
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

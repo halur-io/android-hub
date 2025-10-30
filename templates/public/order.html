@@ -1,0 +1,219 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'הזמנה' if language == 'he' else 'Order Online' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div>
+
+<section class="section">
+    <div class="container">
+        <div class="row">
+            <!-- Menu Section -->
+            <div class="col-lg-8 mb-4">
+                <h1 class="section-title mb-4">{{ 'הזמנה אונליין' if language == 'he' else 'Order Online' }}</h1>
+                
+                <!-- Category Tabs -->
+                <ul class="nav nav-pills mb-4">
+                    {% for category in categories %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if loop.first %}active{% endif %}" data-bs-toggle="pill" href="#cat-{{ category.id }}">
+                            {{ category.name_he if language == 'he' else category.name_en }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <!-- Category Content -->
+                <div class="tab-content">
+                    {% for category in categories %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="cat-{{ category.id }}">
+                        <div class="row">
+                            {% for item in category.items %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ item.name_he if language == 'he' else item.name_en }}</h5>
+                                        <p class="card-text text-muted small">{{ item.description_he if language == 'he' else item.description_en }}</p>
+                                        
+                                        {% if item.dietary_properties %}
+                                        <div class="dietary-icons mb-2">
+                                            {% for prop in item.dietary_properties %}
+                                            <span class="dietary-icon" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
+                                                <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong class="text-primary">₪{{ item.base_price }}</strong>
+                                            <button class="btn btn-sm btn-primary" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
+                                                <i class="fas fa-plus"></i> {{ 'הוסף' if language == 'he' else 'Add' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Cart Section -->
+            <div class="col-lg-4">
+                <div class="card sticky-top" style="top: 90px;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">{{ 'ההזמנה שלך' if language == 'he' else 'Your Order' }}</h5>
+                    </div>
+                    <div class="card-body" id="cart-container">
+                        <div id="cart-empty" class="text-center py-4">
+                            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">{{ 'העגלה ריקה' if language == 'he' else 'Cart is empty' }}</p>
+                        </div>
+                        <div id="cart-items"></div>
+                    </div>
+                    <div class="card-footer" id="cart-footer" style="display: none;">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>{{ 'סכום ביניים' if language == 'he' else 'Subtotal' }}:</span>
+                            <strong id="subtotal">₪0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>{{ 'מע״מ' if language == 'he' else 'Tax' }} (17%):</span>
+                            <strong id="tax">₪0</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>{{ 'סה״כ' if language == 'he' else 'Total' }}:</strong>
+                            <strong class="text-primary" id="total">₪0</strong>
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="proceedToCheckout()">
+                            {{ 'המשך לתשלום' if language == 'he' else 'Proceed to Checkout' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cart = [];
+
+function loadCart() {
+    cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    renderCart();
+    updateCartCount();
+}
+
+function addToCart(itemId, itemName, price) {
+    const existingItem = cart.find(item => item.id === itemId);
+    
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+        cart.push({
+            id: itemId,
+            name: itemName,
+            price: price,
+            quantity: 1
+        });
+    }
+    
+    saveCart();
+}
+
+function removeFromCart(itemId) {
+    cart = cart.filter(item => item.id !== itemId);
+    saveCart();
+}
+
+function updateQuantity(itemId, delta) {
+    const item = cart.find(i => i.id === itemId);
+    if (item) {
+        item.quantity += delta;
+        if (item.quantity <= 0) {
+            removeFromCart(itemId);
+        } else {
+            saveCart();
+        }
+    }
+}
+
+function saveCart() {
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+    updateCartCount();
+}
+
+function renderCart() {
+    const cartEmpty = document.getElementById('cart-empty');
+    const cartItems = document.getElementById('cart-items');
+    const cartFooter = document.getElementById('cart-footer');
+    
+    if (cart.length === 0) {
+        cartEmpty.style.display = 'block';
+        cartItems.innerHTML = '';
+        cartFooter.style.display = 'none';
+        return;
+    }
+    
+    cartEmpty.style.display = 'none';
+    cartFooter.style.display = 'block';
+    
+    let html = '';
+    let subtotal = 0;
+    
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+        
+        html += `
+            <div class="cart-item mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <strong>${item.name}</strong><br>
+                        <small class="text-muted">₪${item.price}</small>
+                    </div>
+                    <button class="btn btn-sm btn-link text-danger" onclick="removeFromCart(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="quantity-controls">
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
+                        <span class="mx-2">${item.quantity}</span>
+                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
+                    </div>
+                    <strong>₪${itemTotal.toFixed(2)}</strong>
+                </div>
+            </div>
+        `;
+    });
+    
+    cartItems.innerHTML = html;
+    
+    const tax = subtotal * {{ settings.tax_rate }};
+    const total = subtotal + tax;
+    
+    document.getElementById('subtotal').textContent = '₪' + subtotal.toFixed(2);
+    document.getElementById('tax').textContent = '₪' + tax.toFixed(2);
+    document.getElementById('total').textContent = '₪' + total.toFixed(2);
+}
+
+function proceedToCheckout() {
+    if (cart.length === 0) {
+        alert('{{ "העגלה ריקה" if language == "he" else "Cart is empty" }}');
+        return;
+    }
+    
+    // Redirect to checkout page (to be implemented)
+    alert('{{ "פונקציונליות תשלום בקרוב..." if language == "he" else "Checkout functionality coming soon..." }}');
+}
+
+document.addEventListener('DOMContentLoaded', loadCart);
+</script>
+{% endblock %}

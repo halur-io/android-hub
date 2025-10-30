@@ -1,0 +1,30 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'גלריה' if language == 'he' else 'Gallery' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div>
+
+<section class="section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h1 class="section-title">{{ 'הגלריה שלנו' if language == 'he' else 'Our Gallery' }}</h1>
+            <p class="section-subtitle">{{ 'מבט אל חוויית הסעדה במסעדת סומו' if language == 'he' else 'A glimpse into the SUMO dining experience' }}</p>
+        </div>
+        
+        {% if gallery_images %}
+        <div class="gallery-grid">
+            {% for image in gallery_images %}
+            <div class="gallery-item">
+                <img src="{{ url_for('static', filename='uploads/' + image.filename) }}" alt="{{ image.caption_he if language == 'he' else image.caption_en }}">
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <p class="text-muted">{{ 'הגלריה עדיין ריקה' if language == 'he' else 'Gallery is empty' }}</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

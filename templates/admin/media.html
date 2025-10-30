@@ -42,6 +42,18 @@
                     </button>
                 </div>
             </div>
+            
+            <!-- Upload Progress -->
+            <div id="uploadProgress" style="display: none;" class="mt-4">
+                <div class="mb-2">
+                    <strong>מעלה קבצים...</strong>
+                    <span id="progressText" class="text-muted"></span>
+                </div>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <div id="fileStatusList" class="list-group"></div>
+            </div>
         </form>
     </div>
 </div>
@@ -108,23 +120,51 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
     const section = this.querySelector('select[name="section"]').value;
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const fileStatusList = document.getElementById('fileStatusList');
     
     if (files.length === 0) {
         alert('אנא בחר לפחות קובץ אחד');
         return;
     }
     
-    // Show loading state
+    // Show progress section
+    progressDiv.style.display = 'block';
+    fileStatusList.innerHTML = '';
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה ' + files.length + ' קבצים...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה...';
     
     let successCount = 0;
     let errorCount = 0;
     let errors = [];
     
+    // Create status items for each file
+    const fileItems = {};
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'list-group-item d-flex justify-content-between align-items-center';
+        itemDiv.innerHTML = `
+            <span><i class="fas fa-clock text-muted me-2"></i> ${file.name}</span>
+            <span class="badge bg-secondary">ממתין</span>
+        `;
+        fileStatusList.appendChild(itemDiv);
+        fileItems[i] = itemDiv;
+    }
+    
     // Upload each file separately
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const itemDiv = fileItems[i];
+        
+        // Update status to uploading
+        itemDiv.innerHTML = `
+            <span><i class="fas fa-spinner fa-spin text-primary me-2"></i> ${file.name}</span>
+            <span class="badge bg-primary">מעלה...</span>
+        `;
+        
         const formData = new FormData();
         formData.append('file', file);
         formData.append('section', section);
@@ -140,31 +180,48 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
             
             if (response.ok && data.success) {
                 successCount++;
+                itemDiv.innerHTML = `
+                    <span><i class="fas fa-check-circle text-success me-2"></i> ${file.name}</span>
+                    <span class="badge bg-success">הועלה בהצלחה</span>
+                `;
             } else {
                 errorCount++;
-                errors.push(file.name + ': ' + (data.error || 'Unknown error'));
-                console.error('Upload error for', file.name, ':', data.error);
+                const errorMsg = data.error || 'Unknown error';
+                errors.push(file.name + ': ' + errorMsg);
+                itemDiv.innerHTML = `
+                    <span><i class="fas fa-times-circle text-danger me-2"></i> ${file.name}</span>
+                    <span class="badge bg-danger">${errorMsg}</span>
+                `;
+                console.error('Upload error for', file.name, ':', errorMsg);
             }
         } catch (error) {
             errorCount++;
             errors.push(file.name + ': ' + error.message);
+            itemDiv.innerHTML = `
+                <span><i class="fas fa-exclamation-circle text-warning me-2"></i> ${file.name}</span>
+                <span class="badge bg-warning">שגיאה: ${error.message}</span>
+            `;
             console.error('Upload exception for', file.name, ':', error);
         }
         
-        // Update progress
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה ' + (i + 1) + '/' + files.length + '...';
+        // Update progress bar
+        const percent = Math.round(((i + 1) / files.length) * 100);
+        progressBar.style.width = percent + '%';
+        progressBar.textContent = percent + '%';
+        progressText.textContent = `(${i + 1}/${files.length})`;
     }
     
-    // Show results
+    // Show final results
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+    
     if (errorCount === 0) {
-        alert('כל ' + successCount + ' הקבצים הועלו בהצלחה!');
-        location.reload();
+        setTimeout(() => {
+            alert('כל ' + successCount + ' הקבצים הועלו בהצלחה!');
+            location.reload();
+        }, 500);
     } else {
-        let message = successCount + ' קבצים הועלו בהצלחה\n' + errorCount + ' קבצים נכשלו:\n\n' + errors.join('\n');
-        alert(message);
-        console.log('Upload errors:', errors);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        alert(successCount + ' קבצים הועלו בהצלחה, ' + errorCount + ' נכשלו. בדוק את הרשימה למטה לפרטים.');
     }
 });
 

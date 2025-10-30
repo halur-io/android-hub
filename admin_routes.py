@@ -12,6 +12,7 @@ import pandas as pd
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, URL, Optional
+from sqlalchemy.orm import joinedload
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -2215,10 +2216,10 @@ def api_menu_print_preview(menu_id):
         generated_menu = GeneratedMenu.query.get_or_404(menu_id)
         menu_content = generated_menu.menu_content
         
-        # Get actual data for selected items
+        # Get actual data for selected items with dietary properties
         selected_items = []
         if menu_content.get('items'):
-            items_query = MenuItem.query.filter(MenuItem.id.in_(menu_content['items']))
+            items_query = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter(MenuItem.id.in_(menu_content['items']))
             selected_items = items_query.all()
         
         # Get branch info
@@ -2345,10 +2346,10 @@ def api_menu_simple_print(menu_id):
         
         # Settings ready for print generation
         
-        # Get actual data for selected items
+        # Get actual data for selected items with dietary properties
         selected_items = []
         if menu_content.get('items'):
-            items_query = MenuItem.query.filter(MenuItem.id.in_(menu_content['items']))
+            items_query = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter(MenuItem.id.in_(menu_content['items']))
             selected_items = items_query.all()
         
         # Get branch info

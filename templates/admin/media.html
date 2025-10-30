@@ -14,8 +14,9 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="row">
                 <div class="col-md-4">
-                    <label class="form-label">בחר קובץ</label>
-                    <input type="file" class="form-control" name="file" accept="image/*,video/*" required>
+                    <label class="form-label">בחר קבצים (ניתן לבחור מספר)</label>
+                    <input type="file" class="form-control" id="fileInput" name="files" accept="image/*,video/*" multiple required>
+                    <small class="text-muted">בחר תמונות/סרטונים מרובים</small>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">סוג</label>
@@ -102,33 +103,66 @@
 document.getElementById('uploadForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
+    const fileInput = document.getElementById('fileInput');
+    const files = fileInput.files;
+    const section = this.querySelector('select[name="section"]').value;
     const submitBtn = this.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     
+    if (files.length === 0) {
+        alert('אנא בחר לפחות קובץ אחד');
+        return;
+    }
+    
     // Show loading state
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה ' + files.length + ' קבצים...';
     
-    try {
-        const response = await fetch('{{ url_for("admin.upload_media") }}', {
-            method: 'POST',
-            body: formData
-        });
+    let successCount = 0;
+    let errorCount = 0;
+    let errors = [];
+    
+    // Upload each file separately
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('section', section);
+        formData.append('csrf_token', '{{ csrf_token() }}');
         
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-            alert('הקובץ הועלה בהצלחה!');
-            location.reload();
-        } else {
-            const errorMsg = data.error || 'שגיאה לא ידועה';
-            alert('שגיאה בהעלאת הקובץ: ' + errorMsg);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
+        try {
+            const response = await fetch('{{ url_for("admin.upload_media") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                successCount++;
+            } else {
+                errorCount++;
+                errors.push(file.name + ': ' + (data.error || 'Unknown error'));
+                console.error('Upload error for', file.name, ':', data.error);
+            }
+        } catch (error) {
+            errorCount++;
+            errors.push(file.name + ': ' + error.message);
+            console.error('Upload exception for', file.name, ':', error);
         }
-    } catch (error) {
-        alert('שגיאה: ' + error.message);
+        
+        // Update progress
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> מעלה ' + (i + 1) + '/' + files.length + '...';
+    }
+    
+    // Show results
+    if (errorCount === 0) {
+        alert('כל ' + successCount + ' הקבצים הועלו בהצלחה!');
+        location.reload();
+    } else {
+        let message = successCount + ' קבצים הועלו בהצלחה\n' + errorCount + ' קבצים נכשלו:\n\n' + errors.join('\n');
+        alert(message);
+        console.log('Upload errors:', errors);
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     }

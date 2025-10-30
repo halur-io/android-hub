@@ -2244,7 +2244,8 @@ def api_menu_print_preview(menu_id):
             print_settings=generated_menu.print_settings or {},
             layout_settings=menu_content.get('layout', {}),
             style_settings=generated_menu.style_settings or {},
-            page_settings=generated_menu.page_settings or {}
+            page_settings=generated_menu.page_settings or {},
+            menu_description=generated_menu.description
         )
         
         return jsonify({
@@ -2391,7 +2392,8 @@ def api_menu_simple_print(menu_id):
             categories_with_items=ordered_categories,
             print_settings=current_print_settings,
             style_settings=current_style_settings,
-            page_settings=current_page_settings
+            page_settings=current_page_settings,
+            menu_description=generated_menu.description
         )
         
         return jsonify({
@@ -2403,7 +2405,7 @@ def api_menu_simple_print(menu_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None):
+def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None, menu_description=None):
     """Generate 2-column print HTML with configurable page breaks"""
     
     # Default settings
@@ -2460,8 +2462,10 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
             for prop in item.dietary_properties:
                 if prop.is_active:
                     icon_color = prop.color or '#666'
+                    # Normalize icon name - add 'fa-' prefix if not present
+                    icon_name = prop.icon if prop.icon and prop.icon.startswith('fa-') else f'fa-{prop.icon}'
                     item_html += f'<span class="dietary-icon" style="color: {icon_color};" title="{prop.name_he}">'
-                    item_html += f'<i class="fas fa-{prop.icon}"></i>'
+                    item_html += f'<i class="fas {icon_name}"></i>'
                     item_html += '</span>'
             item_html += '</div>'
         
@@ -2615,6 +2619,59 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 margin: 0;
             }}
             
+            /* Menu description section */
+            .menu-description-section {{
+                margin-top: 30px;
+                padding: 15px 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                text-align: center;
+            }}
+            
+            .menu-description {{
+                font-size: 11pt;
+                color: #666;
+                font-style: italic;
+                margin: 0;
+                line-height: 1.6;
+            }}
+            
+            /* Icon legend section */
+            .icon-legend {{
+                margin-top: 25px;
+                padding: 15px 20px;
+                border-top: 2px solid {secondary_color};
+                page-break-inside: avoid;
+            }}
+            
+            .legend-title {{
+                font-size: 14pt;
+                font-weight: 600;
+                color: {primary_color};
+                margin-bottom: 12px;
+                text-align: center;
+            }}
+            
+            .legend-items {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 8px;
+            }}
+            
+            .legend-item {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 10pt;
+                color: #666;
+            }}
+            
+            .legend-item i {{
+                font-size: 12pt;
+                width: 20px;
+                text-align: center;
+            }}
+            
             /* Print optimizations */
             @media print {{
                 .page-break {{
@@ -2764,13 +2821,55 @@ def generate_simple_menu_print_html(menu_name, branch, categories_with_items, pr
                 
                 html += '</tr></table>'
     
+    # Collect all active dietary properties from all items
+    all_properties = set()
+    for category_id, data in categories_with_items:
+        for item in data['items']:
+            if item.dietary_properties:
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        all_properties.add((prop.id, prop.name_he, prop.icon, prop.color, prop.description_he))
+    
+    # Add menu description if provided
+    if menu_description and menu_description.strip():
+        html += f'''
+    <div class="menu-description-section">
+        <p class="menu-description">{menu_description}</p>
+    </div>
+        '''
+    
+    # Add icon legend if there are any dietary properties
+    if all_properties:
+        html += '''
+    <div class="icon-legend">
+        <h3 class="legend-title">מקרא סימונים:</h3>
+        <div class="legend-items">
+        '''
+        # Sort properties by name
+        sorted_properties = sorted(all_properties, key=lambda x: x[1])
+        for prop_id, name_he, icon, color, description_he in sorted_properties:
+            # Normalize icon name
+            icon_name = icon if icon and icon.startswith('fa-') else f'fa-{icon}'
+            icon_color = color or '#666'
+            prop_desc = f' - {description_he}' if description_he else ''
+            html += f'''
+            <div class="legend-item">
+                <i class="fas {icon_name}" style="color: {icon_color};"></i>
+                <span>{name_he}{prop_desc}</span>
+            </div>
+            '''
+        html += '''
+        </div>
+    </div>
+        '''
+    
     html += '''
     </body>
     </html>
     '''
     
     return html
-def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None):
+def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None, menu_description=None):
     """Generate simple 2-column table-based print HTML with proper page breaks"""
     
     # Default settings
@@ -2943,6 +3042,59 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
                 margin: 0;
             }}
             
+            /* Menu description section */
+            .menu-description-section {{
+                margin-top: 30px;
+                padding: 15px 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                text-align: center;
+            }}
+            
+            .menu-description {{
+                font-size: 11pt;
+                color: #666;
+                font-style: italic;
+                margin: 0;
+                line-height: 1.6;
+            }}
+            
+            /* Icon legend section */
+            .icon-legend {{
+                margin-top: 25px;
+                padding: 15px 20px;
+                border-top: 2px solid {secondary_color};
+                page-break-inside: avoid;
+            }}
+            
+            .legend-title {{
+                font-size: 14pt;
+                font-weight: 600;
+                color: {primary_color};
+                margin-bottom: 12px;
+                text-align: center;
+            }}
+            
+            .legend-items {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 8px;
+            }}
+            
+            .legend-item {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 10pt;
+                color: #666;
+            }}
+            
+            .legend-item i {{
+                font-size: 12pt;
+                width: 20px;
+                text-align: center;
+            }}
+            
             /* Print optimizations */
             @media print {{
                 .page-break {{
@@ -3028,6 +3180,48 @@ def generate_menu_print_html(menu_name, branch, categories_with_items, print_set
             
             html += '</tr></table>'
     
+    # Collect all active dietary properties from all items
+    all_properties = set()
+    for category_id, data in categories_with_items.items():
+        for item in data['items']:
+            if hasattr(item, 'dietary_properties') and item.dietary_properties:
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        all_properties.add((prop.id, prop.name_he, prop.icon, prop.color, prop.description_he))
+    
+    # Add menu description if provided
+    if menu_description and menu_description.strip():
+        html += f'''
+    <div class="menu-description-section">
+        <p class="menu-description">{menu_description}</p>
+    </div>
+        '''
+    
+    # Add icon legend if there are any dietary properties
+    if all_properties:
+        html += '''
+    <div class="icon-legend">
+        <h3 class="legend-title">מקרא סימונים:</h3>
+        <div class="legend-items">
+        '''
+        # Sort properties by name
+        sorted_properties = sorted(all_properties, key=lambda x: x[1])
+        for prop_id, name_he, icon, color, description_he in sorted_properties:
+            # Normalize icon name
+            icon_name = icon if icon and icon.startswith('fa-') else f'fa-{icon}'
+            icon_color = color or '#666'
+            prop_desc = f' - {description_he}' if description_he else ''
+            html += f'''
+            <div class="legend-item">
+                <i class="fas {icon_name}" style="color: {icon_color};"></i>
+                <span>{name_he}{prop_desc}</span>
+            </div>
+            '''
+        html += '''
+        </div>
+    </div>
+        '''
+    
     html += '''
     </body>
     </html>
@@ -3062,7 +3256,10 @@ def format_menu_item(item, show_prices, show_descriptions, primary_color, second
         if active_properties:
             item_html += '<div class="dietary-icons">'
             for prop in active_properties:
+                # Normalize icon name - add 'fa-' prefix if not present
                 icon_class = prop.icon or 'fa-circle'
+                if icon_class and not icon_class.startswith('fa-'):
+                    icon_class = f'fa-{icon_class}'
                 color_style = f'color: {prop.color};' if prop.color else ''
                 item_html += f'<span class="dietary-icon" style="{color_style}" title="{prop.name_he}"><i class="fas {icon_class}"></i></span>'
             item_html += '</div>'

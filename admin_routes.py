@@ -10,7 +10,7 @@ from datetime import datetime
 import json
 import pandas as pd
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SubmitField
+from wtforms import StringField, TextAreaField, SubmitField, BooleanField, DecimalField, IntegerField
 from wtforms.validators import DataRequired, URL, Optional
 from sqlalchemy.orm import joinedload
 from PIL import Image
@@ -34,6 +34,21 @@ class SiteSettingsForm(FlaskForm):
     facebook_url = StringField('Facebook URL', validators=[Optional(), URL()])
     instagram_url = StringField('Instagram URL', validators=[Optional(), URL()])
     whatsapp_number = StringField('WhatsApp Number')
+    
+    # Feature Toggles
+    enable_online_ordering = BooleanField('אפשר הזמנה אונליין / Enable Online Ordering')
+    enable_english_language = BooleanField('אפשר שפה אנגלית / Enable English Language')
+    enable_delivery = BooleanField('אפשר משלוחים / Enable Delivery')
+    enable_pickup = BooleanField('אפשר איסוף עצמי / Enable Pickup')
+    enable_menu_display = BooleanField('הצג תפריט / Show Menu')
+    enable_gallery = BooleanField('הצג גלריה / Show Gallery')
+    enable_contact_form = BooleanField('הצג טופס יצירת קשר / Show Contact Form')
+    enable_table_reservations = BooleanField('אפשר הזמנת שולחנות / Enable Table Reservations')
+    
+    # Order Settings
+    minimum_order_amount = DecimalField('סכום הזמנה מינימלי / Minimum Order Amount', validators=[Optional()])
+    tax_rate = DecimalField('אחוז מע"מ / Tax Rate (%)', validators=[Optional()])
+    
     submit = SubmitField('שמור')
 
 UPLOAD_FOLDER = 'static/uploads'
@@ -274,6 +289,24 @@ def settings():
         settings.facebook_url = request.form.get('facebook_url')
         settings.instagram_url = request.form.get('instagram_url')
         settings.whatsapp_number = request.form.get('whatsapp_number')
+        
+        # Feature Toggles (checkboxes)
+        settings.enable_online_ordering = request.form.get('enable_online_ordering') == 'on'
+        settings.enable_english_language = request.form.get('enable_english_language') == 'on'
+        settings.enable_delivery = request.form.get('enable_delivery') == 'on'
+        settings.enable_pickup = request.form.get('enable_pickup') == 'on'
+        settings.enable_menu_display = request.form.get('enable_menu_display') == 'on'
+        settings.enable_gallery = request.form.get('enable_gallery') == 'on'
+        settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'
+        settings.enable_table_reservations = request.form.get('enable_table_reservations') == 'on'
+        
+        # Order Settings
+        min_order = request.form.get('minimum_order_amount')
+        if min_order:
+            settings.minimum_order_amount = float(min_order)
+        tax = request.form.get('tax_rate')
+        if tax:
+            settings.tax_rate = float(tax)
         
         db.session.commit()
         flash('Settings updated successfully!', 'success')

@@ -132,6 +132,87 @@
         </div>
     </div>
     
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-toggle-on me-2"></i> Feature Toggles / בקרת תכונות
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3"><i class="fas fa-store me-2"></i> תכונות מסעדה / Restaurant Features</h5>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_online_ordering" id="enable_online_ordering" {% if settings.enable_online_ordering %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_online_ordering">
+                            <strong>הזמנה אונליין / Enable Online Ordering</strong>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_delivery" id="enable_delivery" {% if settings.enable_delivery %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_delivery">
+                            <strong>משלוחים / Enable Delivery</strong>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_pickup" id="enable_pickup" {% if settings.enable_pickup %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_pickup">
+                            <strong>איסוף עצמי / Enable Pickup</strong>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_table_reservations" id="enable_table_reservations" {% if settings.enable_table_reservations %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_table_reservations">
+                            <strong>הזמנת שולחנות / Table Reservations</strong>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5 class="mb-3"><i class="fas fa-eye me-2"></i> תצוגת עמודים / Page Display</h5>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_menu_display" id="enable_menu_display" {% if settings.enable_menu_display %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_menu_display">
+                            <strong>הצג תפריט / Show Menu Page</strong>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_gallery" id="enable_gallery" {% if settings.enable_gallery %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_gallery">
+                            <strong>הצג גלריה / Show Gallery Page</strong>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_contact_form" id="enable_contact_form" {% if settings.enable_contact_form %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_contact_form">
+                            <strong>הצג טופס יצירת קשר / Show Contact Page</strong>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_english_language" id="enable_english_language" {% if settings.enable_english_language %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_english_language">
+                            <strong>אפשר שפה אנגלית / Enable English</strong>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3"><i class="fas fa-shopping-cart me-2"></i> הגדרות הזמנה / Order Settings</h5>
+                    <div class="mb-3">
+                        <label class="form-label">סכום הזמנה מינימלי / Minimum Order Amount (₪)</label>
+                        <input type="number" step="0.01" class="form-control" name="minimum_order_amount" value="{{ settings.minimum_order_amount or '' }}" placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">אחוז מע"מ / Tax Rate (%)</label>
+                        <input type="number" step="0.01" class="form-control" name="tax_rate" value="{{ settings.tax_rate or '' }}" placeholder="17.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="mt-4">
         <button type="submit" class="btn btn-primary btn-lg">
             <i class="fas fa-save me-2"></i> שמור שינויים

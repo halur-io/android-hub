@@ -54,10 +54,16 @@ class SiteSettingsForm(FlaskForm):
 UPLOAD_FOLDER = 'static/uploads'
 CSV_UPLOAD_FOLDER = 'static/csv_uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}  # Images only, no video
 ALLOWED_CSV_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
 def allowed_file(filename):
+    """Allow all media files (images and videos)"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_image_file(filename):
+    """Allow only image files (no video)"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 def allowed_csv_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_CSV_EXTENSIONS
@@ -294,38 +300,135 @@ def settings():
         # Branding & Media - File Uploads
         if 'hero_desktop_image' in request.files:
             file = request.files['hero_desktop_image']
-            if file and file.filename and allowed_file(file.filename):
+            if file and file.filename and allowed_image_file(file.filename):
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f'hero_desktop_{timestamp}_{filename}'
+                original_ext = filename.rsplit('.', 1)[1].lower()
+                filename_base = filename.rsplit('.', 1)[0]
+                filename = f'hero_desktop_{timestamp}_{filename_base}.jpg'
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                file.save(filepath)
-                # Resize image for optimization
+                
+                # Save and optimize image
                 try:
-                    img = Image.open(filepath)
+                    # Save original first to a temp location
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Verify file was saved and has content
+                    if not os.path.exists(temp_path) or os.path.getsize(temp_path) < 100:
+                        raise ValueError(f"Uploaded file is too small or empty: {os.path.getsize(temp_path) if os.path.exists(temp_path) else 0} bytes")
+                    
+                    # Open and verify image
+                    img = Image.open(temp_path)
+                    img.verify()  # Verify it's a valid image
+                    
+                    # Reopen after verify (verify closes the file)
+                    img = Image.open(temp_path)
+                    
+                    # Check image dimensions are reasonable
+                    if img.width < 10 or img.height < 10:
+                        raise ValueError(f"Image dimensions too small: {img.width}x{img.height}")
+                    
+                    print(f"Original image: {img.width}x{img.height}, mode: {img.mode}, size: {os.path.getsize(temp_path)} bytes")
+                    
+                    # Resize if too large
                     if img.width > 1920:
                         ratio = 1920 / img.width
                         new_height = int(img.height * ratio)
                         img = img.resize((1920, new_height), Image.Resampling.LANCZOS)
+                        print(f"Resized to: {img.width}x{img.height}")
+                    
+                    # Convert RGBA to RGB
                     if img.mode == 'RGBA':
                         rgb_img = Image.new('RGB', img.size, (255, 255, 255))
-                        rgb_img.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
+                        rgb_img.paste(img, mask=img.split()[3])
                         img = rgb_img
+                        print("Converted RGBA to RGB")
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                        print(f"Converted {img.mode} to RGB")
+                    
+                    # Save optimized version
                     img.save(filepath, 'JPEG', quality=85, optimize=True)
+                    
+                    # Verify saved file has content
+                    if not os.path.exists(filepath) or os.path.getsize(filepath) < 100:
+                        raise ValueError(f"Saved file is too small: {os.path.getsize(filepath) if os.path.exists(filepath) else 0} bytes")
+                    
+                    # Remove temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"Hero image optimized and saved: {filename} ({os.path.getsize(filepath)} bytes)")
                 except Exception as e:
-                    print(f"Image optimization error: {e}")
+                    print(f"Image optimization error: {e}. Saving original file instead.")
+                    # If optimization fails, save original file
+                    try:
+                        if 'temp_path' in locals() and os.path.exists(temp_path):
+                            # Copy temp to final location
+                            import shutil
+                            shutil.copy2(temp_path, filepath)
+                            os.remove(temp_path)
+                            print(f"Saved original file: {filename} ({os.path.getsize(filepath)} bytes)")
+                        else:
+                            # Save file directly
+                            file.seek(0)
+                            file.save(filepath)
+                            print(f"Saved file directly: {filename} ({os.path.getsize(filepath)} bytes)")
+                    except Exception as e2:
+                        print(f"Failed to save file: {e2}")
+                        flash(f'Error uploading hero image: {str(e2)}', 'error')
+                
                 settings.hero_desktop_image = filename
         
         if 'logo_image' in request.files:
             file = request.files['logo_image']
-            if file and file.filename and allowed_file(file.filename):
+            if file and file.filename and allowed_image_file(file.filename):
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f'logo_{timestamp}_{filename}'
+                filename_base = filename.rsplit('.', 1)[0]
+                original_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
+                filename = f'logo_{timestamp}_{filename_base}.{original_ext}'
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                file.save(filepath)
+                
+                try:
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Optimize logo (keep transparency if PNG)
+                    img = Image.open(temp_path)
+                    
+                    # Resize if too large (max 500px width for logo)
+                    if img.width > 500:
+                        ratio = 500 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((500, new_height), Image.Resampling.LANCZOS)
+                    
+                    # Save optimized
+                    if original_ext == 'png' and img.mode in ('RGBA', 'LA', 'P'):
+                        img.save(filepath, 'PNG', optimize=True)
+                    else:
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        img.save(filepath, 'JPEG', quality=90, optimize=True)
+                        filename = f'logo_{timestamp}_{filename_base}.jpg'
+                        filepath = os.path.join(UPLOAD_FOLDER, filename)
+                        img.save(filepath, 'JPEG', quality=90, optimize=True)
+                    
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"Logo image optimized and saved: {filename}")
+                except Exception as e:
+                    print(f"Logo optimization error: {e}. Saving original file.")
+                    if os.path.exists(temp_path):
+                        os.rename(temp_path, filepath)
+                    else:
+                        file.seek(0)
+                        file.save(filepath)
+                
                 settings.logo_image = filename
         
         if 'favicon_image' in request.files:
@@ -336,7 +439,14 @@ def settings():
                 filename = f'favicon_{timestamp}_{filename}'
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                file.save(filepath)
+                
+                try:
+                    file.save(filepath)
+                    print(f"Favicon saved: {filename}")
+                except Exception as e:
+                    print(f"Favicon save error: {e}")
+                    flash(f'Error saving favicon: {str(e)}', 'error')
+                
                 settings.favicon_image = filename
         
         # Color Scheme

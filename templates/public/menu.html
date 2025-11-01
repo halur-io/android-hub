@@ -38,69 +38,87 @@
             {% endfor %}
         </div>
         {% else %}
-        <!-- Display Menu Items (Fallback) -->
-        {% for category in categories %}
-        <div class="menu-category mb-5" id="category-{{ category.id }}">
-            <!-- Category Header -->
-            <div class="category-header text-center mb-4">
-                {% if category.icon %}
-                <div class="category-icon mb-3">
-                    <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="font-size: 3rem; color: {{ category.color or '#d4af37' }}"></i>
-                </div>
-                {% endif %}
-                <h2 class="category-title" style="font-family: 'Playfair Display', serif; font-weight: 700; color: #333;">
-                    {{ category.name_he if language == 'he' else category.name_en }}
-                </h2>
-                {% if category.description_he or category.description_en %}
-                <p class="category-desc text-muted mt-2">{{ category.description_he if language == 'he' else category.description_en }}</p>
-                {% endif %}
-                <div class="category-divider mx-auto"></div>
-            </div>
-            
-            <!-- Menu Items -->
-            <div class="{% if show_images %}menu-items-grid{% else %}menu-items-list{% endif %}">
-                {% for item in category.items %}
-                <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}">
-                    {% if show_images and item.image_path %}
-                    <div class="item-image-wrapper">
-                        <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" 
-                             alt="{{ item.name_he if language == 'he' else item.name_en }}" 
-                             class="item-image">
-                    </div>
+        <!-- Category Tabs Navigation -->
+        <ul class="nav nav-pills menu-category-tabs mb-4 justify-content-center" id="menuTabs" role="tablist">
+            {% for category in categories %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if loop.first %}active{% endif %}" 
+                        id="tab-{{ category.id }}" 
+                        data-bs-toggle="pill" 
+                        data-bs-target="#category-{{ category.id }}" 
+                        type="button" 
+                        role="tab">
+                    {% if category.icon %}
+                    <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="color: {{ category.color or '#d4af37' }}"></i>
                     {% endif %}
-                    
-                    <div class="item-content">
-                        <div class="item-header">
-                            <h3 class="item-name">{{ item.name_he if language == 'he' else item.name_en }}</h3>
-                            <span class="item-price">₪{{ item.base_price }}</span>
-                        </div>
-                        
-                        {% if item.description_he or item.description_en %}
-                        <p class="item-description">{{ item.description_he if language == 'he' else item.description_en }}</p>
-                        {% endif %}
-                        
-                        {% if show_dietary_icons and item.dietary_properties %}
-                        <div class="dietary-badges mt-2">
-                            {% for prop in item.dietary_properties %}
-                            <span class="dietary-badge" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
-                                <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
-                                <small>{{ prop.name_he if language == 'he' else prop.name_en }}</small>
-                            </span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        
-                        {% if settings.enable_online_ordering and settings.enable_delivery %}
-                        <button class="btn-add-to-order mt-3" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
-                            <i class="fas fa-plus-circle"></i> {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
-                        </button>
-                        {% endif %}
-                    </div>
+                    {{ category.name_he if language == 'he' else category.name_en }}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        
+        <!-- Tab Content -->
+        <div class="tab-content" id="menuTabContent">
+            {% for category in categories %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                 id="category-{{ category.id }}" 
+                 role="tabpanel">
+                
+                <!-- Category Header (inside tab) -->
+                <div class="category-header text-center mb-4">
+                    {% if category.description_he or category.description_en %}
+                    <p class="category-desc text-muted">{{ category.description_he if language == 'he' else category.description_en }}</p>
+                    {% endif %}
+                    <div class="category-divider mx-auto"></div>
                 </div>
-                {% endfor %}
+                
+                <!-- Menu Items -->
+                <div class="{% if show_images %}menu-items-grid{% else %}menu-items-list{% endif %}">
+                    {% for item in category.items %}
+                    <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}">
+                        {% if show_images and item.image_path %}
+                        <div class="item-image-wrapper">
+                            <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" 
+                                 alt="{{ item.name_he if language == 'he' else item.name_en }}" 
+                                 class="item-image">
+                        </div>
+                        {% endif %}
+                        
+                        <div class="item-content">
+                            <div class="item-header">
+                                <h3 class="item-name">{{ item.name_he if language == 'he' else item.name_en }}</h3>
+                                <span class="item-price">₪{{ item.base_price }}</span>
+                            </div>
+                            
+                            {% if item.ingredients_he or item.ingredients_en %}
+                            <p class="item-ingredients">{{ item.ingredients_he if language == 'he' else item.ingredients_en }}</p>
+                            {% elif item.description_he or item.description_en %}
+                            <p class="item-description">{{ item.description_he if language == 'he' else item.description_en }}</p>
+                            {% endif %}
+                            
+                            {% if show_dietary_icons and item.dietary_properties %}
+                            <div class="dietary-badges mt-2">
+                                {% for prop in item.dietary_properties %}
+                                <span class="dietary-badge" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
+                                    <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
+                                    <small>{{ prop.name_he if language == 'he' else prop.name_en }}</small>
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if settings.enable_online_ordering and settings.enable_delivery %}
+                            <button class="btn-add-to-order mt-3" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
+                                <i class="fas fa-plus-circle"></i> {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
         {% endif %}
     </div>
 </section>
@@ -119,11 +137,57 @@
     border-bottom: 1px solid #e8e8e8;
 }
 
+.menu-category-tabs {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    flex-wrap: wrap;
+}
+
+.menu-category-tabs .nav-link {
+    color: #333;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    margin: 0.25rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.menu-category-tabs .nav-link i {
+    margin-right: 0.5rem;
+}
+
+.menu-category-tabs .nav-link:hover {
+    background: rgba(212, 175, 55, 0.1);
+    transform: translateY(-2px);
+}
+
+.menu-category-tabs .nav-link.active {
+    background: linear-gradient(135deg, #d4af37 0%, #c49933 100%);
+    color: white;
+    border-color: #d4af37;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.menu-category-tabs .nav-link.active i {
+    color: white !important;
+}
+
 .category-divider {
     width: 100px;
     height: 3px;
     background: linear-gradient(90deg, transparent, #d4af37, transparent);
     margin-top: 1rem;
+}
+
+.item-ingredients {
+    color: #777;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+    font-style: italic;
 }
 
 .menu-items-grid {

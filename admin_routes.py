@@ -503,6 +503,58 @@ def settings():
     
     return render_template('admin/settings.html', settings=settings)
 
+# Payment Settings
+@admin_bp.route('/payment-settings', methods=['GET', 'POST'])
+@login_required
+def payment_settings():
+    # Get or create Grow payment provider
+    grow = PaymentConfiguration.query.filter_by(provider_name='grow').first()
+    if not grow:
+        grow = PaymentConfiguration(
+            provider_name='grow',
+            display_name_he='כרטיס אשראי (Grow)',
+            display_name_en='Credit Card (Grow)',
+            display_order=1,
+            is_active=False
+        )
+        db.session.add(grow)
+    
+    # Get or create Max payment provider
+    max_provider = PaymentConfiguration.query.filter_by(provider_name='max').first()
+    if not max_provider:
+        max_provider = PaymentConfiguration(
+            provider_name='max',
+            display_name_he='כרטיס אשראי (Max)',
+            display_name_en='Credit Card (Max)',
+            display_order=2,
+            is_active=False
+        )
+        db.session.add(max_provider)
+    
+    db.session.commit()
+    
+    if request.method == 'POST':
+        # Update Grow settings
+        grow.is_active = request.form.get('grow_is_active') == 'on'
+        grow.merchant_id = request.form.get('grow_user_id', '')
+        grow.api_key = request.form.get('grow_page_code', '')
+        grow.api_secret = request.form.get('grow_api_key', '')
+        grow.display_name_he = request.form.get('grow_display_name_he', 'כרטיס אשראי')
+        grow.display_name_en = request.form.get('grow_display_name_en', 'Credit Card')
+        
+        # Update Max settings
+        max_provider.is_active = request.form.get('max_is_active') == 'on'
+        max_provider.merchant_id = request.form.get('max_masof', '')
+        max_provider.api_key = request.form.get('max_api_key', '')
+        max_provider.display_name_he = request.form.get('max_display_name_he', 'כרטיס אשראי (Max)')
+        max_provider.display_name_en = request.form.get('max_display_name_en', 'Credit Card (Max)')
+        
+        db.session.commit()
+        flash('Payment settings updated successfully! / הגדרות התשלום עודכנו בהצלחה!', 'success')
+        return redirect(url_for('admin.payment_settings'))
+    
+    return render_template('admin/payment_settings.html', grow=grow, max_provider=max_provider)
+
 # Media Management
 @admin_bp.route('/media')
 @login_required

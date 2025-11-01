@@ -119,9 +119,15 @@ def order_page():
     """Online ordering page - Optimized to prevent N+1 queries"""
     context = get_context_data()
     
-    if not context['settings'].enable_online_ordering:
-        flash('Online ordering is currently disabled.' if context['language'] == 'en' else 'ההזמנות באינטרנט כרגע מושבתות.', 'warning')
-        return redirect(url_for('index'))
+    # Check if online ordering OR delivery is disabled
+    ordering_enabled = context['settings'].enable_online_ordering and context['settings'].enable_delivery
+    
+    if not ordering_enabled:
+        # Show disabled page instead of redirecting
+        return render_template('public/order.html',
+                             **context,
+                             ordering_disabled=True,
+                             categories=[])
     
     # Get all categories
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
@@ -144,6 +150,7 @@ def order_page():
     
     return render_template('public/order.html',
                          **context,
+                         ordering_disabled=False,
                          categories=categories)
 
 @app.route('/gallery')

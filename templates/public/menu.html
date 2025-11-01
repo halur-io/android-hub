@@ -90,7 +90,7 @@
                         </div>
                         {% endif %}
                         
-                        {% if settings.enable_online_ordering %}
+                        {% if settings.enable_online_ordering and settings.enable_delivery %}
                         <button class="btn-add-to-order mt-3" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
                             <i class="fas fa-plus-circle"></i> {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
                         </button>

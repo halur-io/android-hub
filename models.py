@@ -1250,6 +1250,11 @@ class PaymentConfiguration(db.Model):
     merchant_id = db.Column(db.String(200))
     additional_config = db.Column(db.JSON)  # Provider-specific settings
     
+    # Advanced Settings
+    test_mode = db.Column(db.Boolean, default=True)  # Sandbox vs Production
+    webhook_url = db.Column(db.String(500))  # Payment notification URL
+    webhook_secret = db.Column(db.String(500))  # Webhook signature verification
+    
     # Settings
     min_order_amount = db.Column(db.Float, default=0)
     max_order_amount = db.Column(db.Float)

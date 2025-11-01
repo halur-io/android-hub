@@ -121,12 +121,15 @@ class DeliveryZone(db.Model):
     """Delivery zones with different fees"""
     __tablename__ = 'delivery_zones'
     id = db.Column(db.Integer, primary_key=True)
-    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)  # Optional - can be restaurant-wide
+    
+    # Zone Information
+    city_name = db.Column(db.String(100), nullable=False)  # e.g., "Karmiel", "Sakhnin", "Acre"
+    name = db.Column(db.String(100))  # Optional custom zone name
     description = db.Column(db.Text)
     
     # Zone Definition (polygon coordinates or city names)
-    zone_data = db.Column(db.Text)  # JSON object
+    zone_data = db.Column(db.Text)  # JSON object for advanced features
     
     # Pricing
     delivery_fee = db.Column(db.Float, default=0)
@@ -135,10 +138,18 @@ class DeliveryZone(db.Model):
     
     # Time
     estimated_minutes = db.Column(db.Integer, default=30)
+    estimated_delivery_time = db.Column(db.String(50))  # e.g., "30-45 דקות"
     
-    # Status
+    # Settings
     is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<DeliveryZone {self.city_name}: {self.delivery_fee}₪>'
 
 @order_bp.route('/create', methods=['POST'])
 def create_order():

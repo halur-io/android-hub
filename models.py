@@ -144,8 +144,16 @@ class SiteSettings(db.Model):
     enable_pickup = db.Column(db.Boolean, default=True)
     enable_menu_display = db.Column(db.Boolean, default=True)
     enable_gallery = db.Column(db.Boolean, default=True)
+    enable_gallery_section = db.Column(db.Boolean, default=True)  # Show gallery section on homepage
     enable_contact_form = db.Column(db.Boolean, default=True)
     enable_table_reservations = db.Column(db.Boolean, default=True)
+    
+    # Gallery Section Settings
+    gallery_section_title_he = db.Column(db.String(200), default='גלריה')
+    gallery_section_title_en = db.Column(db.String(200), default='Gallery')
+    gallery_section_subtitle_he = db.Column(db.String(500))
+    gallery_section_subtitle_en = db.Column(db.String(500))
+    gallery_max_photos = db.Column(db.Integer, default=8)  # Maximum photos to display
     
     # Order Settings
     minimum_order_amount = db.Column(db.Float, default=50)
@@ -374,6 +382,8 @@ class MenuItem(db.Model):
     
     # Restaurant Operations
     is_available = db.Column(db.Boolean, default=True)
+    allow_takeaway = db.Column(db.Boolean, default=True)  # Can be ordered for takeaway
+    allow_delivery = db.Column(db.Boolean, default=True)  # Can be ordered for delivery
     prep_time_minutes = db.Column(db.Integer)  # Preparation time
     calories = db.Column(db.Integer)  # Nutritional info
     spice_level = db.Column(db.Integer, default=0)  # 0-5 scale

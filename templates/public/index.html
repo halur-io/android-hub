@@ -309,28 +309,40 @@
     </div>
 </section>
 
-<!-- Gallery Preview -->
-{% if gallery_images %}
-<section class="section bg-light">
+<!-- Gallery Section - 2x4 Grid (8 Photos) -->
+{% if settings.enable_gallery_section and gallery_images %}
+<section class="section bg-light gallery-homepage-section">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="section-title">{{ 'גלריה' if language == 'he' else 'Gallery' }}</h2>
-            <p class="section-subtitle">{{ 'מבט אל חוויית הסעדה שלנו' if language == 'he' else 'A glimpse into our dining experience' }}</p>
+            <h2 class="section-title">{{ settings.gallery_section_title_he if settings.gallery_section_title_he else 'גלריה' if language == 'he' else settings.gallery_section_title_en if settings.gallery_section_title_en else 'Gallery' }}</h2>
+            <p class="section-subtitle">{{ settings.gallery_section_subtitle_he if settings.gallery_section_subtitle_he else 'מבט אל חוויית הסעדה שלנו' if language == 'he' else settings.gallery_section_subtitle_en if settings.gallery_section_subtitle_en else 'A glimpse into our dining experience' }}</p>
         </div>
         
-        <div class="gallery-grid">
-            {% for image in gallery_images[:6] %}
-            <div class="gallery-item">
-                <img src="{{ url_for('static', filename='uploads/' + image.filename) }}" alt="{{ image.caption_he if language == 'he' else image.caption_en }}">
+        <!-- 2 Column Grid for 8 Photos -->
+        <div class="row g-4">
+            {% for image in gallery_images[:8] %}
+            <div class="col-md-6">
+                <div class="gallery-card">
+                    <img src="{{ url_for('static', filename='uploads/' + image.filename) }}" 
+                         alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 
+                         class="gallery-card-img">
+                    {% if image.caption_he or image.caption_en %}
+                    <div class="gallery-card-caption">
+                        {{ image.caption_he if language == 'he' else image.caption_en }}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>
         
+        {% if settings.show_gallery and gallery_images|length > 8 %}
         <div class="text-center mt-5">
             <a href="{{ url_for('gallery_page') }}" class="btn btn-outline-primary btn-lg">
                 {{ 'ראה עוד' if language == 'he' else 'View More' }}
             </a>
         </div>
+        {% endif %}
     </div>
 </section>
 {% endif %}

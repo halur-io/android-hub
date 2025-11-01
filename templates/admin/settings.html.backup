@@ -10,53 +10,74 @@
 {% endblock %}
 
 {% block content %}
-<div class="settings-container">
-    <!-- Page Header -->
-    <div class="settings-header">
-        <h1 class="settings-page-title">
-            <i class="fas fa-cog"></i>
-            הגדרות אתר / Site Settings
-        </h1>
-        <p class="settings-page-subtitle">נהל את כל ההגדרות של האתר במקום אחד</p>
-    </div>
+<div class="settings-workspace">
+    <!-- LEFT SIDEBAR NAVIGATION -->
+    <aside class="settings-sidebar">
+        <div class="settings-sidebar-header">
+            <h2 class="settings-sidebar-title">
+                <i class="fas fa-cog"></i>
+                הגדרות אתר
+            </h2>
+        </div>
+        
+        <nav class="settings-nav">
+            <button type="button" class="settings-nav-link active" data-tab="general">
+                <span class="settings-nav-icon">
+                    <i class="fas fa-home"></i>
+                </span>
+                <div class="settings-nav-content">
+                    <span class="settings-nav-label">כללי / General</span>
+                    <span class="settings-nav-desc">תוכן, טקסטים ומדיה חברתית</span>
+                </div>
+            </button>
+            
+            <button type="button" class="settings-nav-link" data-tab="branding">
+                <span class="settings-nav-icon">
+                    <i class="fas fa-palette"></i>
+                </span>
+                <div class="settings-nav-content">
+                    <span class="settings-nav-label">מיתוג / Branding</span>
+                    <span class="settings-nav-desc">לוגו, תמונות וצבעים</span>
+                </div>
+            </button>
+            
+            <button type="button" class="settings-nav-link" data-tab="features">
+                <span class="settings-nav-icon">
+                    <i class="fas fa-toggle-on"></i>
+                </span>
+                <div class="settings-nav-content">
+                    <span class="settings-nav-label">תכונות / Features</span>
+                    <span class="settings-nav-desc">הפעלה וכיבוי תכונות</span>
+                </div>
+            </button>
+            
+            <button type="button" class="settings-nav-link" data-tab="delivery">
+                <span class="settings-nav-icon">
+                    <i class="fas fa-truck"></i>
+                </span>
+                <div class="settings-nav-content">
+                    <span class="settings-nav-label">משלוחים / Delivery</span>
+                    <span class="settings-nav-desc">עלויות, איזורים והגדרות משלוח</span>
+                </div>
+            </button>
+            
+            <button type="button" class="settings-nav-link" data-tab="advanced">
+                <span class="settings-nav-icon">
+                    <i class="fas fa-code"></i>
+                </span>
+                <div class="settings-nav-content">
+                    <span class="settings-nav-label">מתקדם / Advanced</span>
+                    <span class="settings-nav-desc">Analytics, SEO ותחזוקה</span>
+                </div>
+            </button>
+        </nav>
+    </aside>
     
-    <!-- Modern Horizontal Tabs -->
-    <nav class="modern-tabs-nav">
-        <button type="button" class="modern-tab-button active" data-tab="general">
-            <span class="tab-icon"><i class="fas fa-home"></i></span>
-            <span class="tab-label">כללי / General</span>
-            <span class="tab-description">תוכן וטקסטים</span>
-        </button>
-        
-        <button type="button" class="modern-tab-button" data-tab="branding">
-            <span class="tab-icon"><i class="fas fa-palette"></i></span>
-            <span class="tab-label">מיתוג / Branding</span>
-            <span class="tab-description">לוגו ותמונות</span>
-        </button>
-        
-        <button type="button" class="modern-tab-button" data-tab="features">
-            <span class="tab-icon"><i class="fas fa-toggle-on"></i></span>
-            <span class="tab-label">תכונות / Features</span>
-            <span class="tab-description">הפעלה/כיבוי</span>
-        </button>
-        
-        <button type="button" class="modern-tab-button" data-tab="delivery">
-            <span class="tab-icon"><i class="fas fa-truck"></i></span>
-            <span class="tab-label">משלוחים / Delivery</span>
-            <span class="tab-description">עלויות ואיזורים</span>
-        </button>
-        
-        <button type="button" class="modern-tab-button" data-tab="advanced">
-            <span class="tab-icon"><i class="fas fa-code"></i></span>
-            <span class="tab-label">מתקדם / Advanced</span>
-            <span class="tab-description">Analytics & SEO</span>
-        </button>
-    </nav>
-    
-    <!-- Content Wrapper -->
-    <div class="settings-content-wrapper">
+    <!-- RIGHT CONTENT PANEL -->
+    <main class="settings-content-panel">
         <form method="POST" enctype="multipart/form-data" id="settingsForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
             <!-- ============================= GENERAL TAB ============================= -->
             <div class="settings-tab-content active" id="tab-general">
                 <div class="settings-content-header">
@@ -631,15 +652,15 @@
 </div>
 
 <script>
-// Modern Horizontal Tabs Navigation
-document.querySelectorAll('.modern-tab-button').forEach(button => {
+// Tab Navigation
+document.querySelectorAll('.settings-nav-link').forEach(button => {
     button.addEventListener('click', function() {
-        // Remove active class from all tab buttons
-        document.querySelectorAll('.modern-tab-button').forEach(btn => {
-            btn.classList.remove('active');
+        // Remove active class from all links
+        document.querySelectorAll('.settings-nav-link').forEach(link => {
+            link.classList.remove('active');
         });
         
-        // Add active class to clicked button
+        // Add active class to clicked link
         this.classList.add('active');
         
         // Hide all tab contents
@@ -651,8 +672,8 @@ document.querySelectorAll('.modern-tab-button').forEach(button => {
         const tabId = this.getAttribute('data-tab');
         document.getElementById('tab-' + tabId).style.display = 'block';
         
-        // Scroll to top of content wrapper
-        document.querySelector('.settings-content-wrapper').scrollTop = 0;
+        // Scroll to top
+        document.querySelector('.settings-content-panel').scrollTop = 0;
     });
 });
 

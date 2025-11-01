@@ -1,16 +1,39 @@
 {% extends "public/base.html" %}
 
 {% block content %}
-<!-- Hero Section - Desktop: Gradient Design / Mobile: Video -->
-<section class="hero-section">
-    <!-- Desktop Hero: Elegant Gradient Background with Animated Shapes -->
+<!-- Hero Section - Desktop: Luxury Image Background / Mobile: Video -->
+<section class="hero-section" id="heroSection">
+    <!-- Desktop Hero: Luxury Restaurant Image with Dramatic Overlay -->
     <div class="hero-desktop-bg">
-        <div class="hero-gradient-layer"></div>
-        <div class="hero-pattern-layer"></div>
-        <div class="hero-shapes">
-            <div class="hero-shape hero-shape-1"></div>
-            <div class="hero-shape hero-shape-2"></div>
-            <div class="hero-shape hero-shape-3"></div>
+        <!-- Parallax Background Image -->
+        <div class="hero-image-layer" id="heroImageLayer">
+            {% if hero_image %}
+            <img src="{{ url_for('static', filename='uploads/' + hero_image.filename) }}" alt="Restaurant Hero" class="hero-bg-image">
+            {% else %}
+            <!-- Default: Use first gallery image or placeholder -->
+            <img src="{{ url_for('static', filename='uploads/gallery_20251030_233453_686688_136.jpg') }}" alt="Restaurant Hero" class="hero-bg-image">
+            {% endif %}
+        </div>
+        
+        <!-- Dramatic Gradient Overlays -->
+        <div class="hero-gradient-overlay-1"></div>
+        <div class="hero-gradient-overlay-2"></div>
+        <div class="hero-vignette"></div>
+        
+        <!-- Animated Light Rays -->
+        <div class="hero-light-rays">
+            <div class="light-ray light-ray-1"></div>
+            <div class="light-ray light-ray-2"></div>
+            <div class="light-ray light-ray-3"></div>
+        </div>
+        
+        <!-- Premium Particles -->
+        <div class="hero-particles">
+            <div class="particle particle-1"></div>
+            <div class="particle particle-2"></div>
+            <div class="particle particle-3"></div>
+            <div class="particle particle-4"></div>
+            <div class="particle particle-5"></div>
         </div>
     </div>
     
@@ -417,5 +440,30 @@ function addToCart(itemId, itemName, price) {
     // Show notification
     alert('{{ "נוסף להזמנה!" if language == "he" else "Added to cart!" }}');
 }
+
+// Luxury Parallax Effect for Desktop Hero
+document.addEventListener('DOMContentLoaded', function() {
+    const heroImageLayer = document.getElementById('heroImageLayer');
+    
+    if (heroImageLayer && window.innerWidth > 991) {
+        let ticking = false;
+        
+        window.addEventListener('scroll', function() {
+            if (!ticking) {
+                window.requestAnimationFrame(function() {
+                    const scrolled = window.pageYOffset;
+                    const parallaxSpeed = 0.5;
+                    
+                    // Move image slower than scroll for parallax effect
+                    heroImageLayer.style.transform = `translateY(${scrolled * parallaxSpeed}px) scale(1)`;
+                    
+                    ticking = false;
+                });
+                
+                ticking = true;
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

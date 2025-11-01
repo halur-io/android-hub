@@ -59,7 +59,7 @@ Preferred communication style: Simple, everyday language.
     -   **User Management**: Role-Based Access Control (RBAC) with granular permissions.
     -   **Custom Sections**: Admin-controlled homepage sections supporting text, HTML, and embedded content.
 -   **Core Functionality**:
-    -   **Online Ordering**: Enable/disable, configurable minimum order and tax rate.
+    -   **Online Ordering**: Enable/disable via admin settings, configurable minimum order and tax rate. When disabled (or when delivery is disabled), the order page displays a professional disabled message with action buttons, and all "Add to Order" buttons are automatically removed from the menu page.
     -   **Table Reservations**: Integration with external reservation systems.
     -   **Branch Management**: Display with working hours, navigation links, and dynamic branch information.
     -   **Cart System**: Client-side cart management with server-side order processing.

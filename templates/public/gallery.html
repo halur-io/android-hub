@@ -16,7 +16,9 @@
         <div class="gallery-grid">
             {% for image in gallery_images %}
             <div class="gallery-item">
-                <img src="{{ url_for('static', filename='uploads/' + image.filename) }}" alt="{{ image.caption_he if language == 'he' else image.caption_en }}">
+                <img src="{{ url_for('static', filename='uploads/' + image.filename) }}" 
+                     alt="{{ image.caption_he if language == 'he' else image.caption_en }}"
+                     loading="lazy">
             </div>
             {% endfor %}
         </div>

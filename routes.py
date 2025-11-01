@@ -81,7 +81,7 @@ def index():
 
 @app.route('/menu')
 def menu_page():
-    """Full menu page"""
+    """Full menu page - Optimized to prevent N+1 queries"""
     context = get_context_data()
     
     # Get menu images uploaded by admin
@@ -90,14 +90,24 @@ def menu_page():
         is_active=True
     ).order_by(MediaFile.display_order).all()
     
+    # Get all categories
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
-    # Get items for each category with dietary properties
+    # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
+    all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+        is_available=True
+    ).order_by(MenuItem.display_order).all()
+    
+    # Group items by category in Python (faster than multiple DB queries)
+    items_by_category = {}
+    for item in all_items:
+        if item.category_id not in items_by_category:
+            items_by_category[item.category_id] = []
+        items_by_category[item.category_id].append(item)
+    
+    # Assign items to their categories
     for category in categories:
-        category.items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
-            category_id=category.id,
-            is_available=True
-        ).order_by(MenuItem.display_order).all()
+        category.items = items_by_category.get(category.id, [])
     
     return render_template('public/menu.html',
                          **context,
@@ -106,20 +116,31 @@ def menu_page():
 
 @app.route('/order')
 def order_page():
-    """Online ordering page"""
+    """Online ordering page - Optimized to prevent N+1 queries"""
     context = get_context_data()
     
     if not context['settings'].enable_online_ordering:
         flash('Online ordering is currently disabled.' if context['language'] == 'en' else 'ההזמנות באינטרנט כרגע מושבתות.', 'warning')
         return redirect(url_for('index'))
     
+    # Get all categories
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
+    # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
+    all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+        is_available=True
+    ).order_by(MenuItem.display_order).all()
+    
+    # Group items by category in Python (faster than multiple DB queries)
+    items_by_category = {}
+    for item in all_items:
+        if item.category_id not in items_by_category:
+            items_by_category[item.category_id] = []
+        items_by_category[item.category_id].append(item)
+    
+    # Assign items to their categories
     for category in categories:
-        category.items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
-            category_id=category.id,
-            is_available=True
-        ).order_by(MenuItem.display_order).all()
+        category.items = items_by_category.get(category.id, [])
     
     return render_template('public/order.html',
                          **context,

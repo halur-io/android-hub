@@ -274,6 +274,7 @@ def settings():
         db.session.commit()
     
     if request.method == 'POST':
+        # General Settings
         settings.site_name_he = request.form.get('site_name_he')
         settings.site_name_en = request.form.get('site_name_en')
         settings.hero_title_he = request.form.get('hero_title_he')
@@ -290,6 +291,58 @@ def settings():
         settings.instagram_url = request.form.get('instagram_url')
         settings.whatsapp_number = request.form.get('whatsapp_number')
         
+        # Branding & Media - File Uploads
+        if 'hero_desktop_image' in request.files:
+            file = request.files['hero_desktop_image']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'hero_desktop_{timestamp}_{filename}'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                file.save(filepath)
+                # Resize image for optimization
+                try:
+                    img = Image.open(filepath)
+                    if img.width > 1920:
+                        ratio = 1920 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((1920, new_height), Image.Resampling.LANCZOS)
+                    if img.mode == 'RGBA':
+                        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                        rgb_img.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
+                        img = rgb_img
+                    img.save(filepath, 'JPEG', quality=85, optimize=True)
+                except Exception as e:
+                    print(f"Image optimization error: {e}")
+                settings.hero_desktop_image = filename
+        
+        if 'logo_image' in request.files:
+            file = request.files['logo_image']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'logo_{timestamp}_{filename}'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                file.save(filepath)
+                settings.logo_image = filename
+        
+        if 'favicon_image' in request.files:
+            file = request.files['favicon_image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'favicon_{timestamp}_{filename}'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                file.save(filepath)
+                settings.favicon_image = filename
+        
+        # Color Scheme
+        settings.primary_color = request.form.get('primary_color') or request.form.get('primary_color_text') or '#1a3a6e'
+        settings.accent_color = request.form.get('accent_color') or request.form.get('accent_color_text') or '#dc3545'
+        
         # Feature Toggles (checkboxes)
         settings.enable_online_ordering = request.form.get('enable_online_ordering') == 'on'
         settings.enable_english_language = request.form.get('enable_english_language') == 'on'
@@ -300,16 +353,42 @@ def settings():
         settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'
         settings.enable_table_reservations = request.form.get('enable_table_reservations') == 'on'
         
-        # Order Settings
+        # Order & Delivery Settings
         min_order = request.form.get('minimum_order_amount')
         if min_order:
             settings.minimum_order_amount = float(min_order)
+        
+        delivery_fee = request.form.get('delivery_fee')
+        if delivery_fee:
+            settings.delivery_fee = float(delivery_fee)
+        
+        free_delivery = request.form.get('free_delivery_threshold')
+        if free_delivery:
+            settings.free_delivery_threshold = float(free_delivery)
+        
+        settings.estimated_delivery_time = request.form.get('estimated_delivery_time') or '45-60'
+        
         tax = request.form.get('tax_rate')
         if tax:
             settings.tax_rate = float(tax)
         
+        service_fee = request.form.get('service_fee_percentage')
+        if service_fee:
+            settings.service_fee_percentage = float(service_fee)
+        
+        settings.currency_symbol = request.form.get('currency_symbol') or '₪'
+        
+        # Advanced Features
+        settings.google_analytics_id = request.form.get('google_analytics_id')
+        settings.facebook_pixel_id = request.form.get('facebook_pixel_id')
+        settings.maintenance_mode = request.form.get('maintenance_mode') == 'on'
+        settings.announcement_enabled = request.form.get('announcement_enabled') == 'on'
+        settings.announcement_text_he = request.form.get('announcement_text_he')
+        settings.announcement_text_en = request.form.get('announcement_text_en')
+        settings.announcement_bg_color = request.form.get('announcement_bg_color') or '#ffc107'
+        
         db.session.commit()
-        flash('Settings updated successfully!', 'success')
+        flash('Settings updated successfully! / ההגדרות עודכנו בהצלחה!', 'success')
         return redirect(url_for('admin.settings'))
     
     return render_template('admin/settings.html', settings=settings)

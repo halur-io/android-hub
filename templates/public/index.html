@@ -7,8 +7,8 @@
     <div class="hero-desktop-bg">
         <!-- Parallax Background Image -->
         <div class="hero-image-layer" id="heroImageLayer">
-            {% if hero_image %}
-            <img src="{{ url_for('static', filename='uploads/' + hero_image.filename) }}" alt="Restaurant Hero" class="hero-bg-image">
+            {% if settings.hero_desktop_image %}
+            <img src="{{ url_for('static', filename='uploads/' + settings.hero_desktop_image) }}" alt="Restaurant Hero" class="hero-bg-image">
             {% else %}
             <!-- Default: Use first gallery image or placeholder -->
             <img src="{{ url_for('static', filename='uploads/gallery_20251030_233453_686688_136.jpg') }}" alt="Restaurant Hero" class="hero-bg-image">

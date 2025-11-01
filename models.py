@@ -130,6 +130,13 @@ class SiteSettings(db.Model):
     instagram_url = db.Column(db.String(255))
     whatsapp_number = db.Column(db.String(20))
     
+    # Branding & Media Settings
+    hero_desktop_image = db.Column(db.String(255))  # Desktop hero background image
+    logo_image = db.Column(db.String(255))  # Main logo
+    favicon_image = db.Column(db.String(255))  # Browser favicon
+    primary_color = db.Column(db.String(20), default='#1a3a6e')  # Navy blue
+    accent_color = db.Column(db.String(20), default='#dc3545')  # Red
+    
     # Feature Toggles
     enable_online_ordering = db.Column(db.Boolean, default=True)
     enable_english_language = db.Column(db.Boolean, default=True)
@@ -143,6 +150,22 @@ class SiteSettings(db.Model):
     # Order Settings
     minimum_order_amount = db.Column(db.Float, default=50)
     tax_rate = db.Column(db.Float, default=0.17)  # 17% VAT in Israel
+    
+    # Delivery & Order Settings
+    delivery_fee = db.Column(db.Float, default=15.0)  # Fixed delivery fee
+    free_delivery_threshold = db.Column(db.Float, default=100.0)  # Free delivery over this amount
+    estimated_delivery_time = db.Column(db.String(100), default='45-60')  # Minutes
+    service_fee_percentage = db.Column(db.Float, default=0.0)  # Service fee %
+    currency_symbol = db.Column(db.String(10), default='₪')
+    
+    # Advanced Features
+    google_analytics_id = db.Column(db.String(50))  # GA tracking ID
+    facebook_pixel_id = db.Column(db.String(50))  # FB Pixel ID
+    maintenance_mode = db.Column(db.Boolean, default=False)  # Show maintenance page
+    announcement_text_he = db.Column(db.String(500))  # Top banner announcement
+    announcement_text_en = db.Column(db.String(500))
+    announcement_enabled = db.Column(db.Boolean, default=False)
+    announcement_bg_color = db.Column(db.String(20), default='#ffc107')
     
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

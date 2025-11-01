@@ -2,221 +2,583 @@
 
 {% block title %}הגדרות אתר - Admin Panel{% endblock %}
 
-{% block content %}
-<h1 class="mb-4">הגדרות אתר</h1>
+{% block extra_css %}
+<style>
+.settings-tabs {
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 2rem;
+}
 
-<form method="POST">
+.settings-tabs .nav-link {
+    color: #666;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.settings-tabs .nav-link:hover {
+    color: #1a3a6e;
+    border-bottom-color: #2d5492;
+}
+
+.settings-tabs .nav-link.active {
+    color: #1a3a6e;
+    background: transparent;
+    border-bottom-color: #dc3545;
+}
+
+.settings-card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 1.5rem;
+}
+
+.settings-card .card-header {
+    background: linear-gradient(135deg, #1a3a6e 0%, #2d5492 100%);
+    color: white;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border: none;
+}
+
+.settings-card .card-header i {
+    margin-right: 0.5rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.form-control, .form-select {
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #1a3a6e;
+    box-shadow: 0 0 0 0.2rem rgba(26, 58, 110, 0.15);
+}
+
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.color-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 10px;
+}
+
+.file-upload-box {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s;
+    background: #f8f9fa;
+}
+
+.file-upload-box:hover {
+    border-color: #1a3a6e;
+    background: #e8f0f8;
+}
+
+.file-upload-box i {
+    font-size: 3rem;
+    color: #1a3a6e;
+    margin-bottom: 1rem;
+}
+
+.current-image-preview {
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 1rem;
+}
+
+.save-button {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-cog me-2"></i>הגדרות אתר / Site Settings</h1>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     
-    <div class="card">
-        <div class="card-header">
-            <i class="fas fa-home me-2"></i> הגדרות Hero Section
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>עברית</h5>
-                    <div class="mb-3">
-                        <label class="form-label">כותרת ראשית</label>
-                        <input type="text" class="form-control" name="hero_title_he" value="{{ settings.hero_title_he }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">כותרת משנה</label>
-                        <input type="text" class="form-control" name="hero_subtitle_he" value="{{ settings.hero_subtitle_he }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">תיאור</label>
-                        <textarea class="form-control" name="hero_description_he" rows="3">{{ settings.hero_description_he }}</textarea>
+    <!-- Settings Tabs -->
+    <ul class="nav nav-tabs settings-tabs" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button">
+                <i class="fas fa-home"></i> כללי / General
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding" type="button">
+                <i class="fas fa-palette"></i> מיתוג / Branding
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="features-tab" data-bs-toggle="tab" data-bs-target="#features" type="button">
+                <i class="fas fa-toggle-on"></i> תכונות / Features
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="delivery-tab" data-bs-toggle="tab" data-bs-target="#delivery" type="button">
+                <i class="fas fa-truck"></i> משלוחים / Delivery
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button">
+                <i class="fas fa-code"></i> מתקדם / Advanced
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content mt-4" id="settingsTabContent">
+        
+        <!-- GENERAL TAB -->
+        <div class="tab-pane fade show active" id="general" role="tabpanel">
+            <!-- Hero Section -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-image"></i> Hero Section
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-3">עברית</h5>
+                            <div class="mb-3">
+                                <label class="form-label">כותרת ראשית</label>
+                                <input type="text" class="form-control" name="hero_title_he" value="{{ settings.hero_title_he }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">כותרת משנה</label>
+                                <input type="text" class="form-control" name="hero_subtitle_he" value="{{ settings.hero_subtitle_he }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">תיאור</label>
+                                <textarea class="form-control" name="hero_description_he" rows="3">{{ settings.hero_description_he }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="mb-3">English</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Main Title</label>
+                                <input type="text" class="form-control" name="hero_title_en" value="{{ settings.hero_title_en }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Subtitle</label>
+                                <input type="text" class="form-control" name="hero_subtitle_en" value="{{ settings.hero_subtitle_en }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" name="hero_description_en" rows="3">{{ settings.hero_description_en }}</textarea>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="col-md-6">
-                    <h5>English</h5>
-                    <div class="mb-3">
-                        <label class="form-label">Main Title</label>
-                        <input type="text" class="form-control" name="hero_title_en" value="{{ settings.hero_title_en }}">
+            </div>
+
+            <!-- About Section -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> About Section
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-3">עברית</h5>
+                            <div class="mb-3">
+                                <label class="form-label">כותרת</label>
+                                <input type="text" class="form-control" name="about_title_he" value="{{ settings.about_title_he }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">תוכן</label>
+                                <textarea class="form-control" name="about_content_he" rows="5">{{ settings.about_content_he }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="mb-3">English</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-control" name="about_title_en" value="{{ settings.about_title_en }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Content</label>
+                                <textarea class="form-control" name="about_content_en" rows="5">{{ settings.about_content_en }}</textarea>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Subtitle</label>
-                        <input type="text" class="form-control" name="hero_subtitle_en" value="{{ settings.hero_subtitle_en }}">
+                </div>
+            </div>
+
+            <!-- Social Media -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-share-alt"></i> Social Media & Contact
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">שם האתר (עברית)</label>
+                            <input type="text" class="form-control" name="site_name_he" value="{{ settings.site_name_he }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Site Name (English)</label>
+                            <input type="text" class="form-control" name="site_name_en" value="{{ settings.site_name_en }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label"><i class="fab fa-facebook me-2"></i> Facebook URL</label>
+                            <input type="url" class="form-control" name="facebook_url" value="{{ settings.facebook_url }}" placeholder="https://facebook.com/yourpage">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label"><i class="fab fa-instagram me-2"></i> Instagram URL</label>
+                            <input type="url" class="form-control" name="instagram_url" value="{{ settings.instagram_url }}" placeholder="https://instagram.com/yourpage">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label"><i class="fab fa-whatsapp me-2"></i> WhatsApp Number</label>
+                            <input type="text" class="form-control" name="whatsapp_number" value="{{ settings.whatsapp_number }}" placeholder="972501234567">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control" name="hero_description_en" rows="3">{{ settings.hero_description_en }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- BRANDING TAB -->
+        <div class="tab-pane fade" id="branding" role="tabpanel">
+            <!-- Hero Desktop Image -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-image"></i> Desktop Hero Background Image
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Upload a stunning restaurant or food image for the desktop hero background (min 1920x1080px recommended)</p>
+                    <div class="file-upload-box">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h5>Upload Hero Image</h5>
+                        <input type="file" class="form-control mt-3" name="hero_desktop_image" accept="image/*">
+                    </div>
+                    {% if settings.hero_desktop_image %}
+                    <div class="mt-3">
+                        <label class="form-label">Current Image:</label>
+                        <div><img src="{{ url_for('static', filename='uploads/' + settings.hero_desktop_image) }}" class="current-image-preview" alt="Current Hero"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Logo -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-crown"></i> Logo
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Upload your restaurant logo (PNG with transparent background recommended)</p>
+                    <div class="file-upload-box">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h5>Upload Logo</h5>
+                        <input type="file" class="form-control mt-3" name="logo_image" accept="image/*">
+                    </div>
+                    {% if settings.logo_image %}
+                    <div class="mt-3">
+                        <label class="form-label">Current Logo:</label>
+                        <div><img src="{{ url_for('static', filename='uploads/' + settings.logo_image) }}" class="current-image-preview" alt="Current Logo"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Favicon -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-star"></i> Favicon
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Browser tab icon (32x32px or 64x64px, .ico or .png)</p>
+                    <div class="file-upload-box">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h5>Upload Favicon</h5>
+                        <input type="file" class="form-control mt-3" name="favicon_image" accept="image/x-icon,image/png">
+                    </div>
+                    {% if settings.favicon_image %}
+                    <div class="mt-3">
+                        <label class="form-label">Current Favicon:</label>
+                        <div><img src="{{ url_for('static', filename='uploads/' + settings.favicon_image) }}" style="width:32px; height:32px;" alt="Current Favicon"></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Color Scheme -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-palette"></i> Color Scheme
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Primary Color (Navy Blue)</label>
+                            <div class="d-flex align-items-center">
+                                <input type="color" class="form-control form-control-color" name="primary_color" value="{{ settings.primary_color or '#1a3a6e' }}" style="width: 60px; height: 40px;">
+                                <input type="text" class="form-control ms-2" name="primary_color_text" value="{{ settings.primary_color or '#1a3a6e' }}" placeholder="#1a3a6e">
+                                <span class="color-preview ms-2" style="background-color: {{ settings.primary_color or '#1a3a6e' }}"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Accent Color (Red)</label>
+                            <div class="d-flex align-items-center">
+                                <input type="color" class="form-control form-control-color" name="accent_color" value="{{ settings.accent_color or '#dc3545' }}" style="width: 60px; height: 40px;">
+                                <input type="text" class="form-control ms-2" name="accent_color_text" value="{{ settings.accent_color or '#dc3545' }}" placeholder="#dc3545">
+                                <span class="color-preview ms-2" style="background-color: {{ settings.accent_color or '#dc3545' }}"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i> Note: Color changes require page refresh to take full effect</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FEATURES TAB -->
+        <div class="tab-pane fade" id="features" role="tabpanel">
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-toggle-on"></i> Feature Toggles
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-3"><i class="fas fa-store me-2"></i> Restaurant Features</h5>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_online_ordering" id="enable_online_ordering" {% if settings.enable_online_ordering %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_online_ordering">
+                                    <strong>הזמנה אונליין / Enable Online Ordering</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_delivery" id="enable_delivery" {% if settings.enable_delivery %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_delivery">
+                                    <strong>משלוחים / Enable Delivery</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_pickup" id="enable_pickup" {% if settings.enable_pickup %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_pickup">
+                                    <strong>איסוף עצמי / Enable Pickup</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_table_reservations" id="enable_table_reservations" {% if settings.enable_table_reservations %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_table_reservations">
+                                    <strong>הזמנת שולחנות / Table Reservations</strong>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="mb-3"><i class="fas fa-eye me-2"></i> Page Display</h5>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_menu_display" id="enable_menu_display" {% if settings.enable_menu_display %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_menu_display">
+                                    <strong>הצג תפריט / Show Menu Page</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_gallery" id="enable_gallery" {% if settings.enable_gallery %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_gallery">
+                                    <strong>הצג גלריה / Show Gallery Page</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_contact_form" id="enable_contact_form" {% if settings.enable_contact_form %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_contact_form">
+                                    <strong>הצג טופס יצירת קשר / Show Contact Page</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enable_english_language" id="enable_english_language" {% if settings.enable_english_language %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_english_language">
+                                    <strong>אפשר שפה אנגלית / Enable English</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY TAB -->
+        <div class="tab-pane fade" id="delivery" role="tabpanel">
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-shopping-cart"></i> Order & Delivery Settings
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">סכום הזמנה מינימלי / Minimum Order</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" name="minimum_order_amount" value="{{ settings.minimum_order_amount or '' }}" placeholder="50.00">
+                                <span class="input-group-text">{{ settings.currency_symbol or '₪' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">דמי משלוח / Delivery Fee</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" name="delivery_fee" value="{{ settings.delivery_fee or '' }}" placeholder="15.00">
+                                <span class="input-group-text">{{ settings.currency_symbol or '₪' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">משלוח חינם מ / Free Delivery Over</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" name="free_delivery_threshold" value="{{ settings.free_delivery_threshold or '' }}" placeholder="100.00">
+                                <span class="input-group-text">{{ settings.currency_symbol or '₪' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">זמן משלוח משוער / Estimated Delivery</label>
+                            <input type="text" class="form-control" name="estimated_delivery_time" value="{{ settings.estimated_delivery_time or '' }}" placeholder="45-60 minutes">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">אחוז מע"מ / Tax Rate (%)</label>
+                            <input type="number" step="0.01" class="form-control" name="tax_rate" value="{{ settings.tax_rate or '' }}" placeholder="17.00">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">דמי שירות / Service Fee (%)</label>
+                            <input type="number" step="0.01" class="form-control" name="service_fee_percentage" value="{{ settings.service_fee_percentage or '' }}" placeholder="0.00">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">סמל מטבע / Currency Symbol</label>
+                            <input type="text" class="form-control" name="currency_symbol" value="{{ settings.currency_symbol or '₪' }}" placeholder="₪">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADVANCED TAB -->
+        <div class="tab-pane fade" id="advanced" role="tabpanel">
+            <!-- Analytics -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-chart-line"></i> Analytics & Tracking
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><i class="fab fa-google me-2"></i> Google Analytics ID</label>
+                            <input type="text" class="form-control" name="google_analytics_id" value="{{ settings.google_analytics_id or '' }}" placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX">
+                            <small class="text-muted">Track website visitors and behavior</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><i class="fab fa-facebook me-2"></i> Facebook Pixel ID</label>
+                            <input type="text" class="form-control" name="facebook_pixel_id" value="{{ settings.facebook_pixel_id or '' }}" placeholder="1234567890123456">
+                            <small class="text-muted">Track conversions and advertising</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Announcement Banner -->
+            <div class="card settings-card">
+                <div class="card-header">
+                    <i class="fas fa-bullhorn"></i> Announcement Banner
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="announcement_enabled" id="announcement_enabled" {% if settings.announcement_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="announcement_enabled">
+                            <strong>אפשר באנר הודעה / Enable Announcement</strong>
+                        </label>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">טקסט הודעה (עברית)</label>
+                            <input type="text" class="form-control" name="announcement_text_he" value="{{ settings.announcement_text_he or '' }}" placeholder="משלוח חינם מעל 100₪!">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Announcement Text (English)</label>
+                            <input type="text" class="form-control" name="announcement_text_en" value="{{ settings.announcement_text_en or '' }}" placeholder="Free delivery over ₪100!">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">צבע רקע / Background Color</label>
+                            <div class="d-flex align-items-center">
+                                <input type="color" class="form-control form-control-color" name="announcement_bg_color" value="{{ settings.announcement_bg_color or '#ffc107' }}" style="width: 60px; height: 40px;">
+                                <input type="text" class="form-control ms-2" value="{{ settings.announcement_bg_color or '#ffc107' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maintenance Mode -->
+            <div class="card settings-card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-tools"></i> Maintenance Mode
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="maintenance_mode" id="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %}>
+                        <label class="form-check-label" for="maintenance_mode">
+                            <strong>מצב תחזוקה / Enable Maintenance Mode</strong>
+                        </label>
+                    </div>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> When enabled, visitors will see a "Coming Soon" page instead of your website.
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <div class="card mt-4">
-        <div class="card-header">
-            <i class="fas fa-info-circle me-2"></i> אודות
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>עברית</h5>
-                    <div class="mb-3">
-                        <label class="form-label">כותרת</label>
-                        <input type="text" class="form-control" name="about_title_he" value="{{ settings.about_title_he }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">תוכן</label>
-                        <textarea class="form-control" name="about_content_he" rows="5">{{ settings.about_content_he }}</textarea>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <h5>English</h5>
-                    <div class="mb-3">
-                        <label class="form-label">Title</label>
-                        <input type="text" class="form-control" name="about_title_en" value="{{ settings.about_title_en }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Content</label>
-                        <textarea class="form-control" name="about_content_en" rows="5">{{ settings.about_content_en }}</textarea>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="card mt-4">
-        <div class="card-header">
-            <i class="fas fa-share-alt me-2"></i> רשתות חברתיות ויצירת קשר
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label"><i class="fab fa-facebook me-2"></i> Facebook URL</label>
-                        <input type="url" class="form-control" name="facebook_url" value="{{ settings.facebook_url }}" placeholder="https://facebook.com/yourpage">
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label"><i class="fab fa-instagram me-2"></i> Instagram URL</label>
-                        <input type="url" class="form-control" name="instagram_url" value="{{ settings.instagram_url }}" placeholder="https://instagram.com/yourpage">
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label class="form-label"><i class="fab fa-whatsapp me-2"></i> WhatsApp Number</label>
-                        <input type="text" class="form-control" name="whatsapp_number" value="{{ settings.whatsapp_number }}" placeholder="972501234567">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="card mt-4">
-        <div class="card-header">
-            <i class="fas fa-globe me-2"></i> כללי
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label">שם האתר (עברית)</label>
-                        <input type="text" class="form-control" name="site_name_he" value="{{ settings.site_name_he }}">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label">Site Name (English)</label>
-                        <input type="text" class="form-control" name="site_name_en" value="{{ settings.site_name_en }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="card mt-4">
-        <div class="card-header bg-primary text-white">
-            <i class="fas fa-toggle-on me-2"></i> Feature Toggles / בקרת תכונות
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5 class="mb-3"><i class="fas fa-store me-2"></i> תכונות מסעדה / Restaurant Features</h5>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_online_ordering" id="enable_online_ordering" {% if settings.enable_online_ordering %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_online_ordering">
-                            <strong>הזמנה אונליין / Enable Online Ordering</strong>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_delivery" id="enable_delivery" {% if settings.enable_delivery %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_delivery">
-                            <strong>משלוחים / Enable Delivery</strong>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_pickup" id="enable_pickup" {% if settings.enable_pickup %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_pickup">
-                            <strong>איסוף עצמי / Enable Pickup</strong>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_table_reservations" id="enable_table_reservations" {% if settings.enable_table_reservations %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_table_reservations">
-                            <strong>הזמנת שולחנות / Table Reservations</strong>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <h5 class="mb-3"><i class="fas fa-eye me-2"></i> תצוגת עמודים / Page Display</h5>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_menu_display" id="enable_menu_display" {% if settings.enable_menu_display %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_menu_display">
-                            <strong>הצג תפריט / Show Menu Page</strong>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_gallery" id="enable_gallery" {% if settings.enable_gallery %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_gallery">
-                            <strong>הצג גלריה / Show Gallery Page</strong>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_contact_form" id="enable_contact_form" {% if settings.enable_contact_form %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_contact_form">
-                            <strong>הצג טופס יצירת קשר / Show Contact Page</strong>
-                        </label>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="enable_english_language" id="enable_english_language" {% if settings.enable_english_language %}checked{% endif %}>
-                        <label class="form-check-label" for="enable_english_language">
-                            <strong>אפשר שפה אנגלית / Enable English</strong>
-                        </label>
-                    </div>
-                </div>
-            </div>
-            
-            <hr class="my-4">
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <h5 class="mb-3"><i class="fas fa-shopping-cart me-2"></i> הגדרות הזמנה / Order Settings</h5>
-                    <div class="mb-3">
-                        <label class="form-label">סכום הזמנה מינימלי / Minimum Order Amount (₪)</label>
-                        <input type="number" step="0.01" class="form-control" name="minimum_order_amount" value="{{ settings.minimum_order_amount or '' }}" placeholder="0.00">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">אחוז מע"מ / Tax Rate (%)</label>
-                        <input type="number" step="0.01" class="form-control" name="tax_rate" value="{{ settings.tax_rate or '' }}" placeholder="17.00">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="mt-4">
-        <button type="submit" class="btn btn-primary btn-lg">
-            <i class="fas fa-save me-2"></i> שמור שינויים
-        </button>
-    </div>
+
+    <!-- Fixed Save Button -->
+    <button type="submit" class="btn btn-danger btn-lg save-button">
+        <i class="fas fa-save me-2"></i> שמור שינויים / Save Changes
+    </button>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sync color picker with text input
+document.querySelectorAll('input[type="color"]').forEach(colorInput => {
+    const textInput = colorInput.nextElementSibling;
+    const preview = textInput?.nextElementSibling;
+    
+    colorInput.addEventListener('input', (e) => {
+        if (textInput) textInput.value = e.target.value;
+        if (preview) preview.style.backgroundColor = e.target.value;
+    });
+    
+    if (textInput) {
+        textInput.addEventListener('input', (e) => {
+            colorInput.value = e.target.value;
+            if (preview) preview.style.backgroundColor = e.target.value;
+        });
+    }
+});
+</script>
 {% endblock %}

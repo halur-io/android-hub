@@ -17,6 +17,13 @@ Preferred communication style: Simple, everyday language.
 -   **Responsive Design**: Mobile-first approach with 100% mobile optimization.
 -   **Language Support**: Session-based language switching with full Right-to-Left (RTL) support for Hebrew and English.
 -   **Dynamic Visuals**: Incorporates hero videos/images with parallax, animated elements (light rays, particles), gradient overlays, SVG wave/curved dividers, and rotating icon dividers for an engaging user experience.
+-   **Admin Dashboard UI**: Modern split workspace layout with sidebar navigation (280px) and content panel, featuring:
+    -   Professional SaaS-style design with clean visual hierarchy
+    -   Modern form components: toggle switches, file upload areas, color pickers
+    -   Responsive two-column grid layouts
+    -   Sticky action bar for Save/Cancel buttons
+    -   Dedicated admin.css design system with design tokens
+    -   Smooth tab transitions without page reload
 
 ### Technical Implementations
 -   **Backend Framework**: Flask with a modular structure.
@@ -39,7 +46,12 @@ Preferred communication style: Simple, everyday language.
     -   **Contact**: Contact form, branch info, maps integration (Waze/Google Maps).
     -   **Legal Pages**: Dynamic Terms of Use page with bilingual content.
 -   **Admin Dashboard**:
-    -   **Site Settings**: Comprehensive, tabbed interface for managing general site info, branding (logos, favicons, colors), feature toggles (ordering, delivery, language, menu, gallery, contact, reservations), delivery settings (fees, thresholds, estimated time), and advanced settings (analytics IDs, announcement banners, maintenance mode).
+    -   **Site Settings**: Modern split workspace interface with 5 vertical navigation tabs:
+        -   General: Hero section, about content, site info, social media links
+        -   Branding: Hero images, logo, favicon, brand colors with live preview
+        -   Features: Toggle switches for all major features (ordering, delivery, menu, gallery, etc.)
+        -   Delivery: Costs, free delivery threshold, estimated times, zones info
+        -   Advanced: Analytics IDs, announcement banners, maintenance mode
     -   **Menu Management**: Customizable dietary properties, drag-and-drop reordering, CSV/Excel import, and print layouts.
     -   **Media Management**: Admin upload for hero videos/images and gallery images.
     -   **Payment Configuration**: Admin panel for managing multiple payment providers and API credentials.

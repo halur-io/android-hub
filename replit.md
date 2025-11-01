@@ -17,8 +17,9 @@ Preferred communication style: Simple, everyday language.
 -   **Responsive Design**: Mobile-first approach with 100% mobile optimization.
 -   **Language Support**: Session-based language switching with full Right-to-Left (RTL) support for Hebrew and English.
 -   **Dynamic Visuals**: Incorporates hero videos/images with parallax, animated elements (light rays, particles), gradient overlays, SVG wave/curved dividers, and rotating icon dividers for an engaging user experience.
--   **Admin Dashboard UI**: Modern split workspace layout with sidebar navigation (280px) and content panel, featuring:
+-   **Admin Dashboard UI**: Modern horizontal tabs layout that fits perfectly within the main admin content area, featuring:
     -   Professional SaaS-style design with clean visual hierarchy
+    -   Modern horizontal tabs with icons and descriptions (no sidebar overlap)
     -   Modern form components: toggle switches, file upload areas, color pickers
     -   Responsive two-column grid layouts
     -   Sticky action bar for Save/Cancel buttons
@@ -46,7 +47,7 @@ Preferred communication style: Simple, everyday language.
     -   **Contact**: Contact form, branch info, maps integration (Waze/Google Maps).
     -   **Legal Pages**: Dynamic Terms of Use page with bilingual content.
 -   **Admin Dashboard**:
-    -   **Site Settings**: Modern split workspace interface with 5 vertical navigation tabs:
+    -   **Site Settings**: Modern horizontal tabs interface with 5 tabs at the top:
         -   General: Hero section, about content, site info, social media links
         -   Branding: Hero images, logo, favicon, brand colors with live preview
         -   Features: Toggle switches for all major features (ordering, delivery, menu, gallery, etc.)

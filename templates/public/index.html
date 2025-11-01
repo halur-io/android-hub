@@ -1,11 +1,22 @@
 {% extends "public/base.html" %}
 
 {% block content %}
-<!-- Hero Section with Video -->
+<!-- Hero Section - Desktop: Gradient Design / Mobile: Video -->
 <section class="hero-section">
-    <!-- Hero Video - Optimized for Mobile -->
+    <!-- Desktop Hero: Elegant Gradient Background with Animated Shapes -->
+    <div class="hero-desktop-bg">
+        <div class="hero-gradient-layer"></div>
+        <div class="hero-pattern-layer"></div>
+        <div class="hero-shapes">
+            <div class="hero-shape hero-shape-1"></div>
+            <div class="hero-shape hero-shape-2"></div>
+            <div class="hero-shape hero-shape-3"></div>
+        </div>
+    </div>
+    
+    <!-- Mobile Hero: Video (only visible on mobile) -->
     <video 
-        class="hero-video" 
+        class="hero-video hero-mobile-only" 
         autoplay 
         loop 
         muted 
@@ -13,11 +24,10 @@
         poster="{{ url_for('static', filename='images/hero-poster.jpg') }}"
         preload="metadata"
         data-mobile-src="{{ url_for('static', filename='videos/hero-mobile.mp4') }}"
-        data-desktop-src="{{ url_for('static', filename='videos/hero-desktop.mp4') }}"
         {% if hero_video %}
         data-custom-src="{{ url_for('static', filename='uploads/' + hero_video.filename) }}"
         {% endif %}>
-        <!-- Source will be set by JavaScript for proper responsive loading -->
+        <!-- Source will be set by JavaScript for mobile only -->
     </video>
     
     <div class="hero-overlay"></div>

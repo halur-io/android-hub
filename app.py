@@ -88,6 +88,19 @@ def inject_permissions():
         has_any_permission=has_any_permission
     )
 
+# Add custom Jinja2 filters
+import json
+
+@app.template_filter('fromjson')
+def fromjson_filter(value):
+    """Convert JSON string to Python object"""
+    if not value or value == '[]' or value == '{}':
+        return []
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
+
 # Import routes  
 from routes import *
 

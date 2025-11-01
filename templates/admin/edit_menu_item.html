@@ -36,7 +36,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">תיאור</label>
-                        <textarea class="form-control" name="description_he" rows="3">{{ item.description_he or '' }}</textarea>
+                        <textarea class="form-control" name="description_he" rows="2">{{ item.description_he or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">רכיבים</label>
+                        <textarea class="form-control" name="ingredients_he" rows="2" placeholder="רשום את הרכיבים של המנה">{{ item.ingredients_he or '' }}</textarea>
+                        <small class="text-muted">מופיע בתפריט להצגת הרכיבים</small>
                     </div>
                 </div>
                 
@@ -48,7 +53,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <textarea class="form-control" name="description_en" rows="3">{{ item.description_en or '' }}</textarea>
+                        <textarea class="form-control" name="description_en" rows="2">{{ item.description_en or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ingredients</label>
+                        <textarea class="form-control" name="ingredients_en" rows="2" placeholder="List the dish ingredients">{{ item.ingredients_en or '' }}</textarea>
+                        <small class="text-muted">Displayed in menu to show ingredients</small>
                     </div>
                 </div>
             </div>
@@ -109,10 +119,23 @@
             
             <div class="row mt-3">
                 <div class="col-md-12">
+                    <h5>זמינות והזמנות</h5>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="is_available" id="is_available" {% if item.is_available %}checked{% endif %}>
                         <label class="form-check-label" for="is_available">
-                            מנה זמינה
+                            <i class="fas fa-check-circle me-1"></i> מנה זמינה
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="allow_delivery" id="allow_delivery" {% if item.allow_delivery is not defined or item.allow_delivery %}checked{% endif %}>
+                        <label class="form-check-label" for="allow_delivery">
+                            <i class="fas fa-shipping-fast me-1"></i> ניתן להזמנה למשלוח
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="allow_takeaway" id="allow_takeaway" {% if item.allow_takeaway is not defined or item.allow_takeaway %}checked{% endif %}>
+                        <label class="form-check-label" for="allow_takeaway">
+                            <i class="fas fa-shopping-bag me-1"></i> ניתן להזמנה לאיסוף עצמי
                         </label>
                     </div>
                 </div>

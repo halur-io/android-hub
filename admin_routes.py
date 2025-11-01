@@ -782,8 +782,10 @@ def edit_menu_item(id=None):
                     item.dietary_properties.append(property_obj)
                     print(f"DEBUG: Added property {property_obj.name_he}")  # Debug line
         
-        # Operations
+        # Operations & Availability
         item.is_available = request.form.get('is_available') == 'on'
+        item.allow_delivery = request.form.get('allow_delivery') == 'on'
+        item.allow_takeaway = request.form.get('allow_takeaway') == 'on'
         item.prep_time_minutes = int(request.form.get('prep_time_minutes', 0)) if request.form.get('prep_time_minutes') else None
         item.calories = int(request.form.get('calories', 0)) if request.form.get('calories') else None
         item.spice_level = int(request.form.get('spice_level', 0))

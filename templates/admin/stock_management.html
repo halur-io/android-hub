@@ -1,317 +1,193 @@
 {% extends "admin/base.html" %}
 
-{% block title %}ניהול מלאי - פאנל ניהול{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-<style>
-    /* Mobile Responsive Styles */
-    @media (max-width: 768px) {
-        .admin-header h1 {
-            font-size: 1.5rem;
-        }
-        
-        .stock-stats-grid {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 1rem;
-        }
-        
-        .admin-tabs {
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-        }
-        
-        .admin-tab {
-            min-width: 140px;
-            flex-shrink: 0;
-        }
-        
-        .panel-header {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 1rem;
-        }
-        
-        .panel-header .btn {
-            width: 100%;
-        }
-    }
-    
-    .stock-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-    
-    .stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        border-left: 4px solid;
-        transition: transform 0.2s;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-2px);
-    }
-    
-    .stat-card.total { border-left-color: #667eea; }
-    .stat-card.low-stock { border-left-color: #f59e0b; }
-    .stat-card.out-of-stock { border-left-color: #ef4444; }
-    .stat-card.expiring { border-left-color: #8b5cf6; }
-    
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: #1e293b;
-    }
-    
-    .stat-label {
-        color: #64748b;
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-</style>
-{% endblock %}
+{% block title %}ניהול מלאי - Admin Panel{% endblock %}
 
 {% block content %}
-<div class="admin-container">
-    <!-- Header -->
-    <div class="admin-header">
-        <div>
-            <h1><i class="fas fa-boxes"></i> ניהול מלאי</h1>
-            <p class="admin-subtitle">מעקב ושליטה מלאה על המלאי, ספקים והזמנות</p>
+<div class="container-fluid">
+    <h1 class="mb-4">ניהול מלאי</h1>
+
+    <!-- Stock Items Section -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>פריטי מלאי</h5>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                <i class="fas fa-plus me-1"></i> פריט חדש
+            </button>
         </div>
-        <div class="header-actions">
-            <select class="form-select" onchange="window.location.href='?branch_id='+this.value" style="min-width: 200px;">
-                <option value="">בחר סניף</option>
-                {% for branch in branches %}
-                <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
-                    {{ branch.name_he }}
-                </option>
+        <div class="card-body">
+            {% if stock_items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>שם הפריט</th>
+                            <th>קטגוריה</th>
+                            <th>כמות במלאי</th>
+                            <th>יחידה</th>
+                            <th>ספק</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stock_items %}
+                        <tr>
+                            <td><strong>{{ item.name_he }}</strong></td>
+                            <td>
+                                {% if item.category %}
+                                <span class="badge bg-secondary">{{ item.category.name_he }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set level = item.get_current_level() %}
+                                {% if level %}
+                                    {% if level.quantity <= item.minimum_stock %}
+                                    <span class="badge bg-danger">{{ level.quantity }}</span>
+                                    {% elif level.quantity <= item.reorder_point %}
+                                    <span class="badge bg-warning">{{ level.quantity }}</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ level.quantity }}</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.unit }}</td>
+                            <td>
+                                {% if item.supplier %}
+                                {{ item.supplier.name }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editItem({{ item.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="addStock({{ item.id }})">
+                                    <i class="fas fa-plus"></i> הוסף
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> אין פריטי מלאי. הוסף פריטים כדי להתחיל.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Suppliers Section -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-truck me-2"></i>ספקים</h5>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                <i class="fas fa-plus me-1"></i> ספק חדש
+            </button>
+        </div>
+        <div class="card-body">
+            {% if suppliers %}
+            <div class="row">
+                {% for supplier in suppliers %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>{{ supplier.name }}</h6>
+                            {% if supplier.contact_person %}
+                            <p class="mb-1"><small><i class="fas fa-user"></i> {{ supplier.contact_person }}</small></p>
+                            {% endif %}
+                            {% if supplier.phone %}
+                            <p class="mb-1"><small><i class="fas fa-phone"></i> {{ supplier.phone }}</small></p>
+                            {% endif %}
+                            {% if supplier.email %}
+                            <p class="mb-1"><small><i class="fas fa-envelope"></i> {{ supplier.email }}</small></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
                 {% endfor %}
-            </select>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> אין ספקים. הוסף ספקים כדי להתחיל.
+            </div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Stats Grid -->
-    {% if current_branch_id and stats %}
-    <div class="stock-stats-grid">
-        <div class="stat-card total">
-            <div class="stat-value">{{ stats.total_items or 0 }}</div>
-            <div class="stat-label"><i class="fas fa-box"></i> סה"כ פריטים</div>
+    <!-- Stock Categories -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-tags me-2"></i>קטגוריות מלאי</h5>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="fas fa-plus me-1"></i> קטגוריה חדשה
+            </button>
         </div>
-        <div class="stat-card low-stock">
-            <div class="stat-value">{{ stats.low_stock_alerts or 0 }}</div>
-            <div class="stat-label"><i class="fas fa-exclamation-triangle"></i> מלאי נמוך</div>
-        </div>
-        <div class="stat-card out-of-stock">
-            <div class="stat-value">{{ stats.out_of_stock or 0 }}</div>
-            <div class="stat-label"><i class="fas fa-ban"></i> אזל מהמלאי</div>
-        </div>
-        <div class="stat-card expiring">
-            <div class="stat-value">{{ stats.expiring_soon or 0 }}</div>
-            <div class="stat-label"><i class="fas fa-clock"></i> עומד לפוג</div>
+        <div class="card-body">
+            {% if stock_categories %}
+            <div class="row">
+                {% for category in stock_categories %}
+                <div class="col-md-3 mb-2">
+                    <div class="alert alert-secondary mb-0">
+                        <i class="fas fa-tag me-2"></i><strong>{{ category.name_he }}</strong>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> אין קטגוריות מלאי. הוסף קטגוריות כדי להתחיל.
+            </div>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
+</div>
 
-    <!-- Tabs -->
-    <div class="admin-tabs-wrapper">
-        <div class="admin-tabs" role="tablist">
-            <button class="admin-tab active" data-tab="inventory" role="tab">
-                <div class="tab-icon"><i class="fas fa-warehouse"></i></div>
-                <div class="tab-content">
-                    <div class="tab-title">מלאי</div>
-                    <div class="tab-description">ניהול פריטים וכמויות</div>
-                </div>
-            </button>
-            
-            <button class="admin-tab" data-tab="suppliers" role="tab">
-                <div class="tab-icon"><i class="fas fa-truck"></i></div>
-                <div class="tab-content">
-                    <div class="tab-title">ספקים</div>
-                    <div class="tab-description">ניהול ספקים ותנאי אספקה</div>
-                </div>
-            </button>
-            
-            <button class="admin-tab" data-tab="orders" role="tab">
-                <div class="tab-icon"><i class="fas fa-shopping-cart"></i></div>
-                <div class="tab-content">
-                    <div class="tab-title">הזמנות</div>
-                    <div class="tab-description">רשימות קניות והזמנות</div>
-                </div>
-            </button>
-            
-            <button class="admin-tab" data-tab="transactions" role="tab">
-                <div class="tab-icon"><i class="fas fa-exchange-alt"></i></div>
-                <div class="tab-content">
-                    <div class="tab-title">תנועות</div>
-                    <div class="tab-description">היסטוריית תנועות מלאי</div>
-                </div>
-            </button>
-            
-            <button class="admin-tab" data-tab="reports" role="tab">
-                <div class="tab-icon"><i class="fas fa-chart-bar"></i></div>
-                <div class="tab-content">
-                    <div class="tab-title">דוחות</div>
-                    <div class="tab-description">ניתוח ודוחות</div>
-                </div>
-            </button>
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">הוספת פריט מלאי</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">פונקציונליות זו תתווסף בקרוב...</p>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Tab Content -->
-    <div class="admin-tab-panels">
-        <!-- Inventory Tab -->
-        <div class="admin-tab-panel active" id="inventory-panel" role="tabpanel">
-            <div class="panel-header">
-                <h2>מלאי</h2>
-                <div class="btn-group-mobile" style="display: flex; gap: 0.5rem;">
-                    <a href="{{ url_for('admin.stock_items') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> הוסף פריט
-                    </a>
-                    <a href="{{ url_for('admin.import_stock_data') }}" class="btn btn-secondary">
-                        <i class="fas fa-file-import"></i> ייבוא
-                    </a>
-                    <a href="{{ url_for('admin.export_stock_data') }}" class="btn btn-secondary">
-                        <i class="fas fa-file-export"></i> ייצוא
-                    </a>
-                </div>
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">הוספת ספק</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            
-            <div class="content-card">
-                <div class="table-responsive">
-                    <p class="text-center text-muted py-5">
-                        <i class="fas fa-boxes fa-3x mb-3 d-block"></i>
-                        ניהול פריטי מלאי<br>
-                        <small>לחץ על "הוסף פריט" להתחלה</small>
-                    </p>
-                </div>
+            <div class="modal-body">
+                <p class="text-muted">פונקציונליות זו תתווסף בקרוב...</p>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- Suppliers Tab -->
-        <div class="admin-tab-panel" id="suppliers-panel" role="tabpanel">
-            <div class="panel-header">
-                <h2>ספקים</h2>
-                <a href="{{ url_for('admin.stock_suppliers') }}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> הוסף ספק
-                </a>
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">הוספת קטגוריה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            
-            <div class="content-card">
-                <div class="table-responsive">
-                    <p class="text-center text-muted py-5">
-                        <i class="fas fa-truck fa-3x mb-3 d-block"></i>
-                        ניהול ספקים<br>
-                        <small>לחץ על "הוסף ספק" להתחלה</small>
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Orders Tab -->
-        <div class="admin-tab-panel" id="orders-panel" role="tabpanel">
-            <div class="panel-header">
-                <h2>הזמנות ורשימות קניות</h2>
-                <button class="btn btn-primary" onclick="alert('יצירת הזמנה חדשה - בקרוב')">
-                    <i class="fas fa-plus"></i> הזמנה חדשה
-                </button>
-            </div>
-            
-            <div class="content-card">
-                <p class="text-center text-muted py-5">
-                    <i class="fas fa-shopping-cart fa-3x mb-3 d-block"></i>
-                    רשימות קניות והזמנות ספקים<br>
-                    <small>בקרוב - ממשק לניהול הזמנות אוטומטי</small>
-                </p>
-            </div>
-        </div>
-
-        <!-- Transactions Tab -->
-        <div class="admin-tab-panel" id="transactions-panel" role="tabpanel">
-            <div class="panel-header">
-                <h2>תנועות מלאי</h2>
-                <button class="btn btn-primary" onclick="openTransactionModal()">
-                    <i class="fas fa-plus"></i> תנועה חדשה
-                </button>
-            </div>
-            
-            <div class="content-card">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>תאריך</th>
-                                <th>סוג תנועה</th>
-                                <th>פריט</th>
-                                <th>כמות</th>
-                                <th>משתמש</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="fas fa-exchange-alt fa-2x mb-2 d-block"></i>
-                                    אין תנועות להצגה
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reports Tab -->
-        <div class="admin-tab-panel" id="reports-panel" role="tabpanel">
-            <div class="panel-header">
-                <h2>דוחות וניתוח</h2>
-                <button class="btn btn-primary" onclick="generateReport()">
-                    <i class="fas fa-file-pdf"></i> צור דוח
-                </button>
-            </div>
-            
-            <div class="content-card">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
-                                <h5>דוח מלאי</h5>
-                                <p class="text-muted">סטטוס נוכחי של כל הפריטים</p>
-                                <button class="btn btn-sm btn-outline-primary">צפה בדוח</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <i class="fas fa-money-bill-wave fa-3x text-success mb-3"></i>
-                                <h5>דוח עלויות</h5>
-                                <p class="text-muted">ניתוח הוצאות וכדאיות</p>
-                                <button class="btn btn-sm btn-outline-success">צפה בדוח</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <i class="fas fa-calendar-alt fa-3x text-warning mb-3"></i>
-                                <h5>דוח תפוגה</h5>
-                                <p class="text-muted">מעקב תאריכי תפוגה</p>
-                                <button class="btn btn-sm btn-outline-warning">צפה בדוח</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="modal-body">
+                <p class="text-muted">פונקציונליות זו תתווסף בקרוב...</p>
             </div>
         </div>
     </div>
@@ -320,32 +196,12 @@
 
 {% block extra_js %}
 <script>
-// Tab switching
-document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.admin-tab');
-    const panels = document.querySelectorAll('.admin-tab-panel');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const targetPanel = this.dataset.tab + '-panel';
-            
-            // Remove active class from all tabs and panels
-            tabs.forEach(t => t.classList.remove('active'));
-            panels.forEach(p => p.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding panel
-            this.classList.add('active');
-            document.getElementById(targetPanel).classList.add('active');
-        });
-    });
-});
-
-function openTransactionModal() {
-    alert('פתיחת חלון לתנועה חדשה - בקרוב');
+function editItem(itemId) {
+    alert('Edit functionality coming soon...');
 }
 
-function generateReport() {
-    alert('יצירת דוח - בקרוב');
+function addStock(itemId) {
+    alert('Add stock functionality coming soon...');
 }
 </script>
 {% endblock %}

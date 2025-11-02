@@ -380,31 +380,36 @@ section {
     transform: scale(1.1);
 }
 
-/* Gallery Homepage Section - 2x4 Grid */
+/* Gallery Homepage Section - 2x4 Grid - Compact & Uniform */
 .gallery-homepage-section {
-    padding: 3rem 0;
+    padding: 2.5rem 0;
 }
 
 .gallery-card {
     position: relative;
     overflow: hidden;
-    border-radius: 0.75rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
     background: white;
-    height: 180px;
+    width: 100%;
+    aspect-ratio: 1 / 1; /* Perfect square */
+    max-width: 140px; /* Maximum size constraint */
+    margin: 0 auto; /* Center in column */
 }
 
 .gallery-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .gallery-card-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     transition: transform 0.4s ease;
+    display: block;
 }
 
 .gallery-card:hover .gallery-card-img {
@@ -416,10 +421,10 @@ section {
     bottom: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent);
     color: white;
-    padding: 1rem 0.75rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.75rem 0.5rem 0.5rem;
+    font-size: 0.75rem;
     font-weight: 500;
     text-align: center;
     transform: translateY(100%);
@@ -432,7 +437,7 @@ section {
 
 @media (max-width: 768px) {
     .gallery-card {
-        height: 150px;
+        max-width: 120px; /* Even smaller on mobile */
     }
     
     .gallery-homepage-section {
@@ -440,11 +445,17 @@ section {
     }
     
     .gallery-homepage-section .section-title {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
     }
     
     .gallery-homepage-section .section-subtitle {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .gallery-card {
+        max-width: 100px; /* Very small on phones */
     }
 }
 

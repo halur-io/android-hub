@@ -87,7 +87,7 @@
                         <div class="item-content">
                             <div class="item-header">
                                 <h3 class="item-name">{{ item.name_he if language == 'he' else item.name_en }}</h3>
-                                <span class="item-price">₪{{ item.base_price }}</span>
+                                <span class="item-price">₪{{ item.base_price|int if item.base_price == item.base_price|int else "%.2f"|format(item.base_price) }}</span>
                             </div>
                             
                             {% if item.ingredients_he or item.ingredients_en %}
@@ -108,7 +108,7 @@
                             {% endif %}
                             
                             {% if settings.enable_online_ordering and settings.enable_delivery %}
-                            <button class="btn-add-to-order mt-3" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
+                            <button class="btn-add-to-order mt-3" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price|int if item.base_price == item.base_price|int else item.base_price }})">
                                 <i class="fas fa-plus-circle"></i> {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
                             </button>
                             {% endif %}

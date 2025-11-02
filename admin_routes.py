@@ -778,6 +778,23 @@ def edit_category(id=None):
     
     return render_template('admin/enhanced_category.html', category=category)
 
+@admin_bp.route('/menu/item/<int:item_id>/toggle-availability', methods=['POST'])
+@login_required
+def toggle_item_availability(item_id):
+    """Quick toggle for menu item availability (for mobile-friendly updates)"""
+    item = MenuItem.query.get_or_404(item_id)
+    
+    data = request.get_json() or {}
+    item.is_available = data.get('is_available', not item.is_available)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'is_available': item.is_available,
+        'message': 'זמינות עודכנה בהצלחה'
+    })
+
 @admin_bp.route('/menu/item/edit/<int:id>', methods=['GET', 'POST'])
 @admin_bp.route('/menu/item/new', methods=['GET', 'POST'])
 @login_required

@@ -25,6 +25,7 @@ Preferred communication style: Simple, everyday language.
     -   Sticky action bar for Save/Cancel buttons
     -   Dedicated admin.css design system with design tokens
     -   Smooth tab transitions without page reload
+    -   **Mobile-Optimized Pages**: Stock Management, Menu Management (with quick availability toggle), and Orders pages feature touch-friendly controls, horizontal-scroll tabs, and optimized layouts for kitchen/service staff mobile use
 
 ### Technical Implementations
 -   **Backend Framework**: Flask with a modular structure.
@@ -57,7 +58,18 @@ Preferred communication style: Simple, everyday language.
         -   Features: Toggle switches for all major features (ordering, delivery, menu, gallery, etc.)
         -   Delivery: Costs, free delivery threshold, estimated times, zones info
         -   Advanced: Analytics IDs, announcement banners, maintenance mode
-    -   **Menu Management**: Customizable dietary properties, drag-and-drop reordering, CSV/Excel import, and print layouts.
+    -   **Menu Management**: Modern tabbed interface with:
+        -   Categories Tab: Full category management with icons, colors, display order
+        -   Items Tab: Quick availability toggle for mobile updates
+        -   Import Tab: Excel/Word menu import functionality
+        -   Mobile-responsive with touch-friendly availability toggles
+    -   **Stock Management**: Advanced inventory management system with horizontal tabs:
+        -   Inventory Tab: Full stock item management with categories, units, suppliers
+        -   Suppliers Tab: Supplier management with delivery schedules, terms
+        -   Orders Tab: Shopping lists and supplier orders
+        -   Transactions Tab: Stock movement tracking (in/out, usage, waste)
+        -   Reports Tab: Analytics and cost tracking
+        -   Mobile-optimized for kitchen staff updates
     -   **Media Management**: Admin upload for hero videos/images and gallery images.
     -   **Payment Configuration**: Admin panel for managing multiple payment providers and API credentials.
     -   **User Management**: Role-Based Access Control (RBAC) with granular permissions.
@@ -72,10 +84,11 @@ Preferred communication style: Simple, everyday language.
 -   **Configuration**: Environment variable-based for production settings.
 -   **Data Models**: SQLAlchemy models for various entities including:
     -   Core: ContactMessage, Reservation, SiteSettings, CustomSection, TermsOfUse
-    -   Menu: MenuCategory, MenuItem, MenuSettings
+    -   Menu: MenuCategory (with footer_text, show_in_menu, show_in_order, featured, image_path), MenuItem, MenuSettings
     -   Media: MediaFile, GalleryPhoto
     -   Branch: Branch, WorkingHours
     -   Compliance: NewsletterSubscriber (email, name, is_active, subscribed_at, unsubscribed_at, source tracking)
+    -   Stock Management: StockCategory, StockItem, StockLevel, StockTransaction, StockAlert, Supplier, ShoppingList, ShoppingListItem, StockSettings, Receipt, ReceiptItem
 -   **Database Architecture**: Robust models, default data seeding, and safe migration practices.
 -   **Accessibility Compliance**: IS 5568 (Israeli Standard) and WCAG 2.1 Level AA implementation with:
     -   Comprehensive accessibility statement page

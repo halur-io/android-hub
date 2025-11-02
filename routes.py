@@ -2,8 +2,8 @@ from flask import render_template, request, flash, redirect, url_for, jsonify, s
 from flask_mail import Message
 from app import app, mail
 from database import db
-from forms import ContactForm, ReservationForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, GalleryPhoto
+from forms import ContactForm, ReservationForm, NewsletterForm
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, GalleryPhoto, NewsletterSubscriber
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -282,9 +282,6 @@ def reservation():
 @app.route('/newsletter/subscribe', methods=['POST'])
 def newsletter_subscribe():
     """Newsletter subscription"""
-    from forms import NewsletterForm
-    from models import NewsletterSubscriber
-    
     context = get_context_data()
     form = NewsletterForm()
     

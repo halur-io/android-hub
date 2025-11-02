@@ -311,12 +311,18 @@
 
 <!-- Floating Action Buttons -->
 <div class="floating-actions">
-    <a href="https://waze.com/ul?q={{ branches[0].address_he if branches and language == 'he' else branches[0].address_en if branches else '' }}" 
-       target="_blank" 
-       class="fab-button fab-navigate" 
-       title="{{ 'נווט אלינו' if language == 'he' else 'Navigate to us' }}">
-        <i class="fas fa-location-arrow"></i>
+    <a href="{{ url_for('order_page') if settings.enable_online_ordering else '#' }}" 
+       class="fab-button fab-table-order" 
+       title="{{ 'הזמנת שולחן' if language == 'he' else 'Table Order' }}">
+        <i class="fas fa-utensils"></i>
     </a>
+    {% if settings.enable_delivery %}
+    <a href="{{ url_for('order_page') }}" 
+       class="fab-button fab-delivery" 
+       title="{{ 'משלוח TA' if language == 'he' else 'TA Delivery' }}">
+        <i class="fas fa-motorcycle"></i>
+    </a>
+    {% endif %}
     {% if branches and branches[0].phone %}
     <a href="tel:{{ branches[0].phone }}" 
        class="fab-button fab-call" 

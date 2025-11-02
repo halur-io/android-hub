@@ -249,20 +249,31 @@
 
 <!-- Table Reservation Section -->
 {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage %}
-<section class="section reservation-section section-with-gold-gradient">
+<section class="section reservation-section-elegant">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-8 text-center text-lg-start">
-                <h2 class="reservation-title">{{ reservation_settings.section_title_he if language == 'he' else reservation_settings.section_title_en }}</h2>
-                <p class="reservation-subtitle">{{ reservation_settings.section_description_he if language == 'he' else reservation_settings.section_description_en }}</p>
+        <div class="reservation-elegant-wrapper">
+            <div class="reservation-divider-top"></div>
+            <div class="row align-items-center justify-content-center">
+                <div class="col-lg-10 col-xl-8">
+                    <div class="reservation-content-elegant text-center">
+                        <div class="reservation-icon-minimal">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <h2 class="reservation-title-elegant">{{ reservation_settings.section_title_he if language == 'he' else reservation_settings.section_title_en }}</h2>
+                        <div class="reservation-line-accent"></div>
+                        <p class="reservation-subtitle-elegant">{{ reservation_settings.section_description_he if language == 'he' else reservation_settings.section_description_en }}</p>
+                        {% if reservation_settings.reservation_system_url %}
+                        <div class="reservation-btn-container">
+                            <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-reservation-elegant">
+                                {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
+                                <span class="btn-arrow">→</span>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            <div class="col-lg-4 text-center text-lg-end">
-                {% if reservation_settings.reservation_system_url %}
-                <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn btn-reservation btn-lg">
-                    <i class="fas fa-calendar-check"></i> {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
-                </a>
-                {% endif %}
-            </div>
+            <div class="reservation-divider-bottom"></div>
         </div>
     </div>
 </section>

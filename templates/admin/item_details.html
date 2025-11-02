@@ -1,0 +1,278 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ item.name_he }} - פרטי מרכיב{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">{{ item.name_he }}</h1>
+        <a href="{{ url_for('admin.stock_management') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right me-2"></i>חזור לניהול מלאי
+        </a>
+    </div>
+
+    <!-- Basic Info Card -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>מידע בסיסי</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th width="40%">קטגוריה:</th>
+                            <td>
+                                {% if item.category %}
+                                <span class="badge bg-secondary">{{ item.category.name_he }}</span>
+                                {% else %}
+                                <span class="text-muted">ללא קטגוריה</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>יחידת מידה:</th>
+                            <td>{{ item.unit_he or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>ספק:</th>
+                            <td>
+                                {% if item.primary_supplier %}
+                                {{ item.primary_supplier.name }}
+                                {% else %}
+                                <span class="text-muted">ללא ספק</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>עלות יחידה נוכחית:</th>
+                            <td><strong class="text-success">₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>רכישה אחרונה:</th>
+                            <td>
+                                {% if last_purchase %}
+                                {{ last_purchase.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                <span class="text-muted">אין נתונים</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>סטטיסטיקות</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-2">מספר מנות</h6>
+                                <h3 class="mb-0">{{ dish_analysis|length }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-2">מלאי מינימום</h6>
+                                <h3 class="mb-0">{{ item.minimum_stock or 0 }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Price History Chart -->
+    {% if price_history %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>היסטוריית מחירים (12 חודשים אחרונים)</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="priceHistoryChart" height="80"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Dishes Using This Ingredient -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>מנות משתמשות במרכיב זה - ניתוח רווחיות</h5>
+        </div>
+        <div class="card-body">
+            {% if dish_analysis %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>שם המנה</th>
+                            <th>מחיר מנה</th>
+                            <th>כמות משומשת</th>
+                            <th>עלות מרכיב זה</th>
+                            <th>רווח</th>
+                            <th>אחוז רווח</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dish in dish_analysis %}
+                        <tr>
+                            <td><strong>{{ dish.name }}</strong></td>
+                            <td>₪{{ "%.2f"|format(dish.price or 0) }}</td>
+                            <td>{{ "%.2f"|format(dish.quantity_used) }} {{ item.unit_he }}</td>
+                            <td>₪{{ "%.2f"|format(dish.ingredient_cost) }}</td>
+                            <td class="{% if dish.profit > 0 %}text-success{% else %}text-danger{% endif %}">
+                                ₪{{ "%.2f"|format(dish.profit) }}
+                            </td>
+                            <td>
+                                {% if dish.margin > 70 %}
+                                <span class="badge bg-success">{{ "%.1f"|format(dish.margin) }}%</span>
+                                {% elif dish.margin > 40 %}
+                                <span class="badge bg-warning">{{ "%.1f"|format(dish.margin) }}%</span>
+                                {% else %}
+                                <span class="badge bg-danger">{{ "%.1f"|format(dish.margin) }}%</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <div class="alert alert-info mb-0">
+                        <strong>ממוצע אחוז רווח:</strong>
+                        {{ "%.1f"|format((dish_analysis|sum(attribute='margin')) / (dish_analysis|length) if dish_analysis else 0) }}%
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-success mb-0">
+                        <strong>מנה רווחית ביותר:</strong>
+                        {% set best = dish_analysis|sort(attribute='margin', reverse=true)|first if dish_analysis else none %}
+                        {{ best.name if best else '-' }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-warning mb-0">
+                        <strong>מנה פחות רווחית:</strong>
+                        {% set worst = dish_analysis|sort(attribute='margin')|first if dish_analysis else none %}
+                        {{ worst.name if worst else '-' }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> מרכיב זה אינו משמש באף מנה כרגע.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Price History Table -->
+    {% if price_history %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i>היסטוריית רכישות ומחירים</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>תאריך</th>
+                            <th>מחיר ליחידה</th>
+                            <th>שינוי</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(price_history|length) %}
+                        {% set purchase = price_history[i] %}
+                        <tr>
+                            <td>{{ purchase.transaction_date.strftime('%d/%m/%Y') }}</td>
+                            <td>₪{{ "%.2f"|format(purchase.unit_cost or 0) }}</td>
+                            <td>
+                                {% if i < (price_history|length - 1) %}
+                                    {% set prev_price = price_history[i + 1].unit_cost %}
+                                    {% if prev_price %}
+                                        {% set change = ((purchase.unit_cost - prev_price) / prev_price * 100) %}
+                                        {% if change > 0 %}
+                                        <span class="text-danger"><i class="fas fa-arrow-up"></i> +{{ "%.1f"|format(change) }}%</span>
+                                        {% elif change < 0 %}
+                                        <span class="text-success"><i class="fas fa-arrow-down"></i> {{ "%.1f"|format(change) }}%</span>
+                                        {% else %}
+                                        <span class="text-muted">ללא שינוי</span>
+                                        {% endif %}
+                                    {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if price_history %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Price history chart
+const ctx = document.getElementById('priceHistoryChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [
+            {% for purchase in price_history|reverse %}
+            '{{ purchase.transaction_date.strftime("%d/%m") }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'מחיר ליחידה (₪)',
+            data: [
+                {% for purchase in price_history|reverse %}
+                {{ purchase.unit_cost or 0 }}{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            borderColor: 'rgba(26, 58, 110, 1)',
+            backgroundColor: 'rgba(26, 58, 110, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: false,
+                ticks: {
+                    callback: function(value) {
+                        return '₪' + value.toFixed(2);
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

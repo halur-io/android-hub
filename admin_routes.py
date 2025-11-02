@@ -4160,6 +4160,88 @@ def add_stock_category():
     
     return redirect(url_for('admin.stock_management'))
 
+@admin_bp.route('/stock/category/<int:category_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_stock_category(category_id):
+    """Delete stock category"""
+    from models import StockCategory
+    
+    try:
+        category = StockCategory.query.get_or_404(category_id)
+        db.session.delete(category)
+        db.session.commit()
+        
+        flash('קטגוריה נמחקה בהצלחה!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה במחיקת הקטגוריה: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/item/<int:item_id>/details')
+@login_required
+@require_permission('stock.view')
+def item_details(item_id):
+    """Detailed item management with price history, profit analysis, etc."""
+    from models import StockItem, StockTransaction, MenuItem, MenuItemIngredient
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    
+    item = StockItem.query.get_or_404(item_id)
+    
+    # Get last purchase date
+    last_purchase = db.session.query(func.max(StockTransaction.transaction_date)).filter(
+        StockTransaction.item_id == item_id,
+        StockTransaction.transaction_type == 'delivery'
+    ).scalar()
+    
+    # Get price history (last 12 months)
+    price_history = db.session.query(
+        StockTransaction.transaction_date,
+        StockTransaction.unit_cost
+    ).filter(
+        StockTransaction.item_id == item_id,
+        StockTransaction.transaction_type == 'delivery',
+        StockTransaction.unit_cost.isnot(None),
+        StockTransaction.transaction_date >= datetime.now() - timedelta(days=365)
+    ).order_by(StockTransaction.transaction_date.desc()).limit(50).all()
+    
+    # Get dishes using this ingredient
+    dishes_using = db.session.query(
+        MenuItem.id,
+        MenuItem.name_he,
+        MenuItem.base_price,
+        MenuItemIngredient.quantity
+    ).join(
+        MenuItemIngredient, MenuItem.id == MenuItemIngredient.menu_item_id
+    ).filter(
+        MenuItemIngredient.stock_item_id == item_id
+    ).all()
+    
+    # Calculate profit margins for each dish
+    dish_analysis = []
+    for dish in dishes_using:
+        ingredient_cost = (item.cost_per_unit or 0) * dish.quantity
+        dish_profit = (dish.base_price or 0) - ingredient_cost
+        profit_margin = (dish_profit / dish.base_price * 100) if dish.base_price else 0
+        
+        dish_analysis.append({
+            'id': dish.id,
+            'name': dish.name_he,
+            'price': dish.base_price,
+            'quantity_used': dish.quantity,
+            'ingredient_cost': ingredient_cost,
+            'profit': dish_profit,
+            'margin': profit_margin
+        })
+    
+    return render_template('admin/item_details.html',
+                         item=item,
+                         last_purchase=last_purchase,
+                         price_history=price_history,
+                         dish_analysis=dish_analysis)
+
 @admin_bp.route('/stock/reports/monthly-costs')
 @login_required
 @require_permission('stock.view')
@@ -4485,6 +4567,25 @@ def edit_supplier(supplier_id):
             flash(f'שגיאה בעדכון ספק: {str(e)}', 'error')
     
     return render_template('admin/edit_supplier.html', supplier=supplier)
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_supplier(supplier_id):
+    """Delete supplier"""
+    from models import Supplier
+    
+    try:
+        supplier = Supplier.query.get_or_404(supplier_id)
+        db.session.delete(supplier)
+        db.session.commit()
+        
+        flash('ספק נמחק בהצלחה', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה במחיקת ספק: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
 
 @admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
 @login_required

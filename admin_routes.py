@@ -4101,23 +4101,23 @@ def add_stock_item():
     
     try:
         name_he = request.form.get('name_he')
-        name_en = request.form.get('name_en', '')
+        name_en = request.form.get('name_en', name_he)  # Use Hebrew name if English not provided
         category_id = request.form.get('category_id', type=int)
         supplier_id = request.form.get('supplier_id', type=int)
         unit = request.form.get('unit', 'יחידות')
         minimum_stock = request.form.get('minimum_stock', 0, type=float)
-        reorder_point = request.form.get('reorder_point', 0, type=float)
         cost_per_unit = request.form.get('cost_per_unit', 0, type=float)
         
         item = StockItem(
             name_he=name_he,
             name_en=name_en,
             category_id=category_id if category_id else None,
-            supplier_id=supplier_id if supplier_id else None,
-            unit=unit,
+            primary_supplier_id=supplier_id if supplier_id else None,
+            unit_he=unit,
+            unit_en=unit,
             minimum_stock=minimum_stock,
-            reorder_point=reorder_point,
             cost_per_unit=cost_per_unit,
+            item_type='ingredient',  # Default to ingredient
             is_active=True
         )
         

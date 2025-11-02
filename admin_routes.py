@@ -4187,9 +4187,9 @@ def monthly_cost_reports():
         StockItem.name_he,
         StockItem.category_id,
         func.sum(StockTransaction.quantity).label('total_quantity'),
-        func.sum(StockTransaction.cost).label('total_cost')
+        func.sum(StockTransaction.total_cost).label('total_cost')
     ).join(
-        StockItem, StockTransaction.stock_item_id == StockItem.id
+        StockItem, StockTransaction.item_id == StockItem.id
     ).filter(
         StockTransaction.transaction_date >= start_date,
         StockTransaction.transaction_date < end_date
@@ -4200,9 +4200,9 @@ def monthly_cost_reports():
     ).all()
     
     # Calculate summary
-    purchases = sum(t.total_cost for t in transactions if t.transaction_type == 'purchase')
-    usage = sum(t.total_cost for t in transactions if t.transaction_type == 'usage')
-    waste = sum(t.total_cost for t in transactions if t.transaction_type == 'waste')
+    purchases = sum(t.total_cost or 0 for t in transactions if t.transaction_type == 'delivery')
+    usage = sum(t.total_cost or 0 for t in transactions if t.transaction_type == 'usage')
+    waste = sum(t.total_cost or 0 for t in transactions if t.transaction_type == 'waste')
     total_expenses = purchases + usage + waste
     
     # Get monthly comparison (last 6 months)
@@ -4219,7 +4219,7 @@ def monthly_cost_reports():
             month_end = datetime(target_year, target_month + 1, 1)
         
         month_total = db.session.query(
-            func.sum(StockTransaction.cost)
+            func.sum(StockTransaction.total_cost)
         ).filter(
             StockTransaction.transaction_date >= month_start,
             StockTransaction.transaction_date < month_end

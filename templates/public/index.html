@@ -165,40 +165,44 @@
     <div class="divider-line"></div>
 </div>
 
-<!-- Gallery Section - 2x4 Grid (8 Photos) -->
+<!-- Gallery Section - Elegant 2x4 Grid (8 Photos) -->
 {% if settings.enable_gallery_section and gallery_images %}
-<section class="section gallery-homepage-section">
+<section class="gallery-homepage-section">
     <div class="container">
-        <div class="text-center mb-4">
-            <h2 class="section-title">{{ settings.gallery_section_title_he if settings.gallery_section_title_he else 'גלריה' if language == 'he' else settings.gallery_section_title_en if settings.gallery_section_title_en else 'Gallery' }}</h2>
+        <div class="text-center">
+            <h2 class="section-title">
+                <i class="fas fa-images me-2" style="color: #dc3545;"></i>
+                {{ settings.gallery_section_title_he if settings.gallery_section_title_he else 'גלריה' if language == 'he' else settings.gallery_section_title_en if settings.gallery_section_title_en else 'Gallery' }}
+            </h2>
             <p class="section-subtitle">{{ settings.gallery_section_subtitle_he if settings.gallery_section_subtitle_he else 'מבט אל חוויית הסעדה שלנו' if language == 'he' else settings.gallery_section_subtitle_en if settings.gallery_section_subtitle_en else 'A glimpse into our dining experience' }}</p>
         </div>
         
-        <!-- 2 Column Grid for 8 Photos (2 columns × 4 rows) -->
-        <div class="row g-3">
-            {% for image in gallery_images[:8] %}
-            <div class="col-6">
-                <div class="gallery-card">
-                    <img src="{{ image.file_path }}" 
-                         alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 
-                         class="gallery-card-img"
-                         loading="lazy"
-                         width="240"
-                         height="180">
-                    {% if image.caption_he or image.caption_en %}
-                    <div class="gallery-card-caption">
-                        {{ image.caption_he if language == 'he' else image.caption_en }}
+        <!-- Centered 2 Column Grid for 8 Photos (2 columns × 4 rows) -->
+        <div class="gallery-grid-container">
+            <div class="row g-4">
+                {% for image in gallery_images[:8] %}
+                <div class="col-6">
+                    <div class="gallery-card">
+                        <img src="{{ image.file_path }}" 
+                             alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 
+                             class="gallery-card-img"
+                             loading="lazy">
+                        {% if image.caption_he or image.caption_en %}
+                        <div class="gallery-card-caption">
+                            {{ image.caption_he if language == 'he' else image.caption_en }}
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
         
         {% if settings.show_gallery and gallery_images|length > 8 %}
-        <div class="text-center mt-4">
-            <a href="{{ url_for('gallery_page') }}" class="btn btn-outline-primary">
-                {{ 'ראה עוד' if language == 'he' else 'View More' }}
+        <div class="text-center mt-5">
+            <a href="{{ url_for('gallery_page') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-arrow-right me-2"></i>
+                {{ 'ראה עוד תמונות' if language == 'he' else 'View More Photos' }}
             </a>
         </div>
         {% endif %}

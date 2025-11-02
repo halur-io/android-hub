@@ -45,18 +45,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set level = item.get_current_level() %}
-                                {% if level %}
-                                    {% if level.quantity <= item.minimum_stock %}
-                                    <span class="badge bg-danger">{{ level.quantity }}</span>
-                                    {% elif level.quantity <= item.reorder_point %}
-                                    <span class="badge bg-warning">{{ level.quantity }}</span>
-                                    {% else %}
-                                    <span class="badge bg-success">{{ level.quantity }}</span>
-                                    {% endif %}
-                                {% else %}
-                                <span class="badge bg-secondary">0</span>
-                                {% endif %}
+                                <span class="badge bg-secondary">-</span>
                             </td>
                             <td>{{ item.unit }}</td>
                             <td>

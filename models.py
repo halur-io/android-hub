@@ -488,11 +488,11 @@ class NewsletterSubscriber(db.Model):
     __tablename__ = 'newsletter_subscribers'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=True)
-    is_active = db.Column(db.Boolean, default=True)
-    subscribed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    unsubscribed_at = db.Column(db.DateTime, nullable=True)
-    source = db.Column(db.String(50), default='website')  # website, order_page, footer, etc.
+    name = db.Column(db.String(100), nullable=True, default=None)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    subscribed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    unsubscribed_at = db.Column(db.DateTime, nullable=True, default=None)
+    source = db.Column(db.String(50), default='website', nullable=False)  # website, order_page, footer, etc.
     
     def __repr__(self):
         return f'<NewsletterSubscriber {self.email}>'

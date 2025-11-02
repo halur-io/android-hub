@@ -179,14 +179,25 @@
                     </ul>
                 </div>
                 
-                <!-- Information Column -->
+                <!-- Quick Links Column -->
                 <div class="col-md-3 mb-4 mb-md-0">
-                    <h6 class="footer-heading">{{ 'מידע' if language == 'he' else 'Information' }}</h6>
+                    <h6 class="footer-heading">{{ 'קישורים מהירים' if language == 'he' else 'Quick Links' }}</h6>
                     <ul class="footer-links">
+                        <li><a href="{{ url_for('index') }}">{{ 'דף הבית' if language == 'he' else 'Home' }}</a></li>
+                        {% if settings.enable_menu_display %}
+                        <li><a href="{{ url_for('menu_page') }}">{{ 'תפריט' if language == 'he' else 'Menu' }}</a></li>
+                        {% endif %}
+                        {% if settings.enable_online_ordering %}
+                        <li><a href="{{ url_for('order_page') }}">{{ 'הזמנה' if language == 'he' else 'Order' }}</a></li>
+                        {% endif %}
+                        {% if settings.enable_gallery %}
+                        <li><a href="{{ url_for('gallery_page') }}">{{ 'גלריה' if language == 'he' else 'Gallery' }}</a></li>
+                        {% endif %}
+                        <li><a href="{{ url_for('contact_page') }}">{{ 'צור קשר' if language == 'he' else 'Contact' }}</a></li>
+                        <li><a href="{{ url_for('index') }}#about">{{ 'אודותינו' if language == 'he' else 'About Us' }}</a></li>
                         <li><a href="{{ url_for('terms_page') }}">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</a></li>
                         <li><a href="{{ url_for('privacy_policy_page') }}">{{ 'מדיניות פרטיות' if language == 'he' else 'Privacy Policy' }}</a></li>
                         <li><a href="{{ url_for('accessibility_statement') }}">{{ 'הצהרת נגישות' if language == 'he' else 'Accessibility' }}</a></li>
-                        <li><a href="{{ url_for('index') }}#about">{{ 'אודות' if language == 'he' else 'About Us' }}</a></li>
                         {% if settings.enable_english_language %}
                         <li><a href="?lang={{ 'en' if language == 'he' else 'he' }}">{{ 'English' if language == 'he' else 'עברית' }}</a></li>
                         {% endif %}
@@ -200,18 +211,11 @@
                     <form method="POST" action="{{ url_for('newsletter_subscribe') }}" class="footer-newsletter-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="source" value="footer"/>
-                        <div class="newsletter-input-group">
-                            <input type="email" name="email" class="form-control" placeholder="{{ 'האימייל שלך' if language == 'he' else 'Your email' }}" required aria-label="{{ 'כתובת אימייל' if language == 'he' else 'Email address' }}">
-                            <button type="submit" class="btn btn-primary btn-newsletter">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" type="checkbox" name="accept_terms" id="newsletterTerms" required>
-                            <label class="form-check-label footer-terms-label" for="newsletterTerms">
-                                {{ 'מסכים/ה ' if language == 'he' else 'I agree to ' }}<a href="{{ url_for('terms_page') }}" target="_blank" class="footer-link">{{ 'לתנאי השימוש' if language == 'he' else 'Terms of Use' }}</a>
-                            </label>
-                        </div>
+                        <input type="email" name="email" class="form-control newsletter-email-input" placeholder="{{ 'האימייל שלך' if language == 'he' else 'Your email' }}" required aria-label="{{ 'כתובת אימייל' if language == 'he' else 'Email address' }}">
+                        <button type="submit" class="btn btn-primary newsletter-submit-btn">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            {{ 'הרשמה' if language == 'he' else 'Subscribe' }}
+                        </button>
                     </form>
                 </div>
             </div>

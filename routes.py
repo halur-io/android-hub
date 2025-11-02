@@ -283,11 +283,11 @@ def reservation():
 def newsletter_subscribe():
     """Newsletter subscription"""
     context = get_context_data()
-    form = NewsletterForm()
+    email = request.form.get('email', '').strip()
     
-    if form.validate_on_submit():
+    if email:
         try:
-            existing = NewsletterSubscriber.query.filter_by(email=form.email.data).first()
+            existing = NewsletterSubscriber.query.filter_by(email=email).first()
             
             if existing:
                 if existing.is_active:
@@ -299,8 +299,7 @@ def newsletter_subscribe():
                     flash('נרשמת מחדש!' if context['language'] == 'he' else 'Resubscribed!', 'success')
             else:
                 subscriber = NewsletterSubscriber(
-                    email=form.email.data,
-                    name=form.name.data,
+                    email=email,
                     source=request.form.get('source', 'footer')
                 )
                 db.session.add(subscriber)
@@ -310,7 +309,7 @@ def newsletter_subscribe():
             logging.error(f'Error subscribing: {e}')
             flash('שגיאה' if context['language'] == 'he' else 'Error', 'error')
     else:
-        flash('אימייל לא תקין' if context['language'] == 'he' else 'Invalid email', 'error')
+        flash('אנא הזן כתובת אימייל' if context['language'] == 'he' else 'Please enter an email', 'error')
     
     return redirect(request.referrer or url_for('index'))
 

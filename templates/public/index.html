@@ -165,6 +165,52 @@
     <div class="divider-line"></div>
 </div>
 
+<!-- Gallery Section - 2x4 Grid (8 Photos) -->
+{% if settings.enable_gallery_section and gallery_images %}
+<section class="section gallery-homepage-section">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 class="section-title">{{ settings.gallery_section_title_he if settings.gallery_section_title_he else 'גלריה' if language == 'he' else settings.gallery_section_title_en if settings.gallery_section_title_en else 'Gallery' }}</h2>
+            <p class="section-subtitle">{{ settings.gallery_section_subtitle_he if settings.gallery_section_subtitle_he else 'מבט אל חוויית הסעדה שלנו' if language == 'he' else settings.gallery_section_subtitle_en if settings.gallery_section_subtitle_en else 'A glimpse into our dining experience' }}</p>
+        </div>
+        
+        <!-- 2 Column Grid for 8 Photos -->
+        <div class="row g-3">
+            {% for image in gallery_images[:8] %}
+            <div class="col-6 col-md-6">
+                <div class="gallery-card">
+                    <img src="{{ image.file_path }}" 
+                         alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 
+                         class="gallery-card-img"
+                         loading="lazy">
+                    {% if image.caption_he or image.caption_en %}
+                    <div class="gallery-card-caption">
+                        {{ image.caption_he if language == 'he' else image.caption_en }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        {% if settings.show_gallery and gallery_images|length > 8 %}
+        <div class="text-center mt-4">
+            <a href="{{ url_for('gallery_page') }}" class="btn btn-outline-primary">
+                {{ 'ראה עוד' if language == 'he' else 'View More' }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Wave Divider -->
+<div class="wave-divider wave-divider-2">
+    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+        <path d="M0,50 C200,100 400,0 600,50 C800,100 1000,0 1200,50 L1200,0 L0,0 Z" fill="#f8f9fa"></path>
+    </svg>
+</div>
+{% endif %}
+
 <!-- Branches Section -->
 {% if branches %}
 <section class="section bg-light section-with-pattern">
@@ -308,44 +354,6 @@
         </div>
     </div>
 </section>
-
-<!-- Gallery Section - 2x4 Grid (8 Photos) -->
-{% if settings.enable_gallery_section and gallery_images %}
-<section class="section bg-light gallery-homepage-section">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="section-title">{{ settings.gallery_section_title_he if settings.gallery_section_title_he else 'גלריה' if language == 'he' else settings.gallery_section_title_en if settings.gallery_section_title_en else 'Gallery' }}</h2>
-            <p class="section-subtitle">{{ settings.gallery_section_subtitle_he if settings.gallery_section_subtitle_he else 'מבט אל חוויית הסעדה שלנו' if language == 'he' else settings.gallery_section_subtitle_en if settings.gallery_section_subtitle_en else 'A glimpse into our dining experience' }}</p>
-        </div>
-        
-        <!-- 2 Column Grid for 8 Photos -->
-        <div class="row g-4">
-            {% for image in gallery_images[:8] %}
-            <div class="col-md-6">
-                <div class="gallery-card">
-                    <img src="{{ image.file_path }}" 
-                         alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 
-                         class="gallery-card-img">
-                    {% if image.caption_he or image.caption_en %}
-                    <div class="gallery-card-caption">
-                        {{ image.caption_he if language == 'he' else image.caption_en }}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        
-        {% if settings.show_gallery and gallery_images|length > 8 %}
-        <div class="text-center mt-5">
-            <a href="{{ url_for('gallery_page') }}" class="btn btn-outline-primary btn-lg">
-                {{ 'ראה עוד' if language == 'he' else 'View More' }}
-            </a>
-        </div>
-        {% endif %}
-    </div>
-</section>
-{% endif %}
 
 <!-- Floating Action Buttons -->
 <div class="floating-actions">

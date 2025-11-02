@@ -4044,7 +4044,7 @@ def printer_guide():
 @require_permission('stock.view')
 def stock_management():
     """Main stock management dashboard"""
-    from models import StockItem, StockLevel, Branch, StockAlert
+    from models import StockItem, StockLevel, Branch, StockAlert, Supplier, StockCategory
     
     # Get current branch or default to first branch
     branch_id = request.args.get('branch_id', type=int)
@@ -4053,6 +4053,11 @@ def stock_management():
         branch_id = branch.id if branch else None
     
     branches = Branch.query.filter_by(is_active=True).all()
+    
+    # Get all stock items, suppliers, and categories
+    stock_items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    stock_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
     
     # Get stock statistics for the selected branch
     stats = {}
@@ -4082,7 +4087,162 @@ def stock_management():
     return render_template('admin/stock_management.html', 
                          branches=branches, 
                          current_branch_id=branch_id,
-                         stats=stats)
+                         stats=stats,
+                         stock_items=stock_items,
+                         suppliers=suppliers,
+                         stock_categories=stock_categories)
+
+@admin_bp.route('/stock/item/add', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def add_stock_item():
+    """Add new stock item"""
+    from models import StockItem
+    
+    try:
+        name_he = request.form.get('name_he')
+        name_en = request.form.get('name_en', '')
+        category_id = request.form.get('category_id', type=int)
+        supplier_id = request.form.get('supplier_id', type=int)
+        unit = request.form.get('unit', 'יחידות')
+        minimum_stock = request.form.get('minimum_stock', 0, type=float)
+        reorder_point = request.form.get('reorder_point', 0, type=float)
+        cost_per_unit = request.form.get('cost_per_unit', 0, type=float)
+        
+        item = StockItem(
+            name_he=name_he,
+            name_en=name_en,
+            category_id=category_id if category_id else None,
+            supplier_id=supplier_id if supplier_id else None,
+            unit=unit,
+            minimum_stock=minimum_stock,
+            reorder_point=reorder_point,
+            cost_per_unit=cost_per_unit,
+            is_active=True
+        )
+        
+        db.session.add(item)
+        db.session.commit()
+        
+        flash('פריט נוסף בהצלחה!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה בהוספת הפריט: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/category/add', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def add_stock_category():
+    """Add new stock category"""
+    from models import StockCategory
+    
+    try:
+        name_he = request.form.get('name_he')
+        name_en = request.form.get('name_en', '')
+        description = request.form.get('description', '')
+        
+        category = StockCategory(
+            name_he=name_he,
+            name_en=name_en,
+            description=description,
+            is_active=True
+        )
+        
+        db.session.add(category)
+        db.session.commit()
+        
+        flash('קטגוריה נוספה בהצלחה!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה בהוספת הקטגוריה: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/reports/monthly-costs')
+@login_required
+@require_permission('stock.view')
+def monthly_cost_reports():
+    """Monthly cost and expense reports"""
+    from models import StockTransaction, StockItem
+    from sqlalchemy import func, extract
+    from datetime import datetime, timedelta
+    import calendar
+    
+    # Get year and month from query params or default to current
+    year = request.args.get('year', datetime.now().year, type=int)
+    month = request.args.get('month', datetime.now().month, type=int)
+    
+    # Calculate date range for the selected month
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+    
+    # Get transactions for the month
+    transactions = db.session.query(
+        StockTransaction.transaction_type,
+        StockItem.name_he,
+        StockItem.category_id,
+        func.sum(StockTransaction.quantity).label('total_quantity'),
+        func.sum(StockTransaction.cost).label('total_cost')
+    ).join(
+        StockItem, StockTransaction.stock_item_id == StockItem.id
+    ).filter(
+        StockTransaction.transaction_date >= start_date,
+        StockTransaction.transaction_date < end_date
+    ).group_by(
+        StockTransaction.transaction_type,
+        StockItem.name_he,
+        StockItem.category_id
+    ).all()
+    
+    # Calculate summary
+    purchases = sum(t.total_cost for t in transactions if t.transaction_type == 'purchase')
+    usage = sum(t.total_cost for t in transactions if t.transaction_type == 'usage')
+    waste = sum(t.total_cost for t in transactions if t.transaction_type == 'waste')
+    total_expenses = purchases + usage + waste
+    
+    # Get monthly comparison (last 6 months)
+    monthly_data = []
+    for i in range(5, -1, -1):
+        target_date = datetime.now() - timedelta(days=30*i)
+        target_month = target_date.month
+        target_year = target_date.year
+        
+        month_start = datetime(target_year, target_month, 1)
+        if target_month == 12:
+            month_end = datetime(target_year + 1, 1, 1)
+        else:
+            month_end = datetime(target_year, target_month + 1, 1)
+        
+        month_total = db.session.query(
+            func.sum(StockTransaction.cost)
+        ).filter(
+            StockTransaction.transaction_date >= month_start,
+            StockTransaction.transaction_date < month_end
+        ).scalar() or 0
+        
+        monthly_data.append({
+            'month': calendar.month_name[target_month],
+            'year': target_year,
+            'total': month_total
+        })
+    
+    return render_template('admin/monthly_cost_reports.html',
+                         year=year,
+                         month=month,
+                         month_name=calendar.month_name[month],
+                         transactions=transactions,
+                         summary={
+                             'purchases': purchases,
+                             'usage': usage,
+                             'waste': waste,
+                             'total': total_expenses
+                         },
+                         monthly_data=monthly_data)
 
 @admin_bp.route('/stock-items')
 @login_required

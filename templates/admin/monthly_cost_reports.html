@@ -1,0 +1,186 @@
+{% extends "admin/base.html" %}
+
+{% block title %}דוחות עלויות חודשיות - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">דוחות עלויות חודשיות</h1>
+        <a href="{{ url_for('admin.stock_management') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right me-2"></i>חזור לניהול מלאי
+        </a>
+    </div>
+
+    <!-- Month Selector -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">חודש</label>
+                    <select name="month" class="form-select">
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+                            {{ ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'][m-1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">שנה</label>
+                    <select name="year" class="form-select">
+                        {% for y in range(2023, 2027) %}
+                        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>הצג דוח
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">רכישות</h6>
+                    <h3 class="mb-0">₪{{ "%.2f"|format(summary.purchases) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">שימוש</h6>
+                    <h3 class="mb-0">₪{{ "%.2f"|format(summary.usage) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">פחת</h6>
+                    <h3 class="mb-0">₪{{ "%.2f"|format(summary.waste) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">סה"כ הוצאות</h6>
+                    <h3 class="mb-0">₪{{ "%.2f"|format(summary.total) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Comparison Chart -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>השוואה חודשית - 6 חודשים אחרונים</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="monthlyChart" height="80"></canvas>
+        </div>
+    </div>
+
+    <!-- Detailed Transactions -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>פירוט תנועות - {{ month_name }} {{ year }}</h5>
+        </div>
+        <div class="card-body">
+            {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>סוג תנועה</th>
+                            <th>פריט</th>
+                            <th>כמות</th>
+                            <th>עלות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trans in transactions %}
+                        <tr>
+                            <td>
+                                {% if trans.transaction_type == 'purchase' %}
+                                <span class="badge bg-primary">רכישה</span>
+                                {% elif trans.transaction_type == 'usage' %}
+                                <span class="badge bg-info">שימוש</span>
+                                {% elif trans.transaction_type == 'waste' %}
+                                <span class="badge bg-warning">פחת</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ trans.transaction_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ trans.name_he }}</strong></td>
+                            <td>{{ "%.2f"|format(trans.total_quantity) }}</td>
+                            <td>₪{{ "%.2f"|format(trans.total_cost) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> אין תנועות מלאי לחודש זה.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Monthly comparison chart
+const ctx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: [
+            {% for data in monthly_data %}
+            '{{ data.month[:3] }} {{ data.year }}'{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'עלויות (₪)',
+            data: [
+                {% for data in monthly_data %}
+                {{ data.total }}{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            backgroundColor: 'rgba(26, 58, 110, 0.7)',
+            borderColor: 'rgba(26, 58, 110, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₪' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

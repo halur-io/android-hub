@@ -4,7 +4,12 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mb-4">ניהול מלאי</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">ניהול מלאי</h1>
+        <a href="{{ url_for('admin.monthly_cost_reports') }}" class="btn btn-info">
+            <i class="fas fa-chart-line me-2"></i>דוחות עלויות חודשיות
+        </a>
+    </div>
 
     <!-- Stock Items Section -->
     <div class="card mb-4">
@@ -152,13 +157,65 @@
 <div class="modal fade" id="addItemModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">הוספת פריט מלאי</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted">פונקציונליות זו תתווסף בקרוב...</p>
-            </div>
+            <form method="POST" action="{{ url_for('admin.add_stock_item') }}">
+                {{ csrf_token() }}
+                <div class="modal-header">
+                    <h5 class="modal-title">הוספת פריט מלאי</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">שם הפריט (עברית) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name_he" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">שם הפריט (אנגלית)</label>
+                        <input type="text" class="form-control" name="name_en">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">קטגוריה</label>
+                            <select class="form-select" name="category_id">
+                                <option value="">ללא קטגוריה</option>
+                                {% for cat in stock_categories %}
+                                <option value="{{ cat.id }}">{{ cat.name_he }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">ספק</label>
+                            <select class="form-select" name="supplier_id">
+                                <option value="">ללא ספק</option>
+                                {% for sup in suppliers %}
+                                <option value="{{ sup.id }}">{{ sup.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">יחידת מידה</label>
+                            <input type="text" class="form-control" name="unit" value="יחידות">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">מלאי מינימום</label>
+                            <input type="number" class="form-control" name="minimum_stock" value="0" step="0.01">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">נקודת הזמנה</label>
+                            <input type="number" class="form-control" name="reorder_point" value="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">עלות ליחידה (₪)</label>
+                        <input type="number" class="form-control" name="cost_per_unit" value="0" step="0.01">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-primary">הוסף פריט</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -167,13 +224,39 @@
 <div class="modal fade" id="addSupplierModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">הוספת ספק</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted">פונקציונליות זו תתווסף בקרוב...</p>
-            </div>
+            <form method="POST" action="{{ url_for('admin.add_supplier') }}">
+                {{ csrf_token() }}
+                <div class="modal-header">
+                    <h5 class="modal-title">הוספת ספק</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">שם הספק <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">איש קשר</label>
+                        <input type="text" class="form-control" name="contact_person">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">טלפון</label>
+                        <input type="tel" class="form-control" name="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">אימייל</label>
+                        <input type="email" class="form-control" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">כתובת</label>
+                        <textarea class="form-control" name="address" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-primary">הוסף ספק</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -182,13 +265,31 @@
 <div class="modal fade" id="addCategoryModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">הוספת קטגוריה</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted">פונקציונליות זו תתווסף בקרוב...</p>
-            </div>
+            <form method="POST" action="{{ url_for('admin.add_stock_category') }}">
+                {{ csrf_token() }}
+                <div class="modal-header">
+                    <h5 class="modal-title">הוספת קטגוריה</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">שם הקטגוריה (עברית) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name_he" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">שם הקטגוריה (אנגלית)</label>
+                        <input type="text" class="form-control" name="name_en">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">תיאור</label>
+                        <textarea class="form-control" name="description" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-primary">הוסף קטגוריה</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

@@ -249,65 +249,37 @@
 
 <!-- Table Reservation Section -->
 {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage %}
-<section class="section reservation-section-elegant">
-    <div class="reservation-bg-image"></div>
-    <div class="reservation-overlay-gradient"></div>
+<section class="section reservation-section-clean">
+    <div class="reservation-bg-layer"></div>
     <div class="container">
-        <div class="reservation-elegant-wrapper">
-            <div class="reservation-decorative-corner top-left"></div>
-            <div class="reservation-decorative-corner top-right"></div>
-            <div class="reservation-decorative-corner bottom-left"></div>
-            <div class="reservation-decorative-corner bottom-right"></div>
+        <div class="reservation-clean-content text-center">
+            <h2 class="reservation-title-clean">{{ reservation_settings.section_title_he if language == 'he' else reservation_settings.section_title_en }}</h2>
             
-            <div class="row align-items-center justify-content-center">
-                <div class="col-lg-10 col-xl-9">
-                    <div class="reservation-content-elegant text-center">
-                        <div class="reservation-ornament-top">
-                            <i class="fas fa-wine-glass"></i>
-                            <span class="ornament-line"></span>
-                            <i class="fas fa-utensils"></i>
-                            <span class="ornament-line"></span>
-                            <i class="fas fa-wine-glass"></i>
-                        </div>
-                        
-                        <h2 class="reservation-title-elegant">{{ reservation_settings.section_title_he if language == 'he' else reservation_settings.section_title_en }}</h2>
-                        <div class="reservation-line-accent"></div>
-                        
-                        {% if language == 'he' %}
-                            {% if reservation_settings.section_description_he %}
-                                <p class="reservation-subtitle-elegant">{{ reservation_settings.section_description_he }}</p>
-                            {% elif reservation_settings.section_description_en %}
-                                <p class="reservation-subtitle-elegant">{{ reservation_settings.section_description_en }}</p>
-                            {% else %}
-                                <p class="reservation-subtitle-elegant">חוויה קולינרית בלתי נשכחת מחכה לכם. הזמינו מקום עכשיו ותהנו מאווירה מושלמת ושירות ברמה הגבוהה ביותר</p>
-                            {% endif %}
-                        {% else %}
-                            {% if reservation_settings.section_description_en %}
-                                <p class="reservation-subtitle-elegant">{{ reservation_settings.section_description_en }}</p>
-                            {% elif reservation_settings.section_description_he %}
-                                <p class="reservation-subtitle-elegant">{{ reservation_settings.section_description_he }}</p>
-                            {% else %}
-                                <p class="reservation-subtitle-elegant">An unforgettable culinary experience awaits you. Reserve your table now and enjoy the perfect ambiance with world-class service</p>
-                            {% endif %}
-                        {% endif %}
-                        
-                        {% if reservation_settings.reservation_system_url %}
-                        <div class="reservation-btn-container">
-                            <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-reservation-elegant">
-                                <span class="btn-text">{{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}</span>
-                                <span class="btn-icon"><i class="fas fa-arrow-right"></i></span>
-                            </a>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="reservation-ornament-bottom">
-                            <span class="ornament-flourish">✦</span>
-                            <span class="ornament-flourish">✦</span>
-                            <span class="ornament-flourish">✦</span>
-                        </div>
-                    </div>
-                </div>
+            {% if language == 'he' %}
+                {% if reservation_settings.section_description_he %}
+                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_he }}</p>
+                {% elif reservation_settings.section_description_en %}
+                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_en }}</p>
+                {% else %}
+                    <p class="reservation-subtitle-clean">חוויה קולינרית בלתי נשכחת מחכה לכם</p>
+                {% endif %}
+            {% else %}
+                {% if reservation_settings.section_description_en %}
+                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_en }}</p>
+                {% elif reservation_settings.section_description_he %}
+                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_he }}</p>
+                {% else %}
+                    <p class="reservation-subtitle-clean">An unforgettable culinary experience awaits you</p>
+                {% endif %}
+            {% endif %}
+            
+            {% if reservation_settings.reservation_system_url %}
+            <div class="reservation-btn-wrap">
+                <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-reservation-clean">
+                    {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
+                </a>
             </div>
+            {% endif %}
         </div>
     </div>
 </section>

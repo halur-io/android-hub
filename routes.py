@@ -54,11 +54,12 @@ def index():
     ).order_by(MenuItem.display_order).limit(6).all()
     
     # Get gallery images for homepage section (8 photos)
-    gallery_images = MediaFile.query.filter_by(
-        section='gallery',
-        file_type='image',
+    gallery_images = GalleryPhoto.query.filter_by(
         is_active=True
-    ).order_by(MediaFile.display_order).limit(8).all()
+    ).order_by(GalleryPhoto.display_order).limit(8).all()
+    logging.debug(f"Found {len(gallery_images)} gallery images for homepage")
+    for img in gallery_images[:3]:
+        logging.debug(f"Gallery image: {img.file_path}")
     
     # Get reservation settings
     reservation_settings = ReservationSettings.query.first()

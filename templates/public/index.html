@@ -323,7 +323,7 @@
             {% for image in gallery_images[:8] %}
             <div class="col-md-6">
                 <div class="gallery-card">
-                    <img src="{{ url_for('static', filename='uploads/' + image.filename) }}" 
+                    <img src="{{ image.file_path }}" 
                          alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 
                          class="gallery-card-img">
                     {% if image.caption_he or image.caption_en %}

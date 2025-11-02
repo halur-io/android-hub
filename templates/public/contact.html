@@ -5,68 +5,143 @@
 {% block content %}
 <div style="height: 80px;"></div>
 
-<section class="section">
+<!-- Contact Hero -->
+<section class="contact-hero">
     <div class="container">
-        <div class="row">
-            <div class="col-lg-6 mb-4">
-                <h1 class="section-title">{{ 'צור קשר' if language == 'he' else 'Contact Us' }}</h1>
-                <p class="section-subtitle">{{ 'נשמח לשמוע ממך' if language == 'he' else 'We would love to hear from you' }}</p>
-                
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-                
-                <form method="POST" class="contact-form">
-                    {{ form.hidden_tag() }}
-                    
-                    <div class="mb-3">
-                        {{ form.name.label(class="form-label") }}
-                        {{ form.name(class="form-control", placeholder="Your name" if language == 'en' else "שמך") }}
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-8">
+                <h1 class="contact-hero-title">{{ 'נשמח לשמוע ממך' if language == 'he' else 'We\'d Love to Hear From You' }}</h1>
+                <p class="contact-hero-subtitle">{{ 'יש לך שאלה? הצעה? או סתם רוצה לומר שלום? אנחנו כאן בשבילך' if language == 'he' else 'Have a question? Suggestion? Or just want to say hello? We\'re here for you' }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Form & Info -->
+<section class="contact-section">
+    <div class="container">
+        <div class="row g-5">
+            <!-- Contact Form -->
+            <div class="col-lg-6">
+                <div class="contact-form-card">
+                    <div class="form-header">
+                        <i class="fas fa-envelope-open-text"></i>
+                        <h3>{{ 'שלח לנו הודעה' if language == 'he' else 'Send Us a Message' }}</h3>
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.email.label(class="form-label") }}
-                        {{ form.email(class="form-control", placeholder="your@email.com" if language == 'en' else "your@email.com") }}
-                    </div>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
                     
-                    <div class="mb-3">
-                        {{ form.phone.label(class="form-label") }}
-                        {{ form.phone(class="form-control", placeholder="Your phone" if language == 'en' else "מספר טלפון") }}
-                    </div>
-                    
-                    <div class="mb-3">
-                        {{ form.message.label(class="form-label") }}
-                        {{ form.message(class="form-control", rows="5", placeholder="Your message..." if language == 'en' else "הודעתך...") }}
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary btn-lg w-100">
-                        {{ 'שלח הודעה' if language == 'he' else 'Send Message' }}
-                    </button>
-                </form>
+                    <form method="POST" class="modern-contact-form">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="form-floating mb-3">
+                            {{ form.name(class="form-control", id="floatingName", placeholder="שמך המלא" if language == 'he' else "Your Full Name") }}
+                            {{ form.name.label(for="floatingName") }}
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            {{ form.email(class="form-control", id="floatingEmail", placeholder="name@example.com") }}
+                            {{ form.email.label(for="floatingEmail") }}
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            {{ form.phone(class="form-control", id="floatingPhone", placeholder="טלפון" if language == 'he' else "Phone") }}
+                            {{ form.phone.label(for="floatingPhone") }}
+                        </div>
+                        
+                        <div class="form-floating mb-4">
+                            {{ form.message(class="form-control", id="floatingMessage", style="height: 150px", placeholder="הודעתך..." if language == 'he' else "Your message...") }}
+                            {{ form.message.label(for="floatingMessage") }}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            {{ 'שלח הודעה' if language == 'he' else 'Send Message' }}
+                        </button>
+                    </form>
+                </div>
             </div>
             
+            <!-- Contact Information -->
             <div class="col-lg-6">
-                <h3 class="mb-4">{{ 'הסניפים שלנו' if language == 'he' else 'Our Branches' }}</h3>
+                <!-- Quick Contact Methods -->
+                <div class="contact-methods mb-4">
+                    <h3 class="mb-4">{{ 'דרכי התקשרות מהירות' if language == 'he' else 'Quick Contact Methods' }}</h3>
+                    
+                    {% if branches %}
+                    <div class="contact-method-card">
+                        <div class="method-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div class="method-content">
+                            <h5>{{ 'טלפון' if language == 'he' else 'Phone' }}</h5>
+                            <a href="tel:{{ branches[0].phone }}">{{ branches[0].phone }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if branches and branches[0].email %}
+                    <div class="contact-method-card">
+                        <div class="method-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="method-content">
+                            <h5>{{ 'אימייל' if language == 'he' else 'Email' }}</h5>
+                            <a href="mailto:{{ branches[0].email }}">{{ branches[0].email }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if settings.instagram_url or settings.facebook_url %}
+                    <div class="contact-method-card">
+                        <div class="method-icon">
+                            <i class="fas fa-hashtag"></i>
+                        </div>
+                        <div class="method-content">
+                            <h5>{{ 'רשתות חברתיות' if language == 'he' else 'Social Media' }}</h5>
+                            <div class="social-links">
+                                {% if settings.facebook_url %}
+                                <a href="{{ settings.facebook_url }}" target="_blank" class="social-link">
+                                    <i class="fab fa-facebook"></i>
+                                </a>
+                                {% endif %}
+                                {% if settings.instagram_url %}
+                                <a href="{{ settings.instagram_url }}" target="_blank" class="social-link">
+                                    <i class="fab fa-instagram"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
                 
-                {% for branch in branches %}
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ branch.name_he if language == 'he' else branch.name_en }}</h5>
-                        <p class="card-text">
-                            <i class="fas fa-map-marker-alt"></i> {{ branch.address_he if language == 'he' else branch.address_en }}<br>
-                            <i class="fas fa-phone"></i> {{ branch.phone }}<br>
-                            {% if branch.email %}
-                            <i class="fas fa-envelope"></i> {{ branch.email }}<br>
-                            {% endif %}
-                        </p>
+                <!-- Branch Locations -->
+                {% if branches %}
+                <div class="branch-locations">
+                    <h3 class="mb-4">{{ 'המיקומים שלנו' if language == 'he' else 'Our Locations' }}</h3>
+                    
+                    {% for branch in branches %}
+                    <div class="branch-location-card">
+                        <div class="branch-header">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <h5>{{ branch.name_he if language == 'he' else branch.name_en }}</h5>
+                        </div>
+                        <p class="branch-address">{{ branch.address_he if language == 'he' else branch.address_en }}</p>
+                        
                         {% if branch.waze_link or branch.google_maps_link %}
-                        <div class="mt-2">
+                        <div class="branch-nav-buttons">
                             {% if branch.waze_link %}
-                            <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                            <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                 <i class="fab fa-waze"></i> Waze
                             </a>
                             {% endif %}
@@ -78,8 +153,9 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% endif %}
             </div>
         </div>
     </div>

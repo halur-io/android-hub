@@ -184,35 +184,28 @@
                     <h6 class="footer-heading">{{ 'מידע' if language == 'he' else 'Information' }}</h6>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('terms_page') }}">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</a></li>
+                        <li><a href="{{ url_for('accessibility_statement') }}">{{ 'הצהרת נגישות' if language == 'he' else 'Accessibility' }}</a></li>
                         <li><a href="{{ url_for('index') }}#about">{{ 'אודות' if language == 'he' else 'About Us' }}</a></li>
-                        <li><a href="{{ url_for('index') }}#branches">{{ 'סניפים' if language == 'he' else 'Locations' }}</a></li>
                         {% if settings.enable_english_language %}
                         <li><a href="?lang={{ 'en' if language == 'he' else 'he' }}">{{ 'English' if language == 'he' else 'עברית' }}</a></li>
                         {% endif %}
                     </ul>
                 </div>
                 
-                <!-- Contact Column -->
+                <!-- Newsletter Column -->
                 <div class="col-md-3 mb-4 mb-md-0">
-                    <h6 class="footer-heading">{{ 'צור קשר' if language == 'he' else 'Contact' }}</h6>
-                    <ul class="footer-contact">
-                        {% if branches %}
-                        <li>
-                            <i class="fas fa-phone me-2"></i>
-                            <a href="tel:{{ branches[0].phone }}">{{ branches[0].phone }}</a>
-                        </li>
-                        <li>
-                            <i class="fas fa-map-marker-alt me-2"></i>
-                            {{ branches[0].address_he if language == 'he' else branches[0].address_en }}
-                        </li>
-                        {% endif %}
-                        {% if settings.whatsapp_number %}
-                        <li>
-                            <i class="fab fa-whatsapp me-2"></i>
-                            <a href="https://wa.me/{{ settings.whatsapp_number }}">WhatsApp</a>
-                        </li>
-                        {% endif %}
-                    </ul>
+                    <h6 class="footer-heading">{{ 'הישארו מעודכנים' if language == 'he' else 'Stay Updated' }}</h6>
+                    <p class="footer-newsletter-text">{{ 'קבלו מבצעים וחדשות' if language == 'he' else 'Get deals and news' }}</p>
+                    <form method="POST" action="{{ url_for('newsletter_subscribe') }}" class="footer-newsletter-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="source" value="footer"/>
+                        <div class="newsletter-input-group">
+                            <input type="email" name="email" class="form-control" placeholder="{{ 'האימייל שלך' if language == 'he' else 'Your email' }}" required aria-label="{{ 'כתובת אימייל' if language == 'he' else 'Email address' }}">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
             
@@ -226,6 +219,20 @@
             </div>
         </div>
     </footer>
+    
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-consent" class="cookie-consent" style="display: none;" role="dialog" aria-label="{{ 'הודעת קוקיז' if language == 'he' else 'Cookie Notice' }}">
+        <div class="cookie-content">
+            <p>
+                {{ 'אנחנו משתמשים בקוקיז כדי לשפר את חוויית הגלישה שלך. המשך גלישה באתר מהווה הסכמה לשימוש בקוקיז.' if language == 'he' else 'We use cookies to improve your browsing experience. Continued use of this site constitutes consent to cookie usage.' }}
+                <a href="{{ url_for('terms_page') }}" class="cookie-link">{{ 'קרא עוד' if language == 'he' else 'Learn more' }}</a>
+            </p>
+            <div class="cookie-buttons">
+                <button onclick="acceptCookies()" class="btn btn-primary btn-sm">{{ 'אני מסכים' if language == 'he' else 'I Agree' }}</button>
+                <button onclick="declineCookies()" class="btn btn-outline-secondary btn-sm">{{ 'לא תודה' if language == 'he' else 'No Thanks' }}</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -245,6 +252,27 @@
         
         // Update cart count on page load
         document.addEventListener('DOMContentLoaded', updateCartCount);
+        
+        // Cookie Consent Management
+        function showCookieConsent() {
+            const cookieConsent = localStorage.getItem('cookieConsent');
+            if (!cookieConsent) {
+                document.getElementById('cookie-consent').style.display = 'block';
+            }
+        }
+        
+        function acceptCookies() {
+            localStorage.setItem('cookieConsent', 'accepted');
+            document.getElementById('cookie-consent').style.display = 'none';
+        }
+        
+        function declineCookies() {
+            localStorage.setItem('cookieConsent', 'declined');
+            document.getElementById('cookie-consent').style.display = 'none';
+        }
+        
+        // Show cookie consent on page load
+        document.addEventListener('DOMContentLoaded', showCookieConsent);
     </script>
     
     {% block extra_js %}{% endblock %}

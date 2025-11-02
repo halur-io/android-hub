@@ -1,0 +1,95 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'הצהרת נגישות' if language == 'he' else 'Accessibility Statement' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div>
+
+<section class="section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="accessibility-statement-page">
+                    <h1 class="accessibility-title">{{ 'הצהרת נגישות' if language == 'he' else 'Accessibility Statement' }}</h1>
+                    
+                    {% if language == 'he' %}
+                    <div class="statement-content">
+                        <p class="lead">{{ settings.site_name_he }} מחויבת לספק שירותים נגישים לכל האוכלוסייה, לרבות אנשים עם מוגבלויות.</p>
+                        
+                        <h2>תקנים והתאמות</h2>
+                        <p>האתר הונגש בהתאם לתקן הישראלי (ת"י 5568) ולהנחיות WCAG 2.1 ברמה AA, בהתאם לחוק ולתקנות שוויון זכויות לאנשים עם מוגבלות, התשנ"ח-1998.</p>
+                        
+                        <h2>מאפייני נגישות באתר</h2>
+                        <ul>
+                            <li><strong>ניווט מקלדת:</strong> ניתן לנווט באתר באמצעות מקש Tab וחצים בלבד</li>
+                            <li><strong>תאימות לקוראי מסך:</strong> האתר תואם לקוראי מסך כגון JAWS, NVDA</li>
+                            <li><strong>ניגודיות צבעים:</strong> הצבעים באתר עומדים ביחס ניגודיות מינימלי של 4.5:1</li>
+                            <li><strong>שינוי גודל טקסט:</strong> ניתן להגדיל טקסט עד 200% ללא אובדן תוכן</li>
+                            <li><strong>טקסט חלופי לתמונות:</strong> כל התמונות כוללות תיאור טקסטואלי</li>
+                            <li><strong>כותרות ומבנה:</strong> השימוש בכותרות (H1-H6) הוא הירכי וסמנטי</li>
+                            <li><strong>תמיכה ב-RTL:</strong> תמיכה מלאה בכיוון ימין לשמאל לשפה העברית</li>
+                        </ul>
+                        
+                        <h2>רכז נגישות</h2>
+                        <p>במידה ונתקלתם בבעיית נגישות באתר, נשמח לקבל פנייה:</p>
+                        <div class="coordinator-info">
+                            {% if branches %}
+                            <p><strong>טלפון:</strong> <a href="tel:{{ branches[0].phone }}">{{ branches[0].phone }}</a></p>
+                            {% if branches[0].email %}
+                            <p><strong>אימייל:</strong> <a href="mailto:{{ branches[0].email }}">{{ branches[0].email }}</a></p>
+                            {% endif %}
+                            {% endif %}
+                            <p><strong>זמינות:</strong> ימים א'-ה' בין השעות 09:00-17:00</p>
+                        </div>
+                        
+                        <h2>תאריך הנגשה</h2>
+                        <p>האתר הונגש ב: נובמבר 2024</p>
+                        <p>עדכון אחרון: {{ now.strftime('%d/%m/%Y') if now else 'נובמבר 2024' }}</p>
+                        
+                        <h2>פידבק ומשוב</h2>
+                        <p>אנו משתפרים באופן שוטף ומקדישים תשומת לב מיוחדת לנגישות. אנא <a href="{{ url_for('contact_page') }}">צרו קשר</a> במידה ונתקלתם בבעיה כלשהי.</p>
+                    </div>
+                    {% else %}
+                    <div class="statement-content">
+                        <p class="lead">{{ settings.site_name_en }} is committed to providing accessible services to all people, including individuals with disabilities.</p>
+                        
+                        <h2>Standards and Compliance</h2>
+                        <p>This website has been made accessible in accordance with Israeli Standard (IS) 5568 and WCAG 2.1 Level AA guidelines, pursuant to the Equal Rights for Persons with Disabilities Law, 1998.</p>
+                        
+                        <h2>Accessibility Features</h2>
+                        <ul>
+                            <li><strong>Keyboard Navigation:</strong> Full website navigation using Tab and arrow keys</li>
+                            <li><strong>Screen Reader Compatible:</strong> Compatible with JAWS, NVDA screen readers</li>
+                            <li><strong>Color Contrast:</strong> Colors meet minimum 4.5:1 contrast ratio</li>
+                            <li><strong>Text Resizing:</strong> Text can be enlarged up to 200% without loss of content</li>
+                            <li><strong>Alternative Text:</strong> All images include descriptive text</li>
+                            <li><strong>Headings Structure:</strong> Hierarchical and semantic heading usage (H1-H6)</li>
+                            <li><strong>RTL Support:</strong> Full right-to-left support for Hebrew language</li>
+                        </ul>
+                        
+                        <h2>Accessibility Coordinator</h2>
+                        <p>If you encountered an accessibility issue, please contact us:</p>
+                        <div class="coordinator-info">
+                            {% if branches %}
+                            <p><strong>Phone:</strong> <a href="tel:{{ branches[0].phone }}">{{ branches[0].phone }}</a></p>
+                            {% if branches[0].email %}
+                            <p><strong>Email:</strong> <a href="mailto:{{ branches[0].email }}">{{ branches[0].email }}</a></p>
+                            {% endif %}
+                            {% endif %}
+                            <p><strong>Availability:</strong> Sunday-Thursday, 09:00-17:00</p>
+                        </div>
+                        
+                        <h2>Accessibility Date</h2>
+                        <p>Website made accessible: November 2024</p>
+                        <p>Last updated: {{ now.strftime('%m/%d/%Y') if now else 'November 2024' }}</p>
+                        
+                        <h2>Feedback</h2>
+                        <p>We continuously improve and pay special attention to accessibility. Please <a href="{{ url_for('contact_page') }}">contact us</a> if you encounter any issues.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

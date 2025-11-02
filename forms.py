@@ -18,3 +18,7 @@ class ReservationForm(FlaskForm):
                         choices=[('2', '2'), ('3', '3'), ('4', '4'), ('5', '5'), ('6', '6'), ('7', '7'), ('8', '8+')],
                         validators=[DataRequired()])
     special_requests = TextAreaField('בקשות מיוחדות', validators=[Length(max=300)])
+
+class NewsletterForm(FlaskForm):
+    email = StringField('אימייל', validators=[DataRequired(), Email()])
+    name = StringField('שם', validators=[Length(max=100)])

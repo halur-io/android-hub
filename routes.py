@@ -1,6 +1,7 @@
 from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory, session
 from flask_mail import Message
 from app import app, mail
+from database import db
 from forms import ContactForm, ReservationForm
 from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, GalleryPhoto
 from sqlalchemy.orm import joinedload
@@ -277,6 +278,50 @@ def reservation():
         flash('אנא מלא את כל השדות הנדרשים כראוי.', 'error')
     
     return redirect(url_for('index') + '#reservation')
+
+@app.route('/newsletter/subscribe', methods=['POST'])
+def newsletter_subscribe():
+    """Newsletter subscription"""
+    from forms import NewsletterForm
+    from models import NewsletterSubscriber
+    
+    context = get_context_data()
+    form = NewsletterForm()
+    
+    if form.validate_on_submit():
+        try:
+            existing = NewsletterSubscriber.query.filter_by(email=form.email.data).first()
+            
+            if existing:
+                if existing.is_active:
+                    flash('כבר נרשמת לניוזלטר!' if context['language'] == 'he' else 'Already subscribed!', 'info')
+                else:
+                    existing.is_active = True
+                    existing.unsubscribed_at = None
+                    db.session.commit()
+                    flash('נרשמת מחדש!' if context['language'] == 'he' else 'Resubscribed!', 'success')
+            else:
+                subscriber = NewsletterSubscriber(
+                    email=form.email.data,
+                    name=form.name.data,
+                    source=request.form.get('source', 'footer')
+                )
+                db.session.add(subscriber)
+                db.session.commit()
+                flash('תודה על הרשמתך!' if context['language'] == 'he' else 'Thank you for subscribing!', 'success')
+        except Exception as e:
+            logging.error(f'Error subscribing: {e}')
+            flash('שגיאה' if context['language'] == 'he' else 'Error', 'error')
+    else:
+        flash('אימייל לא תקין' if context['language'] == 'he' else 'Invalid email', 'error')
+    
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/accessibility')
+def accessibility_statement():
+    """Accessibility statement - IS 5568 compliance"""
+    context = get_context_data()
+    return render_template('public/accessibility.html', **context)
 
 @app.errorhandler(404)
 def not_found(error):

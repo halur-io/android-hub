@@ -177,11 +177,11 @@
             <p class="section-subtitle">{{ settings.gallery_section_subtitle_he if settings.gallery_section_subtitle_he else 'מבט אל חוויית הסעדה שלנו' if language == 'he' else settings.gallery_section_subtitle_en if settings.gallery_section_subtitle_en else 'A glimpse into our dining experience' }}</p>
         </div>
         
-        <!-- Centered 2 Column Grid for 8 Photos (2 columns × 4 rows) -->
+        <!-- Centered 2 Column Grid for 8 Photos (2 columns × 4 rows, 1 column on mobile) -->
         <div class="gallery-grid-container">
             <div class="row g-4">
                 {% for image in gallery_images[:8] %}
-                <div class="col-6">
+                <div class="col-12 col-sm-6">
                     <div class="gallery-card">
                         <img src="{{ image.file_path }}" 
                              alt="{{ image.caption_he if language == 'he' else image.caption_en }}" 

@@ -155,15 +155,22 @@ document.querySelectorAll('.availability-toggle').forEach(toggle => {
     toggle.addEventListener('change', function() {
         const itemId = this.dataset.itemId;
         const isAvailable = this.checked;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
         fetch(`/admin/menu/item/${itemId}/toggle-availability`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || ''
             },
             body: JSON.stringify({ is_available: isAvailable })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Update label

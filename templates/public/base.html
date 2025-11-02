@@ -100,6 +100,102 @@
         </div>
     </nav>
     
+    <!-- Accessibility Button -->
+    <button class="accessibility-button" onclick="toggleAccessibilityMenu()" aria-label="{{ 'תפריט נגישות' if language == 'he' else 'Accessibility Menu' }}" title="{{ 'תפריט נגישות' if language == 'he' else 'Accessibility Menu' }}">
+        <i class="fas fa-universal-access"></i>
+        <span class="accessibility-text">{{ 'נגישות' if language == 'he' else 'Accessibility' }}</span>
+    </button>
+    
+    <!-- Accessibility Menu -->
+    <div id="accessibilityMenu" class="accessibility-menu" style="display: none;">
+        <div class="accessibility-menu-header">
+            <h3>{{ 'תפריט נגישות' if language == 'he' else 'Accessibility Menu' }}</h3>
+            <button class="accessibility-close" onclick="toggleAccessibilityMenu()" aria-label="{{ 'סגור' if language == 'he' else 'Close' }}">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="accessibility-menu-content">
+            <!-- Font Size Controls -->
+            <div class="accessibility-option">
+                <span class="option-label">
+                    <i class="fas fa-text-height"></i>
+                    {{ 'גודל טקסט' if language == 'he' else 'Font Size' }}
+                </span>
+                <div class="option-controls">
+                    <button onclick="changeFontSize('decrease')" class="control-btn" aria-label="{{ 'הקטן טקסט' if language == 'he' else 'Decrease font' }}">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button onclick="changeFontSize('reset')" class="control-btn" aria-label="{{ 'איפוס' if language == 'he' else 'Reset' }}">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button onclick="changeFontSize('increase')" class="control-btn" aria-label="{{ 'הגדל טקסט' if language == 'he' else 'Increase font' }}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- High Contrast -->
+            <div class="accessibility-option">
+                <span class="option-label">
+                    <i class="fas fa-adjust"></i>
+                    {{ 'ניגודיות גבוהה' if language == 'he' else 'High Contrast' }}
+                </span>
+                <button onclick="toggleHighContrast()" class="toggle-btn" id="contrastToggle" aria-label="{{ 'הפעל/כבה ניגודיות גבוהה' if language == 'he' else 'Toggle high contrast' }}">
+                    <i class="fas fa-toggle-off"></i>
+                </button>
+            </div>
+            
+            <!-- Highlight Links -->
+            <div class="accessibility-option">
+                <span class="option-label">
+                    <i class="fas fa-link"></i>
+                    {{ 'הדגש קישורים' if language == 'he' else 'Highlight Links' }}
+                </span>
+                <button onclick="toggleLinkHighlight()" class="toggle-btn" id="linkToggle" aria-label="{{ 'הפעל/כבה הדגשת קישורים' if language == 'he' else 'Toggle link highlight' }}">
+                    <i class="fas fa-toggle-off"></i>
+                </button>
+            </div>
+            
+            <!-- Readable Font -->
+            <div class="accessibility-option">
+                <span class="option-label">
+                    <i class="fas fa-font"></i>
+                    {{ 'גופן קריא' if language == 'he' else 'Readable Font' }}
+                </span>
+                <button onclick="toggleReadableFont()" class="toggle-btn" id="fontToggle" aria-label="{{ 'הפעל/כבה גופן קריא' if language == 'he' else 'Toggle readable font' }}">
+                    <i class="fas fa-toggle-off"></i>
+                </button>
+            </div>
+            
+            <!-- Grayscale -->
+            <div class="accessibility-option">
+                <span class="option-label">
+                    <i class="fas fa-palette"></i>
+                    {{ 'גווני אפור' if language == 'he' else 'Grayscale' }}
+                </span>
+                <button onclick="toggleGrayscale()" class="toggle-btn" id="grayscaleToggle" aria-label="{{ 'הפעל/כבה גווני אפור' if language == 'he' else 'Toggle grayscale' }}">
+                    <i class="fas fa-toggle-off"></i>
+                </button>
+            </div>
+            
+            <!-- Reset All -->
+            <div class="accessibility-option reset-option">
+                <button onclick="resetAccessibility()" class="reset-all-btn">
+                    <i class="fas fa-refresh"></i>
+                    {{ 'איפוס הכל' if language == 'he' else 'Reset All' }}
+                </button>
+            </div>
+            
+            <!-- Link to Statement -->
+            <div class="accessibility-option statement-link">
+                <a href="{{ url_for('accessibility_statement') }}" class="statement-btn">
+                    <i class="fas fa-file-alt"></i>
+                    {{ 'הצהרת נגישות' if language == 'he' else 'Accessibility Statement' }}
+                </a>
+            </div>
+        </div>
+    </div>
+    
     <!-- Main Content -->
     {% block content %}{% endblock %}
     
@@ -284,6 +380,121 @@
         
         // Show cookie consent on page load
         document.addEventListener('DOMContentLoaded', showCookieConsent);
+    </script>
+    
+    <!-- Accessibility Menu Script -->
+    <script>
+        // Toggle accessibility menu
+        function toggleAccessibilityMenu() {
+            const menu = document.getElementById('accessibilityMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Font size control
+        let currentFontSize = 100;
+        function changeFontSize(action) {
+            if (action === 'increase' && currentFontSize < 150) {
+                currentFontSize += 10;
+            } else if (action === 'decrease' && currentFontSize > 80) {
+                currentFontSize -= 10;
+            } else if (action === 'reset') {
+                currentFontSize = 100;
+            }
+            document.body.style.fontSize = currentFontSize + '%';
+            localStorage.setItem('fontSize', currentFontSize);
+        }
+        
+        // High contrast toggle
+        function toggleHighContrast() {
+            const toggle = document.getElementById('contrastToggle');
+            document.body.classList.toggle('high-contrast');
+            toggle.classList.toggle('active');
+            localStorage.setItem('highContrast', document.body.classList.contains('high-contrast'));
+        }
+        
+        // Link highlight toggle
+        function toggleLinkHighlight() {
+            const toggle = document.getElementById('linkToggle');
+            document.body.classList.toggle('highlight-links');
+            toggle.classList.toggle('active');
+            localStorage.setItem('highlightLinks', document.body.classList.contains('highlight-links'));
+        }
+        
+        // Readable font toggle
+        function toggleReadableFont() {
+            const toggle = document.getElementById('fontToggle');
+            document.body.classList.toggle('readable-font');
+            toggle.classList.toggle('active');
+            localStorage.setItem('readableFont', document.body.classList.contains('readable-font'));
+        }
+        
+        // Grayscale toggle
+        function toggleGrayscale() {
+            const toggle = document.getElementById('grayscaleToggle');
+            document.body.classList.toggle('grayscale');
+            toggle.classList.toggle('active');
+            localStorage.setItem('grayscale', document.body.classList.contains('grayscale'));
+        }
+        
+        // Reset all accessibility settings
+        function resetAccessibility() {
+            document.body.classList.remove('high-contrast', 'highlight-links', 'readable-font', 'grayscale');
+            document.body.style.fontSize = '100%';
+            currentFontSize = 100;
+            
+            // Reset all toggles
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Clear localStorage
+            localStorage.removeItem('fontSize');
+            localStorage.removeItem('highContrast');
+            localStorage.removeItem('highlightLinks');
+            localStorage.removeItem('readableFont');
+            localStorage.removeItem('grayscale');
+        }
+        
+        // Load saved accessibility settings on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load font size
+            const savedFontSize = localStorage.getItem('fontSize');
+            if (savedFontSize) {
+                currentFontSize = parseInt(savedFontSize);
+                document.body.style.fontSize = currentFontSize + '%';
+            }
+            
+            // Load high contrast
+            if (localStorage.getItem('highContrast') === 'true') {
+                document.body.classList.add('high-contrast');
+                document.getElementById('contrastToggle').classList.add('active');
+            }
+            
+            // Load link highlight
+            if (localStorage.getItem('highlightLinks') === 'true') {
+                document.body.classList.add('highlight-links');
+                document.getElementById('linkToggle').classList.add('active');
+            }
+            
+            // Load readable font
+            if (localStorage.getItem('readableFont') === 'true') {
+                document.body.classList.add('readable-font');
+                document.getElementById('fontToggle').classList.add('active');
+            }
+            
+            // Load grayscale
+            if (localStorage.getItem('grayscale') === 'true') {
+                document.body.classList.add('grayscale');
+                document.getElementById('grayscaleToggle').classList.add('active');
+            }
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('accessibilityMenu');
+            const button = document.querySelector('.accessibility-button');
+            if (menu && button && !menu.contains(event.target) && !button.contains(event.target)) {
+                menu.style.display = 'none';
+            }
+        });
     </script>
     
     {% block extra_js %}{% endblock %}

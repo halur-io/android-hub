@@ -39,15 +39,16 @@
         </div>
         {% else %}
         <!-- Category Tabs Navigation -->
-        <ul class="nav nav-pills menu-category-tabs mb-4 justify-content-center" id="menuTabs" role="tablist">
+        <ul class="nav nav-pills menu-category-tabs mb-4" id="menuTabs" role="tablist" style="flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin;">
             {% for category in categories %}
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" role="presentation" style="flex-shrink: 0;">
                 <button class="nav-link {% if loop.first %}active{% endif %}" 
                         id="tab-{{ category.id }}" 
                         data-bs-toggle="pill" 
                         data-bs-target="#category-{{ category.id }}" 
                         type="button" 
-                        role="tab">
+                        role="tab"
+                        style="white-space: nowrap;">
                     {% if category.icon %}
                     <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="color: {{ category.color or '#d4af37' }}"></i>
                     {% endif %}

@@ -40,12 +40,16 @@ Preferred communication style: Simple, everyday language.
 
 ### Feature Specifications
 -   **Public Website**:
-    -   **Homepage**: Hero section (video/image), featured menu items, gallery preview, CTAs.
+    -   **Homepage**: Hero section (video/image), combined About Us & Table Reservation section, gallery preview. Clean flowing design with no boxed sections.
     -   **Menu Page**: Dynamic menu display by categories, dietary icons, prices, and descriptions.
-    -   **Order Page**: Online ordering with live cart, quantity management, branch selection, tax/subtotal calculation, and checkout.
+    -   **Order Page**: When online ordering is disabled, displays an engaging "Coming Soon" message with rocket animation, feature preview cards, and alternative CTA buttons (Browse Menu, Call to Order). Professional and positive user experience.
     -   **Gallery**: Admin-managed photo gallery.
-    -   **Contact**: Contact form, branch info, maps integration (Waze/Google Maps).
-    -   **Legal Pages**: Dynamic Terms of Use page with bilingual content.
+    -   **Contact**: Modern two-column layout with gradient hero, contact form in elevated card, quick contact methods (phone, email, WhatsApp, social), and branch location cards with Waze/Google Maps navigation buttons. Fully responsive.
+    -   **Legal & Compliance Pages**:
+        -   **Terms of Use**: Dynamic bilingual content
+        -   **Accessibility Statement**: Comprehensive IS 5568 / WCAG 2.1 Level AA compliance page with accessibility features list, coordinator contact information, and compliance dates
+    -   **Newsletter Subscription**: Footer-integrated newsletter signup with email validation, duplicate checking, resubscription support, and database persistence. Tracks subscription source for analytics.
+    -   **Cookie Consent Banner**: GDPR/Israeli-compliant cookie consent banner with LocalStorage persistence, Accept/Decline options, bilingual messaging, and link to privacy policy.
 -   **Admin Dashboard**:
     -   **Site Settings**: Modern horizontal tabs interface with 5 tabs at the top:
         -   General: Hero section, about content, site info, social media links
@@ -66,8 +70,23 @@ Preferred communication style: Simple, everyday language.
 
 ### System Design Choices
 -   **Configuration**: Environment variable-based for production settings.
--   **Data Models**: SQLAlchemy models for various entities (e.g., ContactMessage, Reservation, SiteSettings, CustomSection, TermsOfUse) with appropriate relationships and timestamp tracking.
+-   **Data Models**: SQLAlchemy models for various entities including:
+    -   Core: ContactMessage, Reservation, SiteSettings, CustomSection, TermsOfUse
+    -   Menu: MenuCategory, MenuItem, MenuSettings
+    -   Media: MediaFile, GalleryPhoto
+    -   Branch: Branch, WorkingHours
+    -   Compliance: NewsletterSubscriber (email, name, is_active, subscribed_at, unsubscribed_at, source tracking)
 -   **Database Architecture**: Robust models, default data seeding, and safe migration practices.
+-   **Accessibility Compliance**: IS 5568 (Israeli Standard) and WCAG 2.1 Level AA implementation with:
+    -   Comprehensive accessibility statement page
+    -   ARIA labels throughout forms and interactive elements
+    -   Semantic HTML with proper heading hierarchy
+    -   Keyboard navigation support with visible focus indicators
+    -   Color contrast compliance (4.5:1 minimum ratio)
+    -   Screen reader compatibility (JAWS, NVDA)
+    -   Full RTL support for Hebrew
+    -   Text resizing up to 200% without content loss
+-   **Privacy & Consent**: Cookie consent management with LocalStorage persistence, following GDPR and Israeli privacy standards.
 
 ## External Dependencies
 

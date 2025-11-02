@@ -184,6 +184,7 @@
                     <h6 class="footer-heading">{{ 'מידע' if language == 'he' else 'Information' }}</h6>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('terms_page') }}">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</a></li>
+                        <li><a href="{{ url_for('privacy_policy_page') }}">{{ 'מדיניות פרטיות' if language == 'he' else 'Privacy Policy' }}</a></li>
                         <li><a href="{{ url_for('accessibility_statement') }}">{{ 'הצהרת נגישות' if language == 'he' else 'Accessibility' }}</a></li>
                         <li><a href="{{ url_for('index') }}#about">{{ 'אודות' if language == 'he' else 'About Us' }}</a></li>
                         {% if settings.enable_english_language %}
@@ -201,9 +202,15 @@
                         <input type="hidden" name="source" value="footer"/>
                         <div class="newsletter-input-group">
                             <input type="email" name="email" class="form-control" placeholder="{{ 'האימייל שלך' if language == 'he' else 'Your email' }}" required aria-label="{{ 'כתובת אימייל' if language == 'he' else 'Email address' }}">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary btn-newsletter">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="accept_terms" id="newsletterTerms" required>
+                            <label class="form-check-label footer-terms-label" for="newsletterTerms">
+                                {{ 'מסכים/ה ' if language == 'he' else 'I agree to ' }}<a href="{{ url_for('terms_page') }}" target="_blank" class="footer-link">{{ 'לתנאי השימוש' if language == 'he' else 'Terms of Use' }}</a>
+                            </label>
                         </div>
                     </form>
                 </div>

@@ -3,7 +3,7 @@ from flask_mail import Message
 from app import app, mail
 from database import db
 from forms import ContactForm, ReservationForm, NewsletterForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, GalleryPhoto, NewsletterSubscriber
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -319,6 +319,14 @@ def accessibility_statement():
     """Accessibility statement - IS 5568 compliance"""
     context = get_context_data()
     return render_template('public/accessibility.html', **context)
+
+@app.route('/privacy-policy')
+def privacy_policy_page():
+    """Privacy policy page"""
+    context = get_context_data()
+    privacy = PrivacyPolicy.query.filter_by(is_active=True).first()
+    context['privacy'] = privacy
+    return render_template('public/privacy.html', **context)
 
 @app.errorhandler(404)
 def not_found(error):

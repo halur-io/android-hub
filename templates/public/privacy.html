@@ -1,0 +1,210 @@
+{% extends 'public/base.html' %}
+
+{% block title %}{{ 'מדיניות פרטיות' if language == 'he' else 'Privacy Policy' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title animate-fade-in">{{ 'מדיניות פרטיות' if language == 'he' else 'Privacy Policy' }}</h1>
+        <p class="page-subtitle animate-fade-in-delay">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</p>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="terms-content card shadow-sm p-5">
+                    {% if privacy %}
+                        {{ privacy.content_he|safe if language == 'he' else privacy.content_en|safe }}
+                    {% else %}
+                        {% if language == 'he' %}
+                        <h3>מדיניות פרטיות</h3>
+                        <p><small>תאריך עדכון: נובמבר 2024</small></p>
+                        
+                        <h4>1. מידע שאנו אוספים</h4>
+                        <p>אנו עשויים לאסוף מידע אישי כמו שם, כתובת דוא"ל, מספר טלפון וכתובת כאשר אתה:</p>
+                        <ul>
+                            <li>יוצר קשר איתנו דרך טופס יצירת הקשר</li>
+                            <li>מזמין שולחן במסעדה שלנו</li>
+                            <li>מבצע הזמנה מקוונת</li>
+                            <li>נרשם לניוזלטר שלנו</li>
+                        </ul>
+                        
+                        <h4>2. איך אנחנו משתמשים במידע</h4>
+                        <p>אנו משתמשים במידע שנאסף כדי:</p>
+                        <ul>
+                            <li>לעבד את ההזמנות והשירותים שלך</li>
+                            <li>לשפר את השירות והחוויה שלך</li>
+                            <li>לשלוח עדכונים ומבצעים (אם נרשמת לניוזלטר)</li>
+                            <li>לענות על שאלות ובקשות</li>
+                        </ul>
+                        
+                        <h4>3. שיתוף מידע</h4>
+                        <p>אנו לא משתפים את המידע האישי שלך עם צדדים שלישיים, למעט:</p>
+                        <ul>
+                            <li>כאשר נדרש על פי חוק</li>
+                            <li>לספקי שירות שעוזרים לנו להפעיל את האתר והעסק</li>
+                        </ul>
+                        
+                        <h4>4. אבטחת מידע</h4>
+                        <p>אנו משתמשים באמצעי אבטחה מתאימים כדי להגן על המידע האישי שלך מפני גישה לא מורשית.</p>
+                        
+                        <h4>5. קוקיז</h4>
+                        <p>אנו משתמשים בקוקיז כדי לשפר את חוויית הגלישה שלך. אתה יכול לבחור לקבל או לדחות קוקיז באמצעות הבאנר שמופיע בביקור הראשון.</p>
+                        
+                        <h4>6. זכויותיך</h4>
+                        <p>יש לך זכות:</p>
+                        <ul>
+                            <li>לגשת למידע האישי שלך</li>
+                            <li>לתקן מידע לא מדויק</li>
+                            <li>לבקש מחיקת המידע שלך</li>
+                            <li>לבטל את הרשמתך לניוזלטר בכל עת</li>
+                        </ul>
+                        
+                        <h4>7. צור קשר</h4>
+                        <p>לשאלות או בקשות לגבי מדיניות הפרטיות, אנא <a href="{{ url_for('contact_page') }}">צור קשר</a>.</p>
+                        
+                        <p class="mt-4"><small>מדיניות פרטיות זו עשויה להתעדכן מעת לעת. נמליץ לבדוק עמוד זה מעת לעת.</small></p>
+                        {% else %}
+                        <h3>Privacy Policy</h3>
+                        <p><small>Last Updated: November 2024</small></p>
+                        
+                        <h4>1. Information We Collect</h4>
+                        <p>We may collect personal information such as name, email address, phone number, and address when you:</p>
+                        <ul>
+                            <li>Contact us through our contact form</li>
+                            <li>Make a table reservation at our restaurant</li>
+                            <li>Place an online order</li>
+                            <li>Subscribe to our newsletter</li>
+                        </ul>
+                        
+                        <h4>2. How We Use Your Information</h4>
+                        <p>We use the collected information to:</p>
+                        <ul>
+                            <li>Process your orders and services</li>
+                            <li>Improve our service and your experience</li>
+                            <li>Send updates and promotions (if you subscribed to our newsletter)</li>
+                            <li>Respond to inquiries and requests</li>
+                        </ul>
+                        
+                        <h4>3. Information Sharing</h4>
+                        <p>We do not share your personal information with third parties, except:</p>
+                        <ul>
+                            <li>When required by law</li>
+                            <li>With service providers who help us operate our website and business</li>
+                        </ul>
+                        
+                        <h4>4. Information Security</h4>
+                        <p>We use appropriate security measures to protect your personal information from unauthorized access.</p>
+                        
+                        <h4>5. Cookies</h4>
+                        <p>We use cookies to improve your browsing experience. You can choose to accept or decline cookies through the banner that appears on your first visit.</p>
+                        
+                        <h4>6. Your Rights</h4>
+                        <p>You have the right to:</p>
+                        <ul>
+                            <li>Access your personal information</li>
+                            <li>Correct inaccurate information</li>
+                            <li>Request deletion of your information</li>
+                            <li>Unsubscribe from our newsletter at any time</li>
+                        </ul>
+                        
+                        <h4>7. Contact Us</h4>
+                        <p>For questions or requests regarding our privacy policy, please <a href="{{ url_for('contact_page') }}">contact us</a>.</p>
+                        
+                        <p class="mt-4"><small>This privacy policy may be updated from time to time. We recommend checking this page periodically.</small></p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-{{ 'right' if language == 'he' else 'left' }} me-2"></i>
+                        {{ 'חזרה לדף הבית' if language == 'he' else 'Back to Home' }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.page-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 6rem 0 4rem;
+    margin-top: 70px;
+    text-align: center;
+}
+
+.page-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.page-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.terms-content {
+    background: white;
+    border-radius: 15px;
+    line-height: 1.8;
+}
+
+.terms-content h3 {
+    color: var(--primary-color);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.terms-content h4 {
+    color: var(--primary-color);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.2rem;
+}
+
+.terms-content p {
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+.terms-content ul {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+}
+
+.terms-content ul li {
+    margin-bottom: 0.5rem;
+}
+
+.terms-content small {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        padding: 5rem 0 3rem;
+        margin-top: 60px;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .page-subtitle {
+        font-size: 1rem;
+    }
+    
+    .terms-content {
+        padding: 2rem !important;
+    }
+}
+</style>
+{% endblock %}

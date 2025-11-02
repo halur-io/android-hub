@@ -254,6 +254,37 @@ def delete_user(user_id):
     
     return jsonify({'success': True, 'message': f'המשתמש {username} נמחק בהצלחה'})
 
+# Newsletter Management
+@admin_bp.route('/newsletter')
+@login_required
+def newsletter():
+    """List all newsletter subscribers"""
+    subscribers = NewsletterSubscriber.query.order_by(NewsletterSubscriber.subscribed_at.desc()).all()
+    active_count = NewsletterSubscriber.query.filter_by(is_active=True).count()
+    total_count = NewsletterSubscriber.query.count()
+    return render_template('admin/newsletter.html', 
+                         subscribers=subscribers,
+                         active_count=active_count,
+                         total_count=total_count)
+
+@admin_bp.route('/newsletter/export')
+@login_required
+def newsletter_export():
+    """Export newsletter subscribers to CSV"""
+    subscribers = NewsletterSubscriber.query.filter_by(is_active=True).all()
+    emails = [s.email for s in subscribers]
+    return jsonify({'success': True, 'emails': emails, 'count': len(emails)})
+
+@admin_bp.route('/newsletter/delete/<int:subscriber_id>', methods=['POST'])
+@login_required
+def delete_newsletter_subscriber(subscriber_id):
+    """Delete newsletter subscriber"""
+    subscriber = NewsletterSubscriber.query.get_or_404(subscriber_id)
+    email = subscriber.email
+    db.session.delete(subscriber)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'המנוי {email} נמחק בהצלחה'})
+
 # Admin Dashboard
 @admin_bp.route('/')
 @login_required

@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SelectField, IntegerField, DateField, TimeField
+from wtforms import StringField, TextAreaField, SelectField, IntegerField, DateField, TimeField, BooleanField
 from wtforms.validators import DataRequired, Email, Length, NumberRange
 
 class ContactForm(FlaskForm):
@@ -22,3 +22,4 @@ class ReservationForm(FlaskForm):
 class NewsletterForm(FlaskForm):
     email = StringField('אימייל', validators=[DataRequired(), Email()])
     name = StringField('שם', validators=[Length(max=100)])
+    accept_terms = BooleanField('אני מסכים לתנאי השימוש', validators=[DataRequired()])

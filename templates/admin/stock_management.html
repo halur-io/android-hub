@@ -15,10 +15,66 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>פריטי מלאי</h5>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">
-                <i class="fas fa-plus me-1"></i> פריט חדש
+            <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#addItemForm">
+                <i class="fas fa-plus me-1"></i> הוסף פריט חדש
             </button>
         </div>
+        
+        <!-- Add Item Form (Collapsible) -->
+        <div class="collapse" id="addItemForm">
+            <div class="card-body bg-light">
+                <form method="POST" action="{{ url_for('admin.add_stock_item') }}">
+                    {{ csrf_token() }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">שם הפריט (עברית) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name_he" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">שם הפריט (אנגלית)</label>
+                            <input type="text" class="form-control" name="name_en">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">קטגוריה</label>
+                            <select class="form-select" name="category_id">
+                                <option value="">ללא קטגוריה</option>
+                                {% for cat in stock_categories %}
+                                <option value="{{ cat.id }}">{{ cat.name_he }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">ספק</label>
+                            <select class="form-select" name="supplier_id">
+                                <option value="">ללא ספק</option>
+                                {% for sup in suppliers %}
+                                <option value="{{ sup.id }}">{{ sup.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">יחידה</label>
+                            <input type="text" class="form-control" name="unit" value="יחידות">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">מינימום</label>
+                            <input type="number" class="form-control" name="minimum_stock" value="0" step="0.01">
+                        </div>
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">עלות/יח'</label>
+                            <input type="number" class="form-control" name="cost_per_unit" value="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#addItemForm">ביטול</button>
+                        <button type="submit" class="btn btn-primary">הוסף פריט</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
         <div class="card-body">
             {% if stock_items %}
             <div class="table-responsive">
@@ -27,10 +83,9 @@
                         <tr>
                             <th>שם הפריט</th>
                             <th>קטגוריה</th>
-                            <th>כמות במלאי</th>
                             <th>יחידה</th>
                             <th>ספק</th>
-                            <th>פעולות</th>
+                            <th>עלות/יח'</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -44,9 +99,6 @@
                                 <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <span class="badge bg-secondary">-</span>
-                            </td>
                             <td>{{ item.unit }}</td>
                             <td>
                                 {% if item.supplier %}
@@ -55,14 +107,7 @@
                                 <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editItem({{ item.id }})">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-success" onclick="addStock({{ item.id }})">
-                                    <i class="fas fa-plus"></i> הוסף
-                                </button>
-                            </td>
+                            <td>₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -70,7 +115,7 @@
             </div>
             {% else %}
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> אין פריטי מלאי. הוסף פריטים כדי להתחיל.
+                <i class="fas fa-info-circle me-2"></i> אין פריטי מלאי. לחץ על "הוסף פריט חדש" כדי להתחיל.
             </div>
             {% endif %}
         </div>
@@ -80,10 +125,48 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-truck me-2"></i>ספקים</h5>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
-                <i class="fas fa-plus me-1"></i> ספק חדש
+            <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#addSupplierForm">
+                <i class="fas fa-plus me-1"></i> הוסף ספק חדש
             </button>
         </div>
+        
+        <!-- Add Supplier Form (Collapsible) -->
+        <div class="collapse" id="addSupplierForm">
+            <div class="card-body bg-light">
+                <form method="POST" action="{{ url_for('admin.add_supplier') }}">
+                    {{ csrf_token() }}
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">שם הספק <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">איש קשר</label>
+                            <input type="text" class="form-control" name="contact_person">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">טלפון</label>
+                            <input type="tel" class="form-control" name="phone">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">אימייל</label>
+                            <input type="email" class="form-control" name="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">כתובת</label>
+                            <input type="text" class="form-control" name="address">
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#addSupplierForm">ביטול</button>
+                        <button type="submit" class="btn btn-primary">הוסף ספק</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
         <div class="card-body">
             {% if suppliers %}
             <div class="row">
@@ -91,15 +174,15 @@
                 <div class="col-md-4 mb-3">
                     <div class="card">
                         <div class="card-body">
-                            <h6>{{ supplier.name }}</h6>
+                            <h6><i class="fas fa-building me-2"></i>{{ supplier.name }}</h6>
                             {% if supplier.contact_person %}
-                            <p class="mb-1"><small><i class="fas fa-user"></i> {{ supplier.contact_person }}</small></p>
+                            <p class="mb-1"><small><i class="fas fa-user me-1"></i> {{ supplier.contact_person }}</small></p>
                             {% endif %}
                             {% if supplier.phone %}
-                            <p class="mb-1"><small><i class="fas fa-phone"></i> {{ supplier.phone }}</small></p>
+                            <p class="mb-1"><small><i class="fas fa-phone me-1"></i> {{ supplier.phone }}</small></p>
                             {% endif %}
                             {% if supplier.email %}
-                            <p class="mb-1"><small><i class="fas fa-envelope"></i> {{ supplier.email }}</small></p>
+                            <p class="mb-0"><small><i class="fas fa-envelope me-1"></i> {{ supplier.email }}</small></p>
                             {% endif %}
                         </div>
                     </div>
@@ -108,7 +191,7 @@
             </div>
             {% else %}
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> אין ספקים. הוסף ספקים כדי להתחיל.
+                <i class="fas fa-info-circle me-2"></i> אין ספקים. לחץ על "הוסף ספק חדש" כדי להתחיל.
             </div>
             {% endif %}
         </div>
@@ -118,10 +201,38 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-tags me-2"></i>קטגוריות מלאי</h5>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-                <i class="fas fa-plus me-1"></i> קטגוריה חדשה
+            <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#addCategoryForm">
+                <i class="fas fa-plus me-1"></i> הוסף קטגוריה חדשה
             </button>
         </div>
+        
+        <!-- Add Category Form (Collapsible) -->
+        <div class="collapse" id="addCategoryForm">
+            <div class="card-body bg-light">
+                <form method="POST" action="{{ url_for('admin.add_stock_category') }}">
+                    {{ csrf_token() }}
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">שם הקטגוריה (עברית) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name_he" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">שם הקטגוריה (אנגלית)</label>
+                            <input type="text" class="form-control" name="name_en">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">תיאור</label>
+                            <input type="text" class="form-control" name="description">
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#addCategoryForm">ביטול</button>
+                        <button type="submit" class="btn btn-primary">הוסף קטגוריה</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
         <div class="card-body">
             {% if stock_categories %}
             <div class="row">
@@ -135,163 +246,10 @@
             </div>
             {% else %}
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> אין קטגוריות מלאי. הוסף קטגוריות כדי להתחיל.
+                <i class="fas fa-info-circle me-2"></i> אין קטגוריות מלאי. לחץ על "הוסף קטגוריה חדשה" כדי להתחיל.
             </div>
             {% endif %}
         </div>
     </div>
 </div>
-
-<!-- Add Item Modal -->
-<div class="modal fade" id="addItemModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="{{ url_for('admin.add_stock_item') }}">
-                {{ csrf_token() }}
-                <div class="modal-header">
-                    <h5 class="modal-title">הוספת פריט מלאי</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">שם הפריט (עברית) <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="name_he" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">שם הפריט (אנגלית)</label>
-                        <input type="text" class="form-control" name="name_en">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">קטגוריה</label>
-                            <select class="form-select" name="category_id">
-                                <option value="">ללא קטגוריה</option>
-                                {% for cat in stock_categories %}
-                                <option value="{{ cat.id }}">{{ cat.name_he }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">ספק</label>
-                            <select class="form-select" name="supplier_id">
-                                <option value="">ללא ספק</option>
-                                {% for sup in suppliers %}
-                                <option value="{{ sup.id }}">{{ sup.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">יחידת מידה</label>
-                            <input type="text" class="form-control" name="unit" value="יחידות">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">מלאי מינימום</label>
-                            <input type="number" class="form-control" name="minimum_stock" value="0" step="0.01">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">נקודת הזמנה</label>
-                            <input type="number" class="form-control" name="reorder_point" value="0" step="0.01">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">עלות ליחידה (₪)</label>
-                        <input type="number" class="form-control" name="cost_per_unit" value="0" step="0.01">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
-                    <button type="submit" class="btn btn-primary">הוסף פריט</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Add Supplier Modal -->
-<div class="modal fade" id="addSupplierModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="{{ url_for('admin.add_supplier') }}">
-                {{ csrf_token() }}
-                <div class="modal-header">
-                    <h5 class="modal-title">הוספת ספק</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">שם הספק <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">איש קשר</label>
-                        <input type="text" class="form-control" name="contact_person">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">טלפון</label>
-                        <input type="tel" class="form-control" name="phone">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">אימייל</label>
-                        <input type="email" class="form-control" name="email">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">כתובת</label>
-                        <textarea class="form-control" name="address" rows="2"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
-                    <button type="submit" class="btn btn-primary">הוסף ספק</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Add Category Modal -->
-<div class="modal fade" id="addCategoryModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="{{ url_for('admin.add_stock_category') }}">
-                {{ csrf_token() }}
-                <div class="modal-header">
-                    <h5 class="modal-title">הוספת קטגוריה</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">שם הקטגוריה (עברית) <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="name_he" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">שם הקטגוריה (אנגלית)</label>
-                        <input type="text" class="form-control" name="name_en">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">תיאור</label>
-                        <textarea class="form-control" name="description" rows="2"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
-                    <button type="submit" class="btn btn-primary">הוסף קטגוריה</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function editItem(itemId) {
-    alert('Edit functionality coming soon...');
-}
-
-function addStock(itemId) {
-    alert('Add stock functionality coming soon...');
-}
-</script>
 {% endblock %}

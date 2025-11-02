@@ -116,6 +116,16 @@
                     </div>
                     {% endfor %}
                 </div>
+                
+                <!-- Category Footer Text -->
+                {% if category.footer_text_he or category.footer_text_en %}
+                <div class="category-footer-text mt-4 p-3 bg-light rounded text-center">
+                    <p class="mb-0 text-muted">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {{ category.footer_text_he if language == 'he' else category.footer_text_en }}
+                    </p>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

@@ -92,8 +92,8 @@ def menu_page():
         is_active=True
     ).order_by(MediaFile.display_order).all()
     
-    # Get all categories
-    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    # Get all categories that should be shown in menu
+    categories = MenuCategory.query.filter_by(is_active=True, show_in_menu=True).order_by(MenuCategory.display_order).all()
     
     # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
     all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(

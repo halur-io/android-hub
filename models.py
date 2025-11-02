@@ -342,10 +342,16 @@ class MenuCategory(db.Model):
     name_en = db.Column(db.String(100), nullable=False)
     description_he = db.Column(db.Text)
     description_en = db.Column(db.Text)
+    footer_text_he = db.Column(db.Text)  # Text displayed at bottom of category
+    footer_text_en = db.Column(db.Text)  # Text displayed at bottom of category
     display_order = db.Column(db.Integer, default=0)
-    is_active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True)  # Overall active status
+    show_in_menu = db.Column(db.Boolean, default=True)  # Show in menu page
+    show_in_order = db.Column(db.Boolean, default=True)  # Show in order page
+    featured = db.Column(db.Boolean, default=False)  # Featured category
     icon = db.Column(db.String(50))  # FontAwesome icon name
     color = db.Column(db.String(7))  # Hex color code
+    image_path = db.Column(db.String(255))  # Category background image
     menu_items = db.relationship('MenuItem', backref='category', lazy=True, cascade='all, delete-orphan')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

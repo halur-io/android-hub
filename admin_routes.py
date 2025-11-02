@@ -748,16 +748,32 @@ def edit_category(id=None):
         category.name_en = request.form.get('name_en')
         category.description_he = request.form.get('description_he')
         category.description_en = request.form.get('description_en')
+        category.footer_text_he = request.form.get('footer_text_he')
+        category.footer_text_en = request.form.get('footer_text_en')
         category.display_order = int(request.form.get('display_order', 0))
         category.is_active = request.form.get('is_active') == 'on'
+        category.show_in_menu = request.form.get('show_in_menu') == 'on'
+        category.show_in_order = request.form.get('show_in_order') == 'on'
+        category.featured = request.form.get('featured') == 'on'
         category.icon = request.form.get('icon')
         category.color = request.form.get('color')
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"category_{timestamp}_{filename}"
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(filepath)
+                category.image_path = f'uploads/{filename}'
         
         if not id:
             db.session.add(category)
         
         db.session.commit()
-        flash('Category saved successfully!', 'success')
+        flash('קטגוריה נשמרה בהצלחה!', 'success')
         return redirect(url_for('admin.menu'))
     
     return render_template('admin/enhanced_category.html', category=category)

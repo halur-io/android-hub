@@ -8,7 +8,7 @@
         <div class="col-md-8">
             <h2>{% if category.id %}עריכת קטגוריה: {{ category.name_he }}{% else %}הוספת קטגוריה חדשה{% endif %}</h2>
             
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 
                 <div class="row">
@@ -31,6 +31,17 @@
                         <div class="mb-3">
                             <label for="description_en" class="form-label">תיאור (אנגלית)</label>
                             <textarea class="form-control" id="description_en" name="description_en" rows="3">{{ category.description_en or '' }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="footer_text_he" class="form-label">טקסט בתחתית הקטגוריה (עברית)</label>
+                            <textarea class="form-control" id="footer_text_he" name="footer_text_he" rows="2" placeholder="טקסט אופציונלי שיוצג בתחתית הסקציה">{{ category.footer_text_he or '' }}</textarea>
+                            <small class="form-text text-muted">טקסט זה יוצג בתחתית הקטגוריה (למשל: הערות, מידע נוסף)</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="footer_text_en" class="form-label">טקסט בתחתית הקטגוריה (אנגלית)</label>
+                            <textarea class="form-control" id="footer_text_en" name="footer_text_en" rows="2" placeholder="Optional footer text">{{ category.footer_text_en or '' }}</textarea>
                         </div>
                     </div>
                     
@@ -58,12 +69,42 @@
                         </div>
                         
                         <div class="mb-3">
+                            <label class="form-label">הגדרות תצוגה</label>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if category.is_active %}checked{% endif %}>
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if category.is_active or not category.id %}checked{% endif %}>
                                 <label class="form-check-label" for="is_active">
-                                    קטגוריה פעילה
+                                    <i class="fas fa-eye text-success"></i> קטגוריה פעילה
                                 </label>
                             </div>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="show_in_menu" name="show_in_menu" {% if category.show_in_menu or not category.id %}checked{% endif %}>
+                                <label class="form-check-label" for="show_in_menu">
+                                    <i class="fas fa-book-open text-primary"></i> הצג בעמוד התפריט
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="show_in_order" name="show_in_order" {% if category.show_in_order or not category.id %}checked{% endif %}>
+                                <label class="form-check-label" for="show_in_order">
+                                    <i class="fas fa-shopping-cart text-info"></i> הצג בעמוד הזמנה
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="featured" name="featured" {% if category.featured %}checked{% endif %}>
+                                <label class="form-check-label" for="featured">
+                                    <i class="fas fa-star text-warning"></i> קטגוריה מומלצת
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="image" class="form-label">תמונת רקע לקטגוריה</label>
+                            {% if category.image_path %}
+                            <div class="mb-2">
+                                <img src="{{ url_for('static', filename=category.image_path) }}" alt="Category Image" class="img-thumbnail" style="max-width: 200px;">
+                            </div>
+                            {% endif %}
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                            <small class="form-text text-muted">תמונה אופציונלית לתצוגה מיוחדת של הקטגוריה</small>
                         </div>
                     </div>
                 </div>

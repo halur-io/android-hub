@@ -78,92 +78,29 @@
     </svg>
 </div>
 
-<!-- About Section -->
+<!-- Our Story Section (About + Reservation Combined) -->
 {% if settings.about_content_he or settings.about_content_en %}
-<section class="section bg-light section-with-background">
-    <div class="floating-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-    </div>
-    <div class="container position-relative">
-        <div class="row justify-content-center">
-            <div class="col-lg-8 text-center">
-                <h2 class="section-title">{{ settings.about_title_he if language == 'he' else settings.about_title_en }}</h2>
-                <p class="section-subtitle">{{ settings.about_content_he if language == 'he' else settings.about_content_en }}</p>
+<section class="section story-section">
+    <div class="story-bg-image"></div>
+    <div class="container">
+        <div class="story-content text-center">
+            <h2 class="story-title">{{ settings.about_title_he if language == 'he' else settings.about_title_en }}</h2>
+            <div class="story-text">
+                {{ settings.about_content_he if language == 'he' else settings.about_content_en }}
             </div>
+            
+            {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage and reservation_settings.reservation_system_url %}
+            <div class="story-cta">
+                <p class="story-cta-text">{{ 'מוכנים לחוות את זה בעצמכם?' if language == 'he' else 'Ready to experience it yourself?' }}</p>
+                <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-story-reserve">
+                    {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </section>
 {% endif %}
-
-<!-- Wave Divider -->
-<div class="wave-divider wave-divider-2">
-    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
-        <path d="M0,50 C200,100 400,0 600,50 C800,100 1000,0 1200,50 L1200,0 L0,0 Z" fill="#f8f9fa"></path>
-    </svg>
-</div>
-
-<!-- Featured Menu Items -->
-<section class="section section-with-gradient">
-    <div class="gradient-overlay"></div>
-    <div class="container position-relative">
-        <div class="text-center mb-5">
-            <h2 class="section-title">{{ 'המנות המובילות שלנו' if language == 'he' else 'Our Signature Dishes' }}</h2>
-            <p class="section-subtitle">{{ 'טעמו מהאוכל הטוב ביותר שיש לנו להציע' if language == 'he' else 'Taste the best we have to offer' }}</p>
-        </div>
-        
-        <div class="menu-grid">
-            {% for item in featured_items %}
-            <div class="menu-card">
-                {% if item.image_path %}
-                <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" alt="{{ item.name_he if language == 'he' else item.name_en }}" class="menu-card-img">
-                {% else %}
-                <div class="menu-card-img" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-                {% endif %}
-                
-                <div class="menu-card-body">
-                    <h3 class="menu-card-title">{{ item.name_he if language == 'he' else item.name_en }}</h3>
-                    <p class="menu-card-desc">{{ item.description_he if language == 'he' else item.description_en }}</p>
-                    
-                    {% if item.dietary_properties %}
-                    <div class="dietary-icons">
-                        {% for prop in item.dietary_properties %}
-                        <span class="dietary-icon" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
-                            <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
-                        </span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    
-                    <div class="menu-card-price">₪{{ item.base_price }}</div>
-                    
-                    {% if settings.enable_online_ordering %}
-                    <button class="btn btn-primary w-100" onclick="addToCart({{ item.id }}, '{{ item.name_he if language == 'he' else item.name_en }}', {{ item.base_price }})">
-                        {{ 'הוסף להזמנה' if language == 'he' else 'Add to Order' }}
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        
-        <div class="text-center mt-5">
-            <a href="{{ url_for('menu_page') }}" class="btn btn-outline-primary btn-lg">
-                {{ 'ראה תפריט מלא' if language == 'he' else 'View Full Menu' }}
-            </a>
-        </div>
-    </div>
-</section>
-
-<!-- Animated Divider -->
-<div class="animated-divider" aria-hidden="true">
-    <div class="divider-line"></div>
-    <div class="divider-icon">
-        <i class="fas fa-utensils"></i>
-    </div>
-    <div class="divider-line"></div>
-</div>
 
 <!-- Branches Section -->
 {% if branches %}
@@ -235,51 +172,6 @@
                 </div>
             </div>
             {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
-<!-- Curved Divider -->
-<div class="curved-divider">
-    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
-        <path d="M0,0 Q600,120 1200,0 L1200,120 L0,120 Z" fill="white"></path>
-    </svg>
-</div>
-
-<!-- Table Reservation Section -->
-{% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage %}
-<section class="section reservation-section-clean">
-    <div class="reservation-bg-layer"></div>
-    <div class="container">
-        <div class="reservation-clean-content text-center">
-            <h2 class="reservation-title-clean">{{ reservation_settings.section_title_he if language == 'he' else reservation_settings.section_title_en }}</h2>
-            
-            {% if language == 'he' %}
-                {% if reservation_settings.section_description_he %}
-                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_he }}</p>
-                {% elif reservation_settings.section_description_en %}
-                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_en }}</p>
-                {% else %}
-                    <p class="reservation-subtitle-clean">חוויה קולינרית בלתי נשכחת מחכה לכם</p>
-                {% endif %}
-            {% else %}
-                {% if reservation_settings.section_description_en %}
-                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_en }}</p>
-                {% elif reservation_settings.section_description_he %}
-                    <p class="reservation-subtitle-clean">{{ reservation_settings.section_description_he }}</p>
-                {% else %}
-                    <p class="reservation-subtitle-clean">An unforgettable culinary experience awaits you</p>
-                {% endif %}
-            {% endif %}
-            
-            {% if reservation_settings.reservation_system_url %}
-            <div class="reservation-btn-wrap">
-                <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-reservation-clean">
-                    {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
-                </a>
-            </div>
-            {% endif %}
         </div>
     </div>
 </section>

@@ -1,13 +1,16 @@
 {% extends "admin/base.html" %}
 
-{% block title %}{{ item.name_he }} - פרטי מרכיב{% endblock %}
+{% block title %}{{ item.name_he }} - פרטי פריט{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">{{ item.name_he }}</h1>
+        <div>
+            <h1 class="h3 mb-0">{{ item.name_he }}</h1>
+            <p class="text-muted mb-0">{{ item.name_en or '' }}</p>
+        </div>
         <a href="{{ url_for('admin.stock_management') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right me-2"></i>חזור לניהול מלאי
+            <i class="fas fa-arrow-left me-2"></i>חזרה למלאי
         </a>
     </div>
 

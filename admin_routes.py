@@ -4044,7 +4044,8 @@ def printer_guide():
 @require_permission('stock.view')
 def stock_management():
     """Main stock management dashboard"""
-    from models import StockItem, StockLevel, Branch, StockAlert, Supplier, StockCategory
+    from models import StockItem, StockLevel, Branch, StockAlert, Supplier, StockCategory, StockTransaction
+    from sqlalchemy import func
     
     # Get current branch or default to first branch
     branch_id = request.args.get('branch_id', type=int)
@@ -4054,8 +4055,24 @@ def stock_management():
     
     branches = Branch.query.filter_by(is_active=True).all()
     
-    # Get all stock items, suppliers, and categories
-    stock_items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+    # Get all stock items with last purchase dates
+    stock_items_query = db.session.query(
+        StockItem,
+        func.max(StockTransaction.transaction_date).label('last_purchase_date')
+    ).outerjoin(
+        StockTransaction,
+        (StockTransaction.item_id == StockItem.id) & 
+        (StockTransaction.transaction_type == 'delivery')
+    ).filter(
+        StockItem.is_active == True
+    ).group_by(StockItem.id).order_by(StockItem.name_he)
+    
+    # Process items to add last purchase date
+    stock_items = []
+    for item, last_date in stock_items_query:
+        item.last_purchase_date = last_date
+        stock_items.append(item)
+    
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
     stock_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
     
@@ -4240,7 +4257,8 @@ def item_details(item_id):
                          item=item,
                          last_purchase=last_purchase,
                          price_history=price_history,
-                         dish_analysis=dish_analysis)
+                         dish_analysis=dish_analysis,
+                         now=datetime.now())
 
 @admin_bp.route('/stock/reports/monthly-costs')
 @login_required

@@ -106,6 +106,13 @@
                                 <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="text-decoration-none">
                                     <strong>{{ item.name_he }}</strong>
                                 </a>
+                                {% if item.last_purchase_date %}
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    קנייה אחרונה: {{ item.last_purchase_date.strftime('%d/%m/%Y') }}
+                                </small>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if item.category %}

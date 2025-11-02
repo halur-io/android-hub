@@ -429,6 +429,22 @@ class MenuItemPrice(db.Model):
     is_default = db.Column(db.Boolean, default=False)
     display_order = db.Column(db.Integer, default=0)
 
+# Menu Item Ingredients - Links menu items to stock items for cost calculation
+class MenuItemIngredient(db.Model):
+    __tablename__ = 'menu_item_ingredients'
+    id = db.Column(db.Integer, primary_key=True)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=False)
+    stock_item_id = db.Column(db.Integer, db.ForeignKey('stock_items.id'), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)  # Quantity of ingredient used
+    unit = db.Column(db.String(20))  # Override unit if needed
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    menu_item = db.relationship('MenuItem', backref='ingredients')
+    stock_item = db.relationship('StockItem', backref='menu_usage')
+
 # Menu Item Variations (Spice levels, cooking styles, etc.)
 class MenuItemVariation(db.Model):
     __tablename__ = 'menu_item_variations'

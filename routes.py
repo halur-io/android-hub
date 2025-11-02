@@ -337,9 +337,9 @@ def not_found(error):
                              error_message='The admin page you are looking for does not exist.',
                              suggestion='Try accessing the admin panel at <a href="/admin/">/admin/</a>'), 404
     
-    contact_form = ContactForm()
-    reservation_form = ReservationForm()
-    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form), 404
+    # Return proper 404 page for public routes
+    context = get_context_data()
+    return render_template('public/404.html', **context), 404
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -350,6 +350,6 @@ def internal_error(error):
                              error_message='An internal server error occurred.',
                              suggestion='Please try again or contact support.'), 500
     
-    contact_form = ContactForm()
-    reservation_form = ReservationForm()
-    return render_template('index.html', contact_form=contact_form, reservation_form=reservation_form), 500
+    # Return proper 500 error page for public routes
+    context = get_context_data()
+    return render_template('public/500.html', **context), 500

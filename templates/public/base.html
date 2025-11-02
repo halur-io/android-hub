@@ -53,8 +53,10 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='images/sumo-logo.png') }}" alt="Logo" class="navbar-logo me-2">
-                <span class="brand-text">Sumo Asian Kitchen</span>
+                {% if settings.logo_path %}
+                <img src="{{ settings.logo_path }}" alt="Logo" class="navbar-logo me-2">
+                {% endif %}
+                <span class="brand-text">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

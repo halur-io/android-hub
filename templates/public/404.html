@@ -1,0 +1,133 @@
+{% extends "public/base.html" %}
+
+{% block title %}עמוד לא נמצא - 404{% endblock %}
+
+{% block content %}
+<style>
+    .error-page {
+        min-height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 0;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    .error-container {
+        text-align: center;
+        max-width: 600px;
+        padding: 40px;
+    }
+    
+    .error-code {
+        font-size: 120px;
+        font-weight: bold;
+        color: #1a3a6e;
+        margin: 0;
+        line-height: 1;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .error-title {
+        font-size: 32px;
+        color: #333;
+        margin: 20px 0;
+        font-weight: 600;
+    }
+    
+    .error-message {
+        font-size: 18px;
+        color: #666;
+        margin: 20px 0 30px;
+        line-height: 1.6;
+    }
+    
+    .error-icon {
+        font-size: 80px;
+        color: #dc3545;
+        margin-bottom: 20px;
+    }
+    
+    .btn-group-error {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 30px;
+    }
+    
+    .btn-error {
+        padding: 12px 30px;
+        font-size: 16px;
+        border-radius: 25px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+    
+    .btn-primary-error {
+        background-color: #1a3a6e;
+        color: white;
+        border: 2px solid #1a3a6e;
+    }
+    
+    .btn-primary-error:hover {
+        background-color: #152d57;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(26,58,110,0.2);
+    }
+    
+    .btn-secondary-error {
+        background-color: transparent;
+        color: #dc3545;
+        border: 2px solid #dc3545;
+    }
+    
+    .btn-secondary-error:hover {
+        background-color: #dc3545;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220,53,69,0.2);
+    }
+</style>
+
+<div class="error-page">
+    <div class="container">
+        <div class="error-container">
+            <div class="error-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <h1 class="error-code">404</h1>
+            {% if language == 'he' %}
+            <h2 class="error-title">אופס! העמוד לא נמצא</h2>
+            <p class="error-message">
+                מצטערים, העמוד שאתה מחפש לא קיים.<br>
+                ייתכן שהוסר, שונה שמו או שהקישור שגוי.
+            </p>
+            <div class="btn-group-error">
+                <a href="{{ url_for('index') }}" class="btn-error btn-primary-error">
+                    <i class="fas fa-home me-2"></i>חזרה לדף הבית
+                </a>
+                <a href="{{ url_for('menu') }}" class="btn-error btn-secondary-error">
+                    <i class="fas fa-book-open me-2"></i>לתפריט
+                </a>
+            </div>
+            {% else %}
+            <h2 class="error-title">Oops! Page Not Found</h2>
+            <p class="error-message">
+                Sorry, the page you are looking for does not exist.<br>
+                It might have been removed, renamed, or the link is incorrect.
+            </p>
+            <div class="btn-group-error">
+                <a href="{{ url_for('index') }}" class="btn-error btn-primary-error">
+                    <i class="fas fa-home me-2"></i>Back to Home
+                </a>
+                <a href="{{ url_for('menu') }}" class="btn-error btn-secondary-error">
+                    <i class="fas fa-book-open me-2"></i>View Menu
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

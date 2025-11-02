@@ -24,7 +24,7 @@
         <div class="collapse" id="addItemForm">
             <div class="card-body bg-light">
                 <form method="POST" action="{{ url_for('admin.add_stock_item') }}">
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">שם הפריט (עברית) <span class="text-danger">*</span></label>
@@ -134,7 +134,7 @@
         <div class="collapse" id="addSupplierForm">
             <div class="card-body bg-light">
                 <form method="POST" action="{{ url_for('admin.add_supplier') }}">
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label">שם הספק <span class="text-danger">*</span></label>
@@ -210,7 +210,7 @@
         <div class="collapse" id="addCategoryForm">
             <div class="card-body bg-light">
                 <form method="POST" action="{{ url_for('admin.add_stock_category') }}">
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label">שם הקטגוריה (עברית) <span class="text-danger">*</span></label>

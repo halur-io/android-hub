@@ -414,6 +414,7 @@ class MenuItem(db.Model):
     price_options = db.relationship('MenuItemPrice', backref='menu_item', lazy=True, cascade='all, delete-orphan')
     variations = db.relationship('MenuItemVariation', backref='menu_item', lazy=True, cascade='all, delete-orphan')
     dietary_properties = db.relationship('DietaryProperty', secondary=menu_item_dietary_properties, backref='menu_items')
+    ingredients = db.relationship('MenuItemIngredient', backref='menu_item', lazy=True, cascade='all, delete-orphan')
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -440,6 +441,19 @@ class MenuItemVariation(db.Model):
     price_modifier = db.Column(db.Float, default=0)  # Additional cost
     is_default = db.Column(db.Boolean, default=False)
     display_order = db.Column(db.Integer, default=0)
+
+# Menu Item Ingredients (Link dishes to stock items)
+class MenuItemIngredient(db.Model):
+    __tablename__ = 'menu_item_ingredients'
+    id = db.Column(db.Integer, primary_key=True)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=False)
+    stock_item_id = db.Column(db.Integer, db.ForeignKey('stock_items.id'), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)  # Amount of ingredient used in this dish
+    notes = db.Column(db.String(255))  # Optional notes (e.g., "chopped", "diced")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    stock_item = db.relationship('StockItem', backref='menu_usages')
 
 # Customizable Dietary Properties
 class DietaryProperty(db.Model):

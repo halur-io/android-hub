@@ -4138,6 +4138,22 @@ def add_stock_category():
     """Add new stock category"""
     from models import StockCategory
     
+    # Check if this is an edit action
+    if request.form.get('action') == 'edit_category':
+        try:
+            category_id = request.form.get('category_id')
+            category = StockCategory.query.get_or_404(category_id)
+            category.name_he = request.form.get('name_he')
+            category.name_en = request.form.get('name_en', '')
+            
+            db.session.commit()
+            flash('קטגוריה עודכנה בהצלחה!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון הקטגוריה: {str(e)}', 'danger')
+        
+        return redirect(url_for('admin.stock_management'))
+    
     try:
         name_he = request.form.get('name_he')
         name_en = request.form.get('name_en', '')
@@ -4567,25 +4583,6 @@ def edit_supplier(supplier_id):
             flash(f'שגיאה בעדכון ספק: {str(e)}', 'error')
     
     return render_template('admin/edit_supplier.html', supplier=supplier)
-
-@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
-@login_required
-@require_permission('stock.manage')
-def delete_supplier(supplier_id):
-    """Delete supplier"""
-    from models import Supplier
-    
-    try:
-        supplier = Supplier.query.get_or_404(supplier_id)
-        db.session.delete(supplier)
-        db.session.commit()
-        
-        flash('ספק נמחק בהצלחה', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'שגיאה במחיקת ספק: {str(e)}', 'danger')
-    
-    return redirect(url_for('admin.stock_management'))
 
 @admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
 @login_required

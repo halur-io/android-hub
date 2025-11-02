@@ -64,11 +64,17 @@ Preferred communication style: Simple, everyday language.
         -   Import Tab: Excel/Word menu import functionality
         -   Mobile-responsive with touch-friendly availability toggles
     -   **Stock Management**: Advanced inventory management system with horizontal tabs:
-        -   Inventory Tab: Full stock item management with categories, units, suppliers
-        -   Suppliers Tab: Supplier management with delivery schedules, terms
+        -   Inventory Tab: Full stock item management with categories, units, suppliers, edit/delete capabilities
+        -   Suppliers Tab: Supplier management with delivery schedules, terms, edit/delete buttons
         -   Orders Tab: Shopping lists and supplier orders
         -   Transactions Tab: Stock movement tracking (in/out, usage, waste)
-        -   Reports Tab: Analytics and cost tracking
+        -   Reports Tab: Analytics and cost tracking with monthly expense summaries, 6-month trend charts
+        -   **Item Details Page**: Comprehensive ingredient analysis with:
+            -   Price history tracking (last 12 months) with trend chart
+            -   Profit margin analysis per dish using this ingredient
+            -   Automatic dish cost calculation based on ingredient quantities
+            -   Last purchase date tracking
+            -   Dishes using ingredient with cost breakdown and profit percentages
         -   Mobile-optimized for kitchen staff updates
     -   **Media Management**: Admin upload for hero videos/images and gallery images.
     -   **Payment Configuration**: Admin panel for managing multiple payment providers and API credentials.
@@ -88,7 +94,7 @@ Preferred communication style: Simple, everyday language.
     -   Media: MediaFile, GalleryPhoto
     -   Branch: Branch, WorkingHours
     -   Compliance: NewsletterSubscriber (email, name, is_active, subscribed_at, unsubscribed_at, source tracking)
-    -   Stock Management: StockCategory, StockItem, StockLevel, StockTransaction, StockAlert, Supplier, ShoppingList, ShoppingListItem, StockSettings, Receipt, ReceiptItem
+    -   Stock Management: StockCategory, StockItem, StockLevel, StockTransaction, StockAlert, Supplier, ShoppingList, ShoppingListItem, StockSettings, Receipt, ReceiptItem, MenuItemIngredient (links dishes to ingredients with quantities)
 -   **Database Architecture**: Robust models, default data seeding, and safe migration practices.
 -   **Accessibility Compliance**: IS 5568 (Israeli Standard) and WCAG 2.1 Level AA implementation with:
     -   Comprehensive accessibility statement page

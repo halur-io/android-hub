@@ -77,6 +77,7 @@
                                 <tr>
                                     <th>שם המנה</th>
                                     <th>מחיר</th>
+                                    <th>מאפיינים תזונתיים</th>
                                     <th>זמינות</th>
                                     <th>פעולות</th>
                                 </tr>
@@ -85,12 +86,30 @@
                                 {% for item in category.menu_items %}
                                 <tr>
                                     <td>
-                                        {{ item.name_he }}
+                                        <strong>{{ item.name_he }}</strong>
                                         {% if item.description_he %}
-                                        <br><small class="text-muted">{{ item.description_he[:50] }}...</small>
+                                        <br><small class="text-muted">{{ item.description_he[:80] }}{% if item.description_he|length > 80 %}...{% endif %}</small>
                                         {% endif %}
                                     </td>
-                                    <td><strong>₪{{ item.price }}</strong></td>
+                                    <td>
+                                        {% if item.price %}
+                                        <strong>₪{{ "%.2f"|format(item.price) }}</strong>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.dietary_properties %}
+                                            {% for prop in item.dietary_properties %}
+                                                <span class="badge bg-secondary me-1" style="font-size: 0.75rem;">
+                                                    {% if prop.icon %}<i class="{{ prop.icon }}"></i>{% endif %}
+                                                    {{ prop.name_he }}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <div class="form-check form-switch">
                                             <input class="form-check-input availability-toggle" 

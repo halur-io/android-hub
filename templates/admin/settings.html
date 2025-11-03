@@ -376,11 +376,22 @@
                         
                         <div class="toggle-group">
                             <div class="toggle-label-wrapper">
+                                <label class="toggle-label">איסוף עצמי / Pickup</label>
+                                <span class="toggle-description">הפעל אפשרות איסוף עצמי מהמסעדה</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_pickup" {% if settings.enable_pickup %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
                                 <label class="toggle-label">שפות / Multi-Language</label>
                                 <span class="toggle-description">הצג אפשרות החלפה בין עברית לאנגלית</span>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="enable_language_switch" {% if settings.enable_language_switch %}checked{% endif %}>
+                                <input type="checkbox" name="enable_english_language" {% if settings.enable_english_language %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -391,7 +402,7 @@
                                 <span class="toggle-description">הצג את עמוד התפריט המלא</span>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="show_menu" {% if settings.show_menu %}checked{% endif %}>
+                                <input type="checkbox" name="enable_menu_display" {% if settings.enable_menu_display %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -402,7 +413,7 @@
                                 <span class="toggle-description">הצג את עמוד הגלריה</span>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="show_gallery" {% if settings.show_gallery %}checked{% endif %}>
+                                <input type="checkbox" name="enable_gallery" {% if settings.enable_gallery %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -424,7 +435,7 @@
                                 <span class="toggle-description">הצג טופס יצירת קשר</span>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="show_contact" {% if settings.show_contact %}checked{% endif %}>
+                                <input type="checkbox" name="enable_contact_form" {% if settings.enable_contact_form %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -435,7 +446,7 @@
                                 <span class="toggle-description">הפעל מערכת הזמנת שולחנות</span>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="enable_reservations" {% if settings.enable_reservations %}checked{% endif %}>
+                                <input type="checkbox" name="enable_table_reservations" {% if settings.enable_table_reservations %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -571,7 +582,7 @@
                                 <span class="toggle-description">הצג באנר הודעה בראש האתר</span>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="show_announcement" {% if settings.show_announcement %}checked{% endif %}>
+                                <input type="checkbox" name="announcement_enabled" {% if settings.announcement_enabled %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>

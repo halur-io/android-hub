@@ -2,13 +2,173 @@
 
 {% block title %}ניהול מלאי - Admin Panel{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Mobile optimized styles */
+    @media (max-width: 768px) {
+        .desktop-only { display: none !important; }
+        .mobile-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 2px solid #dee2e6;
+            padding: 10px;
+            z-index: 1030;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        .excel-grid { font-size: 11px; }
+        .excel-grid th, .excel-grid td { padding: 2px 4px; }
+        .mobile-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+    }
+    
+    /* Excel-like grid styles */
+    .excel-view {
+        overflow-x: auto;
+        border: 2px solid #dee2e6;
+        margin-bottom: 80px;
+    }
+    .excel-grid {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
+    .excel-grid th {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .excel-grid td {
+        border: 1px solid #e9ecef;
+        padding: 4px 8px;
+        font-size: 13px;
+    }
+    .excel-grid tr:hover { background: #f1f3f5; }
+    .excel-grid input[type="text"], 
+    .excel-grid input[type="number"],
+    .excel-grid select {
+        width: 100%;
+        border: none;
+        background: transparent;
+        padding: 2px;
+    }
+    .excel-grid input:focus, .excel-grid select:focus {
+        outline: 2px solid #007bff;
+        background: white;
+    }
+    
+    /* Bulk selection styles */
+    .bulk-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .bulk-select-all {
+        cursor: pointer;
+    }
+    .bulk-actions-bar {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 12px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        display: none;
+    }
+    .bulk-actions-bar.show { display: block; }
+    
+    /* View toggle styles */
+    .view-toggle {
+        display: inline-flex;
+        background: #f8f9fa;
+        border-radius: 5px;
+        padding: 2px;
+    }
+    .view-toggle button {
+        padding: 6px 12px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+    .view-toggle button.active {
+        background: white;
+        border-radius: 3px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Card view styles */
+    .stock-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+        position: relative;
+    }
+    .stock-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .stock-card .bulk-check {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">ניהול מלאי</h1>
+    <!-- Header with view toggle -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div class="d-flex align-items-center gap-3">
+            <h1 class="mb-0">ניהול מלאי</h1>
+            <!-- View Toggle -->
+            <div class="view-toggle d-none d-md-inline-flex">
+                <button class="btn-view active" data-view="cards" onclick="toggleView('cards')">
+                    <i class="fas fa-th-large"></i> כרטיסים
+                </button>
+                <button class="btn-view" data-view="excel" onclick="toggleView('excel')">
+                    <i class="fas fa-table"></i> Excel
+                </button>
+            </div>
+        </div>
         <a href="{{ url_for('admin.monthly_cost_reports') }}" class="btn btn-info">
-            <i class="fas fa-chart-line me-2"></i>דוחות עלויות חודשיות
+            <i class="fas fa-chart-line me-2"></i>דוחות עלויות
         </a>
+    </div>
+    
+    <!-- Bulk Actions Bar -->
+    <div class="bulk-actions-bar" id="bulkActionsBar">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <span class="fw-bold"><span id="selectedCount">0</span> פריטים נבחרו</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-danger" onclick="bulkDelete()">
+                    <i class="fas fa-trash"></i> מחק נבחרים
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="bulkEdit()">
+                    <i class="fas fa-edit"></i> ערוך נבחרים
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="exportSelected()">
+                    <i class="fas fa-download"></i> ייצא נבחרים
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Stock Items Section -->
@@ -88,53 +248,101 @@
         
         <div class="card-body">
             {% if stock_items %}
-            <div class="table-responsive">
-                <table class="table table-hover">
+            
+            <!-- CARD VIEW (Default) -->
+            <div id="cardView" class="view-content">
+                <div class="row">
+                    {% for item in stock_items %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="stock-card">
+                            <input type="checkbox" class="bulk-checkbox bulk-check" data-id="{{ item.id }}" onchange="updateSelection()">
+                            <h6 class="mb-2">
+                                <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="text-decoration-none">
+                                    {{ item.name_he }}
+                                </a>
+                            </h6>
+                            <div class="small text-muted">
+                                <div><i class="fas fa-tag"></i> {{ item.category.name_he if item.category else 'ללא קטגוריה' }}</div>
+                                <div><i class="fas fa-ruler"></i> {{ item.unit_he or item.unit_en or '-' }}</div>
+                                <div><i class="fas fa-truck"></i> {{ item.primary_supplier.name if item.primary_supplier else 'ללא ספק' }}</div>
+                                <div><i class="fas fa-shekel-sign"></i> ₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</div>
+                                {% if item.last_purchase_date %}
+                                <div><i class="fas fa-clock"></i> {{ item.last_purchase_date.strftime('%d/%m') }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- EXCEL GRID VIEW (Hidden by default) -->
+            <div id="excelView" class="view-content excel-view" style="display:none;">
+                <table class="excel-grid">
                     <thead>
                         <tr>
+                            <th><input type="checkbox" class="bulk-select-all" onchange="selectAll(this)"></th>
+                            <th>ID</th>
                             <th>שם הפריט</th>
+                            <th>שם באנגלית</th>
                             <th>קטגוריה</th>
                             <th>יחידה</th>
                             <th>ספק</th>
                             <th>עלות/יח'</th>
+                            <th>מינימום</th>
+                            <th>מקסימום</th>
+                            <th>רכישה אחרונה</th>
+                            <th>פעולות</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in stock_items %}
-                        <tr>
+                        <tr data-id="{{ item.id }}">
+                            <td><input type="checkbox" class="bulk-checkbox" data-id="{{ item.id }}" onchange="updateSelection()"></td>
+                            <td>{{ item.id }}</td>
+                            <td contenteditable="true" data-field="name_he">{{ item.name_he }}</td>
+                            <td contenteditable="true" data-field="name_en">{{ item.name_en or '' }}</td>
                             <td>
-                                <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="text-decoration-none">
-                                    <strong>{{ item.name_he }}</strong>
-                                </a>
-                                {% if item.last_purchase_date %}
-                                <br>
-                                <small class="text-muted">
-                                    <i class="fas fa-clock me-1"></i>
-                                    קנייה אחרונה: {{ item.last_purchase_date.strftime('%d/%m/%Y') }}
-                                </small>
-                                {% endif %}
+                                <select data-field="category_id" onchange="updateField({{ item.id }}, 'category_id', this.value)">
+                                    <option value="">ללא</option>
+                                    {% for cat in stock_categories %}
+                                    <option value="{{ cat.id }}" {% if item.category and item.category.id == cat.id %}selected{% endif %}>
+                                        {{ cat.name_he }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </td>
+                            <td contenteditable="true" data-field="unit_he">{{ item.unit_he or item.unit_en or '' }}</td>
                             <td>
-                                {% if item.category %}
-                                <span class="badge bg-secondary">{{ item.category.name_he }}</span>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
+                                <select data-field="supplier_id" onchange="updateField({{ item.id }}, 'supplier_id', this.value)">
+                                    <option value="">ללא</option>
+                                    {% for sup in suppliers %}
+                                    <option value="{{ sup.id }}" {% if item.primary_supplier and item.primary_supplier.id == sup.id %}selected{% endif %}>
+                                        {{ sup.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </td>
-                            <td>{{ item.unit_he or item.unit_en or '-' }}</td>
+                            <td contenteditable="true" data-field="cost_per_unit" data-type="number">{{ "%.2f"|format(item.cost_per_unit or 0) }}</td>
+                            <td contenteditable="true" data-field="min_stock" data-type="number">{{ item.min_stock_level or 0 }}</td>
+                            <td contenteditable="true" data-field="max_stock" data-type="number">{{ item.max_stock_level or 0 }}</td>
+                            <td>{{ item.last_purchase_date.strftime('%d/%m') if item.last_purchase_date else '-' }}</td>
                             <td>
-                                {% if item.primary_supplier %}
-                                {{ item.primary_supplier.name }}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="btn btn-outline-primary" title="פרטים">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-outline-danger" onclick="deleteItem({{ item.id }})" title="מחק">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </td>
-                            <td>₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
             {% else %}
             <div class="alert alert-info">
                 <i class="fas fa-info-circle me-2"></i> אין פריטי מלאי. לחץ על "הוסף פריט חדש" כדי להתחיל.
@@ -297,5 +505,294 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- Mobile Fixed Actions Bar -->
+    <div class="mobile-actions d-md-none">
+        <div class="d-flex justify-content-around">
+            <button class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#addItemForm">
+                <i class="fas fa-plus"></i> פריט
+            </button>
+            <button class="btn btn-info" onclick="toggleView()">
+                <i class="fas fa-exchange-alt"></i> תצוגה
+            </button>
+            <button class="btn btn-warning" onclick="showBulkActions()">
+                <i class="fas fa-check-square"></i> בחר
+            </button>
+        </div>
+    </div>
 </div>
+
+<script>
+// View Toggle Functionality
+function toggleView(view) {
+    // Get all view buttons
+    const buttons = document.querySelectorAll('.btn-view');
+    const cardView = document.getElementById('cardView');
+    const excelView = document.getElementById('excelView');
+    
+    // If no view specified (mobile toggle), switch between views
+    if (!view) {
+        view = cardView.style.display !== 'none' ? 'excel' : 'cards';
+    }
+    
+    // Update button states
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.view === view) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Show/hide views
+    if (view === 'excel') {
+        cardView.style.display = 'none';
+        excelView.style.display = 'block';
+    } else {
+        cardView.style.display = 'block';
+        excelView.style.display = 'none';
+    }
+    
+    // Save preference
+    localStorage.setItem('stockViewPreference', view);
+}
+
+// Load view preference on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedView = localStorage.getItem('stockViewPreference') || 'cards';
+    if (savedView === 'excel') {
+        toggleView('excel');
+    }
+});
+
+// Bulk Selection Functions
+let selectedItems = new Set();
+
+function updateSelection() {
+    const checkboxes = document.querySelectorAll('.bulk-checkbox:checked');
+    selectedItems = new Set();
+    
+    checkboxes.forEach(cb => {
+        selectedItems.add(cb.dataset.id);
+    });
+    
+    // Update selected count
+    document.getElementById('selectedCount').textContent = selectedItems.size;
+    
+    // Show/hide bulk actions bar
+    const bulkBar = document.getElementById('bulkActionsBar');
+    if (selectedItems.size > 0) {
+        bulkBar.classList.add('show');
+    } else {
+        bulkBar.classList.remove('show');
+    }
+}
+
+function selectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.bulk-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateSelection();
+}
+
+// Bulk Operations
+function bulkDelete() {
+    if (selectedItems.size === 0) {
+        alert('אנא בחר פריטים למחיקה');
+        return;
+    }
+    
+    if (!confirm(`האם למחוק ${selectedItems.size} פריטים?`)) {
+        return;
+    }
+    
+    // Send bulk delete request
+    fetch('{{ url_for("admin.bulk_delete_stock_items") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            item_ids: Array.from(selectedItems)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('שגיאה במחיקה: ' + data.message);
+        }
+    });
+}
+
+function bulkEdit() {
+    if (selectedItems.size === 0) {
+        alert('אנא בחר פריטים לעריכה');
+        return;
+    }
+    
+    // Show bulk edit modal
+    const fields = prompt('איזה שדה לערוך?\n1. קטגוריה\n2. ספק\n3. יחידה');
+    
+    if (!fields) return;
+    
+    // Here you would show a proper modal for bulk editing
+    // For now, we'll use a simple prompt
+    const newValue = prompt('הכנס ערך חדש:');
+    
+    if (!newValue) return;
+    
+    // Send bulk edit request
+    fetch('{{ url_for("admin.bulk_edit_stock_items") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            item_ids: Array.from(selectedItems),
+            field: fields,
+            value: newValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('שגיאה בעדכון: ' + data.message);
+        }
+    });
+}
+
+function exportSelected() {
+    if (selectedItems.size === 0) {
+        alert('אנא בחר פריטים לייצוא');
+        return;
+    }
+    
+    // Create export URL with selected IDs
+    const ids = Array.from(selectedItems).join(',');
+    window.location.href = `{{ url_for('admin.export_stock_items') }}?ids=${ids}`;
+}
+
+// Excel Grid Direct Editing
+function updateField(itemId, field, value) {
+    // Send update request
+    fetch(`{{ url_for('admin.update_stock_item_field') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            item_id: itemId,
+            field: field,
+            value: value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success indicator
+            showToast('עודכן בהצלחה', 'success');
+        } else {
+            alert('שגיאה בעדכון: ' + data.message);
+            location.reload(); // Reload to reset values
+        }
+    });
+}
+
+// Handle contenteditable cells
+document.addEventListener('DOMContentLoaded', function() {
+    // Add blur event to all contenteditable cells
+    document.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+        const originalValue = cell.textContent;
+        
+        cell.addEventListener('blur', function() {
+            const newValue = this.textContent;
+            if (newValue !== originalValue) {
+                const row = this.closest('tr');
+                const itemId = row.dataset.id;
+                const field = this.dataset.field;
+                const dataType = this.dataset.type;
+                
+                // Validate number fields
+                if (dataType === 'number' && isNaN(newValue)) {
+                    alert('אנא הכנס מספר תקין');
+                    this.textContent = originalValue;
+                    return;
+                }
+                
+                updateField(itemId, field, newValue);
+            }
+        });
+        
+        // Handle Enter key
+        cell.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+            }
+        });
+    });
+});
+
+// Delete single item
+function deleteItem(itemId) {
+    if (!confirm('האם למחוק פריט זה?')) {
+        return;
+    }
+    
+    fetch(`{{ url_for('admin.delete_stock_item') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            item_id: itemId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('שגיאה במחיקה: ' + data.message);
+        }
+    });
+}
+
+// Toast notification
+function showToast(message, type) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`;
+    toast.style.zIndex = '9999';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Mobile specific functions
+function showBulkActions() {
+    // Toggle checkbox visibility in cards
+    document.querySelectorAll('.bulk-check').forEach(cb => {
+        cb.style.display = cb.style.display === 'none' ? 'block' : 'none';
+    });
+}
+
+// Category edit function (existing)
+function editCategory(id, nameHe, nameEn) {
+    // Implementation for category editing
+    alert('עריכת קטגוריה: ' + nameHe);
+}
+</script>
 {% endblock %}

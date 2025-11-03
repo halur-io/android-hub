@@ -4196,6 +4196,178 @@ def delete_stock_category(category_id):
     
     return redirect(url_for('admin.stock_management'))
 
+@admin_bp.route('/stock/items/bulk-delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def bulk_delete_stock_items():
+    """Bulk delete stock items"""
+    from models import StockItem
+    
+    try:
+        data = request.get_json()
+        item_ids = data.get('item_ids', [])
+        
+        if not item_ids:
+            return jsonify({'success': False, 'message': 'לא נבחרו פריטים'}), 400
+        
+        # Delete items
+        StockItem.query.filter(StockItem.id.in_(item_ids)).delete(synchronize_session='fetch')
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'{len(item_ids)} פריטים נמחקו בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/stock/items/bulk-edit', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def bulk_edit_stock_items():
+    """Bulk edit stock items"""
+    from models import StockItem
+    
+    try:
+        data = request.get_json()
+        item_ids = data.get('item_ids', [])
+        field = data.get('field')
+        value = data.get('value')
+        
+        if not item_ids:
+            return jsonify({'success': False, 'message': 'לא נבחרו פריטים'}), 400
+        
+        # Map field numbers to actual fields
+        field_map = {
+            '1': 'category_id',
+            '2': 'primary_supplier_id',
+            '3': 'unit_he'
+        }
+        
+        actual_field = field_map.get(field, field)
+        
+        # Update items
+        items = StockItem.query.filter(StockItem.id.in_(item_ids)).all()
+        for item in items:
+            setattr(item, actual_field, value)
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'{len(items)} פריטים עודכנו בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/stock/items/export', methods=['GET'])
+@login_required
+@require_permission('stock.view')
+def export_stock_items():
+    """Export stock items to CSV"""
+    from models import StockItem
+    import csv
+    from io import StringIO
+    from flask import Response
+    
+    try:
+        # Get selected IDs or all items
+        ids = request.args.get('ids', '')
+        
+        if ids:
+            item_ids = [int(id) for id in ids.split(',')]
+            items = StockItem.query.filter(StockItem.id.in_(item_ids)).all()
+        else:
+            items = StockItem.query.all()
+        
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['ID', 'שם עברית', 'שם אנגלית', 'קטגוריה', 'יחידה', 'ספק', 'עלות', 'מינימום', 'מקסימום'])
+        
+        # Write data
+        for item in items:
+            writer.writerow([
+                item.id,
+                item.name_he,
+                item.name_en or '',
+                item.category.name_he if item.category else '',
+                item.unit_he or item.unit_en or '',
+                item.primary_supplier.name if item.primary_supplier else '',
+                item.cost_per_unit or 0,
+                item.min_stock_level or 0,
+                item.max_stock_level or 0
+            ])
+        
+        # Create response
+        response = Response(output.getvalue(), mimetype='text/csv')
+        response.headers['Content-Disposition'] = 'attachment; filename=stock_items.csv'
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8-sig'
+        
+        # Add BOM for Hebrew support in Excel
+        return '\ufeff' + output.getvalue(), 200, response.headers
+        
+    except Exception as e:
+        flash(f'שגיאה בייצוא: {str(e)}', 'danger')
+        return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/item/update-field', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def update_stock_item_field():
+    """Update single stock item field (for Excel-like editing)"""
+    from models import StockItem
+    
+    try:
+        data = request.get_json()
+        item_id = data.get('item_id')
+        field = data.get('field')
+        value = data.get('value')
+        
+        item = StockItem.query.get_or_404(item_id)
+        
+        # Handle numeric fields
+        if field in ['cost_per_unit', 'min_stock_level', 'max_stock_level']:
+            value = float(value) if value else 0
+        elif field in ['category_id', 'primary_supplier_id']:
+            value = int(value) if value else None
+        
+        setattr(item, field, value)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'עודכן בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/stock/item/<int:item_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_stock_item(item_id):
+    """Delete single stock item"""
+    from models import StockItem
+    
+    try:
+        # Handle both JSON and form data
+        if request.is_json:
+            item_id = request.get_json().get('item_id', item_id)
+        
+        item = StockItem.query.get_or_404(item_id)
+        db.session.delete(item)
+        db.session.commit()
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'פריט נמחק בהצלחה'})
+        else:
+            flash('פריט נמחק בהצלחה', 'success')
+            return redirect(url_for('admin.stock_management'))
+            
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({'success': False, 'message': str(e)}), 500
+        else:
+            flash(f'שגיאה במחיקת הפריט: {str(e)}', 'danger')
+            return redirect(url_for('admin.stock_management'))
+
 @admin_bp.route('/stock/item/<int:item_id>/details')
 @login_required
 @require_permission('stock.view')

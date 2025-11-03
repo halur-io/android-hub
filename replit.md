@@ -46,6 +46,18 @@ Preferred communication style: Simple, everyday language.
     -   **Order Page**: When online ordering is disabled, displays an engaging "Coming Soon" message with rocket animation, feature preview cards, and alternative CTA buttons (Browse Menu, Call to Order). Professional and positive user experience.
     -   **Gallery**: Admin-managed photo gallery.
     -   **Contact**: Modern two-column layout with gradient hero, contact form in elevated card, quick contact methods (phone, email, WhatsApp, social), and branch location cards with Waze/Google Maps navigation buttons. Fully responsive.
+    -   **App Download Section**: Beautiful dedicated section on homepage featuring:
+        -   Phone mockup with floating animation
+        -   App Store and Google Play download buttons
+        -   QR code for desktop users to scan
+        -   List of app benefits (quick ordering, real-time tracking, exclusive offers, save addresses)
+        -   Customizable promotional text and discount offers
+        -   Only displays when app store URLs are configured
+    -   **Smart App Banner**: Mobile-only dismissible banner that:
+        -   Appears at top of page on mobile devices (viewport ≤767px)
+        -   Auto-detects iOS/Android and shows appropriate app store
+        -   Remembers dismissal preference via cookie (7 days)
+        -   Shows after 1.5 second delay to avoid disrupting initial page load
     -   **Legal & Compliance Pages**:
         -   **Terms of Use**: Dynamic bilingual content
         -   **Accessibility Statement**: Comprehensive IS 5568 / WCAG 2.1 Level AA compliance page with accessibility features list, coordinator contact information, and compliance dates

@@ -44,10 +44,30 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/public.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app-download.css') }}">
     
     {% block extra_css %}{% endblock %}
 </head>
 <body class="{{ 'rtl' if language == 'he' else 'ltr' }}">
+    
+    <!-- Smart App Banner (Mobile Only) -->
+    {% if settings.enable_app_download and settings.show_app_banner and (settings.app_store_url or settings.google_play_url) %}
+    <div id="smart-app-banner" class="smart-app-banner" style="display: none;">
+        <button class="app-banner-close" onclick="closeAppBanner()" aria-label="Close">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="app-banner-content">
+            <img src="{{ url_for('static', filename='images/app-icon.png') }}" alt="App Icon" class="app-banner-icon" onerror="this.style.display='none'">
+            <div class="app-banner-text">
+                <div class="app-banner-title">{{ settings.app_promo_text_he if language == 'he' else settings.app_promo_text_en }}</div>
+                <div class="app-banner-subtitle">{{ settings.app_discount_text_he if language == 'he' else settings.app_discount_text_en }}</div>
+            </div>
+            <button class="app-banner-download" onclick="downloadApp()">
+                {{ 'הורד' if language == 'he' else 'Download' }}
+            </button>
+        </div>
+    </div>
+    {% endif %}
     
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
@@ -499,6 +519,59 @@
                 menu.style.display = 'none';
             }
         });
+    </script>
+    
+    <!-- App Download Scripts -->
+    <script>
+    // Smart App Banner Logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const banner = document.getElementById('smart-app-banner');
+        if (banner) {
+            // Check if user has dismissed banner (cookie)
+            if (document.cookie.includes('app_banner_dismissed=true')) {
+                return;
+            }
+            
+            // Show banner only on mobile
+            if (window.innerWidth <= 767) {
+                setTimeout(function() {
+                    banner.style.display = 'flex';
+                    document.body.classList.add('app-banner-shown');
+                }, 1500); // Show after 1.5 seconds
+            }
+        }
+    });
+    
+    function closeAppBanner() {
+        const banner = document.getElementById('smart-app-banner');
+        if (banner) {
+            banner.style.display = 'none';
+            document.body.classList.remove('app-banner-shown');
+            // Set cookie to remember dismissal for 7 days
+            document.cookie = 'app_banner_dismissed=true; max-age=' + (7 * 24 * 60 * 60) + '; path=/';
+        }
+    }
+    
+    function downloadApp() {
+        // Detect platform and redirect accordingly
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        
+        if (/android/i.test(userAgent)) {
+            // Android - redirect to Google Play
+            window.open('{{ settings.google_play_url or "#" }}', '_blank');
+        } else if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+            // iOS - redirect to App Store
+            window.open('{{ settings.app_store_url or "#" }}', '_blank');
+        } else {
+            // Desktop or unknown - show both options
+            const appSection = document.getElementById('app-download');
+            if (appSection) {
+                appSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        closeAppBanner();
+    }
     </script>
     
     {% block extra_js %}{% endblock %}

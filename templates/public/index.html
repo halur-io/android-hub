@@ -201,6 +201,82 @@
 </section>
 {% endfor %}
 
+<!-- App Download Section -->
+{% if settings.enable_app_download and (settings.app_store_url or settings.google_play_url) %}
+<section id="app-download" class="app-download-section">
+    <div class="app-download-container">
+        <div class="app-download-content">
+            <div class="app-download-text">
+                <h2 class="app-download-title">{{ settings.app_promo_text_he if language == 'he' else settings.app_promo_text_en }}</h2>
+                <div class="app-download-subtitle">
+                    <i class="fas fa-gift"></i>
+                    {{ settings.app_discount_text_he if language == 'he' else settings.app_discount_text_en }}
+                </div>
+                
+                <ul class="app-features">
+                    <li class="app-feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        {{ 'הזמנה מהירה בכמה לחיצות' if language == 'he' else 'Quick ordering in just a few taps' }}
+                    </li>
+                    <li class="app-feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        {{ 'מעקב הזמנות בזמן אמת' if language == 'he' else 'Real-time order tracking' }}
+                    </li>
+                    <li class="app-feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        {{ 'הצעות ומבצעים בלעדיים' if language == 'he' else 'Exclusive offers and deals' }}
+                    </li>
+                    <li class="app-feature-item">
+                        <i class="fas fa-check-circle"></i>
+                        {{ 'שמירת כתובות ואמצעי תשלום' if language == 'he' else 'Save addresses and payment methods' }}
+                    </li>
+                </ul>
+                
+                <div class="app-download-buttons">
+                    {% if settings.app_store_url %}
+                    <a href="{{ settings.app_store_url }}" class="app-store-btn" target="_blank">
+                        <i class="fab fa-apple"></i>
+                        <div class="app-store-text">
+                            <span class="app-store-small">{{ 'הורד מ' if language == 'he' else 'Download on the' }}</span>
+                            <span class="app-store-large">App Store</span>
+                        </div>
+                    </a>
+                    {% endif %}
+                    
+                    {% if settings.google_play_url %}
+                    <a href="{{ settings.google_play_url }}" class="app-store-btn" target="_blank">
+                        <i class="fab fa-google-play"></i>
+                        <div class="app-store-text">
+                            <span class="app-store-small">{{ 'הורד מ' if language == 'he' else 'Get it on' }}</span>
+                            <span class="app-store-large">Google Play</span>
+                        </div>
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- QR Code for Desktop -->
+                <div class="app-qr-code d-none d-md-inline-block">
+                    <img src="{{ url_for('static', filename='images/app-qr-code.png') }}" alt="QR Code" class="qr-code-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgNDEgNDEiPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZmlsbD0iIzFBM0E2RSIgZD0iTTAgMGgxM3YxM0gweiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0yIDJoOXY5SDJ6Ii8+PHBhdGggZmlsbD0iIzFBM0E2RSIgZD0iTTQgNGg1djVINHpNMjggMGgxM3YxM0gyOHoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMzAgMmg5djlIMzB6Ii8+PHBhdGggZmlsbD0iIzFBM0E2RSIgZD0iTTMyIDRoNXY1aC01ek0wIDI4aDEzdjEzSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIgMzBoOXY5SDJ6Ii8+PHBhdGggZmlsbD0iIzFBM0E2RSIgZD0iTTQgMzJoNXY1SDR6TTE2IDBoNXY1aC01ek0yMSA1aDV2NWgtNXpNMTYgMTBoNXY1aC01ek0xNiAxNWg1djVoLTV6TTIxIDIwaDV2NWgtNXpNMTYgMjVoNXY1aC01ek0yMSAzMGg1djVoLTV6TTI2IDI1aDV2NWgtNXpNMzEgMzBoNXY1aC01ek0zNiAyNWg1djVoLTV6TTM2IDM1aDV2NWgtNXoiLz48L2c+PC9zdmc+'"">
+                    <div class="qr-code-text">{{ 'סרקו כדי להוריד' if language == 'he' else 'Scan to download' }}</div>
+                </div>
+            </div>
+            
+            <div class="app-download-visual">
+                <div class="app-visual-bg"></div>
+                <img src="{{ url_for('static', filename='images/app-phone-mockup.png') }}" 
+                     alt="App Screenshot" 
+                     class="app-phone-mockup"
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNTAiIGhlaWdodD0iNzAwIiB2aWV3Qm94PSIwIDAgMzUwIDcwMCI+PHJlY3Qgd2lkdGg9IjM1MCIgaGVpZ2h0PSI3MDAiIGZpbGw9IiMyMzIzMjMiIHJ4PSI0MCIvPjxyZWN0IHg9IjIwIiB5PSI4MCIgd2lkdGg9IjMxMCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiNGRkYiIHJ4PSIyMCIvPjxyZWN0IHg9IjEzNSIgeT0iMzAiIHdpZHRoPSI4MCIgaGVpZ2h0PSIyNSIgZmlsbD0iIzMzMyIgcng9IjEyIi8+PGNpcmNsZSBjeD0iMTc1IiBjeT0iNjUwIiByPSIyMCIgZmlsbD0iIzU1NSIvPjxyZWN0IHg9IjQwIiB5PSIxMjAiIHdpZHRoPSIyNzAiIGhlaWdodD0iMTgwIiBmaWxsPSIjMUEzQTZFIiByeD0iMTAiLz48cmVjdCB4PSI0MCIgeT0iMzIwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRTBFMEUwIiByeD0iMTAiLz48cmVjdCB4PSI0MCIgeT0iNDAwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRTBFMEUwIiByeD0iMTAiLz48cmVjdCB4PSI0MCIgeT0iNDgwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRTBFMEUwIiByeD0iMTAiLz48cmVjdCB4PSI0MCIgeT0iNTYwIiB3aWR0aD0iMTMwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjREMzNTQ1IiByeD0iMTAiLz48cmVjdCB4PSIxODAiIHk9IjU2MCIgd2lkdGg9IjEzMCIgaGVpZ2h0PSI4MCIgZmlsbD0iIzFBM0E2RSIgcng9IjEwIi8+PHRleHQgeD0iMTc1IiB5PSIyMTAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0MCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlNVTU88L3RleHQ+PC9zdmc+'"">
+            </div>
+        </div>
+        
+        <!-- Decorative Elements -->
+        <div class="app-download-decoration decoration-1"></div>
+        <div class="app-download-decoration decoration-2"></div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Floating Action Buttons -->
 <div class="floating-actions">
     <a href="{{ url_for('order_page') if settings.enable_online_ordering else '#' }}" 

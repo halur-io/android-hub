@@ -155,6 +155,16 @@ class SiteSettings(db.Model):
     gallery_section_subtitle_en = db.Column(db.String(500))
     gallery_max_photos = db.Column(db.Integer, default=8)  # Maximum photos to display
     
+    # Mobile App Settings
+    enable_app_download = db.Column(db.Boolean, default=True)
+    app_store_url = db.Column(db.String(500))  # iOS App Store URL
+    google_play_url = db.Column(db.String(500))  # Google Play Store URL
+    app_promo_text_he = db.Column(db.String(200), default='הורידו את האפליקציה שלנו!')
+    app_promo_text_en = db.Column(db.String(200), default='Download our app!')
+    app_discount_text_he = db.Column(db.String(200), default='קבלו 10% הנחה בהזמנה הראשונה באפליקציה')
+    app_discount_text_en = db.Column(db.String(200), default='Get 10% off your first app order')
+    show_app_banner = db.Column(db.Boolean, default=True)  # Show smart banner on mobile
+    
     # Order Settings
     minimum_order_amount = db.Column(db.Float, default=50)
     tax_rate = db.Column(db.Float, default=0.17)  # 17% VAT in Israel

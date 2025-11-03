@@ -494,6 +494,16 @@ def settings():
         settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'
         settings.enable_table_reservations = request.form.get('enable_table_reservations') == 'on'
         
+        # Mobile App Settings
+        settings.enable_app_download = request.form.get('enable_app_download') == 'on'
+        settings.show_app_banner = request.form.get('show_app_banner') == 'on'
+        settings.app_store_url = request.form.get('app_store_url')
+        settings.google_play_url = request.form.get('google_play_url')
+        settings.app_promo_text_he = request.form.get('app_promo_text_he')
+        settings.app_promo_text_en = request.form.get('app_promo_text_en')
+        settings.app_discount_text_he = request.form.get('app_discount_text_he')
+        settings.app_discount_text_en = request.form.get('app_discount_text_en')
+        
         # Order & Delivery Settings
         min_order = request.form.get('minimum_order_amount')
         if min_order:

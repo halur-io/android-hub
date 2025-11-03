@@ -280,29 +280,6 @@
                 <div class="col-md-3 mb-4 mb-md-0">
                     <h6 class="footer-heading">{{ 'קישורים מהירים' if language == 'he' else 'Quick Links' }}</h6>
                     <ul class="footer-links">
-                        <li><a href="{{ url_for('index') }}">{{ 'בית' if language == 'he' else 'Home' }}</a></li>
-                        {% if settings.enable_menu_display %}
-                        <li><a href="{{ url_for('menu_page') }}">{{ 'תפריט' if language == 'he' else 'Menu' }}</a></li>
-                        {% endif %}
-                        {% if settings.enable_online_ordering %}
-                        <li><a href="{{ url_for('order_page') }}">{{ 'הזמנה אונליין' if language == 'he' else 'Order Online' }}</a></li>
-                        {% endif %}
-                        {% if settings.enable_gallery %}
-                        <li><a href="{{ url_for('gallery_page') }}">{{ 'גלריה' if language == 'he' else 'Gallery' }}</a></li>
-                        {% endif %}
-                        {% if settings.enable_contact_form %}
-                        <li><a href="{{ url_for('contact_page') }}">{{ 'צור קשר' if language == 'he' else 'Contact' }}</a></li>
-                        {% endif %}
-                        {% if settings.enable_table_reservations and reservation_settings and reservation_settings.enable_reservations %}
-                        <li><a href="{{ reservation_settings.reservation_system_url }}" target="_blank">{{ 'הזמנת שולחן' if language == 'he' else 'Table Reservation' }}</a></li>
-                        {% endif %}
-                    </ul>
-                </div>
-                
-                <!-- Quick Links Column -->
-                <div class="col-md-3 mb-4 mb-md-0">
-                    <h6 class="footer-heading">{{ 'קישורים מהירים' if language == 'he' else 'Quick Links' }}</h6>
-                    <ul class="footer-links">
                         <li><a href="{{ url_for('index') }}">{{ 'דף הבית' if language == 'he' else 'Home' }}</a></li>
                         {% if settings.enable_menu_display %}
                         <li><a href="{{ url_for('menu_page') }}">{{ 'תפריט' if language == 'he' else 'Menu' }}</a></li>
@@ -315,9 +292,19 @@
                         {% endif %}
                         <li><a href="{{ url_for('contact_page') }}">{{ 'צור קשר' if language == 'he' else 'Contact' }}</a></li>
                         <li><a href="{{ url_for('index') }}#about">{{ 'אודותינו' if language == 'he' else 'About Us' }}</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Legal Links Column -->
+                <div class="col-md-3 mb-4 mb-md-0">
+                    <h6 class="footer-heading">{{ 'מידע משפטי' if language == 'he' else 'Legal Info' }}</h6>
+                    <ul class="footer-links">
                         <li><a href="{{ url_for('terms_page') }}">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</a></li>
                         <li><a href="{{ url_for('privacy_policy_page') }}">{{ 'מדיניות פרטיות' if language == 'he' else 'Privacy Policy' }}</a></li>
                         <li><a href="{{ url_for('accessibility_statement') }}">{{ 'הצהרת נגישות' if language == 'he' else 'Accessibility' }}</a></li>
+                        {% if settings.enable_table_reservations and reservation_settings and reservation_settings.enable_reservations %}
+                        <li><a href="{{ reservation_settings.reservation_system_url }}" target="_blank">{{ 'הזמנת שולחן' if language == 'he' else 'Table Reservation' }}</a></li>
+                        {% endif %}
                         {% if settings.enable_english_language %}
                         <li><a href="?lang={{ 'en' if language == 'he' else 'he' }}">{{ 'English' if language == 'he' else 'עברית' }}</a></li>
                         {% endif %}

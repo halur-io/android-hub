@@ -164,6 +164,10 @@ class SiteSettings(db.Model):
     app_discount_text_he = db.Column(db.String(200), default='קבלו 10% הנחה בהזמנה הראשונה באפליקציה')
     app_discount_text_en = db.Column(db.String(200), default='Get 10% off your first app order')
     show_app_banner = db.Column(db.Boolean, default=True)  # Show smart banner on mobile
+    app_banner_title_he = db.Column(db.String(200), default='הזמנות רק באפליקציה')
+    app_banner_title_en = db.Column(db.String(200), default='Order via App')
+    app_banner_subtitle_he = db.Column(db.String(200), default='הורידו עכשיו')
+    app_banner_subtitle_en = db.Column(db.String(200), default='Download Now')
     
     # Order Settings
     minimum_order_amount = db.Column(db.Float, default=50)

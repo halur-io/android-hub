@@ -503,6 +503,10 @@ def settings():
         settings.app_promo_text_en = request.form.get('app_promo_text_en')
         settings.app_discount_text_he = request.form.get('app_discount_text_he')
         settings.app_discount_text_en = request.form.get('app_discount_text_en')
+        settings.app_banner_title_he = request.form.get('app_banner_title_he')
+        settings.app_banner_title_en = request.form.get('app_banner_title_en')
+        settings.app_banner_subtitle_he = request.form.get('app_banner_subtitle_he')
+        settings.app_banner_subtitle_en = request.form.get('app_banner_subtitle_en')
         
         # Order & Delivery Settings
         min_order = request.form.get('minimum_order_amount')

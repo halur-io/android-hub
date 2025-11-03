@@ -59,8 +59,8 @@
         <div class="app-banner-content">
             <img src="{{ url_for('static', filename='images/app-icon.png') }}" alt="App Icon" class="app-banner-icon" onerror="this.style.display='none'">
             <div class="app-banner-text">
-                <div class="app-banner-title">{{ 'הזמנות רק באפליקציה' if language == 'he' else 'Order via App' }}</div>
-                <div class="app-banner-subtitle">{{ 'הורידו עכשיו' if language == 'he' else 'Download Now' }}</div>
+                <div class="app-banner-title">{{ settings.app_banner_title_he if language == 'he' else settings.app_banner_title_en }}</div>
+                <div class="app-banner-subtitle">{{ settings.app_banner_subtitle_he if language == 'he' else settings.app_banner_subtitle_en }}</div>
             </div>
             <button class="app-banner-download" onclick="downloadApp()">
                 {{ 'הורד' if language == 'he' else 'Download' }}

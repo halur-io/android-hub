@@ -214,16 +214,22 @@
             
             <div class="app-download-buttons">
                 {% if settings.app_store_url %}
-                <a href="{{ settings.app_store_url }}" class="btn btn-primary btn-lg mx-2 mb-2" target="_blank">
-                    <i class="fab fa-apple me-2"></i>
-                    <span>{{ 'הורד מ-App Store' if language == 'he' else 'Download on App Store' }}</span>
+                <a href="{{ settings.app_store_url }}" class="app-store-button apple-store" target="_blank">
+                    <i class="fab fa-apple"></i>
+                    <div class="store-text">
+                        <span class="store-small">{{ 'הורידו מ' if language == 'he' else 'Download on the' }}</span>
+                        <span class="store-large">App Store</span>
+                    </div>
                 </a>
                 {% endif %}
                 
                 {% if settings.google_play_url %}
-                <a href="{{ settings.google_play_url }}" class="btn btn-primary btn-lg mx-2 mb-2" target="_blank">
-                    <i class="fab fa-google-play me-2"></i>
-                    <span>{{ 'הורד מ-Google Play' if language == 'he' else 'Get it on Google Play' }}</span>
+                <a href="{{ settings.google_play_url }}" class="app-store-button google-play" target="_blank">
+                    <i class="fab fa-google-play"></i>
+                    <div class="store-text">
+                        <span class="store-small">{{ 'הורידו מ' if language == 'he' else 'Get it on' }}</span>
+                        <span class="store-large">Google Play</span>
+                    </div>
                 </a>
                 {% endif %}
             </div>

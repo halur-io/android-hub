@@ -486,15 +486,54 @@
                         
                         <div class="form-row-two-col">
                             <div class="form-group-modern">
-                                <label class="form-label-modern">App Store URL</label>
+                                <label class="form-label-modern">
+                                    <i class="fab fa-apple" style="font-size: 18px;"></i>
+                                    App Store URL
+                                </label>
                                 <input type="url" class="form-control-modern" name="app_store_url" value="{{ settings.app_store_url or '' }}" placeholder="https://apps.apple.com/app/your-app">
-                                <small class="form-help-text">קישור לאפליקציה ב-App Store</small>
+                                <small class="form-help-text">קישור לאפליקציה ב-App Store (iOS)</small>
                             </div>
                             
                             <div class="form-group-modern">
-                                <label class="form-label-modern">Google Play URL</label>
+                                <label class="form-label-modern">
+                                    <i class="fab fa-google-play" style="font-size: 18px; background: linear-gradient(45deg, #ea4335 25%, #4285f4 25%, #4285f4 50%, #fbbc04 50%, #fbbc04 75%, #34a853 75%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                                    Google Play URL
+                                </label>
                                 <input type="url" class="form-control-modern" name="google_play_url" value="{{ settings.google_play_url or '' }}" placeholder="https://play.google.com/store/apps/details?id=your.app">
-                                <small class="form-help-text">קישור לאפליקציה ב-Google Play</small>
+                                <small class="form-help-text">קישור לאפליקציה ב-Google Play (Android)</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Banner Text Controls -->
+                        <h4 style="margin-top: 30px; margin-bottom: 20px; color: #1a3a6e;">
+                            <i class="fas fa-mobile-alt"></i> הגדרות באנר חכם למובייל
+                        </h4>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">כותרת באנר (עברית)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_title_he" value="{{ settings.app_banner_title_he or 'הזמנות רק באפליקציה' }}">
+                                <small class="form-help-text">הטקסט הראשי בבאנר למובייל</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Banner Title (English)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_title_en" value="{{ settings.app_banner_title_en or 'Order via App' }}">
+                                <small class="form-help-text">Main text for mobile banner</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">תת כותרת באנר (עברית)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_subtitle_he" value="{{ settings.app_banner_subtitle_he or 'הורידו עכשיו' }}">
+                                <small class="form-help-text">הטקסט המשני בבאנר למובייל</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Banner Subtitle (English)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_subtitle_en" value="{{ settings.app_banner_subtitle_en or 'Download Now' }}">
+                                <small class="form-help-text">Secondary text for mobile banner</small>
                             </div>
                         </div>
                         
@@ -513,12 +552,12 @@
                         <div class="form-row-two-col">
                             <div class="form-group-modern">
                                 <label class="form-label-modern">טקסט הנחה (עברית)</label>
-                                <input type="text" class="form-control-modern" name="app_discount_text_he" value="{{ settings.app_discount_text_he or 'קבלו 10% הנחה בהזמנה הראשונה באפליקציה' }}">
+                                <input type="text" class="form-control-modern" name="app_discount_text_he" value="{{ settings.app_discount_text_he or '' }}" placeholder="אופציונלי: טקסט הנחה">
                             </div>
                             
                             <div class="form-group-modern">
                                 <label class="form-label-modern">Discount Text (English)</label>
-                                <input type="text" class="form-control-modern" name="app_discount_text_en" value="{{ settings.app_discount_text_en or 'Get 10% off your first app order' }}">
+                                <input type="text" class="form-control-modern" name="app_discount_text_en" value="{{ settings.app_discount_text_en or '' }}" placeholder="Optional: discount text">
                             </div>
                         </div>
                     </div>

@@ -28,9 +28,120 @@
 
 .app-download-section .app-download-buttons {
     display: flex;
-    gap: 15px;
+    gap: 20px;
     justify-content: center;
     flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+/* Clear, prominent app store buttons */
+.app-store-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 28px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s;
+    min-width: 200px;
+    border: 2px solid;
+}
+
+.app-store-button i {
+    font-size: 32px;
+}
+
+.store-text {
+    text-align: left;
+}
+
+.rtl .store-text {
+    text-align: right;
+}
+
+.store-small {
+    display: block;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.store-large {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* Apple App Store button */
+.apple-store {
+    background: #000;
+    color: white;
+    border-color: #000;
+}
+
+.apple-store:hover {
+    background: #333;
+    color: white;
+    border-color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Google Play button */
+.google-play {
+    background: #fff;
+    color: #333;
+    border-color: #ddd;
+}
+
+.google-play:hover {
+    background: #f8f9fa;
+    color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.google-play i {
+    background: linear-gradient(45deg, #ea4335 25%, #4285f4 25%, #4285f4 50%, #fbbc04 50%, #fbbc04 75%, #34a853 75%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Responsive Design for App Store Buttons */
+@media (max-width: 768px) {
+    .app-store-button {
+        min-width: 160px;
+        padding: 14px 20px;
+    }
+    
+    .app-store-button i {
+        font-size: 28px;
+    }
+    
+    .store-large {
+        font-size: 18px;
+    }
+    
+    .app-download-section .app-icon-wrapper {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .app-download-section .app-icon-wrapper i {
+        font-size: 35px;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-download-section .app-download-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .app-store-button {
+        width: 100%;
+        max-width: 280px;
+    }
 }
 
 @keyframes bounce {

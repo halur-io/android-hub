@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
 # from flask_wtf.csrf import exempt  # Not available in this version
 from werkzeug.utils import secure_filename
@@ -16,6 +16,11 @@ from sqlalchemy.orm import joinedload
 from PIL import Image
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+# Context processor to inject admin language into all admin templates
+@admin_bp.context_processor
+def inject_admin_language():
+    return dict(admin_language=session.get('admin_language', 'he'))
 
 # Site Settings Form
 class SiteSettingsForm(FlaskForm):
@@ -115,6 +120,15 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('admin.login'))
+
+# Admin Language Switching
+@admin_bp.route('/set-language/<lang>')
+@login_required
+def set_language(lang):
+    """Set admin panel language preference"""
+    if lang in ['he', 'en']:
+        session['admin_language'] = lang
+    return redirect(request.referrer or url_for('admin.dashboard'))
 
 # User Management Routes
 @admin_bp.route('/users')

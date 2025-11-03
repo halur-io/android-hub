@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="{{ admin_language or 'he' }}" dir="{{ 'rtl' if (admin_language or 'he') == 'he' else 'ltr' }}">
 <head>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-X1V6VK3PXE"></script>
@@ -632,74 +632,87 @@
     <div class="mobile-overlay" id="mobileOverlay"></div>
     
     <div class="sidebar" id="sidebar">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">SUMO Admin</h4>
-            <button class="btn btn-sm btn-outline-light d-md-none" id="closeSidebar">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="p-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 class="mb-0">SUMO Admin</h4>
+                <button class="btn btn-sm btn-outline-light d-md-none" id="closeSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- Language Switcher -->
+            <div class="btn-group btn-group-sm w-100">
+                <a href="{{ url_for('admin.set_language', lang='he') }}" 
+                   class="btn btn-outline-light {% if (admin_language or 'he') == 'he' %}active{% endif %}">
+                    עברית
+                </a>
+                <a href="{{ url_for('admin.set_language', lang='en') }}" 
+                   class="btn btn-outline-light {% if (admin_language or 'he') == 'en' %}active{% endif %}">
+                    English
+                </a>
+            </div>
         </div>
         <nav class="nav flex-column">
             <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
-                <i class="fas fa-dashboard me-2"></i> לוח בקרה
+                <i class="fas fa-dashboard me-2"></i> {{ 'לוח בקרה' if (admin_language or 'he') == 'he' else 'Dashboard' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.checklist' %}active{% endif %}" href="{{ url_for('admin.checklist') }}">
-                <i class="fas fa-clipboard-check me-2"></i> רשימות משימות
+                <i class="fas fa-clipboard-check me-2"></i> {{ 'רשימות משימות' if (admin_language or 'he') == 'he' else 'Task Lists' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.menu_wizard' %}active{% endif %}" href="{{ url_for('admin.menu_wizard') }}">
-                <i class="fas fa-magic me-2"></i> אשף תפריט
+                <i class="fas fa-magic me-2"></i> {{ 'אשף תפריט' if (admin_language or 'he') == 'he' else 'Menu Wizard' }}
             </a>
             {% if has_permission('stock.view') %}
             <a class="nav-link {% if 'stock' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.stock_management') }}">
-                <i class="fas fa-boxes me-2"></i> ניהול מלאי
+                <i class="fas fa-boxes me-2"></i> {{ 'ניהול מלאי' if (admin_language or 'he') == 'he' else 'Stock Management' }}
             </a>
             {% endif %}
             {# Receipts feature - coming soon
             {% if has_permission('stock.manage') %}
             <a class="nav-link {% if 'receipt' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.receipts') }}">
-                <i class="fas fa-receipt me-2"></i> ניהול קבלות
+                <i class="fas fa-receipt me-2"></i> {{ 'ניהול קבלות' if (admin_language or 'he') == 'he' else 'Receipt Management' }}
             </a>
             {% endif %}
             #}
             <a class="nav-link {% if request.endpoint in ['admin.users', 'admin.edit_user', 'admin.add_user'] %}active{% endif %}" href="{{ url_for('admin.users') }}">
-                <i class="fas fa-users me-2"></i> ניהול משתמשים
+                <i class="fas fa-users me-2"></i> {{ 'ניהול משתמשים' if (admin_language or 'he') == 'he' else 'User Management' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
-                <i class="fas fa-cog me-2"></i> הגדרות אתר
+                <i class="fas fa-cog me-2"></i> {{ 'הגדרות אתר' if (admin_language or 'he') == 'he' else 'Site Settings' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.payment_settings' %}active{% endif %}" href="{{ url_for('admin.payment_settings') }}">
-                <i class="fas fa-credit-card me-2"></i> הגדרות תשלום
+                <i class="fas fa-credit-card me-2"></i> {{ 'הגדרות תשלום' if (admin_language or 'he') == 'he' else 'Payment Settings' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.media' %}active{% endif %}" href="{{ url_for('admin.media') }}">
-                <i class="fas fa-images me-2"></i> מדיה
+                <i class="fas fa-images me-2"></i> {{ 'מדיה' if (admin_language or 'he') == 'he' else 'Media' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.branches' %}active{% endif %}" href="{{ url_for('admin.branches') }}">
-                <i class="fas fa-store me-2"></i> סניפים
+                <i class="fas fa-store me-2"></i> {{ 'סניפים' if (admin_language or 'he') == 'he' else 'Branches' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.menu' %}active{% endif %}" href="{{ url_for('admin.menu') }}">
-                <i class="fas fa-utensils me-2"></i> תפריט
+                <i class="fas fa-utensils me-2"></i> {{ 'תפריט' if (admin_language or 'he') == 'he' else 'Menu' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.gallery' %}active{% endif %}" href="{{ url_for('admin.gallery') }}">
-                <i class="fas fa-photo-video me-2"></i> גלריה
+                <i class="fas fa-photo-video me-2"></i> {{ 'גלריה' if (admin_language or 'he') == 'he' else 'Gallery' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.messages' %}active{% endif %}" href="{{ url_for('admin.messages') }}">
-                <i class="fas fa-envelope me-2"></i> הודעות
+                <i class="fas fa-envelope me-2"></i> {{ 'הודעות' if (admin_language or 'he') == 'he' else 'Messages' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
-                <i class="fas fa-calendar-check me-2"></i> הזמנות
+                <i class="fas fa-calendar-check me-2"></i> {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'Reservations' }}
             </a>
             <hr class="my-3">
             <a class="nav-link {% if request.endpoint == 'admin.microservices_dashboard' %}active{% endif %}" href="{{ url_for('admin.microservices_dashboard') }}">
-                <i class="fas fa-microchip me-2"></i> מערכת הזמנות
+                <i class="fas fa-microchip me-2"></i> {{ 'מערכת הזמנות' if (admin_language or 'he') == 'he' else 'Ordering System' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.system_config' %}active{% endif %}" href="{{ url_for('admin.system_config') }}">
-                <i class="fas fa-cogs me-2"></i> הגדרות מערכת
+                <i class="fas fa-cogs me-2"></i> {{ 'הגדרות מערכת' if (admin_language or 'he') == 'he' else 'System Settings' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.kitchen_config' %}active{% endif %}" href="{{ url_for('admin.kitchen_config') }}">
-                <i class="fas fa-print me-2"></i> מדפסות SNBC
+                <i class="fas fa-print me-2"></i> {{ 'מדפסות SNBC' if (admin_language or 'he') == 'he' else 'SNBC Printers' }}
             </a>
             <hr class="my-3">
             <a class="nav-link" href="{{ url_for('admin.logout') }}">
-                <i class="fas fa-sign-out-alt me-2"></i> יציאה
+                <i class="fas fa-sign-out-alt me-2"></i> {{ 'יציאה' if (admin_language or 'he') == 'he' else 'Logout' }}
             </a>
         </nav>
     </div>

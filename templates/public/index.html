@@ -201,39 +201,32 @@
 </section>
 {% endfor %}
 
-<!-- App Download Section - Simple & Clean -->
+<!-- App Download Section -->
 {% if settings.enable_app_download and (settings.app_store_url or settings.google_play_url) %}
-<section id="app-download" class="app-download-simple">
+<section id="app-download" class="section app-download-section">
     <div class="container">
-        <div class="app-download-card">
-            <div class="app-icon-wrapper">
+        <div class="text-center">
+            <div class="app-icon-wrapper mb-4">
                 <i class="fas fa-mobile-alt"></i>
             </div>
-            <h2 class="app-title">{{ 'הזמנות ומשלוחים רק דרך האפליקציה' if language == 'he' else 'Orders & Delivery via App Only' }}</h2>
-            <p class="app-subtitle">{{ 'הורידו את האפליקציה שלנו להזמנות מהירות ונוחות' if language == 'he' else 'Download our app for quick and easy ordering' }}</p>
+            <h2 class="section-title mb-3">{{ 'הזמנות ומשלוחים רק דרך האפליקציה' if language == 'he' else 'Orders & Delivery via App Only' }}</h2>
+            <p class="section-subtitle mb-4">{{ 'הורידו את האפליקציה שלנו להזמנות מהירות ונוחות' if language == 'he' else 'Download our app for quick and easy ordering' }}</p>
             
             <div class="app-download-buttons">
                 {% if settings.app_store_url %}
-                <a href="{{ settings.app_store_url }}" class="app-store-btn" target="_blank">
-                    <i class="fab fa-apple"></i>
-                    <span>App Store</span>
+                <a href="{{ settings.app_store_url }}" class="btn btn-primary btn-lg mx-2 mb-2" target="_blank">
+                    <i class="fab fa-apple me-2"></i>
+                    <span>{{ 'הורד מ-App Store' if language == 'he' else 'Download on App Store' }}</span>
                 </a>
                 {% endif %}
                 
                 {% if settings.google_play_url %}
-                <a href="{{ settings.google_play_url }}" class="app-store-btn" target="_blank">
-                    <i class="fab fa-google-play"></i>
-                    <span>Google Play</span>
+                <a href="{{ settings.google_play_url }}" class="btn btn-primary btn-lg mx-2 mb-2" target="_blank">
+                    <i class="fab fa-google-play me-2"></i>
+                    <span>{{ 'הורד מ-Google Play' if language == 'he' else 'Get it on Google Play' }}</span>
                 </a>
                 {% endif %}
             </div>
-            
-            {% if settings.app_discount_text_he or settings.app_discount_text_en %}
-            <p class="app-promo">
-                <i class="fas fa-gift"></i>
-                {{ settings.app_discount_text_he if language == 'he' else settings.app_discount_text_en }}
-            </p>
-            {% endif %}
         </div>
     </div>
 </section>

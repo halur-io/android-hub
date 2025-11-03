@@ -43,19 +43,18 @@ Preferred communication style: Simple, everyday language.
 -   **Public Website**:
     -   **Homepage**: Hero section (video/image), combined About Us & Table Reservation section, gallery preview. Clean flowing design with no boxed sections.
     -   **Menu Page**: Dynamic menu display by categories, dietary icons, prices, and descriptions.
-    -   **Order Page**: When online ordering is disabled, displays an engaging "Coming Soon" message with rocket animation, feature preview cards, and alternative CTA buttons (Browse Menu, Call to Order). Professional and positive user experience.
+    -   **Order Page**: When online ordering is disabled, redirects users to app download with clear message "Orders & Delivery Available via App Only" and download buttons for both app stores. Includes alternative actions to view menu or contact restaurant.
     -   **Gallery**: Admin-managed photo gallery.
     -   **Contact**: Modern two-column layout with gradient hero, contact form in elevated card, quick contact methods (phone, email, WhatsApp, social), and branch location cards with Waze/Google Maps navigation buttons. Fully responsive.
-    -   **App Download Section**: Beautiful dedicated section on homepage featuring:
-        -   Phone mockup with floating animation
+    -   **App Download Section**: Simple, clean section on homepage emphasizing app-only ordering:
+        -   Minimalist card design with mobile icon
+        -   Clear heading: "Orders & Delivery via App Only"
         -   App Store and Google Play download buttons
-        -   QR code for desktop users to scan
-        -   List of app benefits (quick ordering, real-time tracking, exclusive offers, save addresses)
-        -   Customizable promotional text and discount offers
+        -   Optional promotional discount text
         -   Only displays when app store URLs are configured
     -   **Smart App Banner**: Mobile-only dismissible banner that:
         -   Appears at top of page on mobile devices (viewport ≤767px)
-        -   Auto-detects iOS/Android and shows appropriate app store
+        -   Simple message: "Order via App - Download Now"
         -   Remembers dismissal preference via cookie (7 days)
         -   Shows after 1.5 second delay to avoid disrupting initial page load
     -   **Legal & Compliance Pages**:
@@ -87,7 +86,7 @@ Preferred communication style: Simple, everyday language.
     -   **User Management**: Role-Based Access Control (RBAC) with granular permissions.
     -   **Custom Sections**: Admin-controlled homepage sections supporting text, HTML, and embedded content.
 -   **Core Functionality**:
-    -   **Online Ordering**: Enable/disable via admin settings, configurable minimum order and tax rate. When disabled (or when delivery is disabled), the order page displays a professional disabled message with action buttons, and all "Add to Order" buttons are automatically removed from the menu page.
+    -   **Online Ordering**: App-only ordering system. When web ordering is disabled (or when delivery is disabled), the order page redirects users to download the mobile app with clear messaging that orders and delivery are exclusively through the app.
     -   **Table Reservations**: Integration with external reservation systems.
     -   **Branch Management**: Display with working hours, navigation links, and dynamic branch information.
     -   **Cart System**: Client-side cart management with server-side order processing.

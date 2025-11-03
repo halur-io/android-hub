@@ -8,67 +8,48 @@
 <section class="section">
     <div class="container">
         {% if ordering_disabled %}
-        <!-- Coming Soon Message -->
+        <!-- App Download Redirect Message -->
         <div class="row justify-content-center">
-            <div class="col-lg-9">
-                <div class="coming-soon-box text-center">
-                    <div class="coming-soon-icon mb-4">
-                        <i class="fas fa-rocket"></i>
+            <div class="col-lg-8">
+                <div class="app-redirect-box text-center">
+                    <div class="app-redirect-icon mb-4">
+                        <i class="fas fa-mobile-alt"></i>
                     </div>
-                    <h1 class="coming-soon-title mb-3">
-                        {{ 'בקרוב: הזמנות TA ומשלוחים!' if language == 'he' else 'Coming Soon: TA Orders & Delivery!' }}
+                    <h1 class="app-redirect-title mb-3">
+                        {{ 'הזמנות ומשלוחים רק דרך האפליקציה' if language == 'he' else 'Orders & Delivery Available via App Only' }}
                     </h1>
-                    <p class="coming-soon-subtitle mb-5">
-                        {{ 'אנחנו עובדים קשה כדי להביא לכם חוויית הזמנה אונליין מעולה. הזמנות טייק-אווי ומשלוחים יהיו זמינים בקרוב!' if language == 'he' else 'We\'re working hard to bring you an amazing online ordering experience. Takeaway and delivery will be available soon!' }}
+                    <p class="app-redirect-subtitle mb-5">
+                        {{ 'כל ההזמנות והמשלוחים שלנו זמינים עכשיו באפליקציה! הורידו את האפליקציה לחוויית הזמנה מהירה ונוחה.' if language == 'he' else 'All our orders and deliveries are now available through our app! Download the app for a quick and convenient ordering experience.' }}
                     </p>
                     
-                    <!-- Features Preview -->
-                    <div class="row g-4 mb-5">
-                        <div class="col-md-4">
-                            <div class="feature-preview-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-shopping-bag"></i>
-                                </div>
-                                <h4>{{ 'הזמנות טייק-אווי' if language == 'he' else 'Takeaway Orders' }}</h4>
-                                <p>{{ 'הזמן מראש ואסוף במסעדה' if language == 'he' else 'Order ahead and pick up at the restaurant' }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="feature-preview-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-motorcycle"></i>
-                                </div>
-                                <h4>{{ 'משלוחים' if language == 'he' else 'Delivery' }}</h4>
-                                <p>{{ 'משלוח עד הבית בכל אזור הצפון' if language == 'he' else 'Delivery to your door in the Northern area' }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="feature-preview-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <h4>{{ 'מעקב בזמן אמת' if language == 'he' else 'Real-time Tracking' }}</h4>
-                                <p>{{ 'עקוב אחרי ההזמנה שלך עד הדלת' if language == 'he' else 'Track your order until it arrives' }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- CTA Buttons -->
-                    <div class="d-flex justify-content-center gap-3 flex-wrap">
-                        <a href="{{ url_for('menu_page') }}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-utensils me-2"></i>{{ 'צפה בתפריט המלא' if language == 'he' else 'View Full Menu' }}
+                    <!-- App Download Buttons -->
+                    {% if settings.app_store_url or settings.google_play_url %}
+                    <div class="app-download-buttons justify-content-center mb-5">
+                        {% if settings.app_store_url %}
+                        <a href="{{ settings.app_store_url }}" class="btn btn-primary btn-lg mx-2" target="_blank">
+                            <i class="fab fa-apple me-2"></i>
+                            {{ 'הורד מ-App Store' if language == 'he' else 'Download on App Store' }}
                         </a>
-                        {% if branches and branches[0].phone %}
-                        <a href="tel:{{ branches[0].phone }}" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-phone me-2"></i>{{ 'התקשר להזמנה' if language == 'he' else 'Call to Order' }}
+                        {% endif %}
+                        {% if settings.google_play_url %}
+                        <a href="{{ settings.google_play_url }}" class="btn btn-primary btn-lg mx-2" target="_blank">
+                            <i class="fab fa-google-play me-2"></i>
+                            {{ 'הורד מ-Google Play' if language == 'he' else 'Get it on Google Play' }}
                         </a>
                         {% endif %}
                     </div>
+                    {% endif %}
                     
-                    <!-- Newsletter Signup Teaser -->
-                    <div class="newsletter-teaser mt-5">
-                        <p class="mb-2">{{ 'רוצה להיות הראשון לדעת כשנשיק?' if language == 'he' else 'Want to be the first to know when we launch?' }}</p>
-                        <a href="#newsletter" class="btn btn-link">{{ 'הירשם לניוזלטר שלנו' if language == 'he' else 'Subscribe to Our Newsletter' }}</a>
+                    <!-- Alternative Actions -->
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <a href="{{ url_for('menu_page') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-utensils me-2"></i>{{ 'צפה בתפריט' if language == 'he' else 'View Menu' }}
+                        </a>
+                        {% if branches and branches[0].phone %}
+                        <a href="tel:{{ branches[0].phone }}" class="btn btn-outline-primary">
+                            <i class="fas fa-phone me-2"></i>{{ 'צור קשר' if language == 'he' else 'Contact Us' }}
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

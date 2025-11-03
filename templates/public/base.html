@@ -53,8 +53,8 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
-                {% if settings.logo_path %}
-                <img src="{{ settings.logo_path }}" alt="Logo" class="navbar-logo me-2">
+                {% if settings.logo_image %}
+                <img src="{{ url_for('static', filename='uploads/' + settings.logo_image) }}" alt="Logo" class="navbar-logo me-2">
                 {% endif %}
                 <span class="brand-text">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</span>
             </a>
@@ -231,7 +231,9 @@
                 <!-- About Column -->
                 <div class="col-md-3 mb-4 mb-md-0">
                     <div class="footer-brand">
-                        <img src="{{ url_for('static', filename='images/sumo-logo.png') }}" alt="Logo" class="footer-logo mb-3">
+                        {% if settings.logo_image %}
+                        <img src="{{ url_for('static', filename='uploads/' + settings.logo_image) }}" alt="Logo" class="footer-logo mb-3">
+                        {% endif %}
                         <h5 class="footer-title">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</h5>
                         <p class="footer-desc">{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}</p>
                     </div>

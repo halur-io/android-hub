@@ -752,166 +752,111 @@ html {
     color: white !important;
     background: var(--gray-800);
 }
-/* Homepage Catering Section */
-.catering-preview-section {
-    padding: 80px 0;
+/* Compact Services Section */
+.services-preview-section {
+    padding: 60px 0;
     background: #f8f9fa;
 }
 
-.catering-content .section-icon {
-    font-size: 3rem;
-    color: var(--sumo-red);
-    animation: float 3s ease-in-out infinite;
-}
-
-.catering-features {
-    list-style: none;
-    padding: 0;
-}
-
-.catering-features li {
-    padding: 0.75rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.catering-features i {
-    color: var(--sumo-red);
-    font-size: 1.2rem;
-}
-
-.catering-image-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 200px 200px;
-    gap: 1rem;
-    height: 416px;
-}
-
-.catering-img {
+.service-card {
+    background: white;
     border-radius: 15px;
-    overflow: hidden;
-    position: relative;
-    transition: transform 0.3s ease;
+    padding: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
-.catering-img:hover {
-    transform: scale(1.05);
+.service-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
-.catering-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.catering-img-1 {
-    grid-column: 1;
-    grid-row: 1;
-}
-
-.catering-img-2 {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-}
-
-.catering-img-3 {
-    grid-column: 1;
-    grid-row: 2;
-}
-
-/* Homepage Careers Section */
-.careers-preview-section {
-    padding: 80px 0;
+.service-card.careers-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
 
-.careers-preview-section .section-icon {
-    font-size: 3rem;
-    color: white;
-    animation: pulse 2s ease-in-out infinite;
-}
-
-.careers-preview-section .section-title {
-    color: white;
-}
-
-.careers-preview-section .section-subtitle {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 1.1rem;
-}
-
-.career-benefit-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    padding: 2rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    height: 100%;
-}
-
-.career-benefit-card:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-5px);
-}
-
-.career-benefit-card i {
-    font-size: 3rem;
-    color: white;
+.service-icon {
+    font-size: 2.5rem;
+    color: var(--sumo-red);
     margin-bottom: 1rem;
 }
 
-.career-benefit-card h4 {
+.careers-card .service-icon {
     color: white;
-    font-size: 1.2rem;
+}
+
+.service-title {
+    font-size: 1.5rem;
+    font-weight: 600;
     margin-bottom: 0.75rem;
+    color: var(--sumo-navy);
 }
 
-.career-benefit-card p {
-    color: rgba(255, 255, 255, 0.9);
+.careers-card .service-title {
+    color: white;
+}
+
+.service-text {
+    color: #666;
+    margin-bottom: 1rem;
     font-size: 0.95rem;
-    margin: 0;
 }
 
-/* Animations */
-@keyframes float {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
+.careers-card .service-text {
+    color: rgba(255, 255, 255, 0.9);
 }
 
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.8;
-    }
+.service-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+    flex-grow: 1;
 }
 
-/* Responsive adjustments */
+.service-features li {
+    padding: 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.service-features i {
+    color: var(--sumo-red);
+    font-size: 0.9rem;
+}
+
+.careers-card .service-features i {
+    color: white;
+}
+
+/* Mobile Responsive */
 @media (max-width: 768px) {
-    .catering-image-grid {
-        grid-template-columns: 1fr;
-        grid-template-rows: 200px 200px;
-        height: auto;
+    .services-preview-section {
+        padding: 40px 0;
     }
     
-    .catering-img-1,
-    .catering-img-2,
-    .catering-img-3 {
-        grid-column: 1;
-        grid-row: auto;
-    }
-    
-    .career-benefit-card {
+    .service-card {
+        padding: 1.5rem;
         margin-bottom: 1rem;
+    }
+    
+    .service-icon {
+        font-size: 2rem;
+    }
+    
+    .service-title {
+        font-size: 1.25rem;
+    }
+    
+    .service-text {
+        font-size: 0.9rem;
+    }
+    
+    .service-features li {
+        font-size: 0.85rem;
     }
 }

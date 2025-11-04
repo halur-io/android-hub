@@ -4786,24 +4786,6 @@ def edit_supplier(supplier_id):
     
     return render_template('admin/edit_supplier.html', supplier=supplier)
 
-@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
-@login_required
-@require_permission('stock.manage')
-def delete_supplier(supplier_id):
-    """Delete supplier"""
-    from models import Supplier
-    
-    try:
-        supplier = Supplier.query.get_or_404(supplier_id)
-        db.session.delete(supplier)
-        db.session.commit()
-        
-        flash('ספק נמחק בהצלחה', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'שגיאה במחיקת ספק: {str(e)}', 'danger')
-    
-    return redirect(url_for('admin.stock_management'))
 
 @admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
 @login_required
@@ -5672,24 +5654,24 @@ def duplicate_print_template(template_id):
 @login_required
 def catering_events():
     """View all catering event requests"""
-    from models import CateringEvent
-    events = CateringEvent.query.order_by(CateringEvent.event_date.desc()).all()
+    from models import CateringRequest
+    events = CateringRequest.query.order_by(CateringRequest.event_date.desc()).all()
     return render_template('admin/catering_events.html', events=events)
 
 @admin_bp.route('/catering-events/<int:event_id>')
 @login_required
 def view_catering_event(event_id):
     """View a specific catering event request"""
-    from models import CateringEvent
-    event = CateringEvent.query.get_or_404(event_id)
+    from models import CateringRequest
+    event = CateringRequest.query.get_or_404(event_id)
     return render_template('admin/view_catering_event.html', event=event)
 
 @admin_bp.route('/catering-events/<int:event_id>/delete', methods=['POST'])
 @login_required
 def delete_catering_event(event_id):
     """Delete a catering event request"""
-    from models import CateringEvent
-    event = CateringEvent.query.get_or_404(event_id)
+    from models import CateringRequest
+    event = CateringRequest.query.get_or_404(event_id)
     db.session.delete(event)
     db.session.commit()
     flash('בקשת קייטרינג נמחקה בהצלחה', 'success')
@@ -5699,10 +5681,10 @@ def delete_catering_event(event_id):
 @login_required
 def update_catering_event_status(event_id):
     """Update catering event status"""
-    from models import CateringEvent
-    event = CateringEvent.query.get_or_404(event_id)
+    from models import CateringRequest
+    event = CateringRequest.query.get_or_404(event_id)
     status = request.form.get('status')
-    if status in ['new', 'contacted', 'approved', 'rejected', 'completed']:
+    if status in ['pending', 'contacted', 'confirmed', 'completed']:
         event.status = status
         db.session.commit()
         flash('סטטוס האירוע עודכן בהצלחה', 'success')

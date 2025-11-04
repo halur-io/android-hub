@@ -104,10 +104,9 @@
                         <form method="POST" action="{{ url_for('admin.update_catering_event_status', event_id=event.id) }}" class="d-inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <select name="status" class="form-select status-select" onchange="this.form.submit()">
-                                <option value="new" {% if event.status == 'new' %}selected{% endif %}>חדש</option>
+                                <option value="pending" {% if event.status == 'pending' %}selected{% endif %}>ממתין</option>
                                 <option value="contacted" {% if event.status == 'contacted' %}selected{% endif %}>נוצר קשר</option>
-                                <option value="approved" {% if event.status == 'approved' %}selected{% endif %}>אושר</option>
-                                <option value="rejected" {% if event.status == 'rejected' %}selected{% endif %}>נדחה</option>
+                                <option value="confirmed" {% if event.status == 'confirmed' %}selected{% endif %}>אושר</option>
                                 <option value="completed" {% if event.status == 'completed' %}selected{% endif %}>הושלם</option>
                             </select>
                         </form>

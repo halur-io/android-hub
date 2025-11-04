@@ -31,7 +31,7 @@
     font-weight: 500;
 }
 
-.status-new {
+.status-pending {
     background: #e3f2fd;
     color: #1976d2;
 }
@@ -41,14 +41,9 @@
     color: #7b1fa2;
 }
 
-.status-approved {
+.status-confirmed {
     background: #e8f5e9;
     color: #388e3c;
-}
-
-.status-rejected {
-    background: #ffebee;
-    color: #c62828;
 }
 
 .status-completed {
@@ -92,10 +87,9 @@
                     <td>{{ event.guest_count }}</td>
                     <td>
                         <span class="status-badge status-{{ event.status }}">
-                            {% if event.status == 'new' %}חדש
+                            {% if event.status == 'pending' %}ממתין
                             {% elif event.status == 'contacted' %}נוצר קשר
-                            {% elif event.status == 'approved' %}אושר
-                            {% elif event.status == 'rejected' %}נדחה
+                            {% elif event.status == 'confirmed' %}אושר
                             {% elif event.status == 'completed' %}הושלם
                             {% else %}{{ event.status }}{% endif %}
                         </span>

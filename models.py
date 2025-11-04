@@ -1475,3 +1475,20 @@ class JobApplication(db.Model):
     
     def __repr__(self):
         return f'<JobApplication {self.full_name} - {self.position.title_en if self.position else "Unknown"}>'
+
+# Career Models - JobListing added
+class JobListing(db.Model):
+    __tablename__ = 'job_listings'
+    id = db.Column(db.Integer, primary_key=True)
+    title_he = db.Column(db.String(100), nullable=False)
+    title_en = db.Column(db.String(100), nullable=False)
+    description_he = db.Column(db.Text, nullable=False)
+    description_en = db.Column(db.Text, nullable=False)
+    requirements_he = db.Column(db.Text)
+    requirements_en = db.Column(db.Text)
+    location = db.Column(db.String(100))
+    employment_type = db.Column(db.String(50))  # full_time, part_time, shifts, temporary
+    is_urgent = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    posted_date = db.Column(db.DateTime, default=datetime.utcnow)
+

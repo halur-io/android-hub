@@ -1,0 +1,139 @@
+{% extends "admin/base.html" %}
+
+{% block title %}פרטי בקשת קייטרינג - לוח בקרה{% endblock %}
+
+{% block extra_css %}
+<style>
+.event-details {
+    background: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.detail-group {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.detail-group:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.detail-value {
+    color: #212529;
+}
+
+.status-select {
+    display: inline-block;
+    width: auto;
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+    border: none;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-calendar-alt me-2"></i> פרטי בקשת קייטרינג</h2>
+        <a href="{{ url_for('admin.catering_events') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> חזרה
+        </a>
+    </div>
+    
+    <div class="event-details">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="detail-group">
+                    <div class="detail-label">שם המזמין</div>
+                    <div class="detail-value">{{ event.name }}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">דוא"ל</div>
+                    <div class="detail-value">{{ event.email }}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">טלפון</div>
+                    <div class="detail-value">{{ event.phone }}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">סוג האירוע</div>
+                    <div class="detail-value">{{ event.event_type }}</div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="detail-group">
+                    <div class="detail-label">תאריך האירוע</div>
+                    <div class="detail-value">{{ event.event_date.strftime('%d/%m/%Y') if event.event_date else '' }}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">מספר אורחים</div>
+                    <div class="detail-value">{{ event.guest_count }}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">תקציב משוער</div>
+                    <div class="detail-value">{{ event.budget if event.budget else 'לא צוין' }}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">סטטוס</div>
+                    <div class="detail-value">
+                        <form method="POST" action="{{ url_for('admin.update_catering_event_status', event_id=event.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <select name="status" class="form-select status-select" onchange="this.form.submit()">
+                                <option value="new" {% if event.status == 'new' %}selected{% endif %}>חדש</option>
+                                <option value="contacted" {% if event.status == 'contacted' %}selected{% endif %}>נוצר קשר</option>
+                                <option value="approved" {% if event.status == 'approved' %}selected{% endif %}>אושר</option>
+                                <option value="rejected" {% if event.status == 'rejected' %}selected{% endif %}>נדחה</option>
+                                <option value="completed" {% if event.status == 'completed' %}selected{% endif %}>הושלם</option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detail-group">
+            <div class="detail-label">הערות</div>
+            <div class="detail-value">{{ event.notes if event.notes else 'אין הערות' }}</div>
+        </div>
+        
+        <div class="detail-group">
+            <div class="detail-label">תאריך הגשה</div>
+            <div class="detail-value">{{ event.created_at.strftime('%d/%m/%Y %H:%M') if event.created_at else '' }}</div>
+        </div>
+        
+        <div class="mt-4">
+            <form method="POST" action="{{ url_for('admin.delete_catering_event', event_id=event.id) }}" class="d-inline" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הבקשה?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-delete">
+                    <i class="fas fa-trash"></i> מחק בקשה
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

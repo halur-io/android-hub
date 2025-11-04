@@ -1,0 +1,119 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול אירועי קייטרינג - לוח בקרה{% endblock %}
+
+{% block extra_css %}
+<style>
+.events-table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.events-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+}
+
+.events-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-new {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-contacted {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.status-approved {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.status-rejected {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.status-completed {
+    background: #e0e0e0;
+    color: #616161;
+}
+
+.btn-view {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-calendar-alt me-2"></i> אירועי קייטרינג</h2>
+    </div>
+    
+    <div class="events-table">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>תאריך הגשה</th>
+                    <th>שם</th>
+                    <th>סוג אירוע</th>
+                    <th>תאריך האירוע</th>
+                    <th>מספר אורחים</th>
+                    <th>סטטוס</th>
+                    <th>פעולות</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.created_at.strftime('%d/%m/%Y %H:%M') if event.created_at else '' }}</td>
+                    <td>{{ event.name }}</td>
+                    <td>{{ event.event_type }}</td>
+                    <td>{{ event.event_date.strftime('%d/%m/%Y') if event.event_date else '' }}</td>
+                    <td>{{ event.guest_count }}</td>
+                    <td>
+                        <span class="status-badge status-{{ event.status }}">
+                            {% if event.status == 'new' %}חדש
+                            {% elif event.status == 'contacted' %}נוצר קשר
+                            {% elif event.status == 'approved' %}אושר
+                            {% elif event.status == 'rejected' %}נדחה
+                            {% elif event.status == 'completed' %}הושלם
+                            {% else %}{{ event.status }}{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.view_catering_event', event_id=event.id) }}" class="btn btn-sm btn-primary btn-view">
+                            <i class="fas fa-eye"></i> צפה
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not events %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">אין בקשות קייטרינג</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

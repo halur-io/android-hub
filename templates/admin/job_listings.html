@@ -1,0 +1,195 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול משרות - לוח בקרה{% endblock %}
+
+{% block extra_css %}
+<style>
+.jobs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.jobs-table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.jobs-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+}
+
+.jobs-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+.badge-urgent {
+    background: #ff5252;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #4CAF50;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.btn-add-job {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 5px;
+}
+
+.btn-add-job:hover {
+    background: #5a67d8;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="jobs-header">
+        <h2><i class="fas fa-briefcase me-2"></i> ניהול משרות</h2>
+        <a href="{{ url_for('admin.add_job_listing') }}" class="btn btn-add-job">
+            <i class="fas fa-plus me-2"></i> הוסף משרה
+        </a>
+    </div>
+    
+    <div class="jobs-table">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>כותרת</th>
+                    <th>מיקום</th>
+                    <th>סוג העסקה</th>
+                    <th>תאריך פרסום</th>
+                    <th>דחוף</th>
+                    <th>פעיל</th>
+                    <th>פעולות</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td>
+                        {{ job.title_he }}
+                        {% if job.is_urgent %}
+                        <span class="badge-urgent">דחוף!</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ job.location if job.location else 'לא צוין' }}</td>
+                    <td>{{ job.employment_type if job.employment_type else 'לא צוין' }}</td>
+                    <td>{{ job.posted_date.strftime('%d/%m/%Y') if job.posted_date else '' }}</td>
+                    <td>
+                        {% if job.is_urgent %}
+                        <i class="fas fa-check-circle text-danger"></i>
+                        {% else %}
+                        <i class="fas fa-times-circle text-muted"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <label class="toggle-switch">
+                            <input type="checkbox" {% if job.is_active %}checked{% endif %} 
+                                   onchange="toggleJobStatus({{ job.id }}, this)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_job_listing', job_id=job.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('admin.delete_job_listing', job_id=job.id) }}" class="d-inline" onsubmit="return confirm('האם אתה בטוח?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not jobs %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">אין משרות פתוחות</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function toggleJobStatus(jobId, checkbox) {
+    fetch(`/admin/job-listings/${jobId}/toggle`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            checkbox.checked = !checkbox.checked;
+            alert('שגיאה בעדכון הסטטוס');
+        }
+    })
+    .catch(error => {
+        checkbox.checked = !checkbox.checked;
+        alert('שגיאה בעדכון הסטטוס');
+    });
+}
+</script>
+{% endblock %}

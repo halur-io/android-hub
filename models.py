@@ -1365,3 +1365,113 @@ class PrivacyPolicy(db.Model):
     
     def __repr__(self):
         return f'<PrivacyPolicy {self.id}>'
+
+# Catering and Events Models
+class CateringRequest(db.Model):
+    __tablename__ = 'catering_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Contact Information
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    company_name = db.Column(db.String(100))
+    
+    # Event Details
+    event_type = db.Column(db.String(50), nullable=False)  # wedding, corporate, birthday, etc.
+    event_date = db.Column(db.DateTime, nullable=False)
+    event_time = db.Column(db.String(50))
+    guest_count = db.Column(db.Integer, nullable=False)
+    venue = db.Column(db.String(200))
+    
+    # Catering Details
+    service_type = db.Column(db.String(50))  # full-service, delivery, pickup
+    budget_range = db.Column(db.String(50))
+    menu_preferences = db.Column(db.Text)
+    dietary_requirements = db.Column(db.Text)
+    special_requests = db.Column(db.Text)
+    
+    # Status
+    status = db.Column(db.String(20), default='pending')  # pending, contacted, confirmed, completed
+    notes = db.Column(db.Text)  # Admin notes
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CateringRequest {self.name} - {self.event_date}>'
+
+# Career Models
+class JobPosition(db.Model):
+    __tablename__ = 'job_positions'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Job Details
+    title_he = db.Column(db.String(100), nullable=False)
+    title_en = db.Column(db.String(100), nullable=False)
+    department = db.Column(db.String(50))  # kitchen, service, management
+    location = db.Column(db.String(100))
+    employment_type = db.Column(db.String(30))  # full-time, part-time, temporary
+    
+    # Job Description
+    description_he = db.Column(db.Text, nullable=False)
+    description_en = db.Column(db.Text, nullable=False)
+    requirements_he = db.Column(db.Text)
+    requirements_en = db.Column(db.Text)
+    benefits_he = db.Column(db.Text)
+    benefits_en = db.Column(db.Text)
+    
+    # Display Settings
+    is_active = db.Column(db.Boolean, default=True)
+    is_featured = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship to applications
+    applications = db.relationship('JobApplication', backref='position', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<JobPosition {self.title_en}>'
+
+class JobApplication(db.Model):
+    __tablename__ = 'job_applications'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Link to position
+    position_id = db.Column(db.Integer, db.ForeignKey('job_positions.id'), nullable=False)
+    
+    # Applicant Information
+    full_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    date_of_birth = db.Column(db.Date)
+    
+    # Experience
+    years_experience = db.Column(db.Integer)
+    current_employer = db.Column(db.String(100))
+    current_position = db.Column(db.String(100))
+    
+    # Application Details
+    availability = db.Column(db.String(100))  # immediate, 2 weeks, etc.
+    expected_salary = db.Column(db.String(50))
+    cover_letter = db.Column(db.Text)
+    
+    # Resume
+    resume_filename = db.Column(db.String(255))
+    resume_path = db.Column(db.String(500))
+    
+    # Status
+    status = db.Column(db.String(30), default='new')  # new, reviewed, interview, hired, rejected
+    notes = db.Column(db.Text)  # Admin notes
+    rating = db.Column(db.Integer)  # 1-5 star rating
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<JobApplication {self.full_name} - {self.position.title_en if self.position else "Unknown"}>'

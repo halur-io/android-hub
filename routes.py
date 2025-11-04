@@ -3,7 +3,7 @@ from flask_mail import Message
 from app import app, mail
 from database import db
 from forms import ContactForm, ReservationForm, NewsletterForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber, CateringRequest, JobPosition, JobApplication
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -326,6 +326,133 @@ def privacy_policy_page():
     privacy = PrivacyPolicy.query.filter_by(is_active=True).first()
     context['privacy'] = privacy
     return render_template('public/privacy.html', **context)
+
+@app.route('/catering')
+def catering_page():
+    """Catering and events page"""
+    context = get_context_data()
+    return render_template('public/catering.html', **context)
+
+@app.route('/catering/submit', methods=['POST'])
+def submit_catering_request():
+    """Handle catering request form submission"""
+    try:
+        from datetime import datetime
+        event_date_str = request.form.get('event_date')
+        event_date = datetime.strptime(event_date_str, '%Y-%m-%d') if event_date_str else None
+        
+        catering_request = CateringRequest(
+            name=request.form.get('name'),
+            email=request.form.get('email'),
+            phone=request.form.get('phone'),
+            company_name=request.form.get('company_name'),
+            event_type=request.form.get('event_type'),
+            event_date=event_date,
+            event_time=request.form.get('event_time'),
+            guest_count=request.form.get('guest_count'),
+            venue=request.form.get('venue'),
+            service_type=request.form.get('service_type'),
+            budget_range=request.form.get('budget_range'),
+            menu_preferences=request.form.get('menu_preferences'),
+            dietary_requirements=request.form.get('dietary_requirements'),
+            special_requests=request.form.get('special_requests')
+        )
+        db.session.add(catering_request)
+        db.session.commit()
+        
+        language = get_language()
+        if language == 'he':
+            flash('בקשת הקייטרינג שלך נשלחה בהצלחה! ניצור איתך קשר בקרוב.', 'success')
+        else:
+            flash('Your catering request has been submitted successfully! We will contact you soon.', 'success')
+        return redirect(url_for('catering_page'))
+    except Exception as e:
+        logging.error(f"Error submitting catering request: {str(e)}")
+        language = get_language()
+        if language == 'he':
+            flash('מצטערים, אירעה שגיאה בשליחת הבקשה. אנא נסה שנית.', 'error')
+        else:
+            flash('Sorry, there was an error submitting your request. Please try again.', 'error')
+        return redirect(url_for('catering_page'))
+
+@app.route('/careers')
+def careers_page():
+    """Careers page"""
+    context = get_context_data()
+    
+    # Get active job positions
+    positions = JobPosition.query.filter_by(is_active=True).order_by(
+        JobPosition.is_featured.desc(),
+        JobPosition.display_order,
+        JobPosition.created_at.desc()
+    ).all()
+    
+    context['positions'] = positions
+    return render_template('public/careers.html', **context)
+
+@app.route('/careers/<int:position_id>')
+def job_details(position_id):
+    """Job position details page"""
+    context = get_context_data()
+    position = JobPosition.query.get_or_404(position_id)
+    context['position'] = position
+    return render_template('public/job_details.html', **context)
+
+@app.route('/careers/apply/<int:position_id>', methods=['GET', 'POST'])
+def apply_job(position_id):
+    """Job application page and submission"""
+    context = get_context_data()
+    position = JobPosition.query.get_or_404(position_id)
+    
+    if request.method == 'POST':
+        try:
+            # Handle resume upload if provided
+            resume_path = None
+            resume_filename = None
+            if 'resume' in request.files:
+                file = request.files['resume']
+                if file and file.filename:
+                    # Save resume file
+                    from werkzeug.utils import secure_filename
+                    filename = secure_filename(file.filename)
+                    resume_filename = f"resume_{position_id}_{filename}"
+                    resume_path = os.path.join('static', 'uploads', 'resumes', resume_filename)
+                    os.makedirs(os.path.dirname(resume_path), exist_ok=True)
+                    file.save(resume_path)
+            
+            application = JobApplication(
+                position_id=position_id,
+                full_name=request.form.get('full_name'),
+                email=request.form.get('email'),
+                phone=request.form.get('phone'),
+                years_experience=request.form.get('years_experience'),
+                current_employer=request.form.get('current_employer'),
+                current_position=request.form.get('current_position'),
+                availability=request.form.get('availability'),
+                expected_salary=request.form.get('expected_salary'),
+                cover_letter=request.form.get('cover_letter'),
+                resume_filename=resume_filename,
+                resume_path=resume_path
+            )
+            db.session.add(application)
+            db.session.commit()
+            
+            language = get_language()
+            if language == 'he':
+                flash('הגשת המועמדות שלך נשלחה בהצלחה!', 'success')
+            else:
+                flash('Your job application has been submitted successfully!', 'success')
+            return redirect(url_for('careers_page'))
+        except Exception as e:
+            logging.error(f"Error submitting job application: {str(e)}")
+            language = get_language()
+            if language == 'he':
+                flash('מצטערים, אירעה שגיאה בשליחת המועמדות. אנא נסה שנית.', 'error')
+            else:
+                flash('Sorry, there was an error submitting your application. Please try again.', 'error')
+    
+    context['position'] = position
+    return render_template('public/apply_job.html', **context)
 
 @app.errorhandler(404)
 def not_found(error):

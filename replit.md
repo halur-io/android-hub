@@ -8,6 +8,12 @@ This project is a scalable and configurable restaurant management platform built
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Updates
+- Added prominent catering and careers sections to homepage for better visibility
+- Both sections feature clear information, visual appeal, and direct call-to-action buttons
+- Catering section includes feature list and image grid
+- Careers section includes benefit cards with gradient background
+
 ## System Architecture
 
 ### UI/UX Decisions

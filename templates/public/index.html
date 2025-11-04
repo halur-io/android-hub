@@ -201,52 +201,36 @@
 </section>
 {% endfor %}
 
-<!-- Catering & Careers Combined Section -->
-<section id="services-preview" class="section services-preview-section">
-    <div class="container">
-        <div class="row g-4">
-            <!-- Catering Card -->
+<!-- Visual Services Section -->
+<section id="services-preview" class="visual-services-section">
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            <!-- Careers Section -->
             <div class="col-md-6">
-                <div class="service-card h-100">
-                    <div class="service-icon">
-                        <i class="fas fa-birthday-cake"></i>
+                <a href="{{ url_for('careers_page') }}" class="visual-service-block careers-block">
+                    <div class="visual-service-image">
+                        <img src="{{ url_for('static', filename='images/careers-bg.jpg') }}" alt="Join Our Team">
+                        <div class="visual-service-overlay"></div>
                     </div>
-                    <h3 class="service-title">{{ 'קייטרינג ואירועים' if language == 'he' else 'Catering & Events' }}</h3>
-                    <p class="service-text">
-                        {{ 'הפכו כל אירוע לחוויה בלתי נשכחת עם הקייטרינג המקצועי שלנו' if language == 'he' else 'Make every event unforgettable with our professional catering' }}
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> {{ 'תפריטים מותאמים' if language == 'he' else 'Custom menus' }}</li>
-                        <li><i class="fas fa-check"></i> {{ '20-500 אורחים' if language == 'he' else '20-500 guests' }}</li>
-                        <li><i class="fas fa-check"></i> {{ 'משלוח והגשה' if language == 'he' else 'Delivery & service' }}</li>
-                    </ul>
-                    <a href="{{ url_for('catering_page') }}" class="btn btn-primary btn-sm">
-                        {{ 'הזמינו קייטרינג' if language == 'he' else 'Book Catering' }}
-                        <i class="fas fa-arrow-right ms-2"></i>
-                    </a>
-                </div>
+                    <div class="visual-service-content">
+                        <h3 class="visual-service-title">{{ 'דרושים. בואו לגדול איתנו' if language == 'he' else 'We\'re Hiring. Come Grow With Us' }}</h3>
+                        <span class="visual-service-cta">{{ 'להשארת פרטים >>' if language == 'he' else 'Apply Now >>' }}</span>
+                    </div>
+                </a>
             </div>
             
-            <!-- Careers Card -->
+            <!-- Catering Section -->
             <div class="col-md-6">
-                <div class="service-card careers-card h-100">
-                    <div class="service-icon">
-                        <i class="fas fa-users"></i>
+                <a href="{{ url_for('catering_page') }}" class="visual-service-block catering-block">
+                    <div class="visual-service-image">
+                        <img src="{{ url_for('static', filename='images/catering-bg.jpg') }}" alt="Catering & Events">
+                        <div class="visual-service-overlay"></div>
                     </div>
-                    <h3 class="service-title">{{ 'הצטרפו לצוות' if language == 'he' else 'Join Our Team' }}</h3>
-                    <p class="service-text">
-                        {{ 'חפשים כישרונות חדשים להצטרף למשפחת סומו' if language == 'he' else 'Looking for talented people to join the Sumo family' }}
-                    </p>
-                    <ul class="service-features">
-                        <li><i class="fas fa-check"></i> {{ 'הכשרה מקצועית' if language == 'he' else 'Professional training' }}</li>
-                        <li><i class="fas fa-check"></i> {{ 'אפשרויות קידום' if language == 'he' else 'Growth opportunities' }}</li>
-                        <li><i class="fas fa-check"></i> {{ 'הטבות ובונוסים' if language == 'he' else 'Benefits & bonuses' }}</li>
-                    </ul>
-                    <a href="{{ url_for('careers_page') }}" class="btn btn-outline-light btn-sm">
-                        {{ 'משרות פתוחות' if language == 'he' else 'Open Positions' }}
-                        <i class="fas fa-arrow-right ms-2"></i>
-                    </a>
-                </div>
+                    <div class="visual-service-content">
+                        <h3 class="visual-service-title">{{ 'מגשי אירוח וקייטרינג' if language == 'he' else 'Catering & Event Platters' }}</h3>
+                        <span class="visual-service-cta">{{ 'להזמנה >>' if language == 'he' else 'Order Now >>' }}</span>
+                    </div>
+                </a>
             </div>
         </div>
     </div>

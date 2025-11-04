@@ -752,111 +752,95 @@ html {
     color: white !important;
     background: var(--gray-800);
 }
-/* Compact Services Section */
-.services-preview-section {
-    padding: 60px 0;
-    background: #f8f9fa;
+/* Visual Services Section - Giraffe Style */
+.visual-services-section {
+    margin: 60px 0;
 }
 
-.service-card {
-    background: white;
-    border-radius: 15px;
+.visual-service-block {
+    display: block;
+    position: relative;
+    height: 350px;
+    overflow: hidden;
+    text-decoration: none;
+    transition: transform 0.3s ease;
+}
+
+.visual-service-block:hover {
+    transform: scale(1.02);
+}
+
+.visual-service-image {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.visual-service-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.visual-service-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+    transition: opacity 0.3s ease;
+}
+
+.visual-service-block:hover .visual-service-overlay {
+    opacity: 0.9;
+}
+
+.visual-service-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
     padding: 2rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    display: flex;
-    flex-direction: column;
-}
-
-.service-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
-.service-card.careers-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    text-align: center;
+    z-index: 2;
 }
 
-.service-icon {
-    font-size: 2.5rem;
-    color: var(--sumo-red);
-    margin-bottom: 1rem;
-}
-
-.careers-card .service-icon {
+.visual-service-title {
     color: white;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
 
-.service-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    color: var(--sumo-navy);
+.visual-service-cta {
+    color: #FFD700;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
 }
 
-.careers-card .service-title {
-    color: white;
-}
-
-.service-text {
-    color: #666;
-    margin-bottom: 1rem;
-    font-size: 0.95rem;
-}
-
-.careers-card .service-text {
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.service-features {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 1.5rem 0;
-    flex-grow: 1;
-}
-
-.service-features li {
-    padding: 0.4rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.service-features i {
-    color: var(--sumo-red);
-    font-size: 0.9rem;
-}
-
-.careers-card .service-features i {
-    color: white;
+.visual-service-block:hover .visual-service-cta {
+    color: #FFF;
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    .services-preview-section {
-        padding: 40px 0;
+    .visual-service-block {
+        height: 250px;
     }
     
-    .service-card {
+    .visual-service-title {
+        font-size: 1.4rem;
+    }
+    
+    .visual-service-cta {
+        font-size: 1rem;
+    }
+    
+    .visual-service-content {
         padding: 1.5rem;
-        margin-bottom: 1rem;
-    }
-    
-    .service-icon {
-        font-size: 2rem;
-    }
-    
-    .service-title {
-        font-size: 1.25rem;
-    }
-    
-    .service-text {
-        font-size: 0.9rem;
-    }
-    
-    .service-features li {
-        font-size: 0.85rem;
     }
 }

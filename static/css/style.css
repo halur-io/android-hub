@@ -752,3 +752,166 @@ html {
     color: white !important;
     background: var(--gray-800);
 }
+/* Homepage Catering Section */
+.catering-preview-section {
+    padding: 80px 0;
+    background: #f8f9fa;
+}
+
+.catering-content .section-icon {
+    font-size: 3rem;
+    color: var(--sumo-red);
+    animation: float 3s ease-in-out infinite;
+}
+
+.catering-features {
+    list-style: none;
+    padding: 0;
+}
+
+.catering-features li {
+    padding: 0.75rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.catering-features i {
+    color: var(--sumo-red);
+    font-size: 1.2rem;
+}
+
+.catering-image-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 200px 200px;
+    gap: 1rem;
+    height: 416px;
+}
+
+.catering-img {
+    border-radius: 15px;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+.catering-img:hover {
+    transform: scale(1.05);
+}
+
+.catering-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.catering-img-1 {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.catering-img-2 {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+.catering-img-3 {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+/* Homepage Careers Section */
+.careers-preview-section {
+    padding: 80px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.careers-preview-section .section-icon {
+    font-size: 3rem;
+    color: white;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.careers-preview-section .section-title {
+    color: white;
+}
+
+.careers-preview-section .section-subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+}
+
+.career-benefit-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.career-benefit-card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-5px);
+}
+
+.career-benefit-card i {
+    font-size: 3rem;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.career-benefit-card h4 {
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.career-benefit-card p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+/* Animations */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .catering-image-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: 200px 200px;
+        height: auto;
+    }
+    
+    .catering-img-1,
+    .catering-img-2,
+    .catering-img-3 {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    
+    .career-benefit-card {
+        margin-bottom: 1rem;
+    }
+}

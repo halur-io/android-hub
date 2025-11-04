@@ -201,6 +201,101 @@
 </section>
 {% endfor %}
 
+<!-- Catering Section -->
+<section id="catering-preview" class="section catering-preview-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="catering-content">
+                    <div class="section-icon mb-3">
+                        <i class="fas fa-birthday-cake"></i>
+                    </div>
+                    <h2 class="section-title mb-3">{{ 'קייטרינג ואירועים' if language == 'he' else 'Catering & Events' }}</h2>
+                    <p class="section-text mb-4">
+                        {{ 'הפכו כל אירוע לחוויה בלתי נשכחת עם השירותי הקייטרינג המקצועיים שלנו. מימי הולדת ועד אירועי חברה, אנחנו מביאים את הטעמים של סומו אליכם.' if language == 'he' else 'Make every event unforgettable with our professional catering services. From birthdays to corporate events, we bring the flavors of Sumo to you.' }}
+                    </p>
+                    <ul class="catering-features">
+                        <li><i class="fas fa-check-circle"></i> {{ 'תפריטים מותאמים אישית' if language == 'he' else 'Customized menus' }}</li>
+                        <li><i class="fas fa-check-circle"></i> {{ 'צוות מקצועי ומנוסה' if language == 'he' else 'Professional experienced team' }}</li>
+                        <li><i class="fas fa-check-circle"></i> {{ 'אירועים מ-20 עד 500 אורחים' if language == 'he' else 'Events from 20 to 500 guests' }}</li>
+                        <li><i class="fas fa-check-circle"></i> {{ 'משלוח והגשה מלאה' if language == 'he' else 'Full delivery and service' }}</li>
+                    </ul>
+                    <a href="{{ url_for('catering_page') }}" class="btn btn-primary btn-lg mt-3">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        {{ 'הזמינו קייטרינג' if language == 'he' else 'Book Catering' }}
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="catering-image-grid">
+                    <div class="catering-img catering-img-1">
+                        <img src="{{ url_for('static', filename='images/catering-1.jpg') }}" alt="Catering">
+                    </div>
+                    <div class="catering-img catering-img-2">
+                        <img src="{{ url_for('static', filename='images/catering-2.jpg') }}" alt="Events">
+                    </div>
+                    <div class="catering-img catering-img-3">
+                        <img src="{{ url_for('static', filename='images/catering-3.jpg') }}" alt="Food">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Careers Section -->
+<section id="careers-preview" class="section careers-preview-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <div class="section-icon mb-3">
+                <i class="fas fa-users"></i>
+            </div>
+            <h2 class="section-title mb-3">{{ 'הצטרפו למשפחת סומו' if language == 'he' else 'Join the Sumo Family' }}</h2>
+            <p class="section-subtitle">
+                {{ 'אנחנו תמיד מחפשים אנשים מוכשרים ונלהבים להצטרף לצוות שלנו' if language == 'he' else 'We are always looking for talented and passionate people to join our team' }}
+            </p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="career-benefit-card">
+                    <i class="fas fa-graduation-cap"></i>
+                    <h4>{{ 'הכשרה מקצועית' if language == 'he' else 'Professional Training' }}</h4>
+                    <p>{{ 'תוכניות הכשרה מקיפות לכל תפקיד' if language == 'he' else 'Comprehensive training for every role' }}</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="career-benefit-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h4>{{ 'אפשרויות קידום' if language == 'he' else 'Growth Opportunities' }}</h4>
+                    <p>{{ 'מסלולי קריירה ברורים להתפתחות' if language == 'he' else 'Clear career paths for development' }}</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="career-benefit-card">
+                    <i class="fas fa-heart"></i>
+                    <h4>{{ 'סביבה תומכת' if language == 'he' else 'Supportive Environment' }}</h4>
+                    <p>{{ 'צוות חם ומשפחתי שתמיד שם בשבילכם' if language == 'he' else 'Warm family team always there for you' }}</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="career-benefit-card">
+                    <i class="fas fa-gift"></i>
+                    <h4>{{ 'הטבות ובונוסים' if language == 'he' else 'Benefits & Bonuses' }}</h4>
+                    <p>{{ 'חבילת הטבות מעולה ומענקי הצטיינות' if language == 'he' else 'Excellent benefits and performance bonuses' }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="{{ url_for('careers_page') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-briefcase me-2"></i>
+                {{ 'צפו במשרות פתוחות' if language == 'he' else 'View Open Positions' }}
+            </a>
+        </div>
+    </div>
+</section>
+
 <!-- App Download Section -->
 {% if settings.enable_app_download and (settings.app_store_url or settings.google_play_url) %}
 <section id="app-download" class="section app-download-section">

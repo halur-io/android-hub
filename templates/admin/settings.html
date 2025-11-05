@@ -298,6 +298,108 @@
                         </div>
                     </section>
                     
+                    <!-- Careers Page - Full Control -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCareersPage" aria-expanded="false">
+                                <i class="fas fa-briefcase"></i>
+                                {{ 'עמוד קריירה - שליטה מלאה' if (admin_language or 'he') == 'he' else 'Careers Page - Full Control' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCareersPage" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">שליטה מלאה על כל ההיבטים של עמוד הקריירה / Full control over all aspects of the careers page</p>
+                        
+                        <!-- Hero Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-image me-2"></i>Hero Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_hero_title_he" value="{{ settings.careers_page_hero_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה (עברית)</label>
+                                    <textarea class="form-control-modern" name="careers_page_hero_subtitle_he" rows="2">{{ settings.careers_page_hero_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_hero_title_en" value="{{ settings.careers_page_hero_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle (English)</label>
+                                    <textarea class="form-control-modern" name="careers_page_hero_subtitle_en" rows="2">{{ settings.careers_page_hero_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- Positions Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-list me-2"></i>Positions Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משרות (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_title_he" value="{{ settings.careers_page_positions_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה משרות (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_subtitle_he" value="{{ settings.careers_page_positions_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Positions Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_title_en" value="{{ settings.careers_page_positions_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Positions Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_subtitle_en" value="{{ settings.careers_page_positions_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3" style="background-color: #f0f9ff; border-color: #3b82f6;">
+                            <i class="fas fa-briefcase me-2" style="color: #3b82f6;"></i>
+                            <strong>{{ 'ניהול משרות:' if (admin_language or 'he') == 'he' else 'Job Positions Management:' }}</strong>
+                            <a href="{{ url_for('admin.careers') }}" class="btn btn-sm btn-primary ms-2" target="_blank">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                {{ 'פתח ניהול משרות' if (admin_language or 'he') == 'he' else 'Open Careers Manager' }}
+                            </a>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- CTA Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-phone me-2"></i>Contact CTA Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_title_he" value="{{ settings.careers_page_cta_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_subtitle_he" value="{{ settings.careers_page_cta_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_title_en" value="{{ settings.careers_page_cta_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_subtitle_en" value="{{ settings.careers_page_cta_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+                    </section>
+                    
                     <!-- Site Info & Social Media -->
                     <section class="settings-section accordion-item">
                         <div class="settings-section-header accordion-header">

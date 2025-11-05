@@ -5014,25 +5014,6 @@ def edit_supplier(supplier_id):
     
     return render_template('admin/edit_supplier.html', supplier=supplier)
 
-@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
-@login_required
-@require_permission('stock.manage')
-def delete_supplier(supplier_id):
-    """Delete supplier"""
-    from models import Supplier
-    
-    try:
-        supplier = Supplier.query.get_or_404(supplier_id)
-        db.session.delete(supplier)
-        db.session.commit()
-        
-        flash('ספק נמחק בהצלחה', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'שגיאה במחיקת ספק: {str(e)}', 'danger')
-    
-    return redirect(url_for('admin.stock_management'))
-
 @admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
 @login_required
 @require_permission('stock.manage')

@@ -24,7 +24,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: url('{{ url_for("static", filename="uploads/" + settings.catering_hero_image) if settings.catering_hero_image else "" }}') center/cover;
+        background: url('{{ url_for("static", filename="uploads/" + settings.catering_image) if settings.catering_image else "" }}') center/cover;
         opacity: 0.2;
         z-index: 0;
     }
@@ -53,8 +53,29 @@
         text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
     
-    .catering-section {
+    .btn-cta {
+        background: #dc3545;
+        color: white;
+        padding: 1rem 3rem;
+        font-size: 1.2rem;
+        border-radius: 50px;
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-cta:hover {
+        background: #c82333;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+    }
+    
+    .catering-gallery-section {
         padding: 5rem 0;
+        background: #f8f9fa;
     }
     
     .section-title {
@@ -75,148 +96,45 @@
         line-height: 1.8;
     }
     
-    .highlight-card {
-        background: white;
-        border-radius: 12px;
-        padding: 2.5rem 2rem;
-        text-align: center;
-        height: 100%;
-        transition: all 0.3s ease;
-        border: 1px solid #f0f0f0;
-    }
-    
-    .highlight-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-    
-    .highlight-icon {
-        font-size: 3rem;
-        color: #dc3545;
-        margin-bottom: 1.5rem;
-    }
-    
-    .highlight-title {
-        font-size: 1.4rem;
-        font-weight: 600;
-        color: #1a3a6e;
-        margin-bottom: 1rem;
-    }
-    
-    .highlight-description {
-        color: #666;
-        line-height: 1.7;
-    }
-    
-    .package-card {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        height: 100%;
-        transition: all 0.3s ease;
-        border: 2px solid #f0f0f0;
-    }
-    
-    .package-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        border-color: #dc3545;
-    }
-    
-    .package-card.featured {
-        border-color: #dc3545;
-        position: relative;
-    }
-    
-    .package-card.featured::before {
-        content: '{{ "מומלץ" if language == "he" else "RECOMMENDED" }}';
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: #dc3545;
-        color: white;
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        z-index: 1;
-    }
-    
-    .package-image {
-        width: 100%;
-        height: 250px;
-        object-fit: cover;
-    }
-    
-    .package-content {
-        padding: 2rem;
-    }
-    
-    .package-name {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1a3a6e;
-        margin-bottom: 0.5rem;
-    }
-    
-    .package-price {
-        font-size: 1.2rem;
-        color: #dc3545;
-        font-weight: 600;
-        margin-bottom: 1rem;
-    }
-    
-    .package-description {
-        color: #666;
-        margin-bottom: 1.5rem;
-        line-height: 1.7;
-    }
-    
-    .package-features {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 1.5rem 0;
-    }
-    
-    .package-features li {
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #f0f0f0;
-        color: #333;
-    }
-    
-    .package-features li:last-child {
-        border-bottom: none;
-    }
-    
-    .package-features li i {
-        color: #dc3545;
-        margin-right: 0.5rem;
-    }
-    
     .gallery-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1.5rem;
-        margin-top: 2rem;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-top: 3rem;
     }
     
     .gallery-item {
         position: relative;
         overflow: hidden;
         border-radius: 12px;
-        height: 300px;
-        cursor: pointer;
+        height: 350px;
+        background: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .gallery-item:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
     
     .gallery-item img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform 0.3s ease;
     }
     
-    .gallery-item:hover img {
-        transform: scale(1.1);
+    .gallery-item.placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+        border: 2px dashed #ccc;
+    }
+    
+    .gallery-item.placeholder i {
+        font-size: 4rem;
+        color: #999;
     }
     
     .gallery-caption {
@@ -227,48 +145,26 @@
         background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
         color: white;
         padding: 2rem 1.5rem 1rem;
-        opacity: 0;
-        transition: opacity 0.3s ease;
+        font-size: 0.95rem;
     }
     
-    .gallery-item:hover .gallery-caption {
-        opacity: 1;
-    }
-    
-    .cta-section {
+    .contact-cta-section {
         background: linear-gradient(135deg, #1a3a6e 0%, #2c5282 100%);
         color: white;
         padding: 5rem 0;
         text-align: center;
     }
     
-    .cta-title {
+    .contact-cta-title {
         font-family: 'Playfair Display', serif;
         font-size: 2.5rem;
         margin-bottom: 1.5rem;
     }
     
-    .cta-subtitle {
+    .contact-cta-subtitle {
         font-size: 1.2rem;
         margin-bottom: 2rem;
         opacity: 0.9;
-    }
-    
-    .btn-cta {
-        background: #dc3545;
-        color: white;
-        padding: 1rem 3rem;
-        font-size: 1.2rem;
-        border-radius: 50px;
-        border: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-cta:hover {
-        background: #c82333;
-        transform: scale(1.05);
-        box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
     }
     
     @media (max-width: 768px) {
@@ -284,16 +180,13 @@
             font-size: 2rem;
         }
         
-        .package-name {
-            font-size: 1.5rem;
-        }
-        
         .gallery-grid {
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
         }
         
         .gallery-item {
-            height: 200px;
+            height: 250px;
         }
     }
 </style>
@@ -309,116 +202,55 @@
     </div>
 </section>
 
-<!-- Overview Section -->
-<section class="catering-section bg-light">
-    <div class="container">
-        <h2 class="section-title">{{ settings.catering_overview_title_he if language == 'he' else settings.catering_overview_title_en }}</h2>
-        <p class="section-subtitle">{{ settings.catering_overview_text_he if language == 'he' else settings.catering_overview_text_en }}</p>
-    </div>
-</section>
-
-<!-- Highlights Section -->
-{% if highlights %}
-<section class="catering-section">
-    <div class="container">
-        <h2 class="section-title">{{ 'למה לבחור בנו' if language == 'he' else 'Why Choose Us' }}</h2>
-        <div class="row g-4 mt-4">
-            {% for highlight in highlights %}
-            <div class="col-md-4">
-                <div class="highlight-card">
-                    <div class="highlight-icon">
-                        <i class="fas {{ highlight.icon }}"></i>
-                    </div>
-                    <h3 class="highlight-title">{{ highlight.title_he if language == 'he' else highlight.title_en }}</h3>
-                    <p class="highlight-description">{{ highlight.description_he if language == 'he' else highlight.description_en }}</p>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
-<!-- Packages Section -->
-{% if packages %}
-<section class="catering-section bg-light">
-    <div class="container">
-        <h2 class="section-title">{{ 'חבילות הקייטרינג שלנו' if language == 'he' else 'Our Catering Packages' }}</h2>
-        <div class="row g-4 mt-4">
-            {% for package in packages %}
-            <div class="col-lg-4 col-md-6">
-                <div class="package-card {{ 'featured' if package.is_featured }}">
-                    {% if package.image_path %}
-                    <img src="{{ url_for('static', filename='uploads/' + package.image_path) }}" alt="{{ package.name_he if language == 'he' else package.name_en }}" class="package-image">
-                    {% else %}
-                    <div class="package-image" style="background: linear-gradient(135deg, #1a3a6e 0%, #2c5282 100%);"></div>
-                    {% endif %}
-                    <div class="package-content">
-                        <h3 class="package-name">{{ package.name_he if language == 'he' else package.name_en }}</h3>
-                        {% if package.price_range_he or package.price_range_en %}
-                        <div class="package-price">{{ package.price_range_he if language == 'he' else package.price_range_en }}</div>
-                        {% endif %}
-                        <p class="package-description">{{ package.description_he if language == 'he' else package.description_en }}</p>
-                        
-                        {% if package.features_he or package.features_en %}
-                        <ul class="package-features">
-                            {% set features = (package.features_he if language == 'he' else package.features_en).split('\n') if (package.features_he if language == 'he' else package.features_en) else [] %}
-                            {% for feature in features %}
-                            {% if feature.strip() %}
-                            <li><i class="fas fa-check-circle"></i> {{ feature.strip() }}</li>
-                            {% endif %}
-                            {% endfor %}
-                        </ul>
-                        {% endif %}
-                        
-                        {% if package.min_guests or package.max_guests %}
-                        <p class="text-muted small">
-                            <i class="fas fa-users"></i> 
-                            {% if package.min_guests and package.max_guests %}
-                                {{ package.min_guests }}-{{ package.max_guests }} {{ 'אורחים' if language == 'he' else 'guests' }}
-                            {% elif package.min_guests %}
-                                {{ 'מינימום' if language == 'he' else 'Minimum' }} {{ package.min_guests }} {{ 'אורחים' if language == 'he' else 'guests' }}
-                            {% elif package.max_guests %}
-                                {{ 'עד' if language == 'he' else 'Up to' }} {{ package.max_guests }} {{ 'אורחים' if language == 'he' else 'guests' }}
-                            {% endif %}
-                        </p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
 <!-- Gallery Section -->
-{% if gallery_images %}
-<section class="catering-section">
+<section class="catering-gallery-section">
     <div class="container">
         <h2 class="section-title">{{ 'גלריה' if language == 'he' else 'Gallery' }}</h2>
+        <p class="section-subtitle">{{ 'צפו בתמונות מאירועים קודמים' if language == 'he' else 'View photos from previous events' }}</p>
+        
         <div class="gallery-grid">
-            {% for image in gallery_images %}
-            <div class="gallery-item">
-                <img src="{{ url_for('static', filename=image.file_path) }}" 
-                     alt="{{ image.alt_text_he if language == 'he' else image.alt_text_en or 'Catering photo' }}">
-                {% if image.caption_he or image.caption_en %}
-                <div class="gallery-caption">
-                    {{ image.caption_he if language == 'he' else image.caption_en }}
+            {% if gallery_images %}
+                {% for image in gallery_images %}
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', filename=image.file_path) }}" 
+                         alt="{{ image.alt_text_he if language == 'he' else image.alt_text_en or 'Catering photo' }}">
+                    {% if image.caption_he or image.caption_en %}
+                    <div class="gallery-caption">
+                        {{ image.caption_he if language == 'he' else image.caption_en }}
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
-            </div>
-            {% endfor %}
+                {% endfor %}
+            {% else %}
+                <!-- Placeholder images when no gallery images are uploaded -->
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+            {% endif %}
         </div>
     </div>
 </section>
-{% endif %}
 
-<!-- CTA Section -->
-<section class="cta-section" id="contact-section">
+<!-- Contact CTA Section -->
+<section class="contact-cta-section" id="contact-section">
     <div class="container">
-        <h2 class="cta-title">{{ 'מוכנים להפוך את האירוע שלכם למיוחד?' if language == 'he' else 'Ready to Make Your Event Special?' }}</h2>
-        <p class="cta-subtitle">{{ 'צרו קשר עכשיו לייעוץ חינם ותפריט מותאם אישית' if language == 'he' else 'Contact us now for a free consultation and custom menu' }}</p>
+        <h2 class="contact-cta-title">{{ 'מוכנים להפוך את האירוע שלכם למיוחד?' if language == 'he' else 'Ready to Make Your Event Special?' }}</h2>
+        <p class="contact-cta-subtitle">{{ 'צרו קשר עכשיו לייעוץ חינם ותפריט מותאם אישית' if language == 'he' else 'Contact us now for a free consultation and custom menu' }}</p>
         <a href="{{ url_for('contact_page') }}" class="btn btn-cta">{{ 'צרו קשר' if language == 'he' else 'Contact Us' }}</a>
     </div>
 </section>

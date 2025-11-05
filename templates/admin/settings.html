@@ -64,15 +64,17 @@
                     <p class="settings-content-subtitle">נהל את התוכן הראשי, טקסטים ופרטי התקשרות של האתר</p>
                 </div>
                 
-                <!-- Hero Section -->
-                <section class="settings-section">
-                    <div class="settings-section-header">
-                        <h3 class="settings-section-title">
-                            <i class="fas fa-image"></i>
-                            Hero Section
-                        </h3>
-                    </div>
-                    <div class="settings-section-body">
+                <div class="accordion" id="generalSettingsAccordion">
+                    <!-- Hero Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHero" aria-expanded="true">
+                                <i class="fas fa-image"></i>
+                                Hero Section
+                            </h3>
+                        </div>
+                        <div id="collapseHero" class="accordion-collapse collapse show" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
                         <div class="form-row-two-col">
                             <!-- Hebrew -->
                             <div>
@@ -109,19 +111,20 @@
                                     <textarea class="form-control-modern" name="hero_description_en" rows="3">{{ settings.hero_description_en }}</textarea>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                </section>
-                
-                <!-- About Section -->
-                <section class="settings-section">
-                    <div class="settings-section-header">
-                        <h3 class="settings-section-title">
-                            <i class="fas fa-info-circle"></i>
-                            About Section
-                        </h3>
-                    </div>
-                    <div class="settings-section-body">
+                    </section>
+                    
+                    <!-- About Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAbout" aria-expanded="false">
+                                <i class="fas fa-info-circle"></i>
+                                About Section
+                            </h3>
+                        </div>
+                        <div id="collapseAbout" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
                         <div class="form-row-two-col">
                             <!-- Hebrew -->
                             <div>
@@ -148,19 +151,20 @@
                                     <textarea class="form-control-modern" name="about_content_en" rows="5">{{ settings.about_content_en }}</textarea>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                </section>
-                
-                <!-- Catering & Events Homepage Section -->
-                <section class="settings-section">
-                    <div class="settings-section-header">
-                        <h3 class="settings-section-title">
-                            <i class="fas fa-utensils"></i>
-                            {{ 'קייטרינג - סקציה בדף הבית' if (admin_language or 'he') == 'he' else 'Catering - Homepage Section' }}
-                        </h3>
-                    </div>
-                    <div class="settings-section-body">
+                    </section>
+                    
+                    <!-- Catering & Events Homepage Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCateringHome" aria-expanded="false">
+                                <i class="fas fa-utensils"></i>
+                                {{ 'קייטרינג - סקציה בדף הבית' if (admin_language or 'he') == 'he' else 'Catering - Homepage Section' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCateringHome" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
                         <p style="color: #6b7280; margin-bottom: 1.5rem;">התוכן שמוצג בסקציית הקייטרינג בדף הבית / Content displayed in the catering section on homepage</p>
                         <div class="form-row-two-col">
                             <!-- Hebrew -->
@@ -188,19 +192,20 @@
                                     <textarea class="form-control-modern" name="catering_subtitle_en" rows="3">{{ settings.catering_subtitle_en }}</textarea>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                </section>
-                
-                <!-- Dedicated Catering Page Content -->
-                <section class="settings-section">
-                    <div class="settings-section-header">
-                        <h3 class="settings-section-title">
-                            <i class="fas fa-file-alt"></i>
-                            {{ 'עמוד קייטרינג ייעודי' if (admin_language or 'he') == 'he' else 'Dedicated Catering Page' }}
-                        </h3>
-                    </div>
-                    <div class="settings-section-body">
+                    </section>
+                    
+                    <!-- Dedicated Catering Page Content -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCateringPage" aria-expanded="false">
+                                <i class="fas fa-file-alt"></i>
+                                {{ 'עמוד קייטרינג ייעודי' if (admin_language or 'he') == 'he' else 'Dedicated Catering Page' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCateringPage" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
                         <p style="color: #6b7280; margin-bottom: 1.5rem;">תוכן עמוד הקייטרינג המפורט (אם מופעל) / Detailed catering page content (if enabled)</p>
                         
                         <!-- Hero Section -->
@@ -253,19 +258,20 @@
                                     <textarea class="form-control-modern" name="catering_overview_text_en" rows="4">{{ settings.catering_overview_text_en }}</textarea>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                </section>
-                
-                <!-- Site Info & Social Media -->
-                <section class="settings-section">
-                    <div class="settings-section-header">
-                        <h3 class="settings-section-title">
-                            <i class="fas fa-share-alt"></i>
-                            Site Info & Social Media
-                        </h3>
-                    </div>
-                    <div class="settings-section-body">
+                    </section>
+                    
+                    <!-- Site Info & Social Media -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSiteInfo" aria-expanded="false">
+                                <i class="fas fa-share-alt"></i>
+                                Site Info & Social Media
+                            </h3>
+                        </div>
+                        <div id="collapseSiteInfo" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
                         <div class="form-row-two-col">
                             <div class="form-group-modern">
                                 <label class="form-label-modern">שם האתר (עברית)</label>
@@ -304,8 +310,10 @@
                             <input type="text" class="form-control-modern" name="whatsapp_number" value="{{ settings.whatsapp_number }}" placeholder="972501234567">
                             <small class="form-help-text">מספר בפורמט בינלאומי ללא סימן +</small>
                         </div>
-                    </div>
-                </section>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </div>
             
             <!-- ============================= BRANDING TAB ============================= -->

@@ -203,6 +203,21 @@ class SiteSettings(db.Model):
     catering_page_cta_subtitle_he = db.Column(db.String(500), default='צרו קשר עכשיו לייעוץ חינם ותפריט מותאם אישית')
     catering_page_cta_subtitle_en = db.Column(db.String(500), default='Contact us now for a free consultation and custom menu')
     
+    # Careers Page Settings
+    careers_page_hero_title_he = db.Column(db.String(200), default='הצטרפו לצוות שלנו')
+    careers_page_hero_title_en = db.Column(db.String(200), default='Join Our Team')
+    careers_page_hero_subtitle_he = db.Column(db.Text, default='בואו להיות חלק ממשפחת סומו - מקום שבו כישרון פוגש תשוקה')
+    careers_page_hero_subtitle_en = db.Column(db.Text, default='Be part of the SUMO family - where talent meets passion')
+    careers_page_positions_title_he = db.Column(db.String(200), default='משרות פתוחות')
+    careers_page_positions_title_en = db.Column(db.String(200), default='Open Positions')
+    careers_page_positions_subtitle_he = db.Column(db.String(500), default='מצאו את המשרה המושלמת עבורכם')
+    careers_page_positions_subtitle_en = db.Column(db.String(500), default='Find the perfect position for you')
+    careers_page_cta_title_he = db.Column(db.String(200), default='מעוניינים להצטרף?')
+    careers_page_cta_title_en = db.Column(db.String(200), default='Interested in Joining?')
+    careers_page_cta_subtitle_he = db.Column(db.String(500), default='שלחו לנו את פרטיכם ונחזור אליכם בהקדם')
+    careers_page_cta_subtitle_en = db.Column(db.String(500), default='Send us your details and we will get back to you soon')
+    careers_image = db.Column(db.String(500))  # Hero background image for careers page
+    
     # Advanced Features
     google_analytics_id = db.Column(db.String(50))  # GA tracking ID
     facebook_pixel_id = db.Column(db.String(50))  # FB Pixel ID
@@ -558,6 +573,61 @@ class CateringContact(db.Model):
     
     def __repr__(self):
         return f'<CateringContact {self.name} - {self.event_type}>'
+
+# Careers Models
+class CareerPosition(db.Model):
+    __tablename__ = 'career_positions'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Position Information
+    title_he = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200), nullable=False)
+    description_he = db.Column(db.Text)
+    description_en = db.Column(db.Text)
+    requirements_he = db.Column(db.Text)  # Job requirements
+    requirements_en = db.Column(db.Text)
+    
+    # Position Details
+    location_he = db.Column(db.String(100))  # e.g., "כרמיאל"
+    location_en = db.Column(db.String(100))  # e.g., "Karmiel"
+    employment_type_he = db.Column(db.String(50))  # Full-time, Part-time, etc.
+    employment_type_en = db.Column(db.String(50))
+    
+    # Display Settings
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CareerPosition {self.title_en}>'
+
+class CareerContact(db.Model):
+    __tablename__ = 'career_contacts'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Contact Information
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    
+    # Position Applied For
+    position_id = db.Column(db.Integer, db.ForeignKey('career_positions.id'), nullable=True)
+    position = db.relationship('CareerPosition', backref='applications')
+    position_other = db.Column(db.String(200))  # For "Other" position
+    
+    # Application Details
+    message = db.Column(db.Text, nullable=False)  # Cover letter / message
+    resume_path = db.Column(db.String(500))  # Path to uploaded resume (optional)
+    
+    # Status
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CareerContact {self.name}>'
 
 # Newsletter Subscribers
 class NewsletterSubscriber(db.Model):

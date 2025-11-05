@@ -2564,3 +2564,123 @@ body.highlight-links a {
         height: 100px;
     }
 }
+
+/* ========================================
+   Modern Catering Section (Homepage)
+   ======================================== */
+.catering-modern-section {
+    position: relative;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 6rem 0;
+}
+
+.catering-bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%231a3a6e;stop-opacity:1" /><stop offset="100%" style="stop-color:%232d5492;stop-opacity:1" /></linearGradient></defs><rect width="1200" height="600" fill="url(%23grad1)"/></svg>');
+    z-index: 0;
+}
+
+.catering-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(26, 58, 110, 0.85) 0%, rgba(45, 84, 146, 0.75) 100%);
+    z-index: 1;
+}
+
+.catering-modern-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.catering-modern-title {
+    font-family: 'Playfair Display', 'Rubik', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    line-height: 1.2;
+}
+
+.catering-modern-subtitle {
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 2.5rem;
+    line-height: 1.8;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.btn-catering-modern {
+    display: inline-block;
+    background: var(--accent-color);
+    color: white;
+    padding: 1rem 3rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    border: 2px solid transparent;
+}
+
+.btn-catering-modern:hover {
+    background: var(--accent-dark);
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+}
+
+.btn-catering-modern i {
+    transition: transform 0.3s ease;
+}
+
+.btn-catering-modern:hover i {
+    transform: translateX(5px);
+}
+
+/* RTL Support */
+.rtl .btn-catering-modern:hover i {
+    transform: translateX(-5px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .catering-modern-section {
+        min-height: 400px;
+        padding: 4rem 0;
+    }
+    
+    .catering-modern-title {
+        font-size: 2rem;
+    }
+    
+    .catering-modern-subtitle {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .btn-catering-modern {
+        padding: 0.875rem 2rem;
+        font-size: 1rem;
+    }
+}

@@ -104,64 +104,26 @@
 
 <!-- Catering & Special Events Section -->
 {% if settings.enable_catering_section %}
-<section id="catering" class="section catering-section">
-    <div class="catering-bg-overlay"></div>
+<section id="catering" class="catering-modern-section">
+    <div class="catering-bg-image" {% if settings.catering_image %}style="background-image: url('{{ url_for('static', filename='uploads/' + settings.catering_image) }}');"{% endif %}></div>
+    <div class="catering-overlay"></div>
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6">
-                <div class="catering-content">
-                    <h2 class="section-title mb-4">{{ settings.catering_title_he if language == 'he' else settings.catering_title_en }}</h2>
-                    <p class="catering-subtitle mb-4">
-                        {{ settings.catering_subtitle_he if language == 'he' else settings.catering_subtitle_en }}
-                    </p>
-                    
-                    <!-- Catering Features -->
-                    <div class="catering-features mb-4">
-                        <div class="catering-feature">
-                            <i class="fas fa-utensils catering-icon"></i>
-                            <div class="catering-feature-text">
-                                <h5>{{ 'תפריטים מותאמים אישית' if language == 'he' else 'Custom Menus' }}</h5>
-                                <p>{{ 'נעצב תפריט מושלם לאירוע שלך' if language == 'he' else 'We\'ll design the perfect menu for your event' }}</p>
-                            </div>
-                        </div>
-                        <div class="catering-feature">
-                            <i class="fas fa-truck catering-icon"></i>
-                            <div class="catering-feature-text">
-                                <h5>{{ 'שירות באתר האירוע' if language == 'he' else 'On-site Service' }}</h5>
-                                <p>{{ 'צוות מקצועי שיגיע אליכם' if language == 'he' else 'Professional team at your location' }}</p>
-                            </div>
-                        </div>
-                        <div class="catering-feature">
-                            <i class="fas fa-glass-cheers catering-icon"></i>
-                            <div class="catering-feature-text">
-                                <h5>{{ 'חדר אוכל פרטי' if language == 'he' else 'Private Dining' }}</h5>
-                                <p>{{ 'חללים אינטימיים לאירועים מיוחדים' if language == 'he' else 'Intimate spaces for special occasions' }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- CTA Button -->
-                    {% if settings.enable_catering_page %}
-                    <a href="{{ url_for('catering_page') }}" class="btn btn-primary btn-lg btn-catering">
-                        <i class="fas fa-arrow-left me-2"></i>
-                        {{ 'למידע נוסף' if language == 'he' else 'Learn More' }}
-                    </a>
-                    {% else %}
-                    <a href="#contact" class="btn btn-primary btn-lg btn-catering">
-                        <i class="fas fa-envelope me-2"></i>
-                        {{ 'בקשו הצעת מחיר' if language == 'he' else 'Request a Quote' }}
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="catering-image-wrapper">
-                    <img src="{{ url_for('static', filename='images/catering-placeholder.jpg') }}" 
-                         alt="{{ 'קייטרינג אסייתי לאירועים' if language == 'he' else 'Asian catering for events' }}" 
-                         class="catering-image">
-                    <!-- Replace catering-placeholder.jpg with actual Asian catering image -->
-                </div>
-            </div>
+        <div class="catering-modern-content">
+            <h2 class="catering-modern-title">{{ settings.catering_title_he if language == 'he' else settings.catering_title_en }}</h2>
+            <p class="catering-modern-subtitle">
+                {{ settings.catering_subtitle_he if language == 'he' else settings.catering_subtitle_en }}
+            </p>
+            {% if settings.enable_catering_page %}
+            <a href="{{ url_for('catering_page') }}" class="btn-catering-modern">
+                {{ 'למידע נוסף' if language == 'he' else 'Learn More' }}
+                <i class="fas fa-arrow-{{ 'left' if language == 'he' else 'right' }} ms-2"></i>
+            </a>
+            {% else %}
+            <a href="{{ url_for('contact_page') }}" class="btn-catering-modern">
+                {{ 'צרו קשר' if language == 'he' else 'Contact Us' }}
+                <i class="fas fa-envelope ms-2"></i>
+            </a>
+            {% endif %}
         </div>
     </div>
 </section>

@@ -96,8 +96,9 @@ Preferred communication style: Simple, everyday language.
     -   **Online Ordering**: App-only ordering system. When web ordering is disabled (or when delivery is disabled), the order page redirects users to download the mobile app with clear messaging that orders and delivery are exclusively through the app.
     -   **Catering Page**: Minimal, clean catering page (/catering) with:
         -   Hero section with customizable title/subtitle
-        -   Gallery section displaying images from dedicated catering gallery (managed separately in admin)
-        -   Contact CTA section with customizable text
+        -   Gallery section displaying images from dedicated catering gallery (managed separately in admin via direct link in settings)
+        -   Dedicated contact form with event-specific fields (event date, event type, guest count)
+        -   Form submissions saved to separate CateringContact database table
         -   All text content controlled via admin settings
     -   **Table Reservations**: Integration with external reservation systems.
     -   **Branch Management**: Display with working hours, navigation links, and dynamic branch information.
@@ -109,7 +110,7 @@ Preferred communication style: Simple, everyday language.
     -   Core: ContactMessage, Reservation, SiteSettings, CustomSection, TermsOfUse
     -   Menu: MenuCategory (with footer_text, show_in_menu, show_in_order, featured, image_path), MenuItem, MenuSettings
     -   Media: MediaFile, GalleryPhoto
-    -   Catering: CateringGalleryImage (dedicated gallery for catering page with caption_he/en, alt_text_he/en, is_active, display_order)
+    -   Catering: CateringGalleryImage (dedicated gallery for catering page with caption_he/en, alt_text_he/en, is_active, display_order), CateringContact (name, email, phone, event_date, event_type, guest_count, message, is_read, created_at)
     -   Branch: Branch, WorkingHours
     -   Compliance: NewsletterSubscriber (email, name, is_active, subscribed_at, unsubscribed_at, source tracking)
     -   Stock Management: StockCategory, StockItem, StockLevel, StockTransaction, StockAlert, Supplier, ShoppingList, ShoppingListItem, StockSettings, Receipt, ReceiptItem

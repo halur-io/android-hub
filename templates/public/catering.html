@@ -189,6 +189,54 @@
             height: 250px;
         }
     }
+    
+    /* Contact Form Styles */
+    .contact-cta-section .card {
+        background: white;
+        border: none;
+        border-radius: 12px;
+    }
+    
+    .contact-cta-section .form-label {
+        color: #374151;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .contact-cta-section .form-control,
+    .contact-cta-section select.form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        color: #1f2937;
+    }
+    
+    .contact-cta-section .form-control:focus,
+    .contact-cta-section select.form-control:focus {
+        border-color: #1a3a6e;
+        box-shadow: 0 0 0 0.2rem rgba(26, 58, 110, 0.15);
+        outline: none;
+    }
+    
+    .btn-cta {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2.5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -246,12 +294,87 @@
     </div>
 </section>
 
-<!-- Contact CTA Section -->
+<!-- Contact Form Section -->
 <section class="contact-cta-section" id="contact-section">
     <div class="container">
         <h2 class="contact-cta-title">{{ settings.catering_page_cta_title_he if language == 'he' else settings.catering_page_cta_title_en }}</h2>
         <p class="contact-cta-subtitle">{{ settings.catering_page_cta_subtitle_he if language == 'he' else settings.catering_page_cta_subtitle_en }}</p>
-        <a href="{{ url_for('contact_page') }}" class="btn btn-cta">{{ 'צרו קשר' if language == 'he' else 'Contact Us' }}</a>
+        
+        <div class="row mt-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        {% if success %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            {{ 'תודה רבה! פנייתך נקלטה ונחזור אליך בהקדם' if language == 'he' else 'Thank you! We received your inquiry and will contact you soon' }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if error %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+                        
+                        <form method="POST" action="{{ url_for('catering_page') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'שם מלא *' if language == 'he' else 'Full Name *' }}</label>
+                                    <input type="text" class="form-control" name="name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'טלפון *' if language == 'he' else 'Phone *' }}</label>
+                                    <input type="tel" class="form-control" name="phone" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'אימייל *' if language == 'he' else 'Email *' }}</label>
+                                    <input type="email" class="form-control" name="email" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'תאריך האירוע (משוער)' if language == 'he' else 'Event Date (Estimated)' }}</label>
+                                    <input type="text" class="form-control" name="event_date" placeholder="{{ 'לדוגמה: 15/06/2025' if language == 'he' else 'e.g., June 15, 2025' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'סוג האירוע' if language == 'he' else 'Event Type' }}</label>
+                                    <select class="form-control" name="event_type">
+                                        <option value="">{{ 'בחר...' if language == 'he' else 'Select...' }}</option>
+                                        <option value="wedding">{{ 'חתונה' if language == 'he' else 'Wedding' }}</option>
+                                        <option value="corporate">{{ 'אירוע עסקי' if language == 'he' else 'Corporate Event' }}</option>
+                                        <option value="birthday">{{ 'יום הולדת' if language == 'he' else 'Birthday Party' }}</option>
+                                        <option value="bar_mitzvah">{{ 'בר/בת מצווה' if language == 'he' else 'Bar/Bat Mitzvah' }}</option>
+                                        <option value="other">{{ 'אחר' if language == 'he' else 'Other' }}</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'מספר אורחים (משוער)' if language == 'he' else 'Guest Count (Estimated)' }}</label>
+                                    <input type="number" class="form-control" name="guest_count" min="1" placeholder="{{ '50' if language == 'he' else '50' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">{{ 'הודעה / פרטים נוספים *' if language == 'he' else 'Message / Additional Details *' }}</label>
+                                <textarea class="form-control" name="message" rows="4" required placeholder="{{ 'ספרו לנו עוד על האירוע שלכם...' if language == 'he' else 'Tell us more about your event...' }}"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-cta w-100">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                {{ 'שלח פנייה' if language == 'he' else 'Send Inquiry' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}

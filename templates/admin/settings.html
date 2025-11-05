@@ -259,10 +259,14 @@
                                 </div>
                             </div>
                         </div>
-                        <p style="color: #6b7280; margin-top: 1rem; font-size: 0.9rem;">
-                            <i class="fas fa-info-circle me-1"></i>
-                            {{ 'ניהול תמונות הגלריה זמין בדף ניהול הגלריה' if (admin_language or 'he') == 'he' else 'Gallery images managed in Gallery management page' }}
-                        </p>
+                        <div class="alert alert-info mt-3" style="background-color: #f0f9ff; border-color: #3b82f6;">
+                            <i class="fas fa-images me-2" style="color: #3b82f6;"></i>
+                            <strong>{{ 'ניהול תמונות הגלריה:' if (admin_language or 'he') == 'he' else 'Gallery Image Management:' }}</strong>
+                            <a href="{{ url_for('admin.catering_gallery') }}" class="btn btn-sm btn-primary ms-2" target="_blank">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                {{ 'פתח ניהול גלריית קייטרינג' if (admin_language or 'he') == 'he' else 'Open Catering Gallery Manager' }}
+                            </a>
+                        </div>
                         
                         <div class="section-divider"></div>
                         

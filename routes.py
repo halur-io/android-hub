@@ -171,12 +171,50 @@ def gallery_page():
                          **context,
                          gallery_images=gallery_images)
 
-@app.route('/catering')
+@app.route('/catering', methods=['GET', 'POST'])
 def catering_page():
     """Catering & Special Events page"""
-    from models import CateringPackage, CateringHighlight, CateringGalleryImage
+    from models import CateringPackage, CateringHighlight, CateringGalleryImage, CateringContact
     
     context = get_context_data()
+    success = False
+    error = None
+    
+    # Handle form submission
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            event_date = request.form.get('event_date', '').strip()
+            event_type = request.form.get('event_type', '').strip()
+            guest_count = request.form.get('guest_count', '').strip()
+            message = request.form.get('message', '').strip()
+            
+            if not name or not email or not phone or not message:
+                error = 'נא למלא את כל השדות הנדרשים' if context.get('language') == 'he' else 'Please fill all required fields'
+            else:
+                # Save to database
+                contact = CateringContact(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    event_date=event_date if event_date else None,
+                    event_type=event_type if event_type else None,
+                    guest_count=int(guest_count) if guest_count else None,
+                    message=message
+                )
+                db.session.add(contact)
+                db.session.commit()
+                
+                success = True
+                
+                # TODO: Send email notification to restaurant
+                
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Catering contact form error: {str(e)}")
+            error = 'אירעה שגיאה. אנא נסה שוב' if context.get('language') == 'he' else 'An error occurred. Please try again'
     
     # Get active packages ordered by display order
     packages = CateringPackage.query.filter_by(is_active=True).order_by(CateringPackage.display_order).all()
@@ -191,7 +229,9 @@ def catering_page():
                          **context,
                          packages=packages,
                          highlights=highlights,
-                         gallery_images=gallery_images)
+                         gallery_images=gallery_images,
+                         success=success,
+                         error=error)
 
 @app.route('/terms')
 def terms_page():

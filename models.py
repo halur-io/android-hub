@@ -542,6 +542,23 @@ class ContactMessage(db.Model):
     def __repr__(self):
         return f'<ContactMessage {self.name}>'
 
+# Catering Contact Messages
+class CateringContact(db.Model):
+    __tablename__ = 'catering_contacts'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    event_date = db.Column(db.String(50), nullable=True)  # Preferred event date
+    event_type = db.Column(db.String(100), nullable=True)  # Wedding, Corporate, Birthday, etc.
+    guest_count = db.Column(db.Integer, nullable=True)  # Estimated number of guests
+    message = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CateringContact {self.name} - {self.event_type}>'
+
 # Newsletter Subscribers
 class NewsletterSubscriber(db.Model):
     __tablename__ = 'newsletter_subscribers'

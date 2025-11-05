@@ -233,6 +233,71 @@ def catering_page():
                          success=success,
                          error=error)
 
+@app.route('/careers', methods=['GET', 'POST'])
+def careers_page():
+    """Careers page with job positions and application form"""
+    from models import CareerPosition, CareerContact
+    
+    context = get_context_data()
+    success = False
+    error = None
+    
+    # Handle form submission
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            position_select = request.form.get('position_select', '').strip()
+            position_other = request.form.get('position_other', '').strip()
+            message = request.form.get('message', '').strip()
+            
+            if not name or not email or not phone or not message or not position_select:
+                error = 'נא למלא את כל השדות הנדרשים' if context.get('language') == 'he' else 'Please fill all required fields'
+            else:
+                # Determine position_id and position_other
+                position_id = None
+                position_other_text = None
+                
+                if position_select == 'other':
+                    if not position_other:
+                        error = 'נא לציין את המשרה המבוקשת' if context.get('language') == 'he' else 'Please specify the desired position'
+                    else:
+                        position_other_text = position_other
+                else:
+                    position_id = int(position_select)
+                
+                if not error:
+                    # Save to database
+                    contact = CareerContact(
+                        name=name,
+                        email=email,
+                        phone=phone,
+                        position_id=position_id,
+                        position_other=position_other_text,
+                        message=message
+                    )
+                    db.session.add(contact)
+                    db.session.commit()
+                    
+                    success = True
+                    
+                    # TODO: Send email notification to restaurant
+                
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Career application form error: {str(e)}")
+            error = 'אירעה שגיאה. אנא נסה שוב' if context.get('language') == 'he' else 'An error occurred. Please try again'
+    
+    # Get active positions ordered by display order
+    positions = CareerPosition.query.filter_by(is_active=True).order_by(CareerPosition.display_order).all()
+    
+    return render_template('public/careers.html',
+                         **context,
+                         positions=positions,
+                         success=success,
+                         error=error)
+
 @app.route('/terms')
 def terms_page():
     """Terms of Use page"""

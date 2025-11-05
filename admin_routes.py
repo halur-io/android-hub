@@ -494,6 +494,83 @@ def settings():
                 
                 settings.favicon_image = filename
         
+        # Catering Image Upload
+        if 'catering_image' in request.files:
+            file = request.files['catering_image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                original_ext = filename.rsplit('.', 1)[1].lower()
+                filename_base = filename.rsplit('.', 1)[0]
+                filename = f'catering_{timestamp}_{filename_base}.jpg'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                
+                # Save and optimize image
+                try:
+                    # Save original first to a temp location
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Verify file was saved and has content
+                    if not os.path.exists(temp_path) or os.path.getsize(temp_path) < 100:
+                        raise ValueError(f"Uploaded file is too small or empty: {os.path.getsize(temp_path) if os.path.exists(temp_path) else 0} bytes")
+                    
+                    # Open and verify image
+                    img = Image.open(temp_path)
+                    img.verify()
+                    img = Image.open(temp_path)
+                    
+                    if img.width < 10 or img.height < 10:
+                        raise ValueError(f"Image dimensions too small: {img.width}x{img.height}")
+                    
+                    print(f"Original catering image: {img.width}x{img.height}, mode: {img.mode}")
+                    
+                    # Resize if too large
+                    if img.width > 1920:
+                        ratio = 1920 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((1920, new_height), Image.Resampling.LANCZOS)
+                        print(f"Resized to: {img.width}x{img.height}")
+                    
+                    # Convert RGBA to RGB
+                    if img.mode == 'RGBA':
+                        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                        rgb_img.paste(img, mask=img.split()[3])
+                        img = rgb_img
+                        print("Converted RGBA to RGB")
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Save optimized version
+                    img.save(filepath, 'JPEG', quality=85, optimize=True)
+                    
+                    if not os.path.exists(filepath) or os.path.getsize(filepath) < 100:
+                        raise ValueError(f"Saved file is too small: {os.path.getsize(filepath)}")
+                    
+                    # Remove temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"Catering image optimized and saved: {filename} ({os.path.getsize(filepath)} bytes)")
+                except Exception as e:
+                    print(f"Catering image optimization error: {e}. Saving original file instead.")
+                    try:
+                        if 'temp_path' in locals() and os.path.exists(temp_path):
+                            import shutil
+                            shutil.copy2(temp_path, filepath)
+                            os.remove(temp_path)
+                            print(f"Saved original file: {filename}")
+                        else:
+                            file.seek(0)
+                            file.save(filepath)
+                            print(f"Saved file directly: {filename}")
+                    except Exception as e2:
+                        print(f"Failed to save catering image: {e2}")
+                        flash(f'Error uploading catering image: {str(e2)}', 'error')
+                
+                settings.catering_image = filename
+        
         # Color Scheme
         settings.primary_color = request.form.get('primary_color') or request.form.get('primary_color_text') or '#1a3a6e'
         settings.accent_color = request.form.get('accent_color') or request.form.get('accent_color_text') or '#dc3545'
@@ -508,12 +585,23 @@ def settings():
         settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'
         settings.enable_table_reservations = request.form.get('enable_table_reservations') == 'on'
         settings.enable_catering_section = request.form.get('enable_catering_section') == 'on'
+        settings.enable_catering_page = request.form.get('enable_catering_page') == 'on'
         
-        # Catering Section Content
+        # Catering Homepage Section Content
         settings.catering_title_he = request.form.get('catering_title_he')
         settings.catering_title_en = request.form.get('catering_title_en')
         settings.catering_subtitle_he = request.form.get('catering_subtitle_he')
         settings.catering_subtitle_en = request.form.get('catering_subtitle_en')
+        
+        # Dedicated Catering Page Content
+        settings.catering_hero_title_he = request.form.get('catering_hero_title_he')
+        settings.catering_hero_title_en = request.form.get('catering_hero_title_en')
+        settings.catering_hero_subtitle_he = request.form.get('catering_hero_subtitle_he')
+        settings.catering_hero_subtitle_en = request.form.get('catering_hero_subtitle_en')
+        settings.catering_overview_title_he = request.form.get('catering_overview_title_he')
+        settings.catering_overview_title_en = request.form.get('catering_overview_title_en')
+        settings.catering_overview_text_he = request.form.get('catering_overview_text_he')
+        settings.catering_overview_text_en = request.form.get('catering_overview_text_en')
         
         # Mobile App Settings
         settings.enable_app_download = request.form.get('enable_app_download') == 'on'

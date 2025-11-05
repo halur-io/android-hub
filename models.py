@@ -180,13 +180,25 @@ class SiteSettings(db.Model):
     service_fee_percentage = db.Column(db.Float, default=0.0)  # Service fee %
     currency_symbol = db.Column(db.String(10), default='₪')
     
-    # Catering & Special Events Settings
+    # Catering & Special Events Settings (Homepage Section)
     enable_catering_section = db.Column(db.Boolean, default=True)
     catering_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')
     catering_title_en = db.Column(db.String(200), default='Catering & Special Events')
     catering_subtitle_he = db.Column(db.Text, default='הביאו את הטעמים האסיאתיים האותנטיים לחגיגה הבאה שלכם. אנו מציעים תפריטי קייטרינג מותאמים אישית לחתונות, ימי הולדת ואירועי חברה.')
     catering_subtitle_en = db.Column(db.Text, default='Bring authentic Asian flavors to your next celebration. We offer custom catering menus for weddings, birthdays, and corporate events.')
     catering_image = db.Column(db.String(255))  # Catering section background/feature image
+    
+    # Catering Page Settings
+    enable_catering_page = db.Column(db.Boolean, default=True)
+    catering_hero_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')
+    catering_hero_title_en = db.Column(db.String(200), default='Catering & Special Events')
+    catering_hero_subtitle_he = db.Column(db.Text, default='הפכו את האירוע שלכם לבלתי נשכח עם המטבח האסייתי האותנטי שלנו')
+    catering_hero_subtitle_en = db.Column(db.Text, default='Make your event unforgettable with our authentic Asian cuisine')
+    catering_hero_image = db.Column(db.String(255))  # Hero image for catering page
+    catering_overview_title_he = db.Column(db.String(200), default='למה לבחור בנו?')
+    catering_overview_title_en = db.Column(db.String(200), default='Why Choose Us?')
+    catering_overview_text_he = db.Column(db.Text, default='אנו מביאים שנות ניסיון בהכנת אוכל אסייתי אותנטי לאירועים מכל הסוגים. הצוות שלנו מתמחה ביצירת תפריטים מותאמים אישית שיתאימו בדיוק לאירוע שלכם.')
+    catering_overview_text_en = db.Column(db.Text, default='We bring years of experience in preparing authentic Asian cuisine for events of all types. Our team specializes in creating custom menus perfectly suited to your event.')
     
     # Advanced Features
     google_analytics_id = db.Column(db.String(50))  # GA tracking ID
@@ -1373,3 +1385,86 @@ class PrivacyPolicy(db.Model):
     
     def __repr__(self):
         return f'<PrivacyPolicy {self.id}>'
+
+# Catering Package Model
+class CateringPackage(db.Model):
+    __tablename__ = 'catering_packages'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Package Information
+    name_he = db.Column(db.String(200), nullable=False)
+    name_en = db.Column(db.String(200), nullable=False)
+    description_he = db.Column(db.Text, nullable=False)
+    description_en = db.Column(db.Text, nullable=False)
+    
+    # Pricing & Details
+    price_range_he = db.Column(db.String(100))  # e.g., "₪150-200 לאורח"
+    price_range_en = db.Column(db.String(100))  # e.g., "₪150-200 per person"
+    min_guests = db.Column(db.Integer)  # Minimum number of guests
+    max_guests = db.Column(db.Integer)  # Maximum number of guests
+    
+    # Features (stored as JSON-like text, separated by newlines for simplicity)
+    features_he = db.Column(db.Text)  # Each feature on a new line
+    features_en = db.Column(db.Text)
+    
+    # Image
+    image_path = db.Column(db.String(255))
+    
+    # Display Settings
+    is_active = db.Column(db.Boolean, default=True)
+    is_featured = db.Column(db.Boolean, default=False)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CateringPackage {self.name_en}>'
+
+# Catering Highlight Model (Service Features)
+class CateringHighlight(db.Model):
+    __tablename__ = 'catering_highlights'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Highlight Information
+    title_he = db.Column(db.String(200), nullable=False)
+    title_en = db.Column(db.String(200), nullable=False)
+    description_he = db.Column(db.Text)
+    description_en = db.Column(db.Text)
+    
+    # Icon (Font Awesome class name, e.g., "fa-utensils")
+    icon = db.Column(db.String(100), default='fa-star')
+    
+    # Display Settings
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CateringHighlight {self.title_en}>'
+
+# Catering Gallery Image Model
+class CateringGalleryImage(db.Model):
+    __tablename__ = 'catering_gallery_images'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Image Information
+    file_path = db.Column(db.String(500), nullable=False)
+    caption_he = db.Column(db.String(255))
+    caption_en = db.Column(db.String(255))
+    alt_text_he = db.Column(db.String(255))  # For accessibility
+    alt_text_en = db.Column(db.String(255))
+    
+    # Display Settings
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CateringGalleryImage {self.id}>'

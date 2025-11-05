@@ -4786,6 +4786,24 @@ def edit_supplier(supplier_id):
     
     return render_template('admin/edit_supplier.html', supplier=supplier)
 
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_supplier(supplier_id):
+    """Delete supplier"""
+    from models import Supplier
+    
+    try:
+        supplier = Supplier.query.get_or_404(supplier_id)
+        db.session.delete(supplier)
+        db.session.commit()
+        
+        flash('ספק נמחק בהצלחה', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה במחיקת ספק: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
 
 @admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
 @login_required
@@ -5648,120 +5666,3 @@ def duplicate_print_template(template_id):
         'message': 'התבנית שוכפלה בהצלחה'
     }), 201
 
-
-# Catering & Events Management Routes
-@admin_bp.route('/catering-events')
-@login_required
-def catering_events():
-    """View all catering event requests"""
-    from models import CateringRequest
-    events = CateringRequest.query.order_by(CateringRequest.event_date.desc()).all()
-    return render_template('admin/catering_events.html', events=events)
-
-@admin_bp.route('/catering-events/<int:event_id>')
-@login_required
-def view_catering_event(event_id):
-    """View a specific catering event request"""
-    from models import CateringRequest
-    event = CateringRequest.query.get_or_404(event_id)
-    return render_template('admin/view_catering_event.html', event=event)
-
-@admin_bp.route('/catering-events/<int:event_id>/delete', methods=['POST'])
-@login_required
-def delete_catering_event(event_id):
-    """Delete a catering event request"""
-    from models import CateringRequest
-    event = CateringRequest.query.get_or_404(event_id)
-    db.session.delete(event)
-    db.session.commit()
-    flash('בקשת קייטרינג נמחקה בהצלחה', 'success')
-    return redirect(url_for('admin.catering_events'))
-
-@admin_bp.route('/catering-events/<int:event_id>/update-status', methods=['POST'])
-@login_required
-def update_catering_event_status(event_id):
-    """Update catering event status"""
-    from models import CateringRequest
-    event = CateringRequest.query.get_or_404(event_id)
-    status = request.form.get('status')
-    if status in ['pending', 'contacted', 'confirmed', 'completed']:
-        event.status = status
-        db.session.commit()
-        flash('סטטוס האירוע עודכן בהצלחה', 'success')
-    return redirect(url_for('admin.view_catering_event', event_id=event_id))
-
-# Career Management Routes
-@admin_bp.route('/job-listings')
-@login_required
-def job_listings():
-    """Manage job listings"""
-    from models import JobListing
-    jobs = JobListing.query.order_by(JobListing.posted_date.desc()).all()
-    return render_template('admin/job_listings.html', jobs=jobs)
-
-@admin_bp.route('/job-listings/add', methods=['GET', 'POST'])
-@login_required
-def add_job_listing():
-    """Add a new job listing"""
-    from models import JobListing
-    if request.method == 'POST':
-        job = JobListing(
-            title_he=request.form.get('title_he'),
-            title_en=request.form.get('title_en'),
-            description_he=request.form.get('description_he'),
-            description_en=request.form.get('description_en'),
-            requirements_he=request.form.get('requirements_he'),
-            requirements_en=request.form.get('requirements_en'),
-            location=request.form.get('location'),
-            employment_type=request.form.get('employment_type'),
-            is_urgent=request.form.get('is_urgent') == 'on',
-            is_active=True
-        )
-        db.session.add(job)
-        db.session.commit()
-        flash('המשרה נוספה בהצלחה', 'success')
-        return redirect(url_for('admin.job_listings'))
-    return render_template('admin/add_job_listing.html')
-
-@admin_bp.route('/job-listings/<int:job_id>/edit', methods=['GET', 'POST'])
-@login_required
-def edit_job_listing(job_id):
-    """Edit a job listing"""
-    from models import JobListing
-    job = JobListing.query.get_or_404(job_id)
-    if request.method == 'POST':
-        job.title_he = request.form.get('title_he')
-        job.title_en = request.form.get('title_en')
-        job.description_he = request.form.get('description_he')
-        job.description_en = request.form.get('description_en')
-        job.requirements_he = request.form.get('requirements_he')
-        job.requirements_en = request.form.get('requirements_en')
-        job.location = request.form.get('location')
-        job.employment_type = request.form.get('employment_type')
-        job.is_urgent = request.form.get('is_urgent') == 'on'
-        job.is_active = request.form.get('is_active') == 'on'
-        db.session.commit()
-        flash('המשרה עודכנה בהצלחה', 'success')
-        return redirect(url_for('admin.job_listings'))
-    return render_template('admin/edit_job_listing.html', job=job)
-
-@admin_bp.route('/job-listings/<int:job_id>/delete', methods=['POST'])
-@login_required
-def delete_job_listing(job_id):
-    """Delete a job listing"""
-    from models import JobListing
-    job = JobListing.query.get_or_404(job_id)
-    db.session.delete(job)
-    db.session.commit()
-    flash('המשרה נמחקה בהצלחה', 'success')
-    return redirect(url_for('admin.job_listings'))
-
-@admin_bp.route('/job-listings/<int:job_id>/toggle', methods=['POST'])
-@login_required
-def toggle_job_listing(job_id):
-    """Toggle job listing active status"""
-    from models import JobListing
-    job = JobListing.query.get_or_404(job_id)
-    job.is_active = not job.is_active
-    db.session.commit()
-    return jsonify({'success': True, 'is_active': job.is_active})

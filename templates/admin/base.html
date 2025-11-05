@@ -700,12 +700,6 @@
             <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
                 <i class="fas fa-calendar-check me-2"></i> {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'Reservations' }}
             </a>
-            <a class="nav-link {% if 'catering' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.catering_events') }}">
-                <i class="fas fa-calendar-alt me-2"></i> {{ 'אירועי קייטרינג' if (admin_language or 'he') == 'he' else 'Catering Events' }}
-            </a>
-            <a class="nav-link {% if 'job' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.job_listings') }}">
-                <i class="fas fa-briefcase me-2"></i> {{ 'משרות פתוחות' if (admin_language or 'he') == 'he' else 'Job Listings' }}
-            </a>
             <hr class="my-3">
             <a class="nav-link {% if request.endpoint == 'admin.microservices_dashboard' %}active{% endif %}" href="{{ url_for('admin.microservices_dashboard') }}">
                 <i class="fas fa-microchip me-2"></i> {{ 'מערכת הזמנות' if (admin_language or 'he') == 'he' else 'Ordering System' }}

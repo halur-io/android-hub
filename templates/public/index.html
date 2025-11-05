@@ -141,10 +141,17 @@
                     </div>
                     
                     <!-- CTA Button -->
+                    {% if settings.enable_catering_page %}
+                    <a href="{{ url_for('catering_page') }}" class="btn btn-primary btn-lg btn-catering">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        {{ 'למידע נוסף' if language == 'he' else 'Learn More' }}
+                    </a>
+                    {% else %}
                     <a href="#contact" class="btn btn-primary btn-lg btn-catering">
                         <i class="fas fa-envelope me-2"></i>
                         {{ 'בקשו הצעת מחיר' if language == 'he' else 'Request a Quote' }}
                     </a>
+                    {% endif %}
                 </div>
             </div>
             <div class="col-lg-6">

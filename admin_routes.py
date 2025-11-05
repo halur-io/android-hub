@@ -5894,3 +5894,123 @@ def duplicate_print_template(template_id):
         'message': 'התבנית שוכפלה בהצלחה'
     }), 201
 
+
+
+# =============================================================================
+# Careers Management Routes
+# =============================================================================
+
+@admin_bp.route('/careers')
+@login_required
+def careers():
+    """Careers management page"""
+    from models import CareerPosition
+    
+    positions = CareerPosition.query.order_by(CareerPosition.display_order).all()
+    
+    # Add to_json method for each position
+    for position in positions:
+        position.to_json = lambda self=position: {
+            'id': self.id,
+            'title_he': self.title_he,
+            'title_en': self.title_en,
+            'description_he': self.description_he,
+            'description_en': self.description_en,
+            'requirements_he': self.requirements_he,
+            'requirements_en': self.requirements_en,
+            'location_he': self.location_he,
+            'location_en': self.location_en,
+            'employment_type_he': self.employment_type_he,
+            'employment_type_en': self.employment_type_en,
+            'is_active': self.is_active,
+            'display_order': self.display_order
+        }
+    
+    message = request.args.get('message')
+    message_type = request.args.get('type', 'info')
+    
+    return render_template('admin/careers.html', 
+                         positions=positions,
+                         message=message,
+                         message_type=message_type)
+
+@admin_bp.route('/careers/add', methods=['POST'])
+@login_required
+def careers_add():
+    """Add new career position"""
+    try:
+        from models import CareerPosition
+        
+        position = CareerPosition(
+            title_he=request.form.get('title_he', ''),
+            title_en=request.form.get('title_en', ''),
+            description_he=request.form.get('description_he', ''),
+            description_en=request.form.get('description_en', ''),
+            requirements_he=request.form.get('requirements_he', ''),
+            requirements_en=request.form.get('requirements_en', ''),
+            location_he=request.form.get('location_he', ''),
+            location_en=request.form.get('location_en', ''),
+            employment_type_he=request.form.get('employment_type_he', ''),
+            employment_type_en=request.form.get('employment_type_en', ''),
+            display_order=int(request.form.get('display_order', 0)),
+            is_active=request.form.get('is_active') == '1'
+        )
+        
+        db.session.add(position)
+        db.session.commit()
+        
+        return redirect(url_for('admin.careers', message='Position added successfully', type='success'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error adding career position: {str(e)}")
+        return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+@admin_bp.route('/careers/edit', methods=['POST'])
+@login_required
+def careers_edit():
+    """Edit career position"""
+    try:
+        from models import CareerPosition
+        
+        position_id = int(request.form.get('position_id'))
+        position = CareerPosition.query.get_or_404(position_id)
+        
+        position.title_he = request.form.get('title_he', '')
+        position.title_en = request.form.get('title_en', '')
+        position.description_he = request.form.get('description_he', '')
+        position.description_en = request.form.get('description_en', '')
+        position.requirements_he = request.form.get('requirements_he', '')
+        position.requirements_en = request.form.get('requirements_en', '')
+        position.location_he = request.form.get('location_he', '')
+        position.location_en = request.form.get('location_en', '')
+        position.employment_type_he = request.form.get('employment_type_he', '')
+        position.employment_type_en = request.form.get('employment_type_en', '')
+        position.display_order = int(request.form.get('display_order', 0))
+        position.is_active = request.form.get('is_active') == '1'
+        
+        db.session.commit()
+        
+        return redirect(url_for('admin.careers', message='Position updated successfully', type='success'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating career position: {str(e)}")
+        return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+@admin_bp.route('/careers/delete', methods=['POST'])
+@login_required
+def careers_delete():
+    """Delete career position"""
+    try:
+        from models import CareerPosition
+        
+        position_id = int(request.form.get('position_id'))
+        position = CareerPosition.query.get_or_404(position_id)
+        
+        db.session.delete(position)
+        db.session.commit()
+        
+        return redirect(url_for('admin.careers', message='Position deleted successfully', type='success'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting career position: {str(e)}")
+        return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))

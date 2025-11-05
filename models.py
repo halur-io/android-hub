@@ -180,6 +180,14 @@ class SiteSettings(db.Model):
     service_fee_percentage = db.Column(db.Float, default=0.0)  # Service fee %
     currency_symbol = db.Column(db.String(10), default='₪')
     
+    # Catering & Special Events Settings
+    enable_catering_section = db.Column(db.Boolean, default=True)
+    catering_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')
+    catering_title_en = db.Column(db.String(200), default='Catering & Special Events')
+    catering_subtitle_he = db.Column(db.Text, default='הביאו את הטעמים האסיאתיים האותנטיים לחגיגה הבאה שלכם. אנו מציעים תפריטי קייטרינג מותאמים אישית לחתונות, ימי הולדת ואירועי חברה.')
+    catering_subtitle_en = db.Column(db.Text, default='Bring authentic Asian flavors to your next celebration. We offer custom catering menus for weddings, birthdays, and corporate events.')
+    catering_image = db.Column(db.String(255))  # Catering section background/feature image
+    
     # Advanced Features
     google_analytics_id = db.Column(db.String(50))  # GA tracking ID
     facebook_pixel_id = db.Column(db.String(50))  # FB Pixel ID

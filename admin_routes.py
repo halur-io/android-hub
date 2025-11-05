@@ -507,6 +507,13 @@ def settings():
         settings.enable_gallery = request.form.get('enable_gallery') == 'on'
         settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'
         settings.enable_table_reservations = request.form.get('enable_table_reservations') == 'on'
+        settings.enable_catering_section = request.form.get('enable_catering_section') == 'on'
+        
+        # Catering Section Content
+        settings.catering_title_he = request.form.get('catering_title_he')
+        settings.catering_title_en = request.form.get('catering_title_en')
+        settings.catering_subtitle_he = request.form.get('catering_subtitle_he')
+        settings.catering_subtitle_en = request.form.get('catering_subtitle_en')
         
         # Mobile App Settings
         settings.enable_app_download = request.form.get('enable_app_download') == 'on'

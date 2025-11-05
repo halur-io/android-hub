@@ -152,6 +152,45 @@
                     </div>
                 </section>
                 
+                <!-- Catering & Events Content -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-utensils"></i>
+                            {{ 'קייטרינג ואירועים' if (admin_language or 'he') == 'he' else 'Catering & Events' }}
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="form-row-two-col">
+                            <!-- Hebrew -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת</label>
+                                    <input type="text" class="form-control-modern" name="catering_title_he" value="{{ settings.catering_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">תיאור</label>
+                                    <textarea class="form-control-modern" name="catering_subtitle_he" rows="3">{{ settings.catering_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- English -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title</label>
+                                    <input type="text" class="form-control-modern" name="catering_title_en" value="{{ settings.catering_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle</label>
+                                    <textarea class="form-control-modern" name="catering_subtitle_en" rows="3">{{ settings.catering_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
                 <!-- Site Info & Social Media -->
                 <section class="settings-section">
                     <div class="settings-section-header">
@@ -447,6 +486,17 @@
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="enable_table_reservations" {% if settings.enable_table_reservations %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'קייטרינג ואירועים' if (admin_language or 'he') == 'he' else 'Catering & Events' }}</label>
+                                <span class="toggle-description">{{ 'הצג קטע קייטרינג ואירועים מיוחדים בדף הבית' if (admin_language or 'he') == 'he' else 'Show catering & special events section on homepage' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_catering_section" {% if settings.enable_catering_section %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>

@@ -171,6 +171,28 @@ def gallery_page():
                          **context,
                          gallery_images=gallery_images)
 
+@app.route('/catering')
+def catering_page():
+    """Catering & Special Events page"""
+    from models import CateringPackage, CateringHighlight, CateringGalleryImage
+    
+    context = get_context_data()
+    
+    # Get active packages ordered by display order
+    packages = CateringPackage.query.filter_by(is_active=True).order_by(CateringPackage.display_order).all()
+    
+    # Get active highlights
+    highlights = CateringHighlight.query.filter_by(is_active=True).order_by(CateringHighlight.display_order).all()
+    
+    # Get active gallery images
+    gallery_images = CateringGalleryImage.query.filter_by(is_active=True).order_by(CateringGalleryImage.display_order).all()
+    
+    return render_template('public/catering.html',
+                         **context,
+                         packages=packages,
+                         highlights=highlights,
+                         gallery_images=gallery_images)
+
 @app.route('/terms')
 def terms_page():
     """Terms of Use page"""

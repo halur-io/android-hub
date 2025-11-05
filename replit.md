@@ -74,6 +74,7 @@ Preferred communication style: Simple, everyday language.
         -   About Section
         -   Catering - Homepage Section
         -   Catering Page - Full Control (hero, gallery, CTA text)
+        -   Careers Page - Full Control (hero, gallery, CTA text)
         -   Site Info & Social Media
     -   **Menu Management**: Modern tabbed interface with:
         -   Categories Tab: Full category management with icons, colors, display order
@@ -89,6 +90,7 @@ Preferred communication style: Simple, everyday language.
         -   Mobile-optimized for kitchen staff updates
     -   **Media Management**: Admin upload for hero videos/images and gallery images.
     -   **Catering Gallery Management**: Dedicated admin interface (/admin/catering-gallery) for managing catering page images with upload, delete, and active/inactive toggle controls.
+    -   **Careers Management**: Dedicated admin interface (/admin/careers) for managing job positions with add/edit/delete operations, bilingual content support, and display order control.
     -   **Payment Configuration**: Admin panel for managing multiple payment providers and API credentials.
     -   **User Management**: Role-Based Access Control (RBAC) with granular permissions.
     -   **Custom Sections**: Admin-controlled homepage sections supporting text, HTML, and embedded content.
@@ -100,6 +102,13 @@ Preferred communication style: Simple, everyday language.
         -   Dedicated contact form with event-specific fields (event date, event type, guest count)
         -   Form submissions saved to separate CateringContact database table
         -   All text content controlled via admin settings
+    -   **Careers Page**: Clean careers page (/careers) mirroring catering page structure with:
+        -   Hero section with customizable title/subtitle
+        -   Job listings section displaying active positions
+        -   Application form with specific fields (name, email, phone, position applied, message)
+        -   Form submissions saved to separate CareerContact database table
+        -   All text content controlled via admin settings
+        -   Admin interface for managing job positions (add/edit/delete)
     -   **Table Reservations**: Integration with external reservation systems.
     -   **Branch Management**: Display with working hours, navigation links, and dynamic branch information.
     -   **Cart System**: Client-side cart management with server-side order processing.
@@ -111,6 +120,7 @@ Preferred communication style: Simple, everyday language.
     -   Menu: MenuCategory (with footer_text, show_in_menu, show_in_order, featured, image_path), MenuItem, MenuSettings
     -   Media: MediaFile, GalleryPhoto
     -   Catering: CateringGalleryImage (dedicated gallery for catering page with caption_he/en, alt_text_he/en, is_active, display_order), CateringContact (name, email, phone, event_date, event_type, guest_count, message, is_read, created_at)
+    -   Careers: CareerPosition (title_he/en, description_he/en, requirements_he/en, location_he/en, employment_type_he/en, is_active, display_order), CareerContact (name, email, phone, position_applied, message, is_read, created_at)
     -   Branch: Branch, WorkingHours
     -   Compliance: NewsletterSubscriber (email, name, is_active, subscribed_at, unsubscribed_at, source tracking)
     -   Stock Management: StockCategory, StockItem, StockLevel, StockTransaction, StockAlert, Supplier, ShoppingList, ShoppingListItem, StockSettings, Receipt, ReceiptItem

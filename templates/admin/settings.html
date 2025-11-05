@@ -298,6 +298,47 @@
                         </div>
                     </section>
                     
+                    <!-- Careers - Homepage Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCareersHome" aria-expanded="false">
+                                <i class="fas fa-briefcase"></i>
+                                {{ 'קריירה - סקציה בדף הבית' if (admin_language or 'he') == 'he' else 'Careers - Homepage Section' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCareersHome" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">התוכן שמוצג בסקציית הקריירה בדף הבית / Content displayed in the careers section on homepage</p>
+                        <div class="form-row-two-col">
+                            <!-- Hebrew -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת</label>
+                                    <input type="text" class="form-control-modern" name="careers_title_he" value="{{ settings.careers_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">תיאור</label>
+                                    <textarea class="form-control-modern" name="careers_subtitle_he" rows="3">{{ settings.careers_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- English -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title</label>
+                                    <input type="text" class="form-control-modern" name="careers_title_en" value="{{ settings.careers_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle</label>
+                                    <textarea class="form-control-modern" name="careers_subtitle_en" rows="3">{{ settings.careers_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </section>
+                    
                     <!-- Careers Page - Full Control -->
                     <section class="settings-section accordion-item">
                         <div class="settings-section-header accordion-header">

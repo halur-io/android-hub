@@ -203,6 +203,14 @@ class SiteSettings(db.Model):
     catering_page_cta_subtitle_he = db.Column(db.String(500), default='צרו קשר עכשיו לייעוץ חינם ותפריט מותאם אישית')
     catering_page_cta_subtitle_en = db.Column(db.String(500), default='Contact us now for a free consultation and custom menu')
     
+    # Careers Section (Homepage Preview)
+    enable_careers_section = db.Column(db.Boolean, default=True)
+    careers_title_he = db.Column(db.String(200), default='הצטרפו לצוות שלנו')
+    careers_title_en = db.Column(db.String(200), default='Join Our Team')
+    careers_subtitle_he = db.Column(db.Text, default='מחפשים אנשי מקצוע מוכשרים להצטרף למשפחת סומו. גלו הזדמנויות קריירה מרגשות במטבח האסייתי המוביל.')
+    careers_subtitle_en = db.Column(db.Text, default='Looking for talented professionals to join the SUMO family. Discover exciting career opportunities at the leading Asian kitchen.')
+    careers_image = db.Column(db.String(255))  # Careers section background/feature image
+    
     # Careers Page Settings
     careers_page_hero_title_he = db.Column(db.String(200), default='הצטרפו לצוות שלנו')
     careers_page_hero_title_en = db.Column(db.String(200), default='Join Our Team')
@@ -216,7 +224,6 @@ class SiteSettings(db.Model):
     careers_page_cta_title_en = db.Column(db.String(200), default='Interested in Joining?')
     careers_page_cta_subtitle_he = db.Column(db.String(500), default='שלחו לנו את פרטיכם ונחזור אליכם בהקדם')
     careers_page_cta_subtitle_en = db.Column(db.String(500), default='Send us your details and we will get back to you soon')
-    careers_image = db.Column(db.String(500))  # Hero background image for careers page
     
     # Advanced Features
     google_analytics_id = db.Column(db.String(50))  # GA tracking ID

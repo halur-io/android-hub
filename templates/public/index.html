@@ -129,6 +129,26 @@
 </section>
 {% endif %}
 
+<!-- Careers Section -->
+{% if settings.enable_careers_section %}
+<section id="careers" class="careers-section">
+    <div class="careers-bg-image" {% if settings.careers_image %}style="background-image: url('{{ url_for('static', filename='uploads/' + settings.careers_image) }}');"{% endif %}></div>
+    <div class="careers-overlay"></div>
+    <div class="container">
+        <div class="careers-content">
+            <h2 class="careers-title">{{ settings.careers_title_he if language == 'he' else settings.careers_title_en }}</h2>
+            <p class="careers-subtitle">
+                {{ settings.careers_subtitle_he if language == 'he' else settings.careers_subtitle_en }}
+            </p>
+            <a href="{{ url_for('careers_page') }}" class="btn-careers">
+                {{ 'צפו במשרות' if language == 'he' else 'View Positions' }}
+                <i class="fas fa-arrow-{{ 'left' if language == 'he' else 'right' }} ms-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Branches Section -->
 {% if branches %}
 <section class="section bg-light section-with-pattern">

@@ -1,8 +1,8 @@
 {% extends "public/base.html" %}
 
-{% block title %}{{ settings.catering_hero_title_he if language == 'he' else settings.catering_hero_title_en }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+{% block title %}{{ settings.catering_page_hero_title_he if language == 'he' else settings.catering_page_hero_title_en }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
 
-{% block description %}{{ settings.catering_hero_subtitle_he if language == 'he' else settings.catering_hero_subtitle_en }}{% endblock %}
+{% block description %}{{ settings.catering_page_hero_subtitle_he if language == 'he' else settings.catering_page_hero_subtitle_en }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -196,8 +196,8 @@
 <!-- Hero Section -->
 <section class="catering-hero">
     <div class="catering-hero-content">
-        <h1 class="catering-hero-title">{{ settings.catering_hero_title_he if language == 'he' else settings.catering_hero_title_en }}</h1>
-        <p class="catering-hero-subtitle">{{ settings.catering_hero_subtitle_he if language == 'he' else settings.catering_hero_subtitle_en }}</p>
+        <h1 class="catering-hero-title">{{ settings.catering_page_hero_title_he if language == 'he' else settings.catering_page_hero_title_en }}</h1>
+        <p class="catering-hero-subtitle">{{ settings.catering_page_hero_subtitle_he if language == 'he' else settings.catering_page_hero_subtitle_en }}</p>
         <a href="#contact-section" class="btn btn-cta">{{ 'צרו קשר' if language == 'he' else 'Contact Us' }}</a>
     </div>
 </section>
@@ -205,8 +205,8 @@
 <!-- Gallery Section -->
 <section class="catering-gallery-section">
     <div class="container">
-        <h2 class="section-title">{{ 'גלריה' if language == 'he' else 'Gallery' }}</h2>
-        <p class="section-subtitle">{{ 'צפו בתמונות מאירועים קודמים' if language == 'he' else 'View photos from previous events' }}</p>
+        <h2 class="section-title">{{ settings.catering_page_gallery_title_he if language == 'he' else settings.catering_page_gallery_title_en }}</h2>
+        <p class="section-subtitle">{{ settings.catering_page_gallery_subtitle_he if language == 'he' else settings.catering_page_gallery_subtitle_en }}</p>
         
         <div class="gallery-grid">
             {% if gallery_images %}
@@ -249,8 +249,8 @@
 <!-- Contact CTA Section -->
 <section class="contact-cta-section" id="contact-section">
     <div class="container">
-        <h2 class="contact-cta-title">{{ 'מוכנים להפוך את האירוע שלכם למיוחד?' if language == 'he' else 'Ready to Make Your Event Special?' }}</h2>
-        <p class="contact-cta-subtitle">{{ 'צרו קשר עכשיו לייעוץ חינם ותפריט מותאם אישית' if language == 'he' else 'Contact us now for a free consultation and custom menu' }}</p>
+        <h2 class="contact-cta-title">{{ settings.catering_page_cta_title_he if language == 'he' else settings.catering_page_cta_title_en }}</h2>
+        <p class="contact-cta-subtitle">{{ settings.catering_page_cta_subtitle_he if language == 'he' else settings.catering_page_cta_subtitle_en }}</p>
         <a href="{{ url_for('contact_page') }}" class="btn btn-cta">{{ 'צרו קשר' if language == 'he' else 'Contact Us' }}</a>
     </div>
 </section>

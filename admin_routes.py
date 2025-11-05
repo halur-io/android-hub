@@ -594,14 +594,18 @@ def settings():
         settings.catering_subtitle_en = request.form.get('catering_subtitle_en')
         
         # Dedicated Catering Page Content
-        settings.catering_hero_title_he = request.form.get('catering_hero_title_he')
-        settings.catering_hero_title_en = request.form.get('catering_hero_title_en')
-        settings.catering_hero_subtitle_he = request.form.get('catering_hero_subtitle_he')
-        settings.catering_hero_subtitle_en = request.form.get('catering_hero_subtitle_en')
-        settings.catering_overview_title_he = request.form.get('catering_overview_title_he')
-        settings.catering_overview_title_en = request.form.get('catering_overview_title_en')
-        settings.catering_overview_text_he = request.form.get('catering_overview_text_he')
-        settings.catering_overview_text_en = request.form.get('catering_overview_text_en')
+        settings.catering_page_hero_title_he = request.form.get('catering_page_hero_title_he')
+        settings.catering_page_hero_title_en = request.form.get('catering_page_hero_title_en')
+        settings.catering_page_hero_subtitle_he = request.form.get('catering_page_hero_subtitle_he')
+        settings.catering_page_hero_subtitle_en = request.form.get('catering_page_hero_subtitle_en')
+        settings.catering_page_gallery_title_he = request.form.get('catering_page_gallery_title_he')
+        settings.catering_page_gallery_title_en = request.form.get('catering_page_gallery_title_en')
+        settings.catering_page_gallery_subtitle_he = request.form.get('catering_page_gallery_subtitle_he')
+        settings.catering_page_gallery_subtitle_en = request.form.get('catering_page_gallery_subtitle_en')
+        settings.catering_page_cta_title_he = request.form.get('catering_page_cta_title_he')
+        settings.catering_page_cta_title_en = request.form.get('catering_page_cta_title_en')
+        settings.catering_page_cta_subtitle_he = request.form.get('catering_page_cta_subtitle_he')
+        settings.catering_page_cta_subtitle_en = request.form.get('catering_page_cta_subtitle_en')
         
         # Mobile App Settings
         settings.enable_app_download = request.form.get('enable_app_download') == 'on'
@@ -2288,6 +2292,135 @@ def parse_word_menu_demo():
 def gallery():
     photos = GalleryPhoto.query.order_by(GalleryPhoto.display_order).all()
     return render_template('admin/gallery.html', photos=photos)
+
+# Catering Gallery Management
+@admin_bp.route('/catering-gallery')
+@login_required
+def catering_gallery():
+    from models import CateringGalleryImage
+    images = CateringGalleryImage.query.order_by(CateringGalleryImage.display_order).all()
+    return render_template('admin/catering_gallery.html', images=images)
+
+@admin_bp.route('/catering-gallery/upload', methods=['POST'])
+@login_required
+def upload_catering_gallery():
+    """Upload catering gallery image"""
+    try:
+        from models import CateringGalleryImage
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        
+        # Always save as .jpg for consistency
+        base_name = filename.rsplit('.', 1)[0]
+        filename = f"catering_{timestamp}_{base_name}.jpg"
+        
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        
+        # Resize and optimize image
+        try:
+            img = Image.open(file.stream)
+            
+            # Convert RGBA to RGB if needed
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            
+            # Resize if too large
+            max_width = 1920
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Save with optimization
+            img.save(filepath, 'JPEG', quality=85, optimize=True)
+            
+        except Exception as img_error:
+            current_app.logger.error(f"Image processing error: {str(img_error)}")
+            file.seek(0)
+            file.save(filepath)
+        
+        # Create database entry
+        image = CateringGalleryImage(
+            file_path=f'/static/uploads/{filename}',
+            caption_he=request.form.get('caption_he', ''),
+            caption_en=request.form.get('caption_en', ''),
+            alt_text_he=request.form.get('alt_text_he', ''),
+            alt_text_en=request.form.get('alt_text_en', ''),
+            display_order=CateringGalleryImage.query.count()
+        )
+        db.session.add(image)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'id': image.id,
+            'file_path': image.file_path
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Catering gallery upload error: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/catering-gallery/<int:image_id>/delete', methods=['POST'])
+@login_required
+def delete_catering_gallery_image(image_id):
+    """Delete catering gallery image"""
+    try:
+        from models import CateringGalleryImage
+        image = CateringGalleryImage.query.get_or_404(image_id)
+        
+        # Delete file
+        if image.file_path:
+            file_path = image.file_path.lstrip('/')
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        
+        db.session.delete(image)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/catering-gallery/<int:image_id>/update', methods=['POST'])
+@login_required
+def update_catering_gallery_image(image_id):
+    """Update catering gallery image details"""
+    try:
+        from models import CateringGalleryImage
+        image = CateringGalleryImage.query.get_or_404(image_id)
+        
+        image.caption_he = request.form.get('caption_he', '')
+        image.caption_en = request.form.get('caption_en', '')
+        image.alt_text_he = request.form.get('alt_text_he', '')
+        image.alt_text_en = request.form.get('alt_text_en', '')
+        image.is_active = request.form.get('is_active') == 'true'
+        
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/gallery/upload-single', methods=['POST'])
 @login_required

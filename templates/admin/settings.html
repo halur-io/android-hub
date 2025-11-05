@@ -196,68 +196,100 @@
                         </div>
                     </section>
                     
-                    <!-- Dedicated Catering Page Content -->
+                    <!-- Catering Page Control -->
                     <section class="settings-section accordion-item">
                         <div class="settings-section-header accordion-header">
                             <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCateringPage" aria-expanded="false">
                                 <i class="fas fa-file-alt"></i>
-                                {{ 'עמוד קייטרינג ייעודי' if (admin_language or 'he') == 'he' else 'Dedicated Catering Page' }}
+                                {{ 'עמוד קייטרינג - שליטה מלאה' if (admin_language or 'he') == 'he' else 'Catering Page - Full Control' }}
                             </h3>
                         </div>
                         <div id="collapseCateringPage" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
                             <div class="settings-section-body accordion-body">
-                        <p style="color: #6b7280; margin-bottom: 1.5rem;">תוכן עמוד הקייטרינג המפורט (אם מופעל) / Detailed catering page content (if enabled)</p>
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">שליטה מלאה על כל ההיבטים של עמוד הקייטרינג / Full control over all aspects of the catering page</p>
                         
                         <!-- Hero Section -->
-                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;">Hero Section</h5>
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-image me-2"></i>Hero Section</h5>
                         <div class="form-row-two-col">
                             <div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">כותרת Hero (עברית)</label>
-                                    <input type="text" class="form-control-modern" name="catering_hero_title_he" value="{{ settings.catering_hero_title_he }}">
+                                    <label class="form-label-modern">כותרת (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_hero_title_he" value="{{ settings.catering_page_hero_title_he }}">
                                 </div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">כותרת משנה Hero (עברית)</label>
-                                    <textarea class="form-control-modern" name="catering_hero_subtitle_he" rows="2">{{ settings.catering_hero_subtitle_he }}</textarea>
+                                    <label class="form-label-modern">כותרת משנה (עברית)</label>
+                                    <textarea class="form-control-modern" name="catering_page_hero_subtitle_he" rows="2">{{ settings.catering_page_hero_subtitle_he }}</textarea>
                                 </div>
                             </div>
                             <div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">Hero Title (English)</label>
-                                    <input type="text" class="form-control-modern" name="catering_hero_title_en" value="{{ settings.catering_hero_title_en }}">
+                                    <label class="form-label-modern">Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_hero_title_en" value="{{ settings.catering_page_hero_title_en }}">
                                 </div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">Hero Subtitle (English)</label>
-                                    <textarea class="form-control-modern" name="catering_hero_subtitle_en" rows="2">{{ settings.catering_hero_subtitle_en }}</textarea>
+                                    <label class="form-label-modern">Subtitle (English)</label>
+                                    <textarea class="form-control-modern" name="catering_page_hero_subtitle_en" rows="2">{{ settings.catering_page_hero_subtitle_en }}</textarea>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="section-divider"></div>
                         
-                        <!-- Overview Section -->
-                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;">Overview Section</h5>
+                        <!-- Gallery Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-images me-2"></i>Gallery Section</h5>
                         <div class="form-row-two-col">
                             <div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">כותרת Overview (עברית)</label>
-                                    <input type="text" class="form-control-modern" name="catering_overview_title_he" value="{{ settings.catering_overview_title_he }}">
+                                    <label class="form-label-modern">כותרת גלריה (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_title_he" value="{{ settings.catering_page_gallery_title_he }}">
                                 </div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">טקסט Overview (עברית)</label>
-                                    <textarea class="form-control-modern" name="catering_overview_text_he" rows="4">{{ settings.catering_overview_text_he }}</textarea>
+                                    <label class="form-label-modern">כותרת משנה גלריה (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_subtitle_he" value="{{ settings.catering_page_gallery_subtitle_he }}">
                                 </div>
                             </div>
                             <div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">Overview Title (English)</label>
-                                    <input type="text" class="form-control-modern" name="catering_overview_title_en" value="{{ settings.catering_overview_title_en }}">
+                                    <label class="form-label-modern">Gallery Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_title_en" value="{{ settings.catering_page_gallery_title_en }}">
                                 </div>
                                 <div class="form-group-modern">
-                                    <label class="form-label-modern">Overview Text (English)</label>
-                                    <textarea class="form-control-modern" name="catering_overview_text_en" rows="4">{{ settings.catering_overview_text_en }}</textarea>
+                                    <label class="form-label-modern">Gallery Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_subtitle_en" value="{{ settings.catering_page_gallery_subtitle_en }}">
                                 </div>
                             </div>
+                        </div>
+                        <p style="color: #6b7280; margin-top: 1rem; font-size: 0.9rem;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            {{ 'ניהול תמונות הגלריה זמין בדף ניהול הגלריה' if (admin_language or 'he') == 'he' else 'Gallery images managed in Gallery management page' }}
+                        </p>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- CTA Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-phone me-2"></i>Contact CTA Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_title_he" value="{{ settings.catering_page_cta_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_subtitle_he" value="{{ settings.catering_page_cta_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_title_en" value="{{ settings.catering_page_cta_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_subtitle_en" value="{{ settings.catering_page_cta_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
                             </div>
                         </div>
                     </section>

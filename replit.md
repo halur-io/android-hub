@@ -64,11 +64,17 @@ Preferred communication style: Simple, everyday language.
     -   **Cookie Consent Banner**: GDPR/Israeli-compliant cookie consent banner with LocalStorage persistence, Accept/Decline options, bilingual messaging, and link to privacy policy.
 -   **Admin Dashboard**:
     -   **Site Settings**: Modern horizontal tabs interface with 5 tabs at the top:
-        -   General: Hero section, about content, site info, social media links
+        -   General: Hero section, about content, site info, social media links, catering homepage section, and full catering page control (hero, gallery, CTA sections)
         -   Branding: Hero images, logo, favicon, brand colors with live preview
         -   Features: Toggle switches for all major features (ordering, delivery, menu, gallery, etc.)
         -   Delivery: Costs, free delivery threshold, estimated times, zones info
         -   Advanced: Analytics IDs, announcement banners, maintenance mode
+    -   **General Settings Organization**: All sections in General tab use collapsible Bootstrap accordions for better organization:
+        -   Hero Section (open by default)
+        -   About Section
+        -   Catering - Homepage Section
+        -   Catering Page - Full Control (hero, gallery, CTA text)
+        -   Site Info & Social Media
     -   **Menu Management**: Modern tabbed interface with:
         -   Categories Tab: Full category management with icons, colors, display order
         -   Items Tab: Quick availability toggle for mobile updates
@@ -82,11 +88,17 @@ Preferred communication style: Simple, everyday language.
         -   Reports Tab: Analytics and cost tracking
         -   Mobile-optimized for kitchen staff updates
     -   **Media Management**: Admin upload for hero videos/images and gallery images.
+    -   **Catering Gallery Management**: Dedicated admin interface (/admin/catering-gallery) for managing catering page images with upload, delete, and active/inactive toggle controls.
     -   **Payment Configuration**: Admin panel for managing multiple payment providers and API credentials.
     -   **User Management**: Role-Based Access Control (RBAC) with granular permissions.
     -   **Custom Sections**: Admin-controlled homepage sections supporting text, HTML, and embedded content.
 -   **Core Functionality**:
     -   **Online Ordering**: App-only ordering system. When web ordering is disabled (or when delivery is disabled), the order page redirects users to download the mobile app with clear messaging that orders and delivery are exclusively through the app.
+    -   **Catering Page**: Minimal, clean catering page (/catering) with:
+        -   Hero section with customizable title/subtitle
+        -   Gallery section displaying images from dedicated catering gallery (managed separately in admin)
+        -   Contact CTA section with customizable text
+        -   All text content controlled via admin settings
     -   **Table Reservations**: Integration with external reservation systems.
     -   **Branch Management**: Display with working hours, navigation links, and dynamic branch information.
     -   **Cart System**: Client-side cart management with server-side order processing.
@@ -97,6 +109,7 @@ Preferred communication style: Simple, everyday language.
     -   Core: ContactMessage, Reservation, SiteSettings, CustomSection, TermsOfUse
     -   Menu: MenuCategory (with footer_text, show_in_menu, show_in_order, featured, image_path), MenuItem, MenuSettings
     -   Media: MediaFile, GalleryPhoto
+    -   Catering: CateringGalleryImage (dedicated gallery for catering page with caption_he/en, alt_text_he/en, is_active, display_order)
     -   Branch: Branch, WorkingHours
     -   Compliance: NewsletterSubscriber (email, name, is_active, subscribed_at, unsubscribed_at, source tracking)
     -   Stock Management: StockCategory, StockItem, StockLevel, StockTransaction, StockAlert, Supplier, ShoppingList, ShoppingListItem, StockSettings, Receipt, ReceiptItem

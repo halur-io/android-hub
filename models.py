@@ -190,15 +190,18 @@ class SiteSettings(db.Model):
     
     # Catering Page Settings
     enable_catering_page = db.Column(db.Boolean, default=True)
-    catering_hero_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')
-    catering_hero_title_en = db.Column(db.String(200), default='Catering & Special Events')
-    catering_hero_subtitle_he = db.Column(db.Text, default='הפכו את האירוע שלכם לבלתי נשכח עם המטבח האסייתי האותנטי שלנו')
-    catering_hero_subtitle_en = db.Column(db.Text, default='Make your event unforgettable with our authentic Asian cuisine')
-    catering_hero_image = db.Column(db.String(255))  # Hero image for catering page
-    catering_overview_title_he = db.Column(db.String(200), default='למה לבחור בנו?')
-    catering_overview_title_en = db.Column(db.String(200), default='Why Choose Us?')
-    catering_overview_text_he = db.Column(db.Text, default='אנו מביאים שנות ניסיון בהכנת אוכל אסייתי אותנטי לאירועים מכל הסוגים. הצוות שלנו מתמחה ביצירת תפריטים מותאמים אישית שיתאימו בדיוק לאירוע שלכם.')
-    catering_overview_text_en = db.Column(db.Text, default='We bring years of experience in preparing authentic Asian cuisine for events of all types. Our team specializes in creating custom menus perfectly suited to your event.')
+    catering_page_hero_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')
+    catering_page_hero_title_en = db.Column(db.String(200), default='Catering & Special Events')
+    catering_page_hero_subtitle_he = db.Column(db.Text, default='הפכו את האירוע שלכם לבלתי נשכח עם המטבח האסייתי האותנטי שלנו')
+    catering_page_hero_subtitle_en = db.Column(db.Text, default='Make your event unforgettable with our authentic Asian cuisine')
+    catering_page_gallery_title_he = db.Column(db.String(200), default='גלריה')
+    catering_page_gallery_title_en = db.Column(db.String(200), default='Gallery')
+    catering_page_gallery_subtitle_he = db.Column(db.String(500), default='צפו בתמונות מאירועים קודמים')
+    catering_page_gallery_subtitle_en = db.Column(db.String(500), default='View photos from previous events')
+    catering_page_cta_title_he = db.Column(db.String(200), default='מוכנים להפוך את האירוע שלכם למיוחד?')
+    catering_page_cta_title_en = db.Column(db.String(200), default='Ready to Make Your Event Special?')
+    catering_page_cta_subtitle_he = db.Column(db.String(500), default='צרו קשר עכשיו לייעוץ חינם ותפריט מותאם אישית')
+    catering_page_cta_subtitle_en = db.Column(db.String(500), default='Contact us now for a free consultation and custom menu')
     
     # Advanced Features
     google_analytics_id = db.Column(db.String(50))  # GA tracking ID

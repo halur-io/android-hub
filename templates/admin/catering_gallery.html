@@ -1,0 +1,207 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'ניהול גלריית קייטרינג' if (admin_language or 'he') == 'he' else 'Catering Gallery Management' }} - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fas fa-images me-2"></i>
+    {{ 'ניהול גלריית קייטרינג' if (admin_language or 'he') == 'he' else 'Catering Gallery Management' }}
+</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-upload me-2"></i> 
+        {{ 'העלאת תמונות לגלריית הקייטרינג' if (admin_language or 'he') == 'he' else 'Upload Catering Gallery Images' }}
+    </div>
+    <div class="card-body">
+        <form id="cateringGalleryUploadForm" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">{{ 'בחר תמונה' if (admin_language or 'he') == 'he' else 'Select Image' }}</label>
+                    <input type="file" class="form-control" id="fileInput" name="file" accept="image/*" required>
+                    <small class="text-muted">{{ 'JPG, PNG או GIF' if (admin_language or 'he') == 'he' else 'JPG, PNG or GIF' }}</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-upload me-2"></i> {{ 'העלה' if (admin_language or 'he') == 'he' else 'Upload' }}
+                    </button>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label class="form-label">{{ 'כיתוב עברית' if (admin_language or 'he') == 'he' else 'Caption Hebrew' }}</label>
+                    <input type="text" class="form-control" name="caption_he" placeholder="{{ 'אופציונלי' if (admin_language or 'he') == 'he' else 'Optional' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ 'Caption English' if (admin_language or 'he') == 'he' else 'Caption English' }}</label>
+                    <input type="text" class="form-control" name="caption_en" placeholder="{{ 'Optional' if (admin_language or 'he') == 'he' else 'Optional' }}">
+                </div>
+            </div>
+            
+            <!-- Upload Status -->
+            <div id="uploadStatus" style="display: none;" class="mt-3">
+                <div class="alert" id="uploadAlert"></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="fas fa-images me-2"></i> 
+        {{ 'תמונות בגלריית הקייטרינג' if (admin_language or 'he') == 'he' else 'Catering Gallery Images' }}
+        <span class="badge bg-primary ms-2">{{ images|length }}</span>
+    </div>
+    <div class="card-body">
+        <div class="row" id="imagesList">
+            {% for image in images %}
+            <div class="col-md-4 col-sm-6 mb-4" id="image-{{ image.id }}">
+                <div class="card h-100">
+                    <img src="{{ image.file_path }}" class="card-img-top" style="height: 250px; object-fit: cover;" alt="{{ image.alt_text_he or image.alt_text_en or 'Catering image' }}">
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input toggle-active" type="checkbox" id="active-{{ image.id }}" 
+                                   data-id="{{ image.id }}" {% if image.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="active-{{ image.id }}">
+                                {{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}
+                            </label>
+                        </div>
+                        {% if image.caption_he %}
+                        <p class="small text-muted mb-1"><strong>עברית:</strong> {{ image.caption_he }}</p>
+                        {% endif %}
+                        {% if image.caption_en %}
+                        <p class="small text-muted mb-1"><strong>EN:</strong> {{ image.caption_en }}</p>
+                        {% endif %}
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-danger delete-image" data-id="{{ image.id }}">
+                                <i class="fas fa-trash"></i> {{ 'מחק' if (admin_language or 'he') == 'he' else 'Delete' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not images %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> 
+                    {{ 'אין תמונות בגלריית הקייטרינג. העלה תמונות כדי להתחיל.' if (admin_language or 'he') == 'he' else 'No images in catering gallery. Upload images to get started.' }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Upload form handler
+document.getElementById('cateringGalleryUploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const statusDiv = document.getElementById('uploadStatus');
+    const alertDiv = document.getElementById('uploadAlert');
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>{{ 'מעלה...' if (admin_language or 'he') == 'he' else 'Uploading...' }}';
+    
+    try {
+        const response = await fetch('{{ url_for('admin.upload_catering_gallery') }}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.style.display = 'block';
+            alertDiv.className = 'alert alert-success';
+            alertDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>{{ 'התמונה הועלתה בהצלחה!' if (admin_language or 'he') == 'he' else 'Image uploaded successfully!' }}';
+            
+            // Reload page after 1 second
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            throw new Error(data.error || 'Upload failed');
+        }
+    } catch (error) {
+        statusDiv.style.display = 'block';
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + error.message;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+});
+
+// Delete image handler
+document.querySelectorAll('.delete-image').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        if (!confirm('{{ 'האם אתה בטוח שברצונך למחוק תמונה זו?' if (admin_language or 'he') == 'he' else 'Are you sure you want to delete this image?' }}')) {
+            return;
+        }
+        
+        const imageId = this.dataset.id;
+        const formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+        
+        try {
+            const response = await fetch(`{{ url_for('admin.delete_catering_gallery_image', image_id=0) }}`.replace('/0/', `/${imageId}/`), {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById(`image-${imageId}`).remove();
+                
+                // Check if no images left
+                if (document.querySelectorAll('.delete-image').length === 0) {
+                    location.reload();
+                }
+            } else {
+                alert(data.error || 'Delete failed');
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+});
+
+// Toggle active status handler
+document.querySelectorAll('.toggle-active').forEach(checkbox => {
+    checkbox.addEventListener('change', async function() {
+        const imageId = this.dataset.id;
+        const isActive = this.checked;
+        const formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+        formData.append('is_active', isActive ? 'true' : 'false');
+        
+        try {
+            const response = await fetch(`{{ url_for('admin.update_catering_gallery_image', image_id=0) }}`.replace('/0/', `/${imageId}/`), {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                this.checked = !isActive; // Revert
+                alert(data.error || 'Update failed');
+            }
+        } catch (error) {
+            this.checked = !isActive; // Revert
+            alert(error.message);
+        }
+    });
+});
+</script>
+{% endblock %}

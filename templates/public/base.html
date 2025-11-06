@@ -96,7 +96,7 @@
                     </li>
                     {% if settings.enable_online_ordering %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('order_page') }}">{{ 'הזמנה' if language == 'he' else 'Order' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_order' if theme == 'example2' else 'order_page') }}">{{ 'הזמנה' if language == 'he' else 'Order' }}</a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
@@ -122,7 +122,7 @@
                     {% endif %}
                     {% if settings.enable_online_ordering %}
                     <li class="nav-item">
-                        <a class="nav-link cart-link" href="{{ url_for('order_page') }}#cart">
+                        <a class="nav-link cart-link" href="{{ url_for('example2_order' if theme == 'example2' else 'order_page') }}#cart">
                             <i class="fas fa-shopping-cart"></i>
                             <span class="cart-badge" id="cart-count">0</span>
                         </a>

@@ -669,3 +669,38 @@ def example2_terms():
     terms = TermsOfUse.query.filter_by(is_active=True).first()
     context['terms'] = terms
     return render_template('public/terms.html', **context)
+
+@app.route('/example2/order')
+def example2_order():
+    """Example 2 Order page with black/gold theme"""
+    context = get_context_data()
+    context['theme'] = 'example2'
+    
+    ordering_enabled = context['settings'].enable_online_ordering and context['settings'].enable_delivery
+    
+    if not ordering_enabled:
+        return render_template('public/order.html',
+                             **context,
+                             ordering_disabled=True,
+                             categories=[])
+    
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+        is_available=True,
+        allow_delivery=True
+    ).order_by(MenuItem.display_order).all()
+    
+    items_by_category = {}
+    for item in all_items:
+        if item.category_id not in items_by_category:
+            items_by_category[item.category_id] = []
+        items_by_category[item.category_id].append(item)
+    
+    for category in categories:
+        category.items = items_by_category.get(category.id, [])
+    
+    return render_template('public/order.html',
+                         **context,
+                         ordering_disabled=False,
+                         categories=categories)

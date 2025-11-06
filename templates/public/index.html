@@ -78,7 +78,7 @@
     </svg>
 </div>
 
-<!-- Our Story Section (About + Reservation Combined) -->
+<!-- Our Story Section (About + Reservation + App Download Combined) -->
 {% if settings.about_content_he or settings.about_content_en %}
 <section class="section story-section">
     <div class="story-bg-image"></div>
@@ -89,36 +89,39 @@
                 {{ settings.about_content_he if language == 'he' else settings.about_content_en }}
             </div>
             
-            {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage and reservation_settings.reservation_system_url %}
             <div class="story-cta">
-                <p class="story-cta-text">{{ 'מוכנים לחוות את זה בעצמכם?' if language == 'he' else 'Ready to experience it yourself?' }}</p>
-                <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-story-reserve">
-                    {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
-                </a>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
-<!-- App Download Section -->
-{% if settings.enable_app_download and (settings.app_store_url or settings.google_play_url) %}
-<section id="app-download" class="section app-download-simple">
-    <div class="container">
-        <div class="app-simple-content">
-            <h3 class="app-simple-title">{{ 'הזמנות ומשלוחים דרך האפליקציה' if language == 'he' else 'Orders & Delivery via App' }}</h3>
-            <div class="app-icons-inline">
-                {% if settings.app_store_url %}
-                <a href="{{ settings.app_store_url }}" class="app-icon-link" target="_blank">
-                    <i class="fab fa-apple"></i>
-                </a>
-                {% endif %}
-                {% if settings.google_play_url %}
-                <a href="{{ settings.google_play_url }}" class="app-icon-link" target="_blank">
-                    <i class="fab fa-google-play"></i>
-                </a>
-                {% endif %}
+                <p class="story-cta-text">{{ 'בחרו את חווית האוכל שלכם' if language == 'he' else 'Choose your dining experience' }}</p>
+                
+                <div class="story-options">
+                    {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage and reservation_settings.reservation_system_url %}
+                    <div class="story-option">
+                        <h4 class="option-title">{{ 'הזמנת שולחן' if language == 'he' else 'Reserve a Table' }}</h4>
+                        <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-story-option">
+                            <i class="fas fa-calendar-check"></i>
+                            {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if settings.enable_app_download and (settings.app_store_url or settings.google_play_url) %}
+                    <div class="story-option">
+                        <h4 class="option-title">{{ 'משלוח ומשלוח עצמי' if language == 'he' else 'Delivery & Takeaway' }}</h4>
+                        <div class="app-download-inline">
+                            {% if settings.app_store_url %}
+                            <a href="{{ settings.app_store_url }}" class="app-icon-small" target="_blank" title="iOS App">
+                                <i class="fab fa-apple"></i>
+                            </a>
+                            {% endif %}
+                            {% if settings.google_play_url %}
+                            <a href="{{ settings.google_play_url }}" class="app-icon-small" target="_blank" title="Android App">
+                                <i class="fab fa-google-play"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        <p class="option-note">{{ 'הורידו את האפליקציה' if language == 'he' else 'Download the app' }}</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

@@ -97,10 +97,32 @@
     }
     
     .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        display: flex;
         gap: 2rem;
         margin-top: 3rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 1rem;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .gallery-grid::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .gallery-grid::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .gallery-grid::-webkit-scrollbar-thumb {
+        background: #1a3a6e;
+        border-radius: 10px;
+    }
+    
+    .gallery-grid::-webkit-scrollbar-thumb:hover {
+        background: #dc3545;
     }
     
     .gallery-item {
@@ -108,6 +130,8 @@
         overflow: hidden;
         border-radius: 12px;
         height: 350px;
+        min-width: 300px;
+        flex-shrink: 0;
         background: white;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         transition: all 0.3s ease;

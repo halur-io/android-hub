@@ -3931,6 +3931,22 @@ def mark_message_read(id):
     db.session.commit()
     return jsonify({'success': True})
 
+@admin_bp.route('/catering-contacts')
+@login_required
+def catering_contacts():
+    from models import CateringContact
+    contacts = CateringContact.query.order_by(CateringContact.created_at.desc()).all()
+    return render_template('admin/catering_contacts.html', contacts=contacts)
+
+@admin_bp.route('/catering-contacts/mark-read/<int:id>', methods=['POST'])
+@login_required
+def mark_catering_contact_read(id):
+    from models import CateringContact
+    contact = CateringContact.query.get_or_404(id)
+    contact.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
 # Reservations Management
 @admin_bp.route('/reservations')
 @login_required

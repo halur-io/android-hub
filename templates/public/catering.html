@@ -289,8 +289,9 @@
             {% if gallery_images %}
                 {% for image in gallery_images %}
                 <div class="gallery-item">
-                    <img src="{{ url_for('static', filename=image.file_path) }}" 
-                         alt="{{ image.alt_text_he if language == 'he' else image.alt_text_en or 'Catering photo' }}">
+                    <img src="{{ image.file_path }}" 
+                         alt="{{ image.alt_text_he if language == 'he' else image.alt_text_en or 'Catering photo' }}"
+                         loading="lazy">
                     {% if image.caption_he or image.caption_en %}
                     <div class="gallery-caption">
                         {{ image.caption_he if language == 'he' else image.caption_en }}

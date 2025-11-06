@@ -78,9 +78,10 @@
                     <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}">
                         {% if show_images and item.image_path %}
                         <div class="item-image-wrapper">
-                            <img src="{{ url_for('static', filename='uploads/' + item.image_path) }}" 
+                            <img src="{{ item.image_path }}" 
                                  alt="{{ item.name_he if language == 'he' else item.name_en }}" 
-                                 class="item-image">
+                                 class="item-image"
+                                 loading="lazy">
                         </div>
                         {% endif %}
                         

@@ -480,3 +480,192 @@ def internal_error(error):
     # Return proper 500 error page for public routes
     context = get_context_data()
     return render_template('public/500.html', **context), 500
+
+# Example 2 Routes - Black/Dramatic/Elegant Theme
+@app.route('/example2/')
+def example2_index():
+    """Example 2 Homepage with dramatic black/gold theme"""
+    context = get_context_data()
+    context['theme'] = 'example2'
+    
+    hero_video = MediaFile.query.filter_by(
+        section='hero',
+        file_type='video',
+        is_active=True
+    ).order_by(MediaFile.display_order).first()
+    
+    featured_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+        is_signature=True,
+        is_available=True
+    ).order_by(MenuItem.display_order).limit(6).all()
+    
+    gallery_images = GalleryPhoto.query.filter_by(
+        is_active=True
+    ).order_by(GalleryPhoto.display_order).limit(8).all()
+    
+    reservation_settings = ReservationSettings.query.first()
+    if not reservation_settings:
+        reservation_settings = ReservationSettings()
+    
+    custom_sections = CustomSection.query.filter_by(
+        is_active=True,
+        show_on_homepage=True
+    ).order_by(CustomSection.display_order).all()
+    
+    return render_template('public/index.html',
+                         **context,
+                         hero_video=hero_video,
+                         featured_items=featured_items,
+                         gallery_images=gallery_images,
+                         reservation_settings=reservation_settings,
+                         custom_sections=custom_sections)
+
+@app.route('/example2/menu')
+def example2_menu():
+    """Example 2 Menu page with black/gold theme"""
+    context = get_context_data()
+    context['theme'] = 'example2'
+    
+    menu_images = MediaFile.query.filter_by(
+        section='menu',
+        is_active=True
+    ).order_by(MediaFile.display_order).all()
+    
+    categories = MenuCategory.query.filter_by(is_active=True, show_in_menu=True).order_by(MenuCategory.display_order).all()
+    
+    all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+        is_available=True
+    ).order_by(MenuItem.display_order).all()
+    
+    items_by_category = {}
+    for item in all_items:
+        if item.category_id not in items_by_category:
+            items_by_category[item.category_id] = []
+        items_by_category[item.category_id].append(item)
+    
+    for category in categories:
+        category.items = items_by_category.get(category.id, [])
+    
+    return render_template('public/menu.html',
+                         **context,
+                         menu_images=menu_images,
+                         categories=categories)
+
+@app.route('/example2/gallery')
+def example2_gallery():
+    """Example 2 Gallery page with black/gold theme"""
+    context = get_context_data()
+    context['theme'] = 'example2'
+    
+    gallery_images = MediaFile.query.filter_by(
+        section='gallery',
+        file_type='image',
+        is_active=True
+    ).order_by(MediaFile.display_order).all()
+    
+    return render_template('public/gallery.html',
+                         **context,
+                         gallery_images=gallery_images)
+
+@app.route('/example2/catering', methods=['GET', 'POST'])
+def example2_catering():
+    """Example 2 Catering page with black/gold theme"""
+    from models import CateringPackage, CateringHighlight, CateringGalleryImage, CateringContact
+    
+    context = get_context_data()
+    context['theme'] = 'example2'
+    success = False
+    error = None
+    
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            event_date = request.form.get('event_date', '').strip()
+            event_type = request.form.get('event_type', '').strip()
+            guest_count = request.form.get('guest_count', '').strip()
+            message = request.form.get('message', '').strip()
+            
+            if not name or not email or not phone or not message:
+                error = 'נא למלא את כל השדות הנדרשים' if context.get('language') == 'he' else 'Please fill all required fields'
+            else:
+                contact = CateringContact(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    event_date=event_date if event_date else None,
+                    event_type=event_type if event_type else None,
+                    guest_count=int(guest_count) if guest_count else None,
+                    message=message
+                )
+                db.session.add(contact)
+                db.session.commit()
+                success = True
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Catering contact form error: {str(e)}")
+            error = 'אירעה שגיאה. אנא נסה שוב' if context.get('language') == 'he' else 'An error occurred. Please try again'
+    
+    packages = CateringPackage.query.filter_by(is_active=True).order_by(CateringPackage.display_order).all()
+    highlights = CateringHighlight.query.filter_by(is_active=True).order_by(CateringHighlight.display_order).all()
+    gallery_images = CateringGalleryImage.query.filter_by(is_active=True).order_by(CateringGalleryImage.display_order).all()
+    
+    return render_template('public/catering.html',
+                         **context,
+                         packages=packages,
+                         highlights=highlights,
+                         gallery_images=gallery_images,
+                         success=success,
+                         error=error)
+
+@app.route('/example2/contact', methods=['GET', 'POST'])
+def example2_contact():
+    """Example 2 Contact page with black/gold theme"""
+    from models import ContactMessage
+    
+    context = get_context_data()
+    context['theme'] = 'example2'
+    form = ContactForm()
+    
+    if form.validate_on_submit():
+        try:
+            contact = ContactMessage(
+                name=form.name.data,
+                email=form.email.data,
+                phone=form.phone.data,
+                subject=form.subject.data,
+                message=form.message.data
+            )
+            db.session.add(contact)
+            db.session.commit()
+            
+            flash('הודעתך נשלחה בהצלחה!' if context['language'] == 'he' else 'Your message has been sent successfully!', 'success')
+            return redirect(url_for('example2_contact'))
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f'Contact form error: {e}')
+            flash('אירעה שגיאה בשליחת ההודעה' if context['language'] == 'he' else 'An error occurred sending your message', 'error')
+    
+    return render_template('public/contact.html', **context, form=form)
+
+@app.route('/example2/careers')
+def example2_careers():
+    """Example 2 Careers page with black/gold theme"""
+    from models import CareerPosition
+    
+    context = get_context_data()
+    context['theme'] = 'example2'
+    
+    positions = CareerPosition.query.filter_by(is_active=True).order_by(CareerPosition.display_order).all()
+    
+    return render_template('public/careers.html', **context, positions=positions)
+
+@app.route('/example2/terms')
+def example2_terms():
+    """Example 2 Terms page with black/gold theme"""
+    context = get_context_data()
+    context['theme'] = 'example2'
+    terms = TermsOfUse.query.filter_by(is_active=True).first()
+    context['terms'] = terms
+    return render_template('public/terms.html', **context)

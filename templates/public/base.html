@@ -45,6 +45,9 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/public.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app-simple.css') }}">
+    {% if theme == 'example2' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/example2.css') }}">
+    {% endif %}
     
     {% block extra_css %}{% endblock %}
 </head>
@@ -72,7 +75,7 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('example2_index' if theme == 'example2' else 'index') }}">
                 {% if settings.logo_image %}
                 <img src="{{ url_for('static', filename='uploads/' + settings.logo_image) }}" alt="Logo" class="navbar-logo me-2">
                 {% endif %}
@@ -86,10 +89,10 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">{{ 'בית' if language == 'he' else 'Home' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_index' if theme == 'example2' else 'index') }}">{{ 'בית' if language == 'he' else 'Home' }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('menu_page') }}">{{ 'תפריט' if language == 'he' else 'Menu' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_menu' if theme == 'example2' else 'menu_page') }}">{{ 'תפריט' if language == 'he' else 'Menu' }}</a>
                     </li>
                     {% if settings.enable_online_ordering %}
                     <li class="nav-item">
@@ -97,18 +100,18 @@
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('gallery_page') }}">{{ 'גלריה' if language == 'he' else 'Gallery' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_gallery' if theme == 'example2' else 'gallery_page') }}">{{ 'גלריה' if language == 'he' else 'Gallery' }}</a>
                     </li>
                     {% if settings.enable_catering_page %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('catering_page') }}">{{ 'קייטרינג' if language == 'he' else 'Catering' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_catering' if theme == 'example2' else 'catering_page') }}">{{ 'קייטרינג' if language == 'he' else 'Catering' }}</a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('careers_page') }}">{{ 'קריירה' if language == 'he' else 'Careers' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_careers' if theme == 'example2' else 'careers_page') }}">{{ 'קריירה' if language == 'he' else 'Careers' }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('contact_page') }}">{{ 'צור קשר' if language == 'he' else 'Contact' }}</a>
+                        <a class="nav-link" href="{{ url_for('example2_contact' if theme == 'example2' else 'contact_page') }}">{{ 'צור קשר' if language == 'he' else 'Contact' }}</a>
                     </li>
                     {% if settings.enable_english_language %}
                     <li class="nav-item">

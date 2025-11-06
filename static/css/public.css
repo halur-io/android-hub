@@ -2831,11 +2831,100 @@ body.highlight-links a {
     transform: translateX(-5px);
 }
 
+/* ========================================
+   Clean Catering Section with Elegant Textbox
+   ======================================== */
+.catering-clean-section {
+    position: relative;
+    min-height: 400px;
+    overflow: hidden;
+}
+
+.catering-link {
+    display: block;
+    position: relative;
+    min-height: 400px;
+    text-decoration: none;
+    transition: all 0.4s ease;
+}
+
+.catering-link:hover .catering-bg-image {
+    transform: scale(1.05);
+}
+
+.catering-link:hover .catering-textbox {
+    transform: translate(-50%, -5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+.catering-clean-section .catering-bg-image {
+    opacity: 1;
+    transition: transform 0.6s ease;
+}
+
+.catering-textbox {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem 3.5rem;
+    border-radius: 50px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.4s ease;
+    border: 2px solid rgba(26, 58, 110, 0.1);
+}
+
+.catering-textbox-text {
+    font-family: 'Playfair Display', 'Rubik', serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #1a3a6e;
+    letter-spacing: 0.5px;
+}
+
+.catering-arrow {
+    font-size: 1.5rem;
+    color: #dc3545;
+    transition: all 0.3s ease;
+}
+
+.catering-link:hover .catering-arrow {
+    transform: translateX(5px);
+}
+
+.rtl .catering-link:hover .catering-arrow {
+    transform: translateX(-5px);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
-    .catering-modern-section {
+    .catering-modern-section,
+    .catering-clean-section {
         min-height: 400px;
         padding: 4rem 0;
+    }
+    
+    .catering-link {
+        min-height: 300px;
+    }
+    
+    .catering-textbox {
+        bottom: 2rem;
+        padding: 1.2rem 2.5rem;
+        gap: 1rem;
+    }
+    
+    .catering-textbox-text {
+        font-size: 1.4rem;
+    }
+    
+    .catering-arrow {
+        font-size: 1.2rem;
     }
     
     .catering-modern-title {

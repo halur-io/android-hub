@@ -147,30 +147,30 @@
 
 <!-- Catering & Special Events Section -->
 {% if settings.enable_catering_section %}
+<section id="catering" class="catering-clean-section">
+    <a href="{{ url_for('catering_page') if settings.enable_catering_page else url_for('contact_page') }}" class="catering-link">
+        <div class="catering-bg-image" {% if settings.catering_image %}style="background-image: url('{{ url_for('static', filename='uploads/' + settings.catering_image) }}');"{% endif %}></div>
+        <div class="catering-textbox">
+            <span class="catering-textbox-text">{{ 'קייטרינג ואירועים' if language == 'he' else 'Catering & Events' }}</span>
+            <i class="fas fa-arrow-{{ 'left' if language == 'he' else 'right' }} catering-arrow"></i>
+        </div>
+    </a>
+</section>
+{% endif %}
+
+<!-- SAVED STATE - Previous catering design (commented out)
 <section id="catering" class="catering-modern-section">
-    <div class="catering-bg-image" {% if settings.catering_image %}style="background-image: url('{{ url_for('static', filename='uploads/' + settings.catering_image) }}');"{% endif %}></div>
+    <div class="catering-bg-image" style="background-image: url('...')"></div>
     <div class="catering-overlay"></div>
     <div class="container">
         <div class="catering-modern-content">
-            <h2 class="catering-modern-title">{{ settings.catering_title_he if language == 'he' else settings.catering_title_en }}</h2>
-            <p class="catering-modern-subtitle">
-                {{ settings.catering_subtitle_he if language == 'he' else settings.catering_subtitle_en }}
-            </p>
-            {% if settings.enable_catering_page %}
-            <a href="{{ url_for('catering_page') }}" class="btn-catering-modern">
-                {{ 'למידע נוסף' if language == 'he' else 'Learn More' }}
-                <i class="fas fa-arrow-{{ 'left' if language == 'he' else 'right' }} ms-2"></i>
-            </a>
-            {% else %}
-            <a href="{{ url_for('contact_page') }}" class="btn-catering-modern">
-                {{ 'צרו קשר' if language == 'he' else 'Contact Us' }}
-                <i class="fas fa-envelope ms-2"></i>
-            </a>
-            {% endif %}
+            <h2 class="catering-modern-title">Title</h2>
+            <p class="catering-modern-subtitle">Subtitle</p>
+            <a href="#" class="btn-catering-modern">Learn More</a>
         </div>
     </div>
 </section>
-{% endif %}
+-->
 
 <!-- Branches Section -->
 {% if branches %}

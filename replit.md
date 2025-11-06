@@ -14,6 +14,7 @@ Preferred communication style: Simple, everyday language.
 -   **Frontend Framework**: Flask-rendered Jinja2 templates (chosen for SEO and simplicity).
 -   **Styling**: Bootstrap 5 RTL with custom CSS, Google Fonts (Playfair Display, Inter, Rubik), and Font Awesome 6.4.0.
 -   **Color Scheme**: Navy Blue (#1a3a6e) and Red (#dc3545), derived from the restaurant's logo.
+-   **Example2 Theme**: Black/dramatic/elegant alternative theme available at `/example2/` with deep blacks (#0a0a0a, #1a1a1a), gold accents (#d4af37, #c9a961), and burgundy highlights (#8b0000) - a parallel version of the entire site showcasing an upscale, luxurious aesthetic
 -   **Responsive Design**: Mobile-first approach with 100% mobile optimization.
 -   **Language Support**: Session-based language switching with full Right-to-Left (RTL) support for Hebrew and English.
 -   **Dynamic Visuals**: Incorporates hero videos/images with parallax, animated elements (light rays, particles), gradient overlays, SVG wave/curved dividers, and rotating icon dividers for an engaging user experience.
@@ -33,6 +34,7 @@ Preferred communication style: Simple, everyday language.
 -   **Email System**: Flask-Mail for notifications.
 -   **Security**: CSRF protection and environment-based configuration.
 -   **Logging**: Python logging for debugging.
+-   **Theme System**: Conditional CSS loading via context variable enables parallel design versions (example2.css overrides public.css when theme='example2'). All example2 routes set theme flag and use example2-prefixed route names for isolated navigation.
 -   **Microservices Architecture**:
     -   **Core Services**: Auth, Order, Payment, Delivery, Kitchen, Notification, and Configuration services.
     -   **Communication**: Internal RESTful APIs, WebSockets for real-time updates, Message Queue for inter-service communication, and a shared PostgreSQL database with service-specific schemas.

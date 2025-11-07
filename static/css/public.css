@@ -137,46 +137,62 @@ html {
         flex-shrink: 0 !important;
     }
     
-    /* Mobile Menu Dropdown */
-    .navbar-collapse {
+    /* Mobile Menu Dropdown - Compact Design */
+    .navbar .navbar-collapse {
         width: 100% !important;
         flex-basis: 100% !important;
         flex-grow: 1 !important;
     }
     
-    .navbar-collapse:not(.show) {
+    .navbar .navbar-collapse:not(.show):not(.collapsing) {
         display: none !important;
     }
     
-    .navbar-collapse.show,
-    .navbar-collapse.collapsing {
+    .navbar .navbar-collapse.show,
+    .navbar .navbar-collapse.collapsing {
         display: block !important;
         width: 100% !important;
-        margin-top: 1rem;
+        margin-top: 0.5rem !important;
+        background-color: #ffffff !important;
+        border-radius: 0 0 8px 8px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        padding: 0.5rem 0 !important;
     }
     
-    .navbar-nav {
+    .navbar .navbar-nav {
         width: 100% !important;
-        padding: 1rem 0;
+        padding: 0 !important;
+        margin: 0 !important;
     }
     
-    .navbar-nav .nav-item {
+    .navbar .navbar-nav .nav-item {
         width: 100% !important;
-        text-align: center;
-        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(26, 58, 110, 0.05) !important;
+        margin: 0 !important;
     }
     
-    .navbar-nav .nav-link {
+    .navbar .navbar-nav .nav-item:last-child {
+        border-bottom: none !important;
+    }
+    
+    .navbar .navbar-nav .nav-link {
         display: block !important;
         width: 100% !important;
-        padding: 0.75rem 1rem !important;
-        font-size: 1.1rem;
+        padding: 0.6rem 1rem !important;
+        font-size: 0.95rem !important;
+        text-align: right !important;
+        transition: background-color 0.2s !important;
+        margin: 0 !important;
     }
     
-    .navbar-nav .cart-link {
-        border-top: 1px solid rgba(26, 58, 110, 0.1);
-        margin-top: 0.5rem;
-        padding-top: 1rem !important;
+    .navbar .navbar-nav .nav-link:hover,
+    .navbar .navbar-nav .nav-link:focus {
+        background-color: rgba(26, 58, 110, 0.05) !important;
+    }
+    
+    .navbar .navbar-nav .cart-link {
+        border-top: 2px solid rgba(26, 58, 110, 0.1) !important;
+        font-weight: 600 !important;
     }
 }
 
@@ -3513,5 +3529,75 @@ body.highlight-links a {
     to {
         transform: scale(1);
         opacity: 1;
+    }
+}
+
+/* =============================================
+   MOBILE NAVBAR MENU - FINAL OVERRIDE
+   Must be at END of file for highest specificity
+   ============================================= */
+@media (max-width: 991px) {
+    /* Collapsed menu (closed state) */
+    #navbarNav:not(.show):not(.collapsing) {
+        display: none !important;
+    }
+    
+    /* Expanded menu (open state) */
+    #navbarNav.show,
+    #navbarNav.collapsing {
+        display: block !important;
+        width: 100% !important;
+        margin-top: 0.5rem !important;
+        background-color: #ffffff !important;
+        border-radius: 0 0 8px 8px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        padding: 0.5rem 0 !important;
+    }
+    
+    /* Menu list container */
+    #navbarNav .navbar-nav {
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Menu items */
+    #navbarNav .navbar-nav .nav-item {
+        width: 100% !important;
+        border-bottom: 1px solid rgba(26, 58, 110, 0.05) !important;
+        margin: 0 !important;
+    }
+    
+    #navbarNav .navbar-nav .nav-item:last-child {
+        border-bottom: none !important;
+    }
+    
+    /* Menu links */
+    #navbarNav .navbar-nav .nav-link {
+        display: block !important;
+        width: 100% !important;
+        padding: 0.6rem 1rem !important;
+        font-size: 0.95rem !important;
+        text-align: right !important;
+        transition: background-color 0.2s !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+    
+    /* LTR alignment */
+    body.ltr #navbarNav .navbar-nav .nav-link {
+        text-align: left !important;
+    }
+    
+    /* Hover effect */
+    #navbarNav .navbar-nav .nav-link:hover,
+    #navbarNav .navbar-nav .nav-link:focus {
+        background-color: rgba(26, 58, 110, 0.05) !important;
+    }
+    
+    /* Cart link separator */
+    #navbarNav .navbar-nav .cart-link {
+        border-top: 2px solid rgba(26, 58, 110, 0.1) !important;
+        font-weight: 600 !important;
     }
 }

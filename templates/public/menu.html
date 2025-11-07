@@ -77,7 +77,7 @@
                     {% for item in category.items %}
                     <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}">
                         {% if show_images and item.image_path %}
-                        <div class="item-image-wrapper">
+                        <div class="item-image-wrapper" onclick="openImageModal('{{ item.image_path }}')">
                             <img src="{{ item.image_path }}" 
                                  alt="{{ item.name_he if language == 'he' else item.name_en }}" 
                                  class="item-image"
@@ -134,10 +134,12 @@
     </div>
 </section>
 
-<!-- Image Modal -->
-<div id="imageModal" class="image-modal" onclick="closeImageModal()">
-    <span class="modal-close">&times;</span>
-    <img class="modal-content" id="modalImage">
+<!-- Image Lightbox Modal -->
+<div id="imageModal" class="image-lightbox" onclick="closeImageModal()">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+        <button class="lightbox-close" onclick="closeImageModal()">&times;</button>
+        <img id="modalImage" alt="Menu Item">
+    </div>
 </div>
 {% endblock %}
 

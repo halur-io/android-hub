@@ -44,7 +44,7 @@ Preferred communication style: Simple, everyday language.
 ### Feature Specifications
 -   **Public Website**:
     -   **Homepage**: Hero section (video/image), combined About Us & Table Reservation section, gallery preview. Clean flowing design with no boxed sections.
-    -   **Menu Page**: Dynamic menu display by categories, dietary icons, prices, and descriptions.
+    -   **Menu Page**: Dynamic menu display by categories, dietary icons, prices, and descriptions. Menu item images are mobile-optimized (140px height on mobile vs 220px desktop) with click-to-enlarge lightbox functionality for better UX.
     -   **Order Page**: When online ordering is disabled, redirects users to app download with clear message "Orders & Delivery Available via App Only" and download buttons for both app stores. Includes alternative actions to view menu or contact restaurant.
     -   **Gallery**: Admin-managed photo gallery.
     -   **Contact**: Modern two-column layout with gradient hero, contact form in elevated card, quick contact methods (phone, email, WhatsApp, social), and branch location cards with Waze/Google Maps navigation buttons. Fully responsive.

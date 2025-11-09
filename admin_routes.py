@@ -1014,17 +1014,56 @@ def edit_menu_item(id=None):
         else:
             item.allergens = '[]'
         
-        # Handle image upload
+        # Handle image upload with aggressive optimization for fast loading
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"menu_{timestamp}_{filename}"
+                filename_base = filename.rsplit('.', 1)[0]
+                filename = f"menu_{timestamp}_{filename_base}.jpg"
                 
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(filepath)
+                
+                # Aggressive optimization for menu images (target: 20-50KB)
+                try:
+                    # Save to temp location first
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_menu_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Open and optimize image
+                    img = Image.open(temp_path)
+                    
+                    # Resize to max 500px width for fast loading
+                    if img.width > 500:
+                        ratio = 500 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((500, new_height), Image.Resampling.LANCZOS)
+                    
+                    # Convert to RGB (remove transparency)
+                    if img.mode == 'RGBA':
+                        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                        rgb_img.paste(img, mask=img.split()[3])
+                        img = rgb_img
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Save with aggressive compression (quality 65% for small file size)
+                    img.save(filepath, 'JPEG', quality=65, optimize=True)
+                    
+                    # Remove temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    file_size_kb = os.path.getsize(filepath) / 1024
+                    print(f"Menu image optimized: {filename} ({file_size_kb:.1f}KB)")
+                except Exception as e:
+                    print(f"Menu image optimization error: {e}. Saving original.")
+                    # Fallback: save original if optimization fails
+                    file.seek(0)
+                    file.save(filepath)
+                
                 item.image_path = f'/static/uploads/{filename}'
         
         if not id:

@@ -4,9 +4,10 @@
 Drawing inspiration from Airbnb's elegance, premium Asian dining websites, and Shopify's ordering UX. Focus on appetizing food photography, clean layouts, and sophisticated restraint that highlights the cuisine.
 
 ## Typography System
-**Primary Font**: Playfair Display (serif) - for headings, elegant restaurant feel
-**Secondary Font**: Inter (sans-serif) - for body text, menus, interface elements
-**Hebrew Support**: Implement Rubik or Assistant for Hebrew RTL text
+**Primary Font**: Noto Serif JP (Japanese-inspired serif) - for headings, elegant Asian restaurant aesthetic
+**Secondary Font**: Noto Sans JP (Japanese-inspired sans-serif) - for body text, menus, interface elements
+**Brand Font**: M PLUS Rounded 1c (rounded Japanese font) - for logo/brand text, friendly modern feel
+**Hebrew Support**: Rubik fallback for Hebrew RTL text compatibility
 
 **Hierarchy**:
 - Hero Headlines: text-5xl to text-7xl, font-normal
@@ -38,7 +39,7 @@ Fixed header with blur backdrop (bg-white/80 backdrop-blur-md)
 ### Hero Section
 Full-viewport video background (16:9 landscape food preparation footage)
 **Overlay**: Dark gradient overlay (bg-black/40) for text readability
-**Content**: Centered layout with restaurant name in Playfair, tagline, dual CTAs (Order Now + View Menu) with blurred button backgrounds (bg-white/20 backdrop-blur-sm)
+**Content**: Centered layout with restaurant name in Noto Serif JP, tagline, dual CTAs (Order Now + View Menu) with blurred button backgrounds (bg-white/20 backdrop-blur-sm)
 **Height**: h-screen on desktop, h-[70vh] on mobile
 
 ### Menu Display System

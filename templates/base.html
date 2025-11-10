@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
+    {% if site_settings and site_settings.google_analytics_id %}
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-X1V6VK3PXE"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ site_settings.google_analytics_id }}"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', 'G-X1V6VK3PXE');
+      gtag('config', '{{ site_settings.google_analytics_id }}');
     </script>
+    {% endif %}
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">

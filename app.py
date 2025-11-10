@@ -78,6 +78,18 @@ app.config['CACHE_BUSTER'] = str(int(time.time()))
 def inject_cache_buster():
     return dict(cache_version=app.config['CACHE_BUSTER'])
 
+# Make site settings available in all templates
+@app.context_processor
+def inject_site_settings():
+    from models import SiteSettings
+    try:
+        settings = SiteSettings.query.first()
+        if not settings:
+            settings = SiteSettings()
+        return dict(site_settings=settings)
+    except:
+        return dict(site_settings=None)
+
 # Make permission functions available in templates
 @app.context_processor
 def inject_permissions():

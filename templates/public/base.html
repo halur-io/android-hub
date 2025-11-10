@@ -50,6 +50,28 @@
     {% endif %}
     
     {% block extra_css %}{% endblock %}
+    
+    <!-- Structured Data for SEO (Restaurant Schema) -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "{{ settings.site_name_he if language == 'he' else settings.site_name_en }}",
+        "description": "{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}",
+        {% if settings.logo_image %}
+        "image": "{{ url_for('static', filename='uploads/' + settings.logo_image, _external=True) }}",
+        {% endif %}
+        "telephone": "{{ settings.phone_number }}",
+        "email": "{{ settings.email }}",
+        "servesCuisine": ["Asian", "Japanese", "Sushi"],
+        "priceRange": "$$",
+        "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IL"
+        },
+        "url": "{{ request.url_root }}"
+    }
+    </script>
 </head>
 <body class="{{ 'rtl' if language == 'he' else 'ltr' }}">
     
@@ -99,9 +121,11 @@
                         <a class="nav-link" href="{{ url_for('example2_order' if theme == 'example2' else 'order_page') }}">{{ 'הזמנה' if language == 'he' else 'Order' }}</a>
                     </li>
                     {% endif %}
+                    {% if settings.enable_gallery %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('example2_gallery' if theme == 'example2' else 'gallery_page') }}">{{ 'גלריה' if language == 'he' else 'Gallery' }}</a>
                     </li>
+                    {% endif %}
                     {% if settings.enable_catering_page %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('example2_catering' if theme == 'example2' else 'catering_page') }}">{{ 'קייטרינג' if language == 'he' else 'Catering' }}</a>

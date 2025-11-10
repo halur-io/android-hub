@@ -39,6 +39,16 @@ Preferred communication style: Simple, everyday language.
     -   **Core Services**: Auth, Order, Payment, Delivery, Kitchen, Notification, and Configuration services.
     -   **Communication**: Internal RESTful APIs, WebSockets for real-time updates, Message Queue for inter-service communication, and a shared PostgreSQL database with service-specific schemas.
 -   **Image Optimization**: Automatic image resizing and compression on upload (e.g., hero images, gallery images) to optimize performance, with PNG to JPEG conversion for transparency handling.
+-   **Menu Dish Image Processing Pipeline** (Standard for all menu images):
+    1. AI background removal using rembg library (U2-Net model)
+    2. Automatic crop to dish only (removes transparent space)
+    3. Square format with dish centered
+    4. PNG format with RGBA transparency
+    5. Optimized compression (target: 80-110KB per image)
+    6. Result: Dish fills 85-98% of frame, transparent background
+    7. Display: 450px height (desktop) / 350px (mobile) with minimal padding (0.5rem)
+    8. Background: Black gradient (135deg, #0a0a0a → #1a1a1a → #2a2a2a)
+    9. Script: `process_new_menu_image.py` for automated processing
 -   **Video Optimization**: Responsive video loading based on viewport and connection speed, with poster images for quick display.
 
 ### Feature Specifications

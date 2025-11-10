@@ -1017,7 +1017,9 @@ def edit_menu_item(id=None):
         # Handle image upload with automatic AI processing
         if 'image' in request.files:
             file = request.files['image']
+            print(f"★★★ IMAGE UPLOAD DETECTED: {file.filename}")  # DEBUG
             if file and file.filename and allowed_file(file.filename):
+                print(f"★★★ STARTING AI PROCESSING for {file.filename}")  # DEBUG
                 from rembg import remove
                 import numpy as np
                 
@@ -1033,6 +1035,7 @@ def edit_menu_item(id=None):
                 try:
                     # Save temp file
                     file.save(temp_path)
+                    print(f"★★★ Temp file saved: {temp_path}")
                     print(f"Processing menu image: {filename}")
                     
                     # Step 1: AI Background Removal

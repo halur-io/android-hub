@@ -56,22 +56,22 @@ def init_db(app):
         
         # Create default admin user if not exists
         try:
-            admin = AdminUser.query.filter_by(username='admin').first()
+            admin = AdminUser.query.filter_by(username='khalilshiban').first()
         except Exception as e:
             print(f"Admin user query error: {e}")
             admin = None
             
         if not admin:
             admin = AdminUser(
-                username='admin',
-                email='admin@sumo.com',
+                username='khalilshiban',
+                email='khalil@sumo.com',
                 is_superadmin=True,
                 is_active=True
             )
-            admin.set_password('admin123')  # Default password
+            admin.set_password('Winston35!')
             db.session.add(admin)
             db.session.commit()
-            print("Created default admin user: admin / admin123")
+            print("Created superadmin user: khalilshiban")
         
         # Create default site settings if not exists
         settings = SiteSettings.query.first()

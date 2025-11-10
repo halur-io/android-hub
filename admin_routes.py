@@ -1014,32 +1014,106 @@ def edit_menu_item(id=None):
         else:
             item.allergens = '[]'
         
-        # Handle image upload - simple save only (use process_new_menu_image.py for processing)
+        # Handle image upload with automatic AI processing
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename and allowed_file(file.filename):
+                from rembg import remove
+                import numpy as np
+                
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename_base = filename.rsplit('.', 1)[0]
-                # Keep original extension (PNG or JPG)
-                ext = filename.rsplit('.', 1)[1] if '.' in filename else 'png'
-                filename = f"menu_{timestamp}_{filename_base}.{ext}"
+                final_filename = f"menu_{timestamp}_{filename_base}_processed.png"
                 
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{filename}')
+                final_path = os.path.join(UPLOAD_FOLDER, final_filename)
                 
-                # Simple save - no processing to avoid timeout
-                file.save(filepath)
-                print(f"Menu image uploaded: {filename}")
-                
-                item.image_path = f'/static/uploads/{filename}'
+                try:
+                    # Save temp file
+                    file.save(temp_path)
+                    print(f"Processing menu image: {filename}")
+                    
+                    # Step 1: AI Background Removal
+                    with open(temp_path, 'rb') as input_file:
+                        input_data = input_file.read()
+                    output_data = remove(input_data)
+                    
+                    # Save background-removed image
+                    with open(final_path, 'wb') as output_file:
+                        output_file.write(output_data)
+                    
+                    # Step 2: Crop to dish only (remove transparent space)
+                    img = Image.open(final_path)
+                    if img.mode == 'RGBA':
+                        # Get alpha channel
+                        alpha = np.array(img.split()[-1])
+                        
+                        # Find non-transparent pixels
+                        rows = np.any(alpha > 0, axis=1)
+                        cols = np.any(alpha > 0, axis=0)
+                        
+                        if rows.any() and cols.any():
+                            # Get bounding box
+                            y_min, y_max = np.where(rows)[0][[0, -1]]
+                            x_min, x_max = np.where(cols)[0][[0, -1]]
+                            
+                            # Add small margin (10px)
+                            margin = 10
+                            y_min = max(0, y_min - margin)
+                            y_max = min(img.height, y_max + margin)
+                            x_min = max(0, x_min - margin)
+                            x_max = min(img.width, x_max + margin)
+                            
+                            # Crop to dish
+                            img = img.crop((x_min, y_min, x_max, y_max))
+                            
+                            # Make square with dish centered
+                            width, height = img.size
+                            size = max(width, height)
+                            
+                            # Create square canvas
+                            square_img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+                            
+                            # Paste cropped dish centered
+                            paste_x = (size - width) // 2
+                            paste_y = (size - height) // 2
+                            square_img.paste(img, (paste_x, paste_y), img)
+                            
+                            # Save final processed image
+                            square_img.save(final_path, 'PNG', optimize=True)
+                            
+                            file_size_kb = os.path.getsize(final_path) / 1024
+                            print(f"✓ Menu image processed: {final_filename} ({file_size_kb:.1f}KB)")
+                            print(f"  - Background removed")
+                            print(f"  - Cropped to dish")
+                            print(f"  - Square format: {size}x{size}px")
+                    
+                    # Clean up temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    item.image_path = f'/static/uploads/{final_filename}'
+                    
+                except Exception as e:
+                    print(f"Error processing image: {e}")
+                    # Fallback: save original if processing fails
+                    if os.path.exists(temp_path):
+                        file.seek(0)
+                        file.save(final_path)
+                        item.image_path = f'/static/uploads/{final_filename}'
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
         
         if not id:
             db.session.add(item)
         
         db.session.commit()
         flash('המנה נשמרה בהצלחה! ✓', 'success')
-        return redirect(url_for('admin.menu'))
+        
+        # Redirect back to edit page to show uploaded image
+        return redirect(url_for('admin.edit_menu_item', id=item.id))
     
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties)
 

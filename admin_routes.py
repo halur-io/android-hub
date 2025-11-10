@@ -1042,10 +1042,26 @@ def edit_menu_item(id=None):
                     print(f"★★★ Temp file saved: {temp_path}")
                     print(f"Processing menu image: {filename}")
                     
+                    # Step 0: Resize image BEFORE AI processing (to avoid memory issues)
+                    img_original = Image.open(temp_path)
+                    original_size = img_original.size
+                    print(f"★★★ Original image size: {original_size}")
+                    
+                    # Resize to max 1200px (maintains aspect ratio)
+                    max_dimension = 1200
+                    if max(original_size) > max_dimension:
+                        ratio = max_dimension / max(original_size)
+                        new_size = (int(original_size[0] * ratio), int(original_size[1] * ratio))
+                        img_original = img_original.resize(new_size, Image.Resampling.LANCZOS)
+                        img_original.save(temp_path, quality=90)
+                        print(f"★★★ Resized to: {new_size}")
+                    
                     # Step 1: AI Background Removal
+                    print(f"★★★ Starting AI background removal...")
                     with open(temp_path, 'rb') as input_file:
                         input_data = input_file.read()
                     output_data = remove(input_data)
+                    print(f"★★★ AI background removal complete!")
                     
                     # Save background-removed image
                     with open(final_path, 'wb') as output_file:

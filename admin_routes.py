@@ -928,7 +928,8 @@ def toggle_item_availability(item_id):
 def edit_menu_item(id=None):
     from flask_wtf import FlaskForm
     
-    print(f"DEBUG: Route hit with method: {request.method}, id: {id}")  # Debug line
+    print(f"★★★ ROUTE HIT: method={request.method}, id={id}")  # Debug line
+    print(f"★★★ Files in request: {list(request.files.keys())}")  # Debug line
     
     # Create form for CSRF token (needs to be before any conditional logic)
     form = FlaskForm()
@@ -940,6 +941,9 @@ def edit_menu_item(id=None):
     
     categories = MenuCategory.query.filter_by(is_active=True).all()
     dietary_properties = DietaryProperty.query.filter_by(is_active=True).order_by(DietaryProperty.display_order).all()
+    
+    if request.method == 'POST':
+        print(f"★★★ POST REQUEST - Form valid: {form.validate_on_submit()}")  # Debug line
     
     if request.method == 'POST' and form.validate_on_submit():
         print(f"DEBUG: Form data received: {dict(request.form)}")  # Debug line

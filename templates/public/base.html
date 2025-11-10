@@ -56,20 +56,20 @@
     {
         "@context": "https://schema.org",
         "@type": "Restaurant",
-        "name": "{{ settings.site_name_he if language == 'he' else settings.site_name_en }}",
-        "description": "{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}",
+        "name": {{ (settings.site_name_he if language == 'he' else settings.site_name_en)|tojson }},
+        "description": {{ (settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en)|tojson }},
         {% if settings.logo_image %}
-        "image": "{{ url_for('static', filename='uploads/' + settings.logo_image, _external=True) }}",
+        "image": {{ url_for('static', filename='uploads/' + settings.logo_image, _external=True)|tojson }},
         {% endif %}
-        "telephone": "{{ settings.phone_number }}",
-        "email": "{{ settings.email }}",
+        "telephone": {{ settings.phone_number|default('')|tojson }},
+        "email": {{ settings.email|default('')|tojson }},
         "servesCuisine": ["Asian", "Japanese", "Sushi"],
         "priceRange": "$$",
         "address": {
             "@type": "PostalAddress",
             "addressCountry": "IL"
         },
-        "url": "{{ request.url_root }}"
+        "url": {{ request.url_root|tojson }}
     }
     </script>
 </head>

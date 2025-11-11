@@ -97,11 +97,18 @@ def menu_page():
     logging.debug(f"Found {len(categories)} menu categories")
     
     # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
-    # Use selectinload to prevent DetachedInstanceError in production
-    from sqlalchemy.orm import selectinload
-    all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
-        is_available=True
-    ).order_by(MenuItem.display_order).all()
+    # Try to load dietary properties, but handle gracefully if table doesn't exist in production
+    try:
+        from sqlalchemy.orm import selectinload
+        all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
+            is_available=True
+        ).order_by(MenuItem.display_order).all()
+    except Exception as e:
+        logging.warning(f"Could not load dietary properties: {e}")
+        # Fallback: load items without dietary properties
+        all_items = MenuItem.query.filter_by(
+            is_available=True
+        ).order_by(MenuItem.display_order).all()
     logging.debug(f"Found {len(all_items)} menu items (is_available=True)")
     
     # Group items by category in Python (faster than multiple DB queries)
@@ -145,12 +152,20 @@ def order_page():
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
     # Get ALL menu items that allow delivery - Filter by availability
-    # Use selectinload to prevent DetachedInstanceError in production
-    from sqlalchemy.orm import selectinload
-    all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
-        is_available=True,
-        allow_delivery=True
-    ).order_by(MenuItem.display_order).all()
+    # Try to load dietary properties, but handle gracefully if table doesn't exist in production
+    try:
+        from sqlalchemy.orm import selectinload
+        all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
+            is_available=True,
+            allow_delivery=True
+        ).order_by(MenuItem.display_order).all()
+    except Exception as e:
+        logging.warning(f"Could not load dietary properties for orders: {e}")
+        # Fallback: load items without dietary properties
+        all_items = MenuItem.query.filter_by(
+            is_available=True,
+            allow_delivery=True
+        ).order_by(MenuItem.display_order).all()
     
     # Group items by category in Python (faster than multiple DB queries)
     # Skip items with NULL category_id to prevent crashes

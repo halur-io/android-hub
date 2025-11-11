@@ -293,11 +293,13 @@
 
 <!-- Floating Action Buttons -->
 <div class="floating-actions">
-    <a href="{{ url_for('order_page') if settings.enable_online_ordering else '#' }}" 
+    {% if settings.enable_online_ordering %}
+    <a href="{{ url_for('order_page') }}" 
        class="fab-button fab-table-order" 
        title="{{ 'הזמנת שולחן' if language == 'he' else 'Table Order' }}">
         <i class="fas fa-utensils"></i>
     </a>
+    {% endif %}
     {% if settings.enable_delivery %}
     <a href="{{ url_for('order_page') }}" 
        class="fab-button fab-delivery" 

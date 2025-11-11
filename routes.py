@@ -103,8 +103,12 @@ def menu_page():
     logging.debug(f"Found {len(all_items)} menu items (is_available=True)")
     
     # Group items by category in Python (faster than multiple DB queries)
+    # Skip items with NULL category_id to prevent crashes
     items_by_category = {}
     for item in all_items:
+        if item.category_id is None:
+            logging.warning(f"Skipping menu item {item.id} ({item.name_en}) - NULL category_id")
+            continue
         if item.category_id not in items_by_category:
             items_by_category[item.category_id] = []
         items_by_category[item.category_id].append(item)
@@ -145,8 +149,12 @@ def order_page():
     ).order_by(MenuItem.display_order).all()
     
     # Group items by category in Python (faster than multiple DB queries)
+    # Skip items with NULL category_id to prevent crashes
     items_by_category = {}
     for item in all_items:
+        if item.category_id is None:
+            logging.warning(f"Skipping order item {item.id} ({item.name_en}) - NULL category_id")
+            continue
         if item.category_id not in items_by_category:
             items_by_category[item.category_id] = []
         items_by_category[item.category_id].append(item)

@@ -44,8 +44,41 @@
                                 <i class="fas fa-check"></i> סמן כנקראה
                             </button>
                             {% endif %}
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#forwardModal{{ message.id }}">
+                                <i class="fas fa-share"></i> העבר
+                            </button>
                         </td>
                     </tr>
+                    
+                    <!-- Forward Email Modal -->
+                    <div class="modal fade" id="forwardModal{{ message.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('admin.forward_message', id=message.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">העבר הודעה</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p><strong>מאת:</strong> {{ message.name }}</p>
+                                        <p><strong>הודעה:</strong> {{ message.message[:100] }}...</p>
+                                        <hr>
+                                        <div class="mb-3">
+                                            <label class="form-label">כתובת אימייל לשליחה:</label>
+                                            <input type="email" name="email" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i> שלח
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
                     {% if not messages %}
                     <tr>

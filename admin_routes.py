@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from database import db
 from models import *
 from permissions import require_permission, require_role, superadmin_required, has_permission
+from app import mail
 import os
 from datetime import datetime
 import json
@@ -4050,6 +4051,137 @@ def mark_catering_contact_read(id):
     contact.is_read = True
     db.session.commit()
     return jsonify({'success': True})
+
+@admin_bp.route('/career-applications')
+@login_required
+def career_applications():
+    from models import CareerContact
+    applications = CareerContact.query.order_by(CareerContact.created_at.desc()).all()
+    return render_template('admin/career_applications.html', applications=applications)
+
+@admin_bp.route('/career-applications/mark-read/<int:id>', methods=['POST'])
+@login_required
+def mark_career_application_read(id):
+    from models import CareerContact
+    application = CareerContact.query.get_or_404(id)
+    application.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+# Email forwarding routes
+@admin_bp.route('/messages/forward/<int:id>', methods=['POST'])
+@login_required
+def forward_message(id):
+    from flask_mail import Message as MailMessage
+    message = ContactMessage.query.get_or_404(id)
+    
+    recipient_email = request.form.get('email')
+    if not recipient_email:
+        flash('נא להזין כתובת אימייל', 'error')
+        return redirect(url_for('admin.messages'))
+    
+    try:
+        msg = MailMessage(
+            subject=f'Forwarded: Contact from {message.name}',
+            recipients=[recipient_email],
+            body=f'''
+Forwarded Contact Message:
+
+Name: {message.name}
+Email: {message.email}
+Phone: {message.phone}
+Date: {message.created_at.strftime('%Y-%m-%d %H:%M')}
+
+Message:
+{message.message}
+'''
+        )
+        mail.send(msg)
+        flash('ההודעה הועברה בהצלחה', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error forwarding message: {str(e)}")
+        flash('שגיאה בהעברת ההודעה', 'error')
+    
+    return redirect(url_for('admin.messages'))
+
+@admin_bp.route('/catering-contacts/forward/<int:id>', methods=['POST'])
+@login_required
+def forward_catering_contact(id):
+    from flask_mail import Message as MailMessage
+    from models import CateringContact
+    contact = CateringContact.query.get_or_404(id)
+    
+    recipient_email = request.form.get('email')
+    if not recipient_email:
+        flash('נא להזין כתובת אימייל', 'error')
+        return redirect(url_for('admin.catering_contacts'))
+    
+    try:
+        msg = MailMessage(
+            subject=f'Forwarded: Catering Inquiry from {contact.name}',
+            recipients=[recipient_email],
+            body=f'''
+Forwarded Catering Inquiry:
+
+Name: {contact.name}
+Email: {contact.email}
+Phone: {contact.phone}
+Event Date: {contact.event_date or 'Not specified'}
+Event Type: {contact.event_type or 'Not specified'}
+Guest Count: {contact.guest_count or 'Not specified'}
+Date Received: {contact.created_at.strftime('%Y-%m-%d %H:%M')}
+
+Message:
+{contact.message}
+'''
+        )
+        mail.send(msg)
+        flash('ההודעה הועברה בהצלחה', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error forwarding catering contact: {str(e)}")
+        flash('שגיאה בהעברת ההודעה', 'error')
+    
+    return redirect(url_for('admin.catering_contacts'))
+
+@admin_bp.route('/career-applications/forward/<int:id>', methods=['POST'])
+@login_required
+def forward_career_application(id):
+    from flask_mail import Message as MailMessage
+    from models import CareerContact
+    application = CareerContact.query.get_or_404(id)
+    
+    recipient_email = request.form.get('email')
+    if not recipient_email:
+        flash('נא להזין כתובת אימייל', 'error')
+        return redirect(url_for('admin.career_applications'))
+    
+    position_name = application.position_other if application.position_other else \
+                   (application.position.title_en if application.position else 'Unknown')
+    
+    try:
+        msg = MailMessage(
+            subject=f'Forwarded: Job Application from {application.name} - {position_name}',
+            recipients=[recipient_email],
+            body=f'''
+Forwarded Job Application:
+
+Name: {application.name}
+Email: {application.email}
+Phone: {application.phone}
+Position: {position_name}
+Date Received: {application.created_at.strftime('%Y-%m-%d %H:%M')}
+
+Message:
+{application.message}
+'''
+        )
+        mail.send(msg)
+        flash('ההודעה הועברה בהצלחה', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error forwarding career application: {str(e)}")
+        flash('שגיאה בהעברת ההודעה', 'error')
+    
+    return redirect(url_for('admin.career_applications'))
 
 # Reservations Management
 @admin_bp.route('/reservations')

@@ -209,7 +209,28 @@ def catering_page():
                 
                 success = True
                 
-                # TODO: Send email notification to restaurant
+                # Send email notification to restaurant
+                try:
+                    msg = Message(
+                        subject=f'Catering Inquiry from {name}',
+                        recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
+                        body=f'''
+New Catering Inquiry:
+
+Name: {name}
+Email: {email}
+Phone: {phone}
+Event Date: {event_date if event_date else 'Not specified'}
+Event Type: {event_type if event_type else 'Not specified'}
+Guest Count: {guest_count if guest_count else 'Not specified'}
+
+Message:
+{message}
+'''
+                    )
+                    mail.send(msg)
+                except Exception as email_error:
+                    current_app.logger.error(f"Error sending catering email: {str(email_error)}")
                 
         except Exception as e:
             db.session.rollback()
@@ -282,7 +303,29 @@ def careers_page():
                     
                     success = True
                     
-                    # TODO: Send email notification to restaurant
+                    # Send email notification to restaurant
+                    position_name = position_other_text if position_other_text else \
+                                   (CareerPosition.query.get(position_id).title_en if position_id else 'Unknown')
+                    
+                    try:
+                        msg = Message(
+                            subject=f'Job Application from {name} - {position_name}',
+                            recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
+                            body=f'''
+New Job Application:
+
+Name: {name}
+Email: {email}
+Phone: {phone}
+Position: {position_name}
+
+Message:
+{message}
+'''
+                        )
+                        mail.send(msg)
+                    except Exception as email_error:
+                        current_app.logger.error(f"Error sending career email: {str(email_error)}")
                 
         except Exception as e:
             db.session.rollback()
@@ -313,15 +356,29 @@ def terms_page():
 @app.route('/contact', methods=['GET', 'POST'])
 def contact_page():
     """Contact page"""
+    from models import ContactMessage
+    
     context = get_context_data()
     form = ContactForm()
     
     if request.method == 'POST' and form.validate_on_submit():
         try:
-            msg = Message(
-                subject=f'Contact from {form.name.data}',
-                recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
-                body=f'''
+            # Save to database first
+            contact = ContactMessage(
+                name=form.name.data,
+                email=form.email.data,
+                phone=form.phone.data,
+                message=form.message.data
+            )
+            db.session.add(contact)
+            db.session.commit()
+            
+            # Try to send email notification
+            try:
+                msg = Message(
+                    subject=f'Contact from {form.name.data}',
+                    recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
+                    body=f'''
 New contact message:
 
 Name: {form.name.data}
@@ -331,12 +388,16 @@ Phone: {form.phone.data}
 Message:
 {form.message.data}
 '''
-            )
-            mail.send(msg)
+                )
+                mail.send(msg)
+            except Exception as email_error:
+                logging.error(f'Error sending contact email: {email_error}')
+            
             flash('Message sent successfully!' if context['language'] == 'en' else 'ההודעה נשלחה בהצלחה!', 'success')
             return redirect(url_for('contact_page'))
         except Exception as e:
-            logging.error(f'Error sending contact email: {e}')
+            db.session.rollback()
+            logging.error(f'Error saving contact message: {e}')
             flash('Error sending message.' if context['language'] == 'en' else 'שגיאה בשליחת ההודעה.', 'error')
     
     return render_template('public/contact.html',

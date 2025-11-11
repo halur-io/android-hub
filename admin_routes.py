@@ -4021,12 +4021,25 @@ def format_menu_item(item, show_prices, show_descriptions, primary_color, second
     item_html += '</div>'
     return item_html
 
-# Messages Management
+# Messages Management - Unified Page
 @admin_bp.route('/messages')
 @login_required
 def messages():
-    messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
-    return render_template('admin/messages.html', messages=messages)
+    from models import CateringContact, CareerContact
+    
+    # Fetch all three types of messages
+    contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+    catering_contacts = CateringContact.query.order_by(CateringContact.created_at.desc()).all()
+    career_applications = CareerContact.query.order_by(CareerContact.created_at.desc()).all()
+    
+    # Get active tab from query param (default: contact)
+    active_tab = request.args.get('tab', 'contact')
+    
+    return render_template('admin/messages.html', 
+                         contact_messages=contact_messages,
+                         catering_contacts=catering_contacts,
+                         career_applications=career_applications,
+                         active_tab=active_tab)
 
 @admin_bp.route('/messages/mark-read/<int:id>', methods=['POST'])
 @login_required
@@ -4039,9 +4052,8 @@ def mark_message_read(id):
 @admin_bp.route('/catering-contacts')
 @login_required
 def catering_contacts():
-    from models import CateringContact
-    contacts = CateringContact.query.order_by(CateringContact.created_at.desc()).all()
-    return render_template('admin/catering_contacts.html', contacts=contacts)
+    # Redirect to unified messages page with catering tab
+    return redirect(url_for('admin.messages', tab='catering'))
 
 @admin_bp.route('/catering-contacts/mark-read/<int:id>', methods=['POST'])
 @login_required
@@ -4055,9 +4067,8 @@ def mark_catering_contact_read(id):
 @admin_bp.route('/career-applications')
 @login_required
 def career_applications():
-    from models import CareerContact
-    applications = CareerContact.query.order_by(CareerContact.created_at.desc()).all()
-    return render_template('admin/career_applications.html', applications=applications)
+    # Redirect to unified messages page with careers tab
+    return redirect(url_for('admin.messages', tab='careers'))
 
 @admin_bp.route('/career-applications/mark-read/<int:id>', methods=['POST'])
 @login_required

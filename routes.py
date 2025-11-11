@@ -94,11 +94,13 @@ def menu_page():
     
     # Get all categories that should be shown in menu
     categories = MenuCategory.query.filter_by(is_active=True, show_in_menu=True).order_by(MenuCategory.display_order).all()
+    logging.debug(f"Found {len(categories)} menu categories")
     
     # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
     all_items = MenuItem.query.filter_by(
         is_available=True
     ).order_by(MenuItem.display_order).all()
+    logging.debug(f"Found {len(all_items)} menu items (is_available=True)")
     
     # Group items by category in Python (faster than multiple DB queries)
     items_by_category = {}
@@ -106,10 +108,12 @@ def menu_page():
         if item.category_id not in items_by_category:
             items_by_category[item.category_id] = []
         items_by_category[item.category_id].append(item)
+    logging.debug(f"Items grouped into {len(items_by_category)} categories")
     
     # Assign items to their categories
     for category in categories:
         category.items = items_by_category.get(category.id, [])
+        logging.debug(f"Category {category.id} ({category.name_en}) has {len(category.items)} items")
     
     return render_template('public/menu.html',
                          **context,

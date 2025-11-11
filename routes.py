@@ -97,7 +97,9 @@ def menu_page():
     logging.debug(f"Found {len(categories)} menu categories")
     
     # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
-    all_items = MenuItem.query.filter_by(
+    # Use selectinload to prevent DetachedInstanceError in production
+    from sqlalchemy.orm import selectinload
+    all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
         is_available=True
     ).order_by(MenuItem.display_order).all()
     logging.debug(f"Found {len(all_items)} menu items (is_available=True)")
@@ -143,7 +145,9 @@ def order_page():
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
     # Get ALL menu items that allow delivery - Filter by availability
-    all_items = MenuItem.query.filter_by(
+    # Use selectinload to prevent DetachedInstanceError in production
+    from sqlalchemy.orm import selectinload
+    all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
         is_available=True,
         allow_delivery=True
     ).order_by(MenuItem.display_order).all()

@@ -96,7 +96,7 @@ def menu_page():
     categories = MenuCategory.query.filter_by(is_active=True, show_in_menu=True).order_by(MenuCategory.display_order).all()
     
     # Get ALL menu items in ONE query (not per category) - PERFORMANCE FIX
-    all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+    all_items = MenuItem.query.filter_by(
         is_available=True
     ).order_by(MenuItem.display_order).all()
     
@@ -135,7 +135,7 @@ def order_page():
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
     # Get ALL menu items that allow delivery - Filter by availability
-    all_items = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter_by(
+    all_items = MenuItem.query.filter_by(
         is_available=True,
         allow_delivery=True
     ).order_by(MenuItem.display_order).all()

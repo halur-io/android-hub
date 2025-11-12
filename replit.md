@@ -45,7 +45,9 @@ Preferred communication style: Simple, everyday language.
 -   **Admin Dashboard**:
     -   **Site Settings**: Horizontal tabs for General (hero, about, catering, careers, site info, social media), Branding, Features, Delivery, and Advanced settings (analytics, announcements, maintenance mode). General settings use collapsible accordions.
     -   **Menu Management**: Tabbed interface for categories, items (with quick availability toggle), and Excel/Word import.
-    -   **Stock Management**: Advanced inventory system with tabs for Inventory, Suppliers, Orders, Transactions, and Reports. Mobile-optimized for staff.
+    -   **Stock Management**: 
+        -   **Simplified Mobile-First Interface** (PRIMARY - `/admin/stock-management`): Clean, modern view-only interface with gradient stats bar, horizontal navigation tabs (Items, Suppliers, Categories), card-based layout, floating action buttons, and Excel/CSV export. 100% mobile optimized with touch-friendly design, smooth scrolling, and haptic feedback. Perfect for quick browsing and overview on any device.
+        -   **Legacy Advanced Interface** (`/admin/stock-management-old`): Full-featured system with tabs for Inventory, Suppliers, Orders, Transactions, and Reports. Includes table/card view toggles and complete editing capabilities.
     -   **Media Management**: Admin upload for hero videos/images and gallery images.
     -   **Messages Management**: Unified interface for contact, catering, and career messages with unread counts and email forwarding.
     -   **Catering Gallery Management**: Dedicated interface for managing catering page images.

@@ -4563,22 +4563,57 @@ def printer_guide():
 @login_required
 @require_permission('stock.view')
 def stock_management():
-    """Main stock management platform - Modern tabbed interface"""
-    from models import StockItem, Supplier, StockCategory
+    """Simple mobile-first stock management interface"""
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
     
-    # Get all active stock items
-    stock_items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
-    
-    # Get all active suppliers
-    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
-    
-    # Get all active categories
-    stock_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
-    
-    return render_template('admin/stock_platform.html', 
-                         stock_items=stock_items,
-                         suppliers=suppliers,
-                         stock_categories=stock_categories)
+    try:
+        logger.info("=== Starting stock_management route ===")
+        from models import StockItem, Supplier, StockCategory
+        logger.info("Models imported successfully")
+        
+        # Get counts for dashboard
+        stock_count = StockItem.query.filter_by(is_active=True).count()
+        logger.info(f"Stock count: {stock_count}")
+        
+        supplier_count = Supplier.query.filter_by(is_active=True).count()
+        logger.info(f"Supplier count: {supplier_count}")
+        
+        category_count = StockCategory.query.filter_by(is_active=True).count()
+        logger.info(f"Category count: {category_count}")
+        
+        # Get items based on view parameter (default: items)
+        view = request.args.get('view', 'items')
+        logger.info(f"View parameter: {view}")
+        
+        items = []
+        suppliers = []
+        categories = []
+        
+        if view == 'items':
+            items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+            logger.info(f"Loaded {len(items)} items")
+        elif view == 'suppliers':
+            suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+            logger.info(f"Loaded {len(suppliers)} suppliers")
+        elif view == 'categories':
+            categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+            logger.info(f"Loaded {len(categories)} categories")
+        
+        logger.info("Rendering template admin/stock_simple.html")
+        return render_template('admin/stock_simple.html',
+                             current_view=view,
+                             stock_count=stock_count,
+                             supplier_count=supplier_count,
+                             category_count=category_count,
+                             items=items,
+                             suppliers=suppliers,
+                             categories=categories)
+    except Exception as e:
+        logger.error(f"ERROR in stock_management: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
 
 @admin_bp.route('/stock-management-old')
 @login_required

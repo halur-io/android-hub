@@ -1,0 +1,518 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מלאי - Sumo Asian Kitchen{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Mobile-First Simple Design */
+    .stock-simple {
+        padding: 0;
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+    
+    /* Top Stats Bar */
+    .stats-bar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-box {
+        text-align: center;
+        padding: 0.75rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        margin-top: 0.25rem;
+    }
+    
+    /* Mobile Navigation Tabs */
+    .mobile-tabs {
+        background: white;
+        padding: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    
+    .mobile-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 1rem 0.75rem;
+        background: #f8f9fa;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #6c757d;
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .tab-btn i {
+        font-size: 1.5rem;
+    }
+    
+    .tab-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Content Area */
+    .content-area {
+        padding: 0 1rem 2rem 1rem;
+    }
+    
+    /* Card Design */
+    .item-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .item-card:active {
+        transform: scale(0.98);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    
+    .item-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .item-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .item-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .item-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .item-detail-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .item-detail-row i {
+        width: 20px;
+        color: #667eea;
+    }
+    
+    .item-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f0f0f0;
+    }
+    
+    .action-btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .action-btn-edit {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .action-btn-delete {
+        background: #ffebee;
+        color: #d32f2f;
+    }
+    
+    .action-btn:active {
+        transform: scale(0.95);
+    }
+    
+    /* Floating Action Button */
+    .fab {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: none;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        font-size: 1.5rem;
+        z-index: 1000;
+        transition: all 0.3s;
+    }
+    
+    .fab:active {
+        transform: translateX(-50%) scale(0.9);
+    }
+    
+    /* Export Button */
+    .export-btn {
+        position: fixed;
+        bottom: 2rem;
+        right: 1rem;
+        background: #28a745;
+        color: white;
+        padding: 0.75rem 1.25rem;
+        border-radius: 25px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        z-index: 999;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h4 {
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    /* Responsive - Desktop Enhancements */
+    @media (min-width: 768px) {
+        .stats-bar {
+            padding: 2rem;
+        }
+        
+        .stat-box {
+            padding: 1rem;
+        }
+        
+        .mobile-tabs {
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .tab-btn {
+            min-width: 150px;
+            padding: 1.25rem 1rem;
+        }
+        
+        .content-area {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem 2rem 2rem;
+        }
+        
+        .item-card {
+            padding: 1.5rem;
+        }
+        
+        .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        
+        .fab {
+            bottom: 2rem;
+            left: auto;
+            right: 2rem;
+            transform: none;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stock-simple">
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="row">
+            <div class="col-4">
+                <div class="stat-box">
+                    <span class="stat-number">{{ stock_count }}</span>
+                    <span class="stat-label">פריטי מלאי</span>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="stat-box">
+                    <span class="stat-number">{{ supplier_count }}</span>
+                    <span class="stat-label">ספקים</span>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="stat-box">
+                    <span class="stat-number">{{ category_count }}</span>
+                    <span class="stat-label">קטגוריות</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile Navigation Tabs -->
+    <div class="mobile-tabs">
+        <a href="{{ url_for('admin.stock_management', view='items') }}" 
+           class="tab-btn {{ 'active' if current_view == 'items' else '' }}">
+            <i class="fas fa-boxes"></i>
+            <span>פריטי מלאי</span>
+        </a>
+        <a href="{{ url_for('admin.stock_management', view='suppliers') }}" 
+           class="tab-btn {{ 'active' if current_view == 'suppliers' else '' }}">
+            <i class="fas fa-truck"></i>
+            <span>ספקים</span>
+        </a>
+        <a href="{{ url_for('admin.stock_management', view='categories') }}" 
+           class="tab-btn {{ 'active' if current_view == 'categories' else '' }}">
+            <i class="fas fa-tags"></i>
+            <span>קטגוריות</span>
+        </a>
+    </div>
+    
+    <!-- Content Area -->
+    <div class="content-area">
+        {% if current_view == 'items' %}
+            <!-- Stock Items View -->
+            {% if items %}
+                {% for item in items %}
+                <div class="item-card">
+                    <div class="item-card-header">
+                        <h3 class="item-name">{{ item.name_he }}</h3>
+                        <span class="item-badge">מלאי</span>
+                    </div>
+                    <div class="item-details">
+                        {% if item.category %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-tag"></i>
+                            <span>{{ item.category.name_he }}</span>
+                        </div>
+                        {% endif %}
+                        {% if item.primary_supplier %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-truck"></i>
+                            <span>{{ item.primary_supplier.name }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-shekel-sign"></i>
+                            <span>₪{{ "%.2f"|format(item.cost_per_unit or 0) }} / {{ item.unit_he }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-boxes"></i>
+                    <h4>אין פריטי מלאי</h4>
+                    <p>התחל בהוספת פריטים למערכת</p>
+                </div>
+            {% endif %}
+        
+        {% elif current_view == 'suppliers' %}
+            <!-- Suppliers View -->
+            {% if suppliers %}
+                {% for supplier in suppliers %}
+                <div class="item-card">
+                    <div class="item-card-header">
+                        <h3 class="item-name">{{ supplier.name }}</h3>
+                        <span class="item-badge">ספק</span>
+                    </div>
+                    <div class="item-details">
+                        {% if supplier.contact_person %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-user"></i>
+                            <span>{{ supplier.contact_person }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.phone %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-phone"></i>
+                            <span>{{ supplier.phone }}</span>
+                        </div>
+                        {% endif %}
+                        {% if supplier.email %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-envelope"></i>
+                            <span>{{ supplier.email }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-truck"></i>
+                    <h4>אין ספקים</h4>
+                    <p>התחל בהוספת ספקים למערכת</p>
+                </div>
+            {% endif %}
+        
+        {% elif current_view == 'categories' %}
+            <!-- Categories View -->
+            {% if categories %}
+                {% for category in categories %}
+                <div class="item-card">
+                    <div class="item-card-header">
+                        <h3 class="item-name">{{ category.name_he }}</h3>
+                        <span class="item-badge">קטגוריה</span>
+                    </div>
+                    <div class="item-details">
+                        {% if category.name_en %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-language"></i>
+                            <span>{{ category.name_en }}</span>
+                        </div>
+                        {% endif %}
+                        {% if category.description %}
+                        <div class="item-detail-row">
+                            <i class="fas fa-info-circle"></i>
+                            <span>{{ category.description }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-tags"></i>
+                    <h4>אין קטגוריות</h4>
+                    <p>התחל בהוספת קטגוריות למערכת</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <!-- Floating Action Button (Add New) -->
+    {% if current_view == 'items' %}
+    <a href="{{ url_for('admin.add_stock_item') }}" class="fab">
+        <i class="fas fa-plus"></i>
+    </a>
+    <a href="{{ url_for('admin.export_stock_items') }}?format=excel" class="export-btn">
+        <i class="fas fa-download"></i>
+        <span>ייצוא</span>
+    </a>
+    {% elif current_view == 'suppliers' %}
+    <a href="{{ url_for('admin.add_supplier') }}" class="fab">
+        <i class="fas fa-plus"></i>
+    </a>
+    <a href="{{ url_for('admin.export_suppliers') }}?format=excel" class="export-btn">
+        <i class="fas fa-download"></i>
+        <span>ייצוא</span>
+    </a>
+    {% elif current_view == 'categories' %}
+    <a href="{{ url_for('admin.add_stock_category') }}" class="fab">
+        <i class="fas fa-plus"></i>
+    </a>
+    <a href="{{ url_for('admin.export_categories') }}?format=excel" class="export-btn">
+        <i class="fas fa-download"></i>
+        <span>ייצוא</span>
+    </a>
+    {% endif %}
+</div>
+
+<script>
+// Delete Functions
+function deleteItem(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק פריט זה?')) {
+        window.location.href = `/admin/stock/item/${id}/delete`;
+    }
+}
+
+function deleteSupplier(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק ספק זה?')) {
+        window.location.href = `/admin/stock/supplier/${id}/delete`;
+    }
+}
+
+function deleteCategory(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?')) {
+        window.location.href = `/admin/stock/category/${id}/delete`;
+    }
+}
+
+// Touch-friendly interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth scroll for mobile tabs
+    const tabs = document.querySelector('.mobile-tabs');
+    if (tabs) {
+        const activeTab = tabs.querySelector('.tab-btn.active');
+        if (activeTab) {
+            activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }
+    
+    // Add haptic feedback for touch devices (if supported)
+    if ('vibrate' in navigator) {
+        document.querySelectorAll('.action-btn, .fab, .tab-btn').forEach(btn => {
+            btn.addEventListener('touchstart', () => {
+                navigator.vibrate(10);
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

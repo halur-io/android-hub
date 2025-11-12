@@ -4563,7 +4563,28 @@ def printer_guide():
 @login_required
 @require_permission('stock.view')
 def stock_management():
-    """Main stock management dashboard"""
+    """Main stock management platform - Modern tabbed interface"""
+    from models import StockItem, Supplier, StockCategory
+    
+    # Get all active stock items
+    stock_items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+    
+    # Get all active suppliers
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    
+    # Get all active categories
+    stock_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+    
+    return render_template('admin/stock_platform.html', 
+                         stock_items=stock_items,
+                         suppliers=suppliers,
+                         stock_categories=stock_categories)
+
+@admin_bp.route('/stock-management-old')
+@login_required
+@require_permission('stock.view')
+def stock_management_old():
+    """Legacy stock management dashboard"""
     from models import StockItem, StockLevel, Branch, StockAlert, Supplier, StockCategory, StockTransaction
     from sqlalchemy import func
     

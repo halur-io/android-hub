@@ -1,0 +1,858 @@
+{% extends "admin/base.html" %}
+{% from "admin/partials/action_bar.html" import render_action_bar %}
+
+{% block title %}Stock Management Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Platform Container */
+    .stock-platform {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+    
+    .platform-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        overflow: hidden;
+    }
+    
+    /* Top Navigation Tabs */
+    .platform-tabs {
+        background: linear-gradient(135deg, #1a3a6e 0%, #2c5aa0 100%);
+        display: flex;
+        justify-content: space-around;
+        padding: 0;
+        margin: 0;
+        border-bottom: 3px solid #ffd700;
+        position: relative;
+    }
+    
+    .platform-tab {
+        flex: 1;
+        padding: 1.25rem 1.5rem;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,0.7);
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .platform-tab:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+    }
+    
+    .platform-tab.active {
+        background: rgba(255,215,0,0.15);
+        color: #ffd700;
+    }
+    
+    .platform-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: #ffd700;
+        box-shadow: 0 0 10px #ffd700;
+    }
+    
+    .platform-tab i {
+        font-size: 1.1rem;
+    }
+    
+    /* Tab Content */
+    .tab-content-area {
+        padding: 2rem;
+        min-height: 600px;
+    }
+    
+    .tab-pane {
+        display: none;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    .tab-pane.active {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Hi-Tech Action Buttons */
+    .action-btn-group {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .hitech-btn {
+        position: relative;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        overflow: hidden;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .hitech-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .hitech-btn:hover::before {
+        left: 100%;
+    }
+    
+    .hitech-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    
+    .hitech-btn-success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4);
+    }
+    
+    .hitech-btn-danger {
+        background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        box-shadow: 0 4px 15px rgba(238, 9, 121, 0.4);
+    }
+    
+    .hitech-btn-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+    }
+    
+    /* Hi-Tech Edit/Delete Buttons */
+    .btn-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-hitech {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+    
+    .btn-hitech::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-hitech:hover::before {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .btn-hitech i {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .btn-edit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-edit:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    
+    .btn-delete {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+    }
+    
+    .btn-delete:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+    }
+    
+    .btn-view {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(56, 239, 125, 0.4);
+    }
+    
+    .btn-view:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 6px 20px rgba(56, 239, 125, 0.6);
+    }
+    
+    /* Modern Cards */
+    .modern-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .modern-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    /* View Toggle */
+    .view-toggle-modern {
+        display: inline-flex;
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .view-btn {
+        padding: 0.5rem 1.25rem;
+        border: none;
+        background: transparent;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 500;
+        color: #6c757d;
+        transition: all 0.3s;
+    }
+    
+    .view-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Table View */
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 0.5rem;
+    }
+    
+    .modern-table thead th {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1rem;
+        font-weight: 600;
+        color: #495057;
+        border: none;
+        text-align: right;
+    }
+    
+    .modern-table thead th:first-child {
+        border-radius: 12px 0 0 12px;
+    }
+    
+    .modern-table thead th:last-child {
+        border-radius: 0 12px 12px 0;
+    }
+    
+    .modern-table tbody tr {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: all 0.3s;
+    }
+    
+    .modern-table tbody tr:hover {
+        transform: scale(1.01);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .modern-table tbody td {
+        padding: 1rem;
+        border: none;
+    }
+    
+    .modern-table tbody tr td:first-child {
+        border-radius: 12px 0 0 12px;
+    }
+    
+    .modern-table tbody tr td:last-child {
+        border-radius: 0 12px 12px 0;
+    }
+    
+    /* Quick Stats */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        transition: all 0.3s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .platform-tabs {
+            overflow-x: auto;
+            justify-content: flex-start;
+        }
+        
+        .platform-tab {
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+        
+        .tab-content-area {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stock-platform">
+    <div class="container-fluid">
+        <div class="platform-container">
+            <!-- Top Navigation Tabs -->
+            <div class="platform-tabs">
+                <button class="platform-tab active" onclick="switchTab('inventory')">
+                    <i class="fas fa-boxes"></i>
+                    <span>מלאי</span>
+                </button>
+                <button class="platform-tab" onclick="switchTab('suppliers')">
+                    <i class="fas fa-truck"></i>
+                    <span>ספקים</span>
+                </button>
+                <button class="platform-tab" onclick="switchTab('categories')">
+                    <i class="fas fa-tags"></i>
+                    <span>קטגוריות</span>
+                </button>
+                <button class="platform-tab" onclick="switchTab('analytics')">
+                    <i class="fas fa-chart-line"></i>
+                    <span>אנליטיקס</span>
+                </button>
+                <button class="platform-tab" onclick="switchTab('alerts')">
+                    <i class="fas fa-bell"></i>
+                    <span>התראות</span>
+                </button>
+                <button class="platform-tab" onclick="switchTab('tools')">
+                    <i class="fas fa-tools"></i>
+                    <span>כלים</span>
+                </button>
+            </div>
+            
+            <!-- Tab Content Area -->
+            <div class="tab-content-area">
+                <!-- INVENTORY TAB -->
+                <div id="inventory-tab" class="tab-pane active">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="fas fa-boxes me-2"></i>ניהול מלאי</h2>
+                        <div class="action-btn-group">
+                            <a href="{{ url_for('admin.export_items') }}?format=excel" class="hitech-btn hitech-btn-success">
+                                <i class="fas fa-download me-2"></i>ייצוא Excel
+                            </a>
+                            <a href="{{ url_for('admin.receipt_scanner') }}" class="hitech-btn">
+                                <i class="fas fa-receipt me-2"></i>סריקת קבלות AI
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- View Toggle -->
+                    <div class="view-toggle-modern">
+                        <button class="view-btn active" onclick="toggleViewMode('inventory', 'card')">
+                            <i class="fas fa-id-card me-2"></i>כרטיסים
+                        </button>
+                        <button class="view-btn" onclick="toggleViewMode('inventory', 'table')">
+                            <i class="fas fa-table me-2"></i>טבלה
+                        </button>
+                    </div>
+                    
+                    <!-- Card View -->
+                    <div id="inventory-card-view" class="view-mode">
+                        <div class="row">
+                            {% for item in stock_items %}
+                            <div class="col-md-4 col-lg-3 mb-3">
+                                <div class="modern-card">
+                                    <h6 class="mb-2 fw-bold">{{ item.name_he }}</h6>
+                                    <div class="small text-muted mb-3">
+                                        <div><i class="fas fa-tag me-2"></i>{{ item.category.name_he if item.category else 'ללא קטגוריה' }}</div>
+                                        <div><i class="fas fa-truck me-2"></i>{{ item.primary_supplier.name if item.primary_supplier else 'ללא ספק' }}</div>
+                                        <div><i class="fas fa-shekel-sign me-2"></i>₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</div>
+                                    </div>
+                                    <div class="btn-actions">
+                                        <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="btn-hitech btn-view" title="צפה">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button class="btn-hitech btn-edit" onclick="editItem({{ item.id }})" title="ערוך">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-hitech btn-delete" onclick="deleteItem({{ item.id }})" title="מחק">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Table View -->
+                    <div id="inventory-table-view" class="view-mode" style="display: none;">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>שם</th>
+                                    <th>קטגוריה</th>
+                                    <th>ספק</th>
+                                    <th>עלות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in stock_items %}
+                                <tr>
+                                    <td><strong>{{ item.name_he }}</strong></td>
+                                    <td>{{ item.category.name_he if item.category else '-' }}</td>
+                                    <td>{{ item.primary_supplier.name if item.primary_supplier else '-' }}</td>
+                                    <td>₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</td>
+                                    <td>
+                                        <div class="btn-actions">
+                                            <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="btn-hitech btn-view"><i class="fas fa-eye"></i></a>
+                                            <button class="btn-hitech btn-edit" onclick="editItem({{ item.id }})"><i class="fas fa-edit"></i></button>
+                                            <button class="btn-hitech btn-delete" onclick="deleteItem({{ item.id }})"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- SUPPLIERS TAB -->
+                <div id="suppliers-tab" class="tab-pane">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="fas fa-truck me-2"></i>ניהול ספקים</h2>
+                        <div class="action-btn-group">
+                            <a href="{{ url_for('admin.export_suppliers') }}?format=excel" class="hitech-btn hitech-btn-success">
+                                <i class="fas fa-download me-2"></i>ייצוא Excel
+                            </a>
+                            <button class="hitech-btn" onclick="addSupplier()">
+                                <i class="fas fa-plus me-2"></i>הוסף ספק
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- View Toggle -->
+                    <div class="view-toggle-modern">
+                        <button class="view-btn active" onclick="toggleViewMode('suppliers', 'card')">
+                            <i class="fas fa-id-card me-2"></i>כרטיסים
+                        </button>
+                        <button class="view-btn" onclick="toggleViewMode('suppliers', 'table')">
+                            <i class="fas fa-table me-2"></i>טבלה
+                        </button>
+                    </div>
+                    
+                    <!-- Suppliers Card View -->
+                    <div id="suppliers-card-view" class="view-mode">
+                        <div class="row">
+                            {% for supplier in suppliers %}
+                            <div class="col-md-4 mb-3">
+                                <div class="modern-card">
+                                    <h5 class="mb-3">{{ supplier.name }}</h5>
+                                    {% if supplier.contact_person %}
+                                    <p class="mb-2"><i class="fas fa-user me-2"></i>{{ supplier.contact_person }}</p>
+                                    {% endif %}
+                                    {% if supplier.phone %}
+                                    <p class="mb-2"><i class="fas fa-phone me-2"></i>{{ supplier.phone }}</p>
+                                    {% endif %}
+                                    {% if supplier.email %}
+                                    <p class="mb-3"><i class="fas fa-envelope me-2"></i>{{ supplier.email }}</p>
+                                    {% endif %}
+                                    <div class="btn-actions">
+                                        <button class="btn-hitech btn-edit" onclick="editSupplier({{ supplier.id }})"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-hitech btn-delete" onclick="deleteSupplier({{ supplier.id }})"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Suppliers Table View -->
+                    <div id="suppliers-table-view" class="view-mode" style="display: none;">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>שם ספק</th>
+                                    <th>איש קשר</th>
+                                    <th>טלפון</th>
+                                    <th>אימייל</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for supplier in suppliers %}
+                                <tr>
+                                    <td><strong>{{ supplier.name }}</strong></td>
+                                    <td>{{ supplier.contact_person or '-' }}</td>
+                                    <td>{{ supplier.phone or '-' }}</td>
+                                    <td>{{ supplier.email or '-' }}</td>
+                                    <td>
+                                        <div class="btn-actions">
+                                            <button class="btn-hitech btn-edit" onclick="editSupplier({{ supplier.id }})"><i class="fas fa-edit"></i></button>
+                                            <button class="btn-hitech btn-delete" onclick="deleteSupplier({{ supplier.id }})"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- CATEGORIES TAB -->
+                <div id="categories-tab" class="tab-pane">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2><i class="fas fa-tags me-2"></i>ניהול קטגוריות</h2>
+                        <div class="action-btn-group">
+                            <a href="{{ url_for('admin.export_categories') }}?format=excel" class="hitech-btn hitech-btn-success">
+                                <i class="fas fa-download me-2"></i>ייצוא Excel
+                            </a>
+                            <button class="hitech-btn" onclick="addCategory()">
+                                <i class="fas fa-plus me-2"></i>הוסף קטגוריה
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- View Toggle -->
+                    <div class="view-toggle-modern">
+                        <button class="view-btn active" onclick="toggleViewMode('categories', 'card')">
+                            <i class="fas fa-id-card me-2"></i>כרטיסים
+                        </button>
+                        <button class="view-btn" onclick="toggleViewMode('categories', 'table')">
+                            <i class="fas fa-table me-2"></i>טבלה
+                        </button>
+                    </div>
+                    
+                    <!-- Categories Card View -->
+                    <div id="categories-card-view" class="view-mode">
+                        <div class="row">
+                            {% for category in stock_categories %}
+                            <div class="col-md-3 mb-3">
+                                <div class="modern-card">
+                                    <h6 class="mb-2">{{ category.name_he }}</h6>
+                                    <p class="text-muted small mb-3">{{ category.name_en or '-' }}</p>
+                                    <div class="btn-actions">
+                                        <button class="btn-hitech btn-edit" onclick="editCategory({{ category.id }})"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-hitech btn-delete" onclick="deleteCategory({{ category.id }})"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Categories Table View -->
+                    <div id="categories-table-view" class="view-mode" style="display: none;">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>שם עברית</th>
+                                    <th>שם אנגלית</th>
+                                    <th>תיאור</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in stock_categories %}
+                                <tr>
+                                    <td><strong>{{ category.name_he }}</strong></td>
+                                    <td>{{ category.name_en or '-' }}</td>
+                                    <td>{{ category.description or '-' }}</td>
+                                    <td>
+                                        <div class="btn-actions">
+                                            <button class="btn-hitech btn-edit" onclick="editCategory({{ category.id }})"><i class="fas fa-edit"></i></button>
+                                            <button class="btn-hitech btn-delete" onclick="deleteCategory({{ category.id }})"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- ANALYTICS TAB -->
+                <div id="analytics-tab" class="tab-pane">
+                    <h2 class="mb-4"><i class="fas fa-chart-line me-2"></i>אנליטיקס ותובנות</h2>
+                    
+                    <!-- Quick Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">{{ stock_items|length }}</div>
+                            <div class="stat-label">פריטי מלאי</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ suppliers|length }}</div>
+                            <div class="stat-label">ספקים פעילים</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ stock_categories|length }}</div>
+                            <div class="stat-label">קטגוריות</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ stock_items|length }}</div>
+                            <div class="stat-label">פריטים במערכת</div>
+                        </div>
+                    </div>
+                    
+                    <div class="modern-card">
+                        <h4 class="mb-3">דוחות מתקדמים</h4>
+                        <div class="action-btn-group">
+                            <a href="{{ url_for('admin.monthly_cost_reports') }}" class="hitech-btn">
+                                <i class="fas fa-chart-bar me-2"></i>דוח עלויות חודשי
+                            </a>
+                            <button class="hitech-btn hitech-btn-success">
+                                <i class="fas fa-chart-pie me-2"></i>ניתוח קטגוריות
+                            </button>
+                            <button class="hitech-btn hitech-btn-warning">
+                                <i class="fas fa-chart-area me-2"></i>מגמות מחירים
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ALERTS TAB -->
+                <div id="alerts-tab" class="tab-pane">
+                    <h2 class="mb-4"><i class="fas fa-bell me-2"></i>התראות ומעקב</h2>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="modern-card" style="border-right: 4px solid #dc3545;">
+                                <h5 class="text-danger mb-2"><i class="fas fa-exclamation-triangle me-2"></i>מלאי נמוך</h5>
+                                <p class="mb-0">0 פריטים במלאי נמוך</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="modern-card" style="border-right: 4px solid #ffc107;">
+                                <h5 class="text-warning mb-2"><i class="fas fa-clock me-2"></i>פגי תוקף</h5>
+                                <p class="mb-0">0 פריטים מתקרבים לפג תוקף</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="modern-card" style="border-right: 4px solid #17a2b8;">
+                                <h5 class="text-info mb-2"><i class="fas fa-dollar-sign me-2"></i>שינויי מחיר</h5>
+                                <p class="mb-0">0 שינויים במחירים השבוע</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TOOLS TAB -->
+                <div id="tools-tab" class="tab-pane">
+                    <h2 class="mb-4"><i class="fas fa-tools me-2"></i>כלי ניהול</h2>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="modern-card">
+                                <h5 class="mb-3"><i class="fas fa-receipt me-2"></i>סריקת קבלות AI</h5>
+                                <p class="text-muted mb-3">העלה קבלה וקבל זיהוי אוטומטי של מוצרים ומחירים</p>
+                                <a href="{{ url_for('admin.receipt_scanner') }}" class="hitech-btn w-100">
+                                    <i class="fas fa-camera me-2"></i>פתח סורק קבלות
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="modern-card">
+                                <h5 class="mb-3"><i class="fas fa-file-import me-2"></i>ייבוא מלאי</h5>
+                                <p class="text-muted mb-3">ייבא נתוני מלאי מקובץ Excel או CSV</p>
+                                <a href="{{ url_for('admin.import_stock') }}" class="hitech-btn hitech-btn-success w-100">
+                                    <i class="fas fa-upload me-2"></i>ייבוא נתונים
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="modern-card">
+                                <h5 class="mb-3"><i class="fas fa-sync me-2"></i>עדכון מחירים</h5>
+                                <p class="text-muted mb-3">עדכון מרובה של מחירים לפי ספק או קטגוריה</p>
+                                <button class="hitech-btn hitech-btn-warning w-100" onclick="bulkPriceUpdate()">
+                                    <i class="fas fa-tags me-2"></i>עדכון מחירים
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="modern-card">
+                                <h5 class="mb-3"><i class="fas fa-calculator me-2"></i>מחשבון רווחיות</h5>
+                                <p class="text-muted mb-3">חישוב רווחיות מנות לפי עלויות מלאי</p>
+                                <button class="hitech-btn w-100" onclick="profitCalculator()">
+                                    <i class="fas fa-chart-line me-2"></i>חישוב רווחים
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tab Switching
+function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-pane').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active from all tab buttons
+    document.querySelectorAll('.platform-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.add('active');
+    
+    // Mark tab button as active
+    event.target.closest('.platform-tab').classList.add('active');
+}
+
+// View Mode Toggle
+function toggleViewMode(section, mode) {
+    const cardView = document.getElementById(`${section}-card-view`);
+    const tableView = document.getElementById(`${section}-table-view`);
+    const buttons = event.target.closest('.view-toggle-modern').querySelectorAll('.view-btn');
+    
+    // Update button states
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Toggle views
+    if (mode === 'card') {
+        cardView.style.display = 'block';
+        tableView.style.display = 'none';
+    } else {
+        cardView.style.display = 'none';
+        tableView.style.display = 'block';
+    }
+}
+
+// CRUD Functions (placeholders - connect to your existing routes)
+function editItem(id) {
+    window.location.href = `/admin/stock/item/${id}/edit`;
+}
+
+function deleteItem(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק פריט זה?')) {
+        fetch(`/admin/stock/item/${id}/delete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(() => location.reload());
+    }
+}
+
+function editSupplier(id) {
+    window.location.href = `/admin/supplier/${id}/edit`;
+}
+
+function deleteSupplier(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק ספק זה?')) {
+        fetch(`/admin/supplier/${id}/delete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(() => location.reload());
+    }
+}
+
+function editCategory(id) {
+    alert('עריכת קטגוריה: ' + id);
+}
+
+function deleteCategory(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?')) {
+        alert('מחיקת קטגוריה: ' + id);
+    }
+}
+
+function addSupplier() {
+    alert('הוספת ספק חדש');
+}
+
+function addCategory() {
+    alert('הוספת קטגוריה חדשה');
+}
+
+function bulkPriceUpdate() {
+    alert('עדכון מחירים - בקרוב!');
+}
+
+function profitCalculator() {
+    alert('מחשבון רווחיות - בקרוב!');
+}
+</script>
+{% endblock %}

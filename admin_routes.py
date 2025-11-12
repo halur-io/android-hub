@@ -6018,23 +6018,37 @@ Return ONLY the JSON object, no explanation."""
         # Create ReceiptImportItem records for each line item
         items = extracted_data.get('items', [])
         for idx, item_data in enumerate(items):
-            # Try to match to existing stock items
+            # Try to match to existing stock items using fuzzy matching
+            from rapidfuzz import fuzz
             product_name = item_data.get('product_name', '').strip()
             suggested_stock_item = None
             match_confidence = 0.0
             
             if product_name:
-                # Try to find matching stock item
+                # Get all active stock items
                 stock_items = StockItem.query.filter_by(is_active=True).all()
+                best_match = None
+                best_score = 0.0
+                
                 for stock_item in stock_items:
-                    if stock_item.name_he and product_name.lower() in stock_item.name_he.lower():
-                        suggested_stock_item = stock_item
-                        match_confidence = 0.8
-                        break
-                    elif stock_item.name_en and product_name.lower() in stock_item.name_en.lower():
-                        if not suggested_stock_item:
-                            suggested_stock_item = stock_item
-                            match_confidence = 0.6
+                    # Check Hebrew name
+                    if stock_item.name_he:
+                        score_he = fuzz.ratio(product_name.lower(), stock_item.name_he.lower()) / 100.0
+                        if score_he > best_score:
+                            best_score = score_he
+                            best_match = stock_item
+                    
+                    # Check English name
+                    if stock_item.name_en:
+                        score_en = fuzz.ratio(product_name.lower(), stock_item.name_en.lower()) / 100.0
+                        if score_en > best_score:
+                            best_score = score_en
+                            best_match = stock_item
+                
+                # Only suggest if confidence is above threshold (60%)
+                if best_score >= 0.6:
+                    suggested_stock_item = best_match
+                    match_confidence = best_score
             
             receipt_item = ReceiptImportItem(
                 receipt_import_id=receipt_import.id,
@@ -6228,6 +6242,13 @@ def approve_receipt_import(import_id):
             if total_amount:
                 receipt_import.total_amount = total_amount
             
+            # Update the original receipt with supplier info
+            receipt_import.receipt.supplier_id = supplier_id
+            if receipt_date_str:
+                receipt_import.receipt.receipt_date = datetime.strptime(receipt_date_str, '%Y-%m-%d').date()
+            if total_amount:
+                receipt_import.receipt.total_amount = total_amount
+            
             # Create purchase order (shopping list)
             shopping_list = ShoppingList(
                 branch_id=receipt_import.branch_id,
@@ -6295,13 +6316,14 @@ def approve_receipt_import(import_id):
                     receipt_item.stock_item_id = stock_item_id
                     receipt_item.is_new_item = False
                 else:
-                    # Create new stock item
+                    # Create new stock item linked to supplier
                     stock_item = StockItem(
                         name_he=product_name,
                         name_en=product_name,
                         unit_he=receipt_item.unit_of_measure or 'יחידות',
                         unit_en=receipt_item.unit_of_measure or 'units',
                         cost_per_unit=unit_price or 0,
+                        supplier_id=supplier_id,  # Link to supplier
                         is_active=True
                     )
                     db.session.add(stock_item)

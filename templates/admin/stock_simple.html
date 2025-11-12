@@ -421,17 +421,30 @@
         
         <!-- Toolbar -->
         <div class="toolbar">
-            <div class="segmented-control">
-                <a href="{{ url_for('admin.stock_management', view=current_view, mode='card') }}" 
-                   class="segment-btn {{ 'active' if view_mode == 'card' else '' }}">
-                    <i class="fas fa-th"></i>
-                    <span class="d-none d-sm-inline">כרטיסים</span>
-                </a>
-                <a href="{{ url_for('admin.stock_management', view=current_view, mode='list') }}" 
-                   class="segment-btn {{ 'active' if view_mode == 'list' else '' }}">
-                    <i class="fas fa-list"></i>
-                    <span class="d-none d-sm-inline">רשימה</span>
-                </a>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <div class="segmented-control">
+                    <a href="{{ url_for('admin.stock_management', view=current_view, mode='card', supplier_id=selected_supplier) }}" 
+                       class="segment-btn {{ 'active' if view_mode == 'card' else '' }}">
+                        <i class="fas fa-th"></i>
+                        <span class="d-none d-sm-inline">כרטיסים</span>
+                    </a>
+                    <a href="{{ url_for('admin.stock_management', view=current_view, mode='list', supplier_id=selected_supplier) }}" 
+                       class="segment-btn {{ 'active' if view_mode == 'list' else '' }}">
+                        <i class="fas fa-list"></i>
+                        <span class="d-none d-sm-inline">רשימה</span>
+                    </a>
+                </div>
+                
+                {% if current_view == 'items' %}
+                    <select id="supplier-filter" class="form-select form-select-sm" style="width: auto; max-width: 200px; font-size: 0.85rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px;">
+                        <option value="">כל הספקים</option>
+                        {% for supplier in all_suppliers %}
+                        <option value="{{ supplier.id }}" {% if selected_supplier == supplier.id %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
             </div>
             
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -440,7 +453,7 @@
                         <i class="fas fa-camera"></i>
                         <span class="d-none d-sm-inline">סרוק קבלה</span>
                     </a>
-                    <a href="{{ url_for('admin.export_stock_items') }}?format=excel" class="action-btn action-btn-secondary">
+                    <a href="{{ url_for('admin.export_stock_items') }}?format=excel&supplier_id={{ selected_supplier or '' }}" class="action-btn action-btn-secondary">
                         <i class="fas fa-download"></i>
                         <span class="d-none d-md-inline">ייצוא</span>
                     </a>
@@ -719,6 +732,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {
         activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    
+    // Supplier filter handler
+    const supplierFilter = document.getElementById('supplier-filter');
+    if (supplierFilter) {
+        supplierFilter.addEventListener('change', function() {
+            const supplierId = this.value;
+            const currentView = '{{ current_view }}';
+            const viewMode = '{{ view_mode }}';
+            
+            // Build URL with supplier filter
+            let url = new URL(window.location.origin + '{{ url_for("admin.stock_management") }}');
+            url.searchParams.set('view', currentView);
+            url.searchParams.set('mode', viewMode);
+            if (supplierId) {
+                url.searchParams.set('supplier_id', supplierId);
+            }
+            
+            // Redirect to filtered view
+            window.location.href = url.toString();
+        });
     }
     
     // Haptic feedback for touch devices

@@ -4586,15 +4586,25 @@ def stock_management():
         # Get view parameters (default: items, card)
         view = request.args.get('view', 'items')
         view_mode = request.args.get('mode', 'card')  # 'card' or 'list'
-        logger.info(f"View: {view}, Mode: {view_mode}")
+        supplier_filter = request.args.get('supplier_id', type=int)  # Supplier filter
+        logger.info(f"View: {view}, Mode: {view_mode}, Supplier filter: {supplier_filter}")
         
         items = []
         suppliers = []
         categories = []
+        all_suppliers = []  # For filter dropdown
+        
+        # Load all suppliers for filter dropdown
+        all_suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
         
         if view == 'items':
-            items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
-            logger.info(f"Loaded {len(items)} items")
+            # Apply supplier filter if specified
+            if supplier_filter:
+                items = StockItem.query.filter_by(is_active=True, supplier_id=supplier_filter).order_by(StockItem.name_he).all()
+                logger.info(f"Loaded {len(items)} items for supplier {supplier_filter}")
+            else:
+                items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+                logger.info(f"Loaded {len(items)} items")
         elif view == 'suppliers':
             suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
             logger.info(f"Loaded {len(suppliers)} suppliers")
@@ -4611,7 +4621,9 @@ def stock_management():
                              category_count=category_count,
                              items=items,
                              suppliers=suppliers,
-                             categories=categories)
+                             categories=categories,
+                             all_suppliers=all_suppliers,
+                             selected_supplier=supplier_filter)
     except Exception as e:
         logger.error(f"ERROR in stock_management: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -6183,7 +6195,17 @@ def review_receipt_import(import_id):
     
     receipt_import = ReceiptImport.query.get_or_404(import_id)
     suppliers = Supplier.query.filter_by(is_active=True).all()
-    stock_items = StockItem.query.filter_by(is_active=True).all()
+    
+    # Get all stock items, but prioritize items from suggested supplier
+    all_stock_items = StockItem.query.filter_by(is_active=True).all()
+    
+    # If supplier is suggested, show supplier items first
+    if receipt_import.suggested_supplier_id:
+        supplier_items = [item for item in all_stock_items if item.supplier_id == receipt_import.suggested_supplier_id]
+        other_items = [item for item in all_stock_items if item.supplier_id != receipt_import.suggested_supplier_id]
+        stock_items = supplier_items + other_items
+    else:
+        stock_items = all_stock_items
     
     return render_template('admin/review_receipt_import.html',
                          receipt_import=receipt_import,

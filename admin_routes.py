@@ -5603,6 +5603,7 @@ def receipt_scanner():
 def process_receipt_upload():
     """Process uploaded receipt with AI"""
     import os
+    import json
     from werkzeug.utils import secure_filename
     from datetime import datetime
     from models import Receipt, ReceiptImport, ReceiptImportItem, Branch, Supplier, StockItem
@@ -5759,7 +5760,6 @@ Return ONLY the JSON object, no explanation."""
         elif '```' in ai_response:
             ai_response = ai_response.split('```')[1].split('```')[0].strip()
         
-        import json
         extracted_data = json.loads(ai_response)
         
         # Update receipt with extracted data
@@ -5865,6 +5865,14 @@ Return ONLY the JSON object, no explanation."""
             receipt.ai_errors = ai_response if 'ai_response' in locals() else None
             db.session.commit()
         return jsonify({'success': False, 'error': 'לא ניתן לפענח את תשובת הבינה המלאכותית'})
+    
+    except openai.RateLimitError as e:
+        # OpenAI quota exceeded
+        if 'receipt' in locals():
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = 'OpenAI quota exceeded'
+            db.session.commit()
+        return jsonify({'success': False, 'error': 'מכסת OpenAI נגמרה. יש לבדוק את התוכנית ופרטי החיוב'})
     
     except Exception as e:
         if 'receipt' in locals():

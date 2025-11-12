@@ -4583,9 +4583,10 @@ def stock_management():
         category_count = StockCategory.query.filter_by(is_active=True).count()
         logger.info(f"Category count: {category_count}")
         
-        # Get items based on view parameter (default: items)
+        # Get view parameters (default: items, card)
         view = request.args.get('view', 'items')
-        logger.info(f"View parameter: {view}")
+        view_mode = request.args.get('mode', 'card')  # 'card' or 'list'
+        logger.info(f"View: {view}, Mode: {view_mode}")
         
         items = []
         suppliers = []
@@ -4604,6 +4605,7 @@ def stock_management():
         logger.info("Rendering template admin/stock_simple.html")
         return render_template('admin/stock_simple.html',
                              current_view=view,
+                             view_mode=view_mode,
                              stock_count=stock_count,
                              supplier_count=supplier_count,
                              category_count=category_count,

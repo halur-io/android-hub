@@ -4,124 +4,195 @@
 
 {% block extra_css %}
 <style>
-    /* Mobile-First Simple Design */
+    /* Clean, Elegant Mobile-First Design */
+    :root {
+        --bg-main: #F7F5F0;
+        --bg-card: #FFFFFF;
+        --text-primary: #2F2F2F;
+        --text-secondary: #6B6B6B;
+        --accent-primary: #C96F44;
+        --accent-secondary: #6B8F71;
+        --border-color: #E5E3DD;
+    }
+    
     .stock-simple {
-        padding: 0;
-        background: #f8f9fa;
+        background: var(--bg-main);
         min-height: 100vh;
+        padding: 0;
     }
     
-    /* Top Stats Bar */
-    .stats-bar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1.5rem 1rem;
-        margin-bottom: 1rem;
+    /* Sticky Header with Stats and Actions */
+    .sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     
-    .stat-box {
+    /* Simple Stats Row */
+    .stats-row {
+        display: flex;
+        padding: 1rem;
+        gap: 1rem;
+        background: var(--bg-card);
+    }
+    
+    .stat-item {
+        flex: 1;
         text-align: center;
-        padding: 0.75rem;
+        padding: 0.75rem 0.5rem;
+        background: var(--bg-main);
+        border-radius: 8px;
     }
     
     .stat-number {
-        font-size: 2rem;
+        font-size: 1.5rem;
         font-weight: 700;
+        color: var(--text-primary);
         display: block;
     }
     
     .stat-label {
-        font-size: 0.85rem;
-        opacity: 0.9;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
         margin-top: 0.25rem;
     }
     
-    /* Mobile Navigation Tabs */
-    .mobile-tabs {
-        background: white;
-        padding: 0.5rem;
+    /* Clean Tabs */
+    .tabs-row {
         display: flex;
+        padding: 0 1rem;
         gap: 0.5rem;
+        background: var(--bg-card);
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        position: sticky;
-        top: 0;
-        z-index: 100;
     }
     
-    .mobile-tabs::-webkit-scrollbar {
+    .tabs-row::-webkit-scrollbar {
         display: none;
     }
     
-    .tab-btn {
-        flex: 1;
-        min-width: 120px;
-        padding: 1rem 0.75rem;
-        background: #f8f9fa;
-        border: none;
-        border-radius: 12px;
+    .tab-link {
+        padding: 0.75rem 1rem;
         font-size: 0.9rem;
         font-weight: 600;
-        color: #6c757d;
-        transition: all 0.3s;
+        color: var(--text-secondary);
+        text-decoration: none;
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+        transition: all 0.2s;
+    }
+    
+    .tab-link.active {
+        color: var(--accent-primary);
+        border-bottom-color: var(--accent-primary);
+    }
+    
+    /* Toolbar */
+    .toolbar {
         display: flex;
-        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: var(--bg-card);
+        border-top: 1px solid var(--border-color);
+    }
+    
+    /* Segmented Control for View Mode */
+    .segmented-control {
+        display: inline-flex;
+        background: var(--bg-main);
+        border-radius: 8px;
+        padding: 0.25rem;
+    }
+    
+    .segment-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
         align-items: center;
         gap: 0.5rem;
     }
     
-    .tab-btn i {
-        font-size: 1.5rem;
+    .segment-btn.active {
+        background: white;
+        color: var(--text-primary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
-    .tab-btn.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .action-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: var(--accent-primary);
         color: white;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+    
+    .action-btn-secondary {
+        background: var(--accent-secondary);
     }
     
     /* Content Area */
     .content-area {
-        padding: 0 1rem 2rem 1rem;
+        padding: 1rem;
     }
     
-    /* Card Design */
+    /* Card View */
+    .card-grid {
+        display: grid;
+        gap: 0.75rem;
+    }
+    
     .item-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: transform 0.2s, box-shadow 0.2s;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        transition: all 0.2s;
     }
     
     .item-card:active {
         transform: scale(0.98);
-        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     
-    .item-card-header {
+    .item-header {
         display: flex;
         justify-content: space-between;
         align-items: start;
         margin-bottom: 0.75rem;
     }
     
-    .item-name {
-        font-size: 1.1rem;
+    .item-title {
+        font-size: 1rem;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--text-primary);
         margin: 0;
     }
     
     .item-badge {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+        background: var(--bg-main);
+        color: var(--text-secondary);
+        border-radius: 12px;
         font-weight: 600;
     }
     
@@ -129,160 +200,104 @@
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
-        color: #6c757d;
-        font-size: 0.9rem;
     }
     
-    .item-detail-row {
+    .detail-row {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
     }
     
-    .item-detail-row i {
-        width: 20px;
-        color: #667eea;
+    .detail-row i {
+        width: 16px;
+        color: var(--accent-secondary);
+        font-size: 0.85rem;
     }
     
-    .item-actions {
+    /* List View */
+    .list-view {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .list-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
         display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #f0f0f0;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.2s;
     }
     
-    .action-btn {
+    .list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .list-item:active {
+        background: var(--bg-main);
+    }
+    
+    .list-item-main {
         flex: 1;
-        padding: 0.75rem;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
+        min-width: 0;
+    }
+    
+    .list-item-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.25rem 0;
+    }
+    
+    .list-item-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    .list-item-value {
         font-size: 0.9rem;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    
-    .action-btn-edit {
-        background: #e3f2fd;
-        color: #1976d2;
-    }
-    
-    .action-btn-delete {
-        background: #ffebee;
-        color: #d32f2f;
-    }
-    
-    .action-btn:active {
-        transform: scale(0.95);
-    }
-    
-    /* Floating Action Button */
-    .fab {
-        position: fixed;
-        bottom: 2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        border: none;
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-        font-size: 1.5rem;
-        z-index: 1000;
-        transition: all 0.3s;
-    }
-    
-    .fab:active {
-        transform: translateX(-50%) scale(0.9);
-    }
-    
-    /* Export Button */
-    .export-btn {
-        position: fixed;
-        bottom: 2rem;
-        right: 1rem;
-        background: #28a745;
-        color: white;
-        padding: 0.75rem 1.25rem;
-        border-radius: 25px;
-        border: none;
-        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
         font-weight: 600;
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        z-index: 999;
+        color: var(--accent-primary);
+        white-space: nowrap;
     }
     
     /* Empty State */
     .empty-state {
         text-align: center;
         padding: 3rem 1rem;
-        color: #6c757d;
+        color: var(--text-secondary);
     }
     
     .empty-state i {
-        font-size: 4rem;
-        color: #dee2e6;
+        font-size: 3rem;
+        color: var(--border-color);
         margin-bottom: 1rem;
     }
     
-    .empty-state h4 {
-        margin-bottom: 0.5rem;
-        color: #495057;
-    }
-    
-    /* Responsive - Desktop Enhancements */
+    /* Responsive */
     @media (min-width: 768px) {
-        .stats-bar {
-            padding: 2rem;
-        }
-        
-        .stat-box {
-            padding: 1rem;
-        }
-        
-        .mobile-tabs {
-            justify-content: center;
-            padding: 1rem;
-        }
-        
-        .tab-btn {
-            min-width: 150px;
-            padding: 1.25rem 1rem;
-        }
-        
         .content-area {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem 2rem 2rem;
+            padding: 1.5rem;
         }
         
-        .item-card {
-            padding: 1.5rem;
+        .card-grid {
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
         }
         
         .item-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         
-        .fab {
-            bottom: 2rem;
-            left: auto;
-            right: 2rem;
-            transform: none;
-        }
-        
-        .fab:hover {
-            transform: scale(1.1);
+        .list-item:hover {
+            background: var(--bg-main);
         }
     }
 </style>
@@ -290,80 +305,142 @@
 
 {% block content %}
 <div class="stock-simple">
-    <!-- Stats Bar -->
-    <div class="stats-bar">
-        <div class="row">
-            <div class="col-4">
-                <div class="stat-box">
-                    <span class="stat-number">{{ stock_count }}</span>
-                    <span class="stat-label">פריטי מלאי</span>
-                </div>
+    <!-- Sticky Header -->
+    <div class="sticky-header">
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-item">
+                <span class="stat-number">{{ stock_count }}</span>
+                <span class="stat-label">פריטים</span>
             </div>
-            <div class="col-4">
-                <div class="stat-box">
-                    <span class="stat-number">{{ supplier_count }}</span>
-                    <span class="stat-label">ספקים</span>
-                </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ supplier_count }}</span>
+                <span class="stat-label">ספקים</span>
             </div>
-            <div class="col-4">
-                <div class="stat-box">
-                    <span class="stat-number">{{ category_count }}</span>
-                    <span class="stat-label">קטגוריות</span>
-                </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ category_count }}</span>
+                <span class="stat-label">קטגוריות</span>
             </div>
         </div>
-    </div>
-    
-    <!-- Mobile Navigation Tabs -->
-    <div class="mobile-tabs">
-        <a href="{{ url_for('admin.stock_management', view='items') }}" 
-           class="tab-btn {{ 'active' if current_view == 'items' else '' }}">
-            <i class="fas fa-boxes"></i>
-            <span>פריטי מלאי</span>
-        </a>
-        <a href="{{ url_for('admin.stock_management', view='suppliers') }}" 
-           class="tab-btn {{ 'active' if current_view == 'suppliers' else '' }}">
-            <i class="fas fa-truck"></i>
-            <span>ספקים</span>
-        </a>
-        <a href="{{ url_for('admin.stock_management', view='categories') }}" 
-           class="tab-btn {{ 'active' if current_view == 'categories' else '' }}">
-            <i class="fas fa-tags"></i>
-            <span>קטגוריות</span>
-        </a>
+        
+        <!-- Tabs Row -->
+        <div class="tabs-row">
+            <a href="{{ url_for('admin.stock_management', view='items', mode=view_mode) }}" 
+               class="tab-link {{ 'active' if current_view == 'items' else '' }}">
+                פריטי מלאי
+            </a>
+            <a href="{{ url_for('admin.stock_management', view='suppliers', mode=view_mode) }}" 
+               class="tab-link {{ 'active' if current_view == 'suppliers' else '' }}">
+                ספקים
+            </a>
+            <a href="{{ url_for('admin.stock_management', view='categories', mode=view_mode) }}" 
+               class="tab-link {{ 'active' if current_view == 'categories' else '' }}">
+                קטגוריות
+            </a>
+        </div>
+        
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="segmented-control">
+                <a href="{{ url_for('admin.stock_management', view=current_view, mode='card') }}" 
+                   class="segment-btn {{ 'active' if view_mode == 'card' else '' }}">
+                    <i class="fas fa-th"></i>
+                    <span>כרטיסים</span>
+                </a>
+                <a href="{{ url_for('admin.stock_management', view=current_view, mode='list') }}" 
+                   class="segment-btn {{ 'active' if view_mode == 'list' else '' }}">
+                    <i class="fas fa-list"></i>
+                    <span>רשימה</span>
+                </a>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem;">
+                {% if current_view == 'items' %}
+                    <a href="{{ url_for('admin.export_stock_items') }}?format=excel" class="action-btn action-btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="d-none d-md-inline">ייצוא</span>
+                    </a>
+                    <a href="{{ url_for('admin.add_stock_item') }}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-md-inline">הוסף</span>
+                    </a>
+                {% elif current_view == 'suppliers' %}
+                    <a href="{{ url_for('admin.export_suppliers') }}?format=excel" class="action-btn action-btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="d-none d-md-inline">ייצוא</span>
+                    </a>
+                    <a href="{{ url_for('admin.add_supplier') }}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-md-inline">הוסף</span>
+                    </a>
+                {% elif current_view == 'categories' %}
+                    <a href="{{ url_for('admin.export_categories') }}?format=excel" class="action-btn action-btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="d-none d-md-inline">ייצוא</span>
+                    </a>
+                    <a href="{{ url_for('admin.add_stock_category') }}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-md-inline">הוסף</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
     
     <!-- Content Area -->
     <div class="content-area">
         {% if current_view == 'items' %}
-            <!-- Stock Items View -->
+            <!-- Stock Items -->
             {% if items %}
-                {% for item in items %}
-                <div class="item-card">
-                    <div class="item-card-header">
-                        <h3 class="item-name">{{ item.name_he }}</h3>
-                        <span class="item-badge">מלאי</span>
+                {% if view_mode == 'card' %}
+                    <!-- Card View -->
+                    <div class="card-grid">
+                        {% for item in items %}
+                        <div class="item-card">
+                            <div class="item-header">
+                                <h3 class="item-title">{{ item.name_he }}</h3>
+                                <span class="item-badge">מלאי</span>
+                            </div>
+                            <div class="item-details">
+                                {% if item.category %}
+                                <div class="detail-row">
+                                    <i class="fas fa-tag"></i>
+                                    <span>{{ item.category.name_he }}</span>
+                                </div>
+                                {% endif %}
+                                {% if item.primary_supplier %}
+                                <div class="detail-row">
+                                    <i class="fas fa-truck"></i>
+                                    <span>{{ item.primary_supplier.name }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="detail-row">
+                                    <i class="fas fa-shekel-sign"></i>
+                                    <span>₪{{ "%.2f"|format(item.cost_per_unit or 0) }} / {{ item.unit_he }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
-                    <div class="item-details">
-                        {% if item.category %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-tag"></i>
-                            <span>{{ item.category.name_he }}</span>
+                {% else %}
+                    <!-- List View -->
+                    <div class="list-view">
+                        {% for item in items %}
+                        <div class="list-item">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">{{ item.name_he }}</h4>
+                                <div class="list-item-subtitle">
+                                    {{ item.category.name_he if item.category else 'ללא קטגוריה' }} • 
+                                    {{ item.primary_supplier.name if item.primary_supplier else 'ללא ספק' }}
+                                </div>
+                            </div>
+                            <div class="list-item-value">
+                                ₪{{ "%.2f"|format(item.cost_per_unit or 0) }}
+                            </div>
                         </div>
-                        {% endif %}
-                        {% if item.primary_supplier %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-truck"></i>
-                            <span>{{ item.primary_supplier.name }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-shekel-sign"></i>
-                            <span>₪{{ "%.2f"|format(item.cost_per_unit or 0) }} / {{ item.unit_he }}</span>
-                        </div>
+                        {% endfor %}
                     </div>
-                </div>
-                {% endfor %}
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <i class="fas fa-boxes"></i>
@@ -373,36 +450,56 @@
             {% endif %}
         
         {% elif current_view == 'suppliers' %}
-            <!-- Suppliers View -->
+            <!-- Suppliers -->
             {% if suppliers %}
-                {% for supplier in suppliers %}
-                <div class="item-card">
-                    <div class="item-card-header">
-                        <h3 class="item-name">{{ supplier.name }}</h3>
-                        <span class="item-badge">ספק</span>
+                {% if view_mode == 'card' %}
+                    <!-- Card View -->
+                    <div class="card-grid">
+                        {% for supplier in suppliers %}
+                        <div class="item-card">
+                            <div class="item-header">
+                                <h3 class="item-title">{{ supplier.name }}</h3>
+                                <span class="item-badge">ספק</span>
+                            </div>
+                            <div class="item-details">
+                                {% if supplier.contact_person %}
+                                <div class="detail-row">
+                                    <i class="fas fa-user"></i>
+                                    <span>{{ supplier.contact_person }}</span>
+                                </div>
+                                {% endif %}
+                                {% if supplier.phone %}
+                                <div class="detail-row">
+                                    <i class="fas fa-phone"></i>
+                                    <span>{{ supplier.phone }}</span>
+                                </div>
+                                {% endif %}
+                                {% if supplier.email %}
+                                <div class="detail-row">
+                                    <i class="fas fa-envelope"></i>
+                                    <span>{{ supplier.email }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
-                    <div class="item-details">
-                        {% if supplier.contact_person %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-user"></i>
-                            <span>{{ supplier.contact_person }}</span>
+                {% else %}
+                    <!-- List View -->
+                    <div class="list-view">
+                        {% for supplier in suppliers %}
+                        <div class="list-item">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">{{ supplier.name }}</h4>
+                                <div class="list-item-subtitle">
+                                    {{ supplier.contact_person or 'ללא איש קשר' }} • 
+                                    {{ supplier.phone or 'ללא טלפון' }}
+                                </div>
+                            </div>
                         </div>
-                        {% endif %}
-                        {% if supplier.phone %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-phone"></i>
-                            <span>{{ supplier.phone }}</span>
-                        </div>
-                        {% endif %}
-                        {% if supplier.email %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-envelope"></i>
-                            <span>{{ supplier.email }}</span>
-                        </div>
-                        {% endif %}
+                        {% endfor %}
                     </div>
-                </div>
-                {% endfor %}
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <i class="fas fa-truck"></i>
@@ -412,30 +509,49 @@
             {% endif %}
         
         {% elif current_view == 'categories' %}
-            <!-- Categories View -->
+            <!-- Categories -->
             {% if categories %}
-                {% for category in categories %}
-                <div class="item-card">
-                    <div class="item-card-header">
-                        <h3 class="item-name">{{ category.name_he }}</h3>
-                        <span class="item-badge">קטגוריה</span>
-                    </div>
-                    <div class="item-details">
-                        {% if category.name_en %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-language"></i>
-                            <span>{{ category.name_en }}</span>
+                {% if view_mode == 'card' %}
+                    <!-- Card View -->
+                    <div class="card-grid">
+                        {% for category in categories %}
+                        <div class="item-card">
+                            <div class="item-header">
+                                <h3 class="item-title">{{ category.name_he }}</h3>
+                                <span class="item-badge">קטגוריה</span>
+                            </div>
+                            <div class="item-details">
+                                {% if category.name_en %}
+                                <div class="detail-row">
+                                    <i class="fas fa-language"></i>
+                                    <span>{{ category.name_en }}</span>
+                                </div>
+                                {% endif %}
+                                {% if category.description %}
+                                <div class="detail-row">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>{{ category.description }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
-                        {% endif %}
-                        {% if category.description %}
-                        <div class="item-detail-row">
-                            <i class="fas fa-info-circle"></i>
-                            <span>{{ category.description }}</span>
-                        </div>
-                        {% endif %}
+                        {% endfor %}
                     </div>
-                </div>
-                {% endfor %}
+                {% else %}
+                    <!-- List View -->
+                    <div class="list-view">
+                        {% for category in categories %}
+                        <div class="list-item">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">{{ category.name_he }}</h4>
+                                <div class="list-item-subtitle">
+                                    {{ category.name_en or 'ללא שם באנגלית' }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             {% else %}
                 <div class="empty-state">
                     <i class="fas fa-tags"></i>
@@ -445,70 +561,20 @@
             {% endif %}
         {% endif %}
     </div>
-    
-    <!-- Floating Action Button (Add New) -->
-    {% if current_view == 'items' %}
-    <a href="{{ url_for('admin.add_stock_item') }}" class="fab">
-        <i class="fas fa-plus"></i>
-    </a>
-    <a href="{{ url_for('admin.export_stock_items') }}?format=excel" class="export-btn">
-        <i class="fas fa-download"></i>
-        <span>ייצוא</span>
-    </a>
-    {% elif current_view == 'suppliers' %}
-    <a href="{{ url_for('admin.add_supplier') }}" class="fab">
-        <i class="fas fa-plus"></i>
-    </a>
-    <a href="{{ url_for('admin.export_suppliers') }}?format=excel" class="export-btn">
-        <i class="fas fa-download"></i>
-        <span>ייצוא</span>
-    </a>
-    {% elif current_view == 'categories' %}
-    <a href="{{ url_for('admin.add_stock_category') }}" class="fab">
-        <i class="fas fa-plus"></i>
-    </a>
-    <a href="{{ url_for('admin.export_categories') }}?format=excel" class="export-btn">
-        <i class="fas fa-download"></i>
-        <span>ייצוא</span>
-    </a>
-    {% endif %}
 </div>
 
 <script>
-// Delete Functions
-function deleteItem(id) {
-    if (confirm('האם אתה בטוח שברצונך למחוק פריט זה?')) {
-        window.location.href = `/admin/stock/item/${id}/delete`;
-    }
-}
-
-function deleteSupplier(id) {
-    if (confirm('האם אתה בטוח שברצונך למחוק ספק זה?')) {
-        window.location.href = `/admin/stock/supplier/${id}/delete`;
-    }
-}
-
-function deleteCategory(id) {
-    if (confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?')) {
-        window.location.href = `/admin/stock/category/${id}/delete`;
-    }
-}
-
-// Touch-friendly interactions
+// Smooth scroll for active tab
 document.addEventListener('DOMContentLoaded', function() {
-    // Add smooth scroll for mobile tabs
-    const tabs = document.querySelector('.mobile-tabs');
-    if (tabs) {
-        const activeTab = tabs.querySelector('.tab-btn.active');
-        if (activeTab) {
-            activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
+    const activeTab = document.querySelector('.tab-link.active');
+    if (activeTab) {
+        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
     
-    // Add haptic feedback for touch devices (if supported)
+    // Haptic feedback for touch devices
     if ('vibrate' in navigator) {
-        document.querySelectorAll('.action-btn, .fab, .tab-btn').forEach(btn => {
-            btn.addEventListener('touchstart', () => {
+        document.querySelectorAll('.action-btn, .segment-btn, .tab-link, .item-card, .list-item').forEach(el => {
+            el.addEventListener('touchstart', () => {
                 navigator.vibrate(10);
             });
         });

@@ -1034,6 +1034,92 @@ class Receipt(db.Model):
     def __repr__(self):
         return f'<Receipt {self.receipt_number} - {self.supplier.name if self.supplier else "Unknown"}>'
 
+# Receipt Import (for approval workflow)
+class ReceiptImport(db.Model):
+    __tablename__ = 'receipt_imports'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'))
+    
+    # Import details
+    status = db.Column(db.String(20), default='pending')  # pending, extracted, needs_review, approved, rejected
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
+    suggested_supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))  # AI suggestion
+    supplier_confidence = db.Column(db.Float)  # AI confidence score
+    candidate_supplier_ids = db.Column(db.JSON)  # All AI-suggested supplier matches
+    
+    # Extracted metadata
+    receipt_date = db.Column(db.Date)
+    total_amount = db.Column(db.Float)
+    
+    # Raw AI output
+    ai_raw_response = db.Column(db.JSON)  # Complete AI response for audit
+    ai_errors = db.Column(db.Text)  # Any errors during AI processing
+    
+    # Approval workflow
+    approved_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    approved_at = db.Column(db.DateTime)
+    rejection_reason = db.Column(db.Text)
+    
+    # Post-approval traceability
+    shopping_list_id = db.Column(db.Integer, db.ForeignKey('shopping_lists.id'))  # Created PO
+    stock_transaction_batch = db.Column(db.String(100))  # Batch ID for related transactions
+    
+    # Processing
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    receipt = db.relationship('Receipt', backref='imports')
+    branch = db.relationship('Branch', backref='receipt_imports')
+    supplier = db.relationship('Supplier', foreign_keys=[supplier_id], backref='receipt_imports')
+    suggested_supplier = db.relationship('Supplier', foreign_keys=[suggested_supplier_id])
+    shopping_list = db.relationship('ShoppingList', backref='receipt_imports')
+    creator = db.relationship('AdminUser', foreign_keys=[created_by], backref='created_receipt_imports')
+    approver = db.relationship('AdminUser', foreign_keys=[approved_by], backref='approved_receipt_imports')
+    
+    def __repr__(self):
+        return f'<ReceiptImport {self.id} - {self.status}>'
+
+# Receipt Import Line Items
+class ReceiptImportItem(db.Model):
+    __tablename__ = 'receipt_import_items'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_import_id = db.Column(db.Integer, db.ForeignKey('receipt_imports.id'), nullable=False)
+    
+    # Extracted product info (raw from AI)
+    extracted_text = db.Column(db.String(500))  # Original SKU/product text from receipt
+    product_name = db.Column(db.String(200), nullable=False)  # Normalized product name
+    quantity = db.Column(db.Float, nullable=False)
+    unit_price = db.Column(db.Float)
+    total_price = db.Column(db.Float)
+    unit_of_measure = db.Column(db.String(20))  # kg, liters, pieces, etc.
+    
+    # Matching to existing items
+    stock_item_id = db.Column(db.Integer, db.ForeignKey('stock_items.id'))  # Final matched item
+    suggested_stock_item_id = db.Column(db.Integer, db.ForeignKey('stock_items.id'))  # AI suggestion
+    supplier_item_id = db.Column(db.Integer, db.ForeignKey('supplier_items.id'))  # Supplier's SKU
+    match_confidence = db.Column(db.Float)  # AI confidence score (0-1)
+    is_new_item = db.Column(db.Boolean, default=False)  # Create new stock item if True
+    
+    # Status and audit
+    is_verified = db.Column(db.Boolean, default=False)  # User reviewed this line
+    resolution_status = db.Column(db.String(20), default='pending')  # pending, matched, manual, skipped
+    notes = db.Column(db.Text)
+    
+    # Line ordering
+    line_number = db.Column(db.Integer)  # Order in receipt
+    
+    # Relationships
+    receipt_import = db.relationship('ReceiptImport', backref='line_items')
+    stock_item = db.relationship('StockItem', foreign_keys=[stock_item_id], backref='receipt_import_items')
+    suggested_stock_item = db.relationship('StockItem', foreign_keys=[suggested_stock_item_id])
+    supplier_item = db.relationship('SupplierItem', backref='receipt_import_items')
+    
+    def __repr__(self):
+        return f'<ReceiptImportItem {self.product_name}: {self.quantity}>'
+
 # Cost Categories for expense tracking
 class CostCategory(db.Model):
     __tablename__ = 'cost_categories'

@@ -5586,6 +5586,457 @@ def upload_receipt():
                          branches=branches,
                          suppliers=suppliers)
 
+# ===== AI RECEIPT SCANNER =====
+
+@admin_bp.route('/receipt-scanner')
+@login_required
+@require_permission('stock.manage')
+def receipt_scanner():
+    """AI-powered receipt scanner upload page"""
+    from models import Branch
+    branches = Branch.query.filter_by(is_active=True).all()
+    return render_template('admin/receipt_scanner.html', branches=branches)
+
+@admin_bp.route('/receipt-scanner/process', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def process_receipt_upload():
+    """Process uploaded receipt with AI"""
+    import os
+    from werkzeug.utils import secure_filename
+    from datetime import datetime
+    from models import Receipt, ReceiptImport, ReceiptImportItem, Branch, Supplier, StockItem
+    import openai
+    import base64
+    
+    try:
+        # Get uploaded file and branch
+        receipt_image = request.files.get('receipt_image')
+        branch_id = request.form.get('branch_id', type=int)
+        
+        if not receipt_image:
+            return jsonify({'success': False, 'error': 'לא הועלתה תמונה'})
+        
+        if not branch_id:
+            return jsonify({'success': False, 'error': 'לא נבחר סניף'})
+        
+        branch = Branch.query.get(branch_id)
+        if not branch:
+            return jsonify({'success': False, 'error': 'סניף לא נמצא'})
+        
+        # Save receipt image
+        upload_dir = os.path.join('static', 'uploads', 'receipts')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = secure_filename(receipt_image.filename)
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(upload_dir, unique_filename)
+        receipt_image.save(filepath)
+        
+        # Get file size
+        file_size = os.path.getsize(filepath)
+        
+        # Create Receipt record
+        receipt = Receipt(
+            image_path=filepath,
+            original_filename=filename,
+            file_size=file_size,
+            branch_id=branch_id,
+            ocr_status='processing'
+        )
+        db.session.add(receipt)
+        db.session.flush()
+        
+        # Prepare image for OpenAI Vision API
+        with open(filepath, 'rb') as image_file:
+            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Get OpenAI API key
+        openai_api_key = os.environ.get('OPENAI_API_KEY')
+        if not openai_api_key:
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = 'OpenAI API key not configured'
+            db.session.commit()
+            return jsonify({'success': False, 'error': 'מפתח OpenAI לא מוגדר'})
+        
+        # Call OpenAI Vision API
+        client = openai.OpenAI(api_key=openai_api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a receipt OCR expert. Extract ALL information from the receipt image.
+Return a JSON object with this exact structure:
+{
+  "supplier_name": "extracted supplier name",
+  "receipt_date": "YYYY-MM-DD format",
+  "total_amount": 0.00,
+  "items": [
+    {
+      "product_name": "item name",
+      "quantity": 1.0,
+      "unit_price": 0.00,
+      "total_price": 0.00,
+      "unit": "kg/liters/pieces/etc"
+    }
+  ]
+}
+
+Extract in Hebrew if the receipt is in Hebrew. Be precise with numbers."""
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Extract all data from this receipt image. Return valid JSON only."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_data}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=2000,
+            temperature=0.1
+        )
+        
+        # Parse AI response
+        ai_response = response.choices[0].message.content
+        
+        # Clean response (remove markdown code blocks if present)
+        if '```json' in ai_response:
+            ai_response = ai_response.split('```json')[1].split('```')[0].strip()
+        elif '```' in ai_response:
+            ai_response = ai_response.split('```')[1].split('```')[0].strip()
+        
+        import json
+        extracted_data = json.loads(ai_response)
+        
+        # Update receipt with extracted data
+        receipt.ocr_status = 'completed'
+        receipt.ocr_data = extracted_data
+        
+        if extracted_data.get('receipt_date'):
+            try:
+                from datetime import date
+                receipt.receipt_date = datetime.strptime(extracted_data['receipt_date'], '%Y-%m-%d').date()
+            except:
+                pass
+        
+        if extracted_data.get('total_amount'):
+            receipt.total_amount = float(extracted_data['total_amount'])
+        
+        # Try to match supplier
+        suggested_supplier = None
+        supplier_confidence = 0.0
+        candidate_supplier_ids = []
+        
+        if extracted_data.get('supplier_name'):
+            supplier_name = extracted_data['supplier_name'].strip()
+            
+            # Try exact match
+            suppliers = Supplier.query.filter_by(is_active=True).all()
+            for supplier in suppliers:
+                if supplier.name and supplier_name.lower() in supplier.name.lower():
+                    suggested_supplier = supplier
+                    supplier_confidence = 0.9
+                    candidate_supplier_ids.append(supplier.id)
+                    break
+                elif supplier.name and supplier.name.lower() in supplier_name.lower():
+                    if not suggested_supplier:
+                        suggested_supplier = supplier
+                        supplier_confidence = 0.7
+                    candidate_supplier_ids.append(supplier.id)
+        
+        # Create ReceiptImport record
+        receipt_import = ReceiptImport(
+            receipt_id=receipt.id,
+            branch_id=branch_id,
+            status='needs_review',
+            suggested_supplier_id=suggested_supplier.id if suggested_supplier else None,
+            supplier_confidence=supplier_confidence,
+            candidate_supplier_ids=candidate_supplier_ids,
+            receipt_date=receipt.receipt_date,
+            total_amount=receipt.total_amount,
+            ai_raw_response=extracted_data,
+            created_by=current_user.id
+        )
+        db.session.add(receipt_import)
+        db.session.flush()
+        
+        # Create ReceiptImportItem records for each line item
+        items = extracted_data.get('items', [])
+        for idx, item_data in enumerate(items):
+            # Try to match to existing stock items
+            product_name = item_data.get('product_name', '').strip()
+            suggested_stock_item = None
+            match_confidence = 0.0
+            
+            if product_name:
+                # Try to find matching stock item
+                stock_items = StockItem.query.filter_by(is_active=True).all()
+                for stock_item in stock_items:
+                    if stock_item.name_he and product_name.lower() in stock_item.name_he.lower():
+                        suggested_stock_item = stock_item
+                        match_confidence = 0.8
+                        break
+                    elif stock_item.name_en and product_name.lower() in stock_item.name_en.lower():
+                        if not suggested_stock_item:
+                            suggested_stock_item = stock_item
+                            match_confidence = 0.6
+            
+            receipt_item = ReceiptImportItem(
+                receipt_import_id=receipt_import.id,
+                extracted_text=product_name,
+                product_name=product_name,
+                quantity=float(item_data.get('quantity', 1.0)),
+                unit_price=float(item_data.get('unit_price', 0.0)) if item_data.get('unit_price') else None,
+                total_price=float(item_data.get('total_price', 0.0)) if item_data.get('total_price') else None,
+                unit_of_measure=item_data.get('unit', 'יחידות'),
+                suggested_stock_item_id=suggested_stock_item.id if suggested_stock_item else None,
+                match_confidence=match_confidence,
+                is_new_item=(suggested_stock_item is None),
+                line_number=idx + 1
+            )
+            db.session.add(receipt_item)
+        
+        db.session.commit()
+        
+        # Return success with redirect URL
+        return jsonify({
+            'success': True,
+            'redirect_url': url_for('admin.review_receipt_import', import_id=receipt_import.id)
+        })
+        
+    except json.JSONDecodeError as e:
+        if 'receipt' in locals():
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = f'Failed to parse AI response: {str(e)}'
+            receipt.ai_errors = ai_response if 'ai_response' in locals() else None
+            db.session.commit()
+        return jsonify({'success': False, 'error': 'לא ניתן לפענח את תשובת הבינה המלאכותית'})
+    
+    except Exception as e:
+        if 'receipt' in locals():
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = str(e)
+            db.session.commit()
+        return jsonify({'success': False, 'error': f'שגיאה: {str(e)}'})
+
+@admin_bp.route('/receipt-scanner/review/<int:import_id>')
+@login_required
+@require_permission('stock.manage')
+def review_receipt_import(import_id):
+    """Review and edit receipt import before approval"""
+    from models import ReceiptImport, Supplier, StockItem
+    
+    receipt_import = ReceiptImport.query.get_or_404(import_id)
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    stock_items = StockItem.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/review_receipt_import.html',
+                         receipt_import=receipt_import,
+                         suppliers=suppliers,
+                         stock_items=stock_items)
+
+@admin_bp.route('/receipt-scanner/approve/<int:import_id>', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def approve_receipt_import(import_id):
+    """Approve receipt import and update inventory"""
+    from models import (ReceiptImport, ReceiptImportItem, StockItem, StockTransaction, 
+                       ShoppingList, ShoppingListItem, Supplier)
+    from datetime import datetime
+    import uuid
+    
+    receipt_import = ReceiptImport.query.get_or_404(import_id)
+    action = request.form.get('action')
+    
+    if action == 'reject':
+        # Reject the import
+        receipt_import.status = 'rejected'
+        receipt_import.rejection_reason = request.form.get('rejection_reason', '')
+        receipt_import.approved_by = current_user.id
+        receipt_import.approved_at = datetime.utcnow()
+        db.session.commit()
+        flash('הקבלה נדחתה', 'warning')
+        return redirect(url_for('admin.receipt_scanner'))
+    
+    try:
+        # Update supplier and metadata
+        supplier_id = request.form.get('supplier_id', type=int)
+        receipt_date_str = request.form.get('receipt_date')
+        total_amount = request.form.get('total_amount', type=float)
+        
+        if not supplier_id:
+            flash('חובה לבחור ספק', 'error')
+            return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+        
+        supplier = Supplier.query.get(supplier_id)
+        if not supplier:
+            flash('ספק לא נמצא', 'error')
+            return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+        
+        # Update receipt import
+        receipt_import.supplier_id = supplier_id
+        receipt_import.status = 'approved'
+        receipt_import.approved_by = current_user.id
+        receipt_import.approved_at = datetime.utcnow()
+        
+        if receipt_date_str:
+            receipt_import.receipt_date = datetime.strptime(receipt_date_str, '%Y-%m-%d').date()
+        
+        if total_amount:
+            receipt_import.total_amount = total_amount
+        
+        # Create purchase order (shopping list)
+        shopping_list = ShoppingList(
+            branch_id=receipt_import.branch_id,
+            supplier_id=supplier_id,
+            name=f"קבלה {receipt_import.id} - {supplier.name}",
+            description=f"נוצר אוטומטית מקבלה סרוקה #{receipt_import.id}",
+            status='received',
+            order_date=receipt_import.receipt_date,
+            total_estimated_cost=total_amount or 0,
+            created_by=current_user.id,
+            sent_by=current_user.id,
+            created_at=datetime.utcnow(),
+            sent_at=datetime.utcnow()
+        )
+        db.session.add(shopping_list)
+        db.session.flush()
+        
+        receipt_import.shopping_list_id = shopping_list.id
+        
+        # Generate unique batch ID for transactions
+        batch_id = f"RECEIPT_{receipt_import.id}_{uuid.uuid4().hex[:8]}"
+        receipt_import.stock_transaction_batch = batch_id
+        
+        # Process each line item
+        items_count = 0
+        new_items_count = 0
+        
+        for key in request.form.keys():
+            if key.startswith('items[') and key.endswith('][id]'):
+                idx = key.split('[')[1].split(']')[0]
+                item_id = request.form.get(f'items[{idx}][id]', type=int)
+                
+                if not item_id:
+                    continue
+                
+                receipt_item = ReceiptImportItem.query.get(item_id)
+                if not receipt_item:
+                    continue
+                
+                # Update item data from form
+                product_name = request.form.get(f'items[{idx}][product_name]')
+                quantity = request.form.get(f'items[{idx}][quantity]', type=float)
+                unit_price = request.form.get(f'items[{idx}][unit_price]', type=float)
+                total_price = request.form.get(f'items[{idx}][total_price]', type=float)
+                stock_item_id = request.form.get(f'items[{idx}][stock_item_id]', type=int)
+                
+                if not product_name or not quantity:
+                    continue
+                
+                # Update receipt item
+                receipt_item.product_name = product_name
+                receipt_item.quantity = quantity
+                receipt_item.unit_price = unit_price
+                receipt_item.total_price = total_price
+                receipt_item.is_verified = True
+                
+                # Handle stock item matching
+                stock_item = None
+                if stock_item_id:
+                    stock_item = StockItem.query.get(stock_item_id)
+                    receipt_item.stock_item_id = stock_item_id
+                    receipt_item.is_new_item = False
+                else:
+                    # Create new stock item
+                    stock_item = StockItem(
+                        name_he=product_name,
+                        name_en=product_name,
+                        unit_he=receipt_item.unit_of_measure or 'יחידות',
+                        unit_en=receipt_item.unit_of_measure or 'units',
+                        cost_per_unit=unit_price or 0,
+                        is_active=True
+                    )
+                    db.session.add(stock_item)
+                    db.session.flush()
+                    
+                    receipt_item.stock_item_id = stock_item.id
+                    receipt_item.is_new_item = True
+                    new_items_count += 1
+                
+                # Add to shopping list
+                shopping_list_item = ShoppingListItem(
+                    shopping_list_id=shopping_list.id,
+                    item_id=stock_item.id,
+                    requested_quantity=quantity,
+                    estimated_unit_cost=unit_price or 0,
+                    estimated_total_cost=total_price or 0,
+                    received_quantity=quantity,
+                    actual_unit_cost=unit_price or 0,
+                    actual_total_cost=total_price or 0,
+                    status='received'
+                )
+                db.session.add(shopping_list_item)
+                
+                # Create stock transaction (delivery)
+                transaction = StockTransaction(
+                    item_id=stock_item.id,
+                    branch_id=receipt_import.branch_id,
+                    transaction_type='delivery',
+                    quantity=quantity,
+                    unit_cost=unit_price or 0,
+                    total_cost=total_price or 0,
+                    supplier_id=supplier_id,
+                    reference_number=f"RECEIPT_{receipt_import.id}",
+                    user_id=current_user.id,
+                    transaction_date=receipt_import.receipt_date or datetime.utcnow(),
+                    notes=f"קבלה סרוקה #{receipt_import.id} - {batch_id}"
+                )
+                db.session.add(transaction)
+                
+                # Update stock level
+                from models import StockLevel
+                stock_level = StockLevel.query.filter_by(
+                    item_id=stock_item.id,
+                    branch_id=receipt_import.branch_id
+                ).first()
+                
+                if stock_level:
+                    stock_level.current_quantity += quantity
+                    stock_level.available_quantity = stock_level.current_quantity - stock_level.reserved_quantity
+                else:
+                    stock_level = StockLevel(
+                        item_id=stock_item.id,
+                        branch_id=receipt_import.branch_id,
+                        current_quantity=quantity,
+                        reserved_quantity=0,
+                        available_quantity=quantity
+                    )
+                    db.session.add(stock_level)
+                
+                items_count += 1
+        
+        db.session.commit()
+        
+        flash(f'קבלה אושרה בהצלחה! {items_count} פריטים נוספו למלאי ({new_items_count} פריטים חדשים)', 'success')
+        return redirect(url_for('admin.stock_management'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה באישור הקבלה: {str(e)}', 'error')
+        return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+
 # ===== FILE IMPORT/EXPORT SYSTEM =====
 
 @admin_bp.route('/stock/import', methods=['GET', 'POST'])

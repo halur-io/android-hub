@@ -5624,18 +5624,43 @@ def process_receipt_upload():
         if not branch:
             return jsonify({'success': False, 'error': 'סניף לא נמצא'})
         
+        # Validate file type (MIME validation)
+        allowed_mimes = {'image/jpeg', 'image/png', 'image/jpg', 'image/heic', 'image/webp'}
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'heic', 'webp'}
+        
+        # Check MIME type
+        if receipt_image.content_type not in allowed_mimes:
+            return jsonify({'success': False, 'error': 'סוג קובץ לא נתמך. רק תמונות מותרות'})
+        
+        # Check file extension
+        filename = secure_filename(receipt_image.filename)
+        if '.' not in filename:
+            return jsonify({'success': False, 'error': 'קובץ לא תקין'})
+        
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        if file_extension not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'סיומת קובץ לא נתמכת'})
+        
+        # Check file size (max 10MB)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        receipt_image.seek(0, os.SEEK_END)
+        file_size = receipt_image.tell()
+        receipt_image.seek(0)
+        
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({'success': False, 'error': 'הקובץ גדול מדי (מקסימום 10MB)'})
+        
+        if file_size == 0:
+            return jsonify({'success': False, 'error': 'הקובץ ריק'})
+        
         # Save receipt image
         upload_dir = os.path.join('static', 'uploads', 'receipts')
         os.makedirs(upload_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = secure_filename(receipt_image.filename)
         unique_filename = f"{timestamp}_{filename}"
         filepath = os.path.join(upload_dir, unique_filename)
         receipt_image.save(filepath)
-        
-        # Get file size
-        file_size = os.path.getsize(filepath)
         
         # Create Receipt record
         receipt = Receipt(
@@ -5668,24 +5693,42 @@ def process_receipt_upload():
             messages=[
                 {
                     "role": "system",
-                    "content": """You are a receipt OCR expert. Extract ALL information from the receipt image.
-Return a JSON object with this exact structure:
+                    "content": """You are an expert receipt OCR system specializing in Hebrew and English receipts.
+
+CRITICAL RULES:
+1. Extract text in the ORIGINAL language (Hebrew if Hebrew, English if English)
+2. For Hebrew receipts, read right-to-left
+3. Parse numbers correctly regardless of language
+4. Handle Israeli currency (₪, NIS, ILS)
+5. Return ONLY valid JSON with no markdown formatting
+
+Required JSON structure:
 {
-  "supplier_name": "extracted supplier name",
-  "receipt_date": "YYYY-MM-DD format",
+  "supplier_name": "exact supplier name from receipt",
+  "receipt_date": "YYYY-MM-DD",
   "total_amount": 0.00,
   "items": [
     {
-      "product_name": "item name",
+      "product_name": "product name in original language",
       "quantity": 1.0,
       "unit_price": 0.00,
       "total_price": 0.00,
-      "unit": "kg/liters/pieces/etc"
+      "unit": "ק״ג/kg/יחידות/pieces/ליטר/liters"
     }
   ]
 }
 
-Extract in Hebrew if the receipt is in Hebrew. Be precise with numbers."""
+Number parsing:
+- Israeli decimal separator: both . and , are valid
+- Parse quantities accurately (e.g., 2.5, 0.75)
+- Extract unit prices and totals separately
+- If unit price missing, calculate from total/quantity
+
+Units (use Hebrew for Hebrew receipts):
+- ק״ג (kilograms), גרם (grams), ליטר (liters), מ״ל (milliliters)
+- יחידות (units/pieces), קרטון (carton), שק (sack), בקבוק (bottle)
+
+Return ONLY the JSON object, no explanation."""
                 },
                 {
                     "role": "user",
@@ -5869,62 +5912,66 @@ def approve_receipt_import(import_id):
         flash('הקבלה נדחתה', 'warning')
         return redirect(url_for('admin.receipt_scanner'))
     
+    # Validate inputs first
+    supplier_id = request.form.get('supplier_id', type=int)
+    receipt_date_str = request.form.get('receipt_date')
+    total_amount = request.form.get('total_amount', type=float)
+    
+    if not supplier_id:
+        flash('חובה לבחור ספק', 'error')
+        return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+    
+    supplier = Supplier.query.get(supplier_id)
+    if not supplier:
+        flash('ספק לא נמצא', 'error')
+        return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+    
     try:
-        # Update supplier and metadata
-        supplier_id = request.form.get('supplier_id', type=int)
-        receipt_date_str = request.form.get('receipt_date')
-        total_amount = request.form.get('total_amount', type=float)
-        
-        if not supplier_id:
-            flash('חובה לבחור ספק', 'error')
-            return redirect(url_for('admin.review_receipt_import', import_id=import_id))
-        
-        supplier = Supplier.query.get(supplier_id)
-        if not supplier:
-            flash('ספק לא נמצא', 'error')
-            return redirect(url_for('admin.review_receipt_import', import_id=import_id))
-        
-        # Update receipt import
-        receipt_import.supplier_id = supplier_id
-        receipt_import.status = 'approved'
-        receipt_import.approved_by = current_user.id
-        receipt_import.approved_at = datetime.utcnow()
-        
-        if receipt_date_str:
-            receipt_import.receipt_date = datetime.strptime(receipt_date_str, '%Y-%m-%d').date()
-        
-        if total_amount:
-            receipt_import.total_amount = total_amount
-        
-        # Create purchase order (shopping list)
-        shopping_list = ShoppingList(
-            branch_id=receipt_import.branch_id,
-            supplier_id=supplier_id,
-            name=f"קבלה {receipt_import.id} - {supplier.name}",
-            description=f"נוצר אוטומטית מקבלה סרוקה #{receipt_import.id}",
-            status='received',
-            order_date=receipt_import.receipt_date,
-            total_estimated_cost=total_amount or 0,
-            created_by=current_user.id,
-            sent_by=current_user.id,
-            created_at=datetime.utcnow(),
-            sent_at=datetime.utcnow()
-        )
-        db.session.add(shopping_list)
-        db.session.flush()
-        
-        receipt_import.shopping_list_id = shopping_list.id
-        
-        # Generate unique batch ID for transactions
-        batch_id = f"RECEIPT_{receipt_import.id}_{uuid.uuid4().hex[:8]}"
-        receipt_import.stock_transaction_batch = batch_id
-        
-        # Process each line item
-        items_count = 0
-        new_items_count = 0
-        
-        for key in request.form.keys():
-            if key.startswith('items[') and key.endswith('][id]'):
+        # Begin atomic transaction
+        with db.session.begin_nested():
+            # Update receipt import
+            receipt_import.supplier_id = supplier_id
+            receipt_import.status = 'approved'
+            receipt_import.approved_by = current_user.id
+            receipt_import.approved_at = datetime.utcnow()
+            
+            if receipt_date_str:
+                receipt_import.receipt_date = datetime.strptime(receipt_date_str, '%Y-%m-%d').date()
+            
+            if total_amount:
+                receipt_import.total_amount = total_amount
+            
+            # Create purchase order (shopping list)
+            shopping_list = ShoppingList(
+                branch_id=receipt_import.branch_id,
+                supplier_id=supplier_id,
+                name=f"קבלה {receipt_import.id} - {supplier.name}",
+                description=f"נוצר אוטומטית מקבלה סרוקה #{receipt_import.id}",
+                status='received',
+                order_date=receipt_import.receipt_date,
+                total_estimated_cost=total_amount or 0,
+                created_by=current_user.id,
+                sent_by=current_user.id,
+                created_at=datetime.utcnow(),
+                sent_at=datetime.utcnow()
+            )
+            db.session.add(shopping_list)
+            db.session.flush()
+            
+            receipt_import.shopping_list_id = shopping_list.id
+            
+            # Generate unique batch ID for transactions
+            batch_id = f"RECEIPT_{receipt_import.id}_{uuid.uuid4().hex[:8]}"
+            receipt_import.stock_transaction_batch = batch_id
+            
+            # Process each line item
+            items_count = 0
+            new_items_count = 0
+            
+            for key in request.form.keys():
+                if not key.startswith('items[') or not key.endswith('][id]'):
+                    continue
+                
                 idx = key.split('[')[1].split(']')[0]
                 item_id = request.form.get(f'items[{idx}][id]', type=int)
                 
@@ -5956,6 +6003,8 @@ def approve_receipt_import(import_id):
                 stock_item = None
                 if stock_item_id:
                     stock_item = StockItem.query.get(stock_item_id)
+                    if not stock_item:
+                        raise ValueError(f'פריט מלאי {stock_item_id} לא נמצא')
                     receipt_item.stock_item_id = stock_item_id
                     receipt_item.is_new_item = False
                 else:
@@ -6027,6 +6076,7 @@ def approve_receipt_import(import_id):
                 
                 items_count += 1
         
+        # Commit the entire transaction atomically
         db.session.commit()
         
         flash(f'קבלה אושרה בהצלחה! {items_count} פריטים נוספו למלאי ({new_items_count} פריטים חדשים)', 'success')

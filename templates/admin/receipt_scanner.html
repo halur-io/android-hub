@@ -393,15 +393,93 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Redirect to review page
                 window.location.href = data.redirect_url;
             } else {
-                alert('שגיאה: ' + (data.error || 'לא ניתן לעבד את הקבלה'));
+                // Show detailed error modal
+                showErrorModal(data);
             }
         })
         .catch(error => {
             processingOverlay.classList.remove('show');
             console.error('Error:', error);
-            alert('שגיאה בעיבוד הקבלה. נסה שוב.');
+            showErrorModal({
+                error: 'שגיאה בחיבור לשרת',
+                error_id: 'NETWORK-ERROR',
+                error_type: 'NetworkError',
+                technical_error: error.message
+            });
         });
     });
+    
+    // Error modal function
+    function showErrorModal(data) {
+        const errorId = data.error_id || 'UNKNOWN';
+        const errorType = data.error_type || 'Unknown';
+        const errorMsg = data.error || 'שגיאה לא ידועה';
+        const techError = data.technical_error || 'No technical details available';
+        
+        const modalHTML = `
+            <div class="modal fade" id="errorModal" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                שגיאה בעיבוד הקבלה
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger mb-3">
+                                ${errorMsg}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <strong>Error ID:</strong> ${errorId}<br>
+                                    <strong>Type:</strong> ${errorType}
+                                </small>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <a href="#techDetails" data-toggle="collapse" class="text-decoration-none">
+                                        <i class="fas fa-chevron-down"></i>
+                                        פרטים טכניים (למפתחים)
+                                    </a>
+                                </div>
+                                <div id="techDetails" class="collapse">
+                                    <div class="card-body">
+                                        <code class="text-dark d-block" style="white-space: pre-wrap; font-size: 12px;">
+${techError}
+                                        </code>
+                                        <hr>
+                                        <small class="text-muted">
+                                            צור קשר עם התמיכה עם Error ID: ${errorId}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">סגור</button>
+                            <button type="button" class="btn btn-primary" onclick="location.reload()">נסה שוב</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('errorModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Append and show modal
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        $('#errorModal').modal('show');
+    }
 });
 </script>
 {% endblock %}

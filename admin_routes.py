@@ -5859,27 +5859,105 @@ Return ONLY the JSON object, no explanation."""
         })
         
     except json.JSONDecodeError as e:
+        db.session.rollback()
+        import uuid
+        import logging
+        
+        # Generate unique error ID for tracking
+        error_id = f"ERR-{uuid.uuid4().hex[:8].upper()}"
+        error_msg = f'Failed to parse AI response: {str(e)}'
+        
+        # Log with structured data
+        logging.error(f"[{error_id}] Receipt processing failed - JSON decode error", extra={
+            'error_id': error_id,
+            'error_type': 'JSONDecodeError',
+            'user_id': current_user.id,
+            'branch_id': branch_id if 'branch_id' in locals() else None
+        })
+        
         if 'receipt' in locals():
             receipt.ocr_status = 'failed'
-            receipt.processing_errors = f'Failed to parse AI response: {str(e)}'
+            receipt.processing_errors = f'{error_id}: {error_msg}'
             receipt.ai_errors = ai_response if 'ai_response' in locals() else None
             db.session.commit()
-        return jsonify({'success': False, 'error': 'לא ניתן לפענח את תשובת הבינה המלאכותית'})
+        
+        return jsonify({
+            'success': False, 
+            'error': 'לא ניתן לפענח את תשובת הבינה המלאכותית',
+            'error_id': error_id,
+            'error_type': 'JSONDecodeError',
+            'technical_error': 'AI returned invalid JSON format'
+        })
     
     except openai.RateLimitError as e:
-        # OpenAI quota exceeded
+        db.session.rollback()
+        import uuid
+        import logging
+        
+        # Generate unique error ID
+        error_id = f"ERR-{uuid.uuid4().hex[:8].upper()}"
+        
+        # Log error
+        logging.error(f"[{error_id}] Receipt processing failed - OpenAI quota exceeded", extra={
+            'error_id': error_id,
+            'error_type': 'RateLimitError',
+            'user_id': current_user.id
+        })
+        
         if 'receipt' in locals():
             receipt.ocr_status = 'failed'
-            receipt.processing_errors = 'OpenAI quota exceeded'
+            receipt.processing_errors = f'{error_id}: OpenAI quota exceeded'
             db.session.commit()
-        return jsonify({'success': False, 'error': 'מכסת OpenAI נגמרה. יש לבדוק את התוכנית ופרטי החיוב'})
+        
+        return jsonify({
+            'success': False, 
+            'error': 'מכסת OpenAI נגמרה. יש לבדוק את התוכנית ופרטי החיוב',
+            'error_id': error_id,
+            'error_type': 'RateLimitError',
+            'technical_error': 'OpenAI API quota exceeded - check billing'
+        })
     
     except Exception as e:
+        db.session.rollback()
+        import uuid
+        import logging
+        import traceback
+        
+        # Generate unique error ID
+        error_id = f"ERR-{uuid.uuid4().hex[:8].upper()}"
+        error_type = type(e).__name__
+        
+        # Redact sensitive information from error message
+        error_msg = str(e)
+        if 'DATABASE_URL' in error_msg:
+            error_msg = error_msg.replace(os.environ.get('DATABASE_URL', ''), '[REDACTED]')
+        if 'OPENAI_API_KEY' in error_msg:
+            error_msg = error_msg.replace(os.environ.get('OPENAI_API_KEY', ''), '[REDACTED]')
+        
+        # Log full error with stack trace
+        logging.error(f"[{error_id}] Receipt processing failed - {error_type}: {error_msg}", extra={
+            'error_id': error_id,
+            'error_type': error_type,
+            'user_id': current_user.id,
+            'traceback': traceback.format_exc()
+        })
+        
         if 'receipt' in locals():
             receipt.ocr_status = 'failed'
-            receipt.processing_errors = str(e)
-            db.session.commit()
-        return jsonify({'success': False, 'error': f'שגיאה: {str(e)}'})
+            receipt.processing_errors = f'{error_id}: {error_type}'
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+        
+        # Return error with safe technical details
+        return jsonify({
+            'success': False, 
+            'error': 'שגיאה בעיבוד הקבלה',
+            'error_id': error_id,
+            'error_type': error_type,
+            'technical_error': error_msg[:200]  # Limit length
+        })
 
 @admin_bp.route('/receipt-scanner/review/<int:import_id>')
 @login_required

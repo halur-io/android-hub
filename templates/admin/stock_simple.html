@@ -12,6 +12,7 @@
         --text-secondary: #6B6B6B;
         --accent-primary: #C96F44;
         --accent-secondary: #6B8F71;
+        --accent-danger: #dc3545;
         --border-color: #E5E3DD;
     }
     
@@ -98,6 +99,7 @@
         padding: 0.75rem 1rem;
         background: var(--bg-card);
         border-top: 1px solid var(--border-color);
+        gap: 0.5rem;
     }
     
     /* Segmented Control for View Mode */
@@ -109,7 +111,7 @@
     }
     
     .segment-btn {
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 0.75rem;
         font-size: 0.85rem;
         font-weight: 600;
         color: var(--text-secondary);
@@ -143,6 +145,7 @@
         align-items: center;
         gap: 0.5rem;
         transition: all 0.2s;
+        white-space: nowrap;
     }
     
     .action-btn-secondary {
@@ -166,6 +169,7 @@
         border-radius: 12px;
         padding: 1rem;
         transition: all 0.2s;
+        position: relative;
     }
     
     .item-card:active {
@@ -185,6 +189,7 @@
         font-weight: 700;
         color: var(--text-primary);
         margin: 0;
+        flex: 1;
     }
     
     .item-badge {
@@ -200,6 +205,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     
     .detail-row {
@@ -216,6 +222,40 @@
         font-size: 0.85rem;
     }
     
+    /* Action Buttons for Cards */
+    .item-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .btn-edit, .btn-delete {
+        flex: 1;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+    }
+    
+    .btn-edit {
+        background: var(--accent-secondary);
+        color: white;
+    }
+    
+    .btn-delete {
+        background: transparent;
+        color: var(--accent-danger);
+        border: 1px solid var(--accent-danger);
+    }
+    
     /* List View */
     .list-view {
         background: var(--bg-card);
@@ -229,7 +269,7 @@
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        gap: 0.75rem;
         transition: background 0.2s;
     }
     
@@ -265,6 +305,36 @@
         white-space: nowrap;
     }
     
+    .list-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .btn-icon-edit {
+        background: var(--accent-secondary);
+        color: white;
+    }
+    
+    .btn-icon-delete {
+        background: transparent;
+        color: var(--accent-danger);
+        border: 1px solid var(--accent-danger);
+    }
+    
     /* Empty State */
     .empty-state {
         text-align: center;
@@ -298,6 +368,16 @@
         
         .list-item:hover {
             background: var(--bg-main);
+        }
+        
+        .btn-edit:hover {
+            background: var(--accent-secondary);
+            opacity: 0.9;
+        }
+        
+        .btn-delete:hover {
+            background: var(--accent-danger);
+            color: white;
         }
     }
 </style>
@@ -345,24 +425,28 @@
                 <a href="{{ url_for('admin.stock_management', view=current_view, mode='card') }}" 
                    class="segment-btn {{ 'active' if view_mode == 'card' else '' }}">
                     <i class="fas fa-th"></i>
-                    <span>כרטיסים</span>
+                    <span class="d-none d-sm-inline">כרטיסים</span>
                 </a>
                 <a href="{{ url_for('admin.stock_management', view=current_view, mode='list') }}" 
                    class="segment-btn {{ 'active' if view_mode == 'list' else '' }}">
                     <i class="fas fa-list"></i>
-                    <span>רשימה</span>
+                    <span class="d-none d-sm-inline">רשימה</span>
                 </a>
             </div>
             
-            <div style="display: flex; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 {% if current_view == 'items' %}
+                    <a href="{{ url_for('admin.receipt_scanner') }}" class="action-btn" style="background: #007bff;">
+                        <i class="fas fa-camera"></i>
+                        <span class="d-none d-sm-inline">סרוק קבלה</span>
+                    </a>
                     <a href="{{ url_for('admin.export_stock_items') }}?format=excel" class="action-btn action-btn-secondary">
                         <i class="fas fa-download"></i>
                         <span class="d-none d-md-inline">ייצוא</span>
                     </a>
                     <a href="{{ url_for('admin.add_stock_item') }}" class="action-btn">
                         <i class="fas fa-plus"></i>
-                        <span class="d-none d-md-inline">הוסף</span>
+                        <span class="d-none d-sm-inline">הוסף</span>
                     </a>
                 {% elif current_view == 'suppliers' %}
                     <a href="{{ url_for('admin.export_suppliers') }}?format=excel" class="action-btn action-btn-secondary">
@@ -371,7 +455,7 @@
                     </a>
                     <a href="{{ url_for('admin.add_supplier') }}" class="action-btn">
                         <i class="fas fa-plus"></i>
-                        <span class="d-none d-md-inline">הוסף</span>
+                        <span class="d-none d-sm-inline">הוסף</span>
                     </a>
                 {% elif current_view == 'categories' %}
                     <a href="{{ url_for('admin.export_categories') }}?format=excel" class="action-btn action-btn-secondary">
@@ -380,7 +464,7 @@
                     </a>
                     <a href="{{ url_for('admin.add_stock_category') }}" class="action-btn">
                         <i class="fas fa-plus"></i>
-                        <span class="d-none d-md-inline">הוסף</span>
+                        <span class="d-none d-sm-inline">הוסף</span>
                     </a>
                 {% endif %}
             </div>
@@ -419,6 +503,18 @@
                                     <span>₪{{ "%.2f"|format(item.cost_per_unit or 0) }} / {{ item.unit_he }}</span>
                                 </div>
                             </div>
+                            <div class="item-actions">
+                                <a href="{{ url_for('admin.edit_stock_item', item_id=item.id, view='items', mode='card') }}" class="btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                    <span>ערוך</span>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_item', item_id=item.id) }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק פריט זה?');">
+                                    <button type="submit" class="btn-delete" style="width: 100%;">
+                                        <i class="fas fa-trash"></i>
+                                        <span>מחק</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -436,6 +532,16 @@
                             </div>
                             <div class="list-item-value">
                                 ₪{{ "%.2f"|format(item.cost_per_unit or 0) }}
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('admin.edit_stock_item', item_id=item.id, view='items', mode='list') }}" class="btn-icon btn-icon-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_item', item_id=item.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק פריט זה?');">
+                                    <button type="submit" class="btn-icon btn-icon-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
                         {% endfor %}
@@ -481,6 +587,18 @@
                                 </div>
                                 {% endif %}
                             </div>
+                            <div class="item-actions">
+                                <a href="{{ url_for('admin.edit_supplier', supplier_id=supplier.id) }}" class="btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                    <span>ערוך</span>
+                                </a>
+                                <form action="{{ url_for('admin.delete_supplier', supplier_id=supplier.id) }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק ספק זה?');">
+                                    <button type="submit" class="btn-delete" style="width: 100%;">
+                                        <i class="fas fa-trash"></i>
+                                        <span>מחק</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -495,6 +613,16 @@
                                     {{ supplier.contact_person or 'ללא איש קשר' }} • 
                                     {{ supplier.phone or 'ללא טלפון' }}
                                 </div>
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('admin.edit_supplier', supplier_id=supplier.id) }}" class="btn-icon btn-icon-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.delete_supplier', supplier_id=supplier.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק ספק זה?');">
+                                    <button type="submit" class="btn-icon btn-icon-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
                         {% endfor %}
@@ -534,6 +662,18 @@
                                 </div>
                                 {% endif %}
                             </div>
+                            <div class="item-actions">
+                                <a href="{{ url_for('admin.edit_stock_category', category_id=category.id, view='categories', mode='card') }}" class="btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                    <span>ערוך</span>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_category', category_id=category.id) }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?');">
+                                    <button type="submit" class="btn-delete" style="width: 100%;">
+                                        <i class="fas fa-trash"></i>
+                                        <span>מחק</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -547,6 +687,16 @@
                                 <div class="list-item-subtitle">
                                     {{ category.name_en or 'ללא שם באנגלית' }}
                                 </div>
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('admin.edit_stock_category', category_id=category.id, view='categories', mode='list') }}" class="btn-icon btn-icon-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_category', category_id=category.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?');">
+                                    <button type="submit" class="btn-icon btn-icon-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
                         {% endfor %}
@@ -573,7 +723,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Haptic feedback for touch devices
     if ('vibrate' in navigator) {
-        document.querySelectorAll('.action-btn, .segment-btn, .tab-link, .item-card, .list-item').forEach(el => {
+        document.querySelectorAll('.action-btn, .segment-btn, .tab-link, .item-card, .list-item, .btn-edit, .btn-delete').forEach(el => {
             el.addEventListener('touchstart', () => {
                 navigator.vibrate(10);
             });

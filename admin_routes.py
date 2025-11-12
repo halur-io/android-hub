@@ -4726,6 +4726,52 @@ def add_stock_item():
     
     return redirect(url_for('admin.stock_management'))
 
+@admin_bp.route('/stock/item/<int:item_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def edit_stock_item(item_id):
+    """Edit stock item"""
+    from models import StockItem, StockCategory, Supplier
+    
+    item = StockItem.query.get_or_404(item_id)
+    
+    if request.method == 'POST':
+        try:
+            item.name_he = request.form['name_he'].strip()
+            item.name_en = request.form.get('name_en', item.name_he).strip()
+            
+            category_id = request.form.get('category_id', type=int)
+            item.category_id = category_id if category_id else None
+            
+            supplier_id = request.form.get('supplier_id', type=int)
+            item.primary_supplier_id = supplier_id if supplier_id else None
+            
+            item.unit_he = request.form.get('unit', 'יחידות').strip()
+            item.unit_en = request.form.get('unit', 'units').strip()
+            item.minimum_stock = float(request.form.get('minimum_stock', 0) or 0)
+            item.cost_per_unit = float(request.form.get('cost_per_unit', 0) or 0)
+            
+            db.session.commit()
+            
+            flash('פריט עודכן בהצלחה', 'success')
+            # Preserve view and mode parameters
+            view = request.args.get('view', 'items')
+            mode = request.args.get('mode', 'card')
+            return redirect(url_for('admin.stock_management', view=view, mode=mode))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון פריט: {str(e)}', 'error')
+    
+    # Load categories and suppliers for dropdowns
+    categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    
+    return render_template('admin/edit_stock_item.html', 
+                         item=item, 
+                         categories=categories, 
+                         suppliers=suppliers)
+
 @admin_bp.route('/stock/category/add', methods=['POST'])
 @login_required
 @require_permission('stock.manage')
@@ -4754,6 +4800,35 @@ def add_stock_category():
         flash(f'שגיאה בהוספת הקטגוריה: {str(e)}', 'danger')
     
     return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/category/<int:category_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def edit_stock_category(category_id):
+    """Edit stock category"""
+    from models import StockCategory
+    
+    category = StockCategory.query.get_or_404(category_id)
+    
+    if request.method == 'POST':
+        try:
+            category.name_he = request.form['name_he'].strip()
+            category.name_en = request.form.get('name_en', '').strip()
+            category.description = request.form.get('description', '').strip()
+            
+            db.session.commit()
+            
+            flash('קטגוריה עודכנה בהצלחה', 'success')
+            # Preserve view and mode parameters
+            view = request.args.get('view', 'categories')
+            mode = request.args.get('mode', 'card')
+            return redirect(url_for('admin.stock_management', view=view, mode=mode))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון קטגוריה: {str(e)}', 'error')
+    
+    return render_template('admin/edit_stock_category.html', category=category)
 
 @admin_bp.route('/stock/category/<int:category_id>/delete', methods=['POST'])
 @login_required

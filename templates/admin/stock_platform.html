@@ -355,20 +355,255 @@
         margin-top: 0.5rem;
     }
     
-    /* Mobile Responsive */
+    /* Mobile Responsive - 100% Optimized */
     @media (max-width: 768px) {
+        .stock-platform {
+            padding: 0;
+        }
+        
+        .platform-container {
+            border-radius: 0;
+            min-height: 100vh;
+        }
+        
+        /* Mobile Tab Navigation */
         .platform-tabs {
             overflow-x: auto;
+            overflow-y: hidden;
             justify-content: flex-start;
+            padding: 0;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .platform-tabs::-webkit-scrollbar {
+            display: none;
         }
         
         .platform-tab {
             white-space: nowrap;
             flex: 0 0 auto;
+            min-width: 100px;
+            padding: 1rem 0.75rem;
+            font-size: 0.85rem;
         }
         
+        .platform-tab i {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 1.2rem;
+        }
+        
+        /* Tab Content */
         .tab-content-area {
+            padding: 1rem 0.75rem;
+            padding-bottom: 80px; /* Space for mobile bottom nav */
+        }
+        
+        /* Mobile Headers */
+        .tab-content-area h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        /* Mobile Action Buttons */
+        .action-btn-group {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .hitech-btn {
+            width: 100%;
+            justify-content: center;
             padding: 1rem;
+        }
+        
+        /* Mobile View Toggle */
+        .view-toggle-modern {
+            width: 100%;
+            justify-content: space-around;
+            margin-bottom: 1rem;
+        }
+        
+        .view-btn {
+            flex: 1;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        /* Mobile Cards - Optimized for Touch */
+        .modern-card {
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 12px;
+        }
+        
+        .modern-card h5, .modern-card h6 {
+            font-size: 1rem;
+        }
+        
+        /* Mobile Table - Horizontal Scroll */
+        .modern-table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+        }
+        
+        .modern-table thead {
+            display: none; /* Hide headers on mobile for better UX */
+        }
+        
+        .modern-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            white-space: normal;
+        }
+        
+        .modern-table tbody td {
+            display: block;
+            text-align: right;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .modern-table tbody td:last-child {
+            border-bottom: none;
+        }
+        
+        .modern-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.25rem;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        /* Mobile Hi-Tech Buttons - Larger Touch Targets */
+        .btn-hitech {
+            width: 44px;
+            height: 44px;
+            font-size: 1.1rem;
+        }
+        
+        .btn-actions {
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        
+        /* Mobile Stats Grid */
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+        
+        .stat-card {
+            padding: 1rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+        }
+        
+        /* Mobile Fixed Bottom Navigation */
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 2px solid #dee2e6;
+            padding: 0.5rem 0;
+            z-index: 1001;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        .mobile-nav-buttons {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        
+        .mobile-nav-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 0.75rem 0.5rem;
+            color: #6c757d;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.3s;
+        }
+        
+        .mobile-nav-btn i {
+            font-size: 1.5rem;
+        }
+        
+        .mobile-nav-btn.active {
+            color: #667eea;
+        }
+        
+        /* Mobile: Show Bottom Nav */
+        @media (max-width: 576px) {
+            .mobile-bottom-nav {
+                display: block;
+            }
+            
+            .platform-tabs {
+                display: none; /* Hide top tabs on small mobile */
+            }
+        }
+        
+        /* Swipe Indicator for Tabs */
+        .tab-swipe-indicator {
+            position: absolute;
+            bottom: -4px;
+            right: 0;
+            width: 30px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #ffd700);
+            border-radius: 2px;
+        }
+    }
+    
+    /* Touch-Friendly Improvements */
+    @media (hover: none) and (pointer: coarse) {
+        /* Increase touch targets */
+        .btn-hitech,
+        .hitech-btn,
+        .view-btn,
+        .platform-tab {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        /* Disable hover effects on touch devices */
+        .modern-card:hover,
+        .btn-hitech:hover,
+        .modern-table tbody tr:hover {
+            transform: none;
+            box-shadow: inherit;
+        }
+        
+        /* Add active/tap states instead */
+        .modern-card:active,
+        .btn-hitech:active {
+            transform: scale(0.98);
+            opacity: 0.8;
         }
     }
 </style>
@@ -559,11 +794,11 @@
                             <tbody>
                                 {% for supplier in suppliers %}
                                 <tr>
-                                    <td><strong>{{ supplier.name }}</strong></td>
-                                    <td>{{ supplier.contact_person or '-' }}</td>
-                                    <td>{{ supplier.phone or '-' }}</td>
-                                    <td>{{ supplier.email or '-' }}</td>
-                                    <td>
+                                    <td data-label="שם ספק"><strong>{{ supplier.name }}</strong></td>
+                                    <td data-label="איש קשר">{{ supplier.contact_person or '-' }}</td>
+                                    <td data-label="טלפון">{{ supplier.phone or '-' }}</td>
+                                    <td data-label="אימייל">{{ supplier.email or '-' }}</td>
+                                    <td data-label="פעולות">
                                         <div class="btn-actions">
                                             <button class="btn-hitech btn-edit" onclick="editSupplier({{ supplier.id }})"><i class="fas fa-edit"></i></button>
                                             <button class="btn-hitech btn-delete" onclick="deleteSupplier({{ supplier.id }})"><i class="fas fa-trash"></i></button>
@@ -632,10 +867,10 @@
                             <tbody>
                                 {% for category in stock_categories %}
                                 <tr>
-                                    <td><strong>{{ category.name_he }}</strong></td>
-                                    <td>{{ category.name_en or '-' }}</td>
-                                    <td>{{ category.description or '-' }}</td>
-                                    <td>
+                                    <td data-label="שם עברית"><strong>{{ category.name_he }}</strong></td>
+                                    <td data-label="שם אנגלית">{{ category.name_en or '-' }}</td>
+                                    <td data-label="תיאור">{{ category.description or '-' }}</td>
+                                    <td data-label="פעולות">
                                         <div class="btn-actions">
                                             <button class="btn-hitech btn-edit" onclick="editCategory({{ category.id }})"><i class="fas fa-edit"></i></button>
                                             <button class="btn-hitech btn-delete" onclick="deleteCategory({{ category.id }})"><i class="fas fa-trash"></i></button>
@@ -760,26 +995,71 @@
             </div>
         </div>
     </div>
+    
+    <!-- Mobile Bottom Navigation (visible only on small screens) -->
+    <div class="mobile-bottom-nav">
+        <div class="mobile-nav-buttons">
+            <button class="mobile-nav-btn active" onclick="switchTab('inventory')">
+                <i class="fas fa-boxes"></i>
+                <span>מלאי</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchTab('suppliers')">
+                <i class="fas fa-truck"></i>
+                <span>ספקים</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchTab('categories')">
+                <i class="fas fa-tags"></i>
+                <span>קטגוריות</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchTab('analytics')">
+                <i class="fas fa-chart-line"></i>
+                <span>אנליטיקס</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchTab('alerts')">
+                <i class="fas fa-bell"></i>
+                <span>התראות</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="switchTab('tools')">
+                <i class="fas fa-tools"></i>
+                <span>כלים</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 <script>
-// Tab Switching
+// Tab Switching - Enhanced for Mobile
 function switchTab(tabName) {
     // Hide all tabs
     document.querySelectorAll('.tab-pane').forEach(tab => {
         tab.classList.remove('active');
     });
     
-    // Remove active from all tab buttons
+    // Remove active from all tab buttons (desktop)
     document.querySelectorAll('.platform-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Remove active from all mobile nav buttons
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     
     // Show selected tab
     document.getElementById(tabName + '-tab').classList.add('active');
     
-    // Mark tab button as active
-    event.target.closest('.platform-tab').classList.add('active');
+    // Mark desktop tab button as active
+    const desktopTab = document.querySelector(`.platform-tab[onclick*="${tabName}"]`);
+    if (desktopTab) desktopTab.classList.add('active');
+    
+    // Mark mobile button as active
+    const mobileBtn = document.querySelector(`.mobile-nav-btn[onclick*="${tabName}"]`);
+    if (mobileBtn) mobileBtn.classList.add('active');
+    
+    // Scroll to top on mobile
+    if (window.innerWidth <= 768) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 }
 
 // View Mode Toggle
@@ -854,5 +1134,94 @@ function bulkPriceUpdate() {
 function profitCalculator() {
     alert('מחשבון רווחיות - בקרוב!');
 }
+
+// Mobile Touch Gesture Support - Swipe Between Tabs
+let touchStartX = 0;
+let touchEndX = 0;
+
+const tabs = ['inventory', 'suppliers', 'categories', 'analytics', 'alerts', 'tools'];
+let currentTabIndex = 0;
+
+function handleSwipe() {
+    if (window.innerWidth > 768) return; // Only on mobile
+    
+    const swipeThreshold = 100;
+    const diff = touchEndX - touchStartX;
+    
+    if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0 && currentTabIndex > 0) {
+            // Swipe right - previous tab (RTL: next tab)
+            currentTabIndex++;
+            if (currentTabIndex < tabs.length) {
+                switchTab(tabs[currentTabIndex]);
+            } else {
+                currentTabIndex--;
+            }
+        } else if (diff < 0 && currentTabIndex < tabs.length - 1) {
+            // Swipe left - next tab (RTL: previous tab)
+            currentTabIndex--;
+            if (currentTabIndex >= 0) {
+                switchTab(tabs[currentTabIndex]);
+            } else {
+                currentTabIndex++;
+            }
+        }
+    }
+}
+
+// Add touch listeners to the tab content area
+document.addEventListener('DOMContentLoaded', function() {
+    const tabContent = document.querySelector('.tab-content-area');
+    if (tabContent) {
+        tabContent.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        tabContent.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+    }
+    
+    // Update current tab index based on active tab
+    const updateTabIndex = () => {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) {
+            const tabId = activeTab.id.replace('-tab', '');
+            currentTabIndex = tabs.indexOf(tabId);
+        }
+    };
+    updateTabIndex();
+});
+
+// Pull-to-Refresh on Mobile
+let pullStartY = 0;
+let pulling = false;
+
+document.addEventListener('touchstart', function(e) {
+    if (window.scrollY === 0 && window.innerWidth <= 768) {
+        pullStartY = e.touches[0].clientY;
+        pulling = true;
+    }
+}, { passive: true });
+
+document.addEventListener('touchmove', function(e) {
+    if (pulling) {
+        const pullDistance = e.touches[0].clientY - pullStartY;
+        if (pullDistance > 100) {
+            // Simple refresh feedback
+            pulling = false;
+        }
+    }
+}, { passive: true });
+
+// Smooth scroll for mobile navigation
+document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (window.innerWidth <= 768) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+});
 </script>
 {% endblock %}

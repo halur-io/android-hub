@@ -1,0 +1,334 @@
+{% macro render_action_bar(
+    title='',
+    subtitle='',
+    icon='',
+    primary_actions=[],
+    secondary_actions=[],
+    view_toggle=None,
+    export_url='',
+    extra_exports=[]
+) %}
+<style>
+    .action-bar {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-bottom: 1px solid #e9ecef;
+        padding: 1.5rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .action-bar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .action-bar-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .action-bar-title h1 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0;
+        color: #2c3e50;
+    }
+    
+    .action-bar-title .title-icon {
+        font-size: 2rem;
+        color: #3498db;
+    }
+    
+    .action-bar-subtitle {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin: 0.25rem 0 0 0;
+    }
+    
+    .action-bar-buttons {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    
+    /* Modern button group */
+    .btn-group-modern {
+        display: inline-flex;
+        background: white;
+        border-radius: 8px;
+        padding: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        gap: 4px;
+    }
+    
+    .btn-group-modern .btn {
+        border-radius: 6px !important;
+        border: none;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-group-modern .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    
+    /* View toggle pills */
+    .view-toggle-pills {
+        display: inline-flex;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 4px;
+        gap: 2px;
+    }
+    
+    .view-toggle-pills .btn-toggle {
+        padding: 0.5rem 1.25rem;
+        border: none;
+        background: transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: #6c757d;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .view-toggle-pills .btn-toggle:hover {
+        color: #495057;
+        background: rgba(52, 152, 219, 0.1);
+    }
+    
+    .view-toggle-pills .btn-toggle.active {
+        background: white;
+        color: #3498db;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        font-weight: 600;
+    }
+    
+    .view-toggle-pills .btn-toggle i {
+        font-size: 1rem;
+    }
+    
+    /* Export dropdown button */
+    .export-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .btn-export {
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
+    }
+    
+    .btn-export:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+    }
+    
+    .export-dropdown-content {
+        display: none;
+        position: absolute;
+        left: 0;
+        background: white;
+        min-width: 180px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        z-index: 1000;
+        margin-top: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .export-dropdown:hover .export-dropdown-content {
+        display: block;
+    }
+    
+    .export-dropdown-content a {
+        display: block;
+        padding: 0.75rem 1rem;
+        color: #495057;
+        text-decoration: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .export-dropdown-content a:hover {
+        background: #f8f9fa;
+        color: #2ecc71;
+        padding-right: 1.25rem;
+    }
+    
+    .export-dropdown-content a i {
+        width: 20px;
+        text-align: center;
+    }
+    
+    /* Primary action buttons */
+    .btn-primary-action {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    }
+    
+    .btn-primary-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        color: white;
+    }
+    
+    .btn-secondary-action {
+        background: white;
+        color: #495057;
+        border: 1px solid #dee2e6;
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary-action:hover {
+        background: #f8f9fa;
+        border-color: #3498db;
+        color: #3498db;
+        transform: translateY(-1px);
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .action-bar-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .action-bar-buttons {
+            flex-direction: column;
+        }
+        
+        .view-toggle-pills {
+            width: 100%;
+            justify-content: space-around;
+        }
+        
+        .btn-group-modern {
+            width: 100%;
+            justify-content: space-around;
+        }
+    }
+</style>
+
+<div class="action-bar">
+    <div class="container-fluid">
+        <div class="action-bar-header">
+            <!-- Left: Title and subtitle -->
+            <div class="action-bar-title">
+                {% if icon %}
+                <div class="title-icon">
+                    <i class="{{ icon }}"></i>
+                </div>
+                {% endif %}
+                <div>
+                    <h1>{{ title }}</h1>
+                    {% if subtitle %}
+                    <p class="action-bar-subtitle">{{ subtitle }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Right: Action buttons -->
+            <div class="action-bar-buttons">
+                <!-- View Toggle (if provided) -->
+                {% if view_toggle %}
+                <div class="view-toggle-pills">
+                    {% for toggle in view_toggle %}
+                    <button class="btn-toggle {% if toggle.active %}active{% endif %}" 
+                            data-view="{{ toggle.view }}" 
+                            onclick="toggleView('{{ toggle.view }}')">
+                        <i class="{{ toggle.icon }}"></i>
+                        <span>{{ toggle.label }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Export Button (if URL provided) -->
+                {% if export_url or extra_exports %}
+                <div class="export-dropdown">
+                    <button class="btn-export">
+                        <i class="fas fa-download"></i>
+                        <span>ייצוא</span>
+                        <i class="fas fa-chevron-down" style="font-size: 0.75rem;"></i>
+                    </button>
+                    <div class="export-dropdown-content">
+                        {% if export_url %}
+                        <a href="{{ export_url }}?format=excel">
+                            <i class="fas fa-file-excel" style="color: #27ae60;"></i>
+                            <span>ייצוא לExcel</span>
+                        </a>
+                        <a href="{{ export_url }}?format=csv">
+                            <i class="fas fa-file-csv" style="color: #3498db;"></i>
+                            <span>ייצוא לCSV</span>
+                        </a>
+                        {% endif %}
+                        {% for exp in extra_exports %}
+                        <a href="{{ exp.url }}">
+                            <i class="{{ exp.icon }}"></i>
+                            <span>{{ exp.label }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Primary Actions -->
+                {% for action in primary_actions %}
+                <a href="{{ action.url }}" class="btn-primary-action">
+                    <i class="{{ action.icon }}"></i>
+                    <span>{{ action.label }}</span>
+                </a>
+                {% endfor %}
+                
+                <!-- Secondary Actions -->
+                {% for action in secondary_actions %}
+                <a href="{{ action.url }}" class="btn-secondary-action">
+                    <i class="{{ action.icon }}"></i>
+                    <span>{{ action.label }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

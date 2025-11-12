@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "admin/partials/action_bar.html" import render_action_bar %}
 
 {% block title %}ניהול מלאי - Admin Panel{% endblock %}
 
@@ -132,27 +133,23 @@
 
 {% block content %}
 <div class="container-fluid">
-    <!-- Header with view toggle -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-        <div class="d-flex align-items-center gap-3">
-            <h1 class="mb-0">ניהול מלאי</h1>
-            <!-- View Toggle -->
-            <div class="view-toggle d-none d-md-inline-flex">
-                <button class="btn-view active" data-view="cards" onclick="toggleView('cards')">
-                    <i class="fas fa-th-large"></i> כרטיסים
-                </button>
-                <button class="btn-view" data-view="excel" onclick="toggleView('excel')">
-                    <i class="fas fa-table"></i> Excel
-                </button>
-            </div>
-        </div>
-        <a href="{{ url_for('admin.receipt_scanner') }}" class="btn btn-success">
-            <i class="fas fa-receipt me-2"></i>סריקת קבלות AI
-        </a>
-        <a href="{{ url_for('admin.monthly_cost_reports') }}" class="btn btn-info">
-            <i class="fas fa-chart-line me-2"></i>דוחות עלויות
-        </a>
-    </div>
+    <!-- Modern Action Bar -->
+    {{ render_action_bar(
+        title='ניהול מלאי',
+        subtitle='ניהול מלאי, ספקים וקטגוריות במערכת אחת',
+        icon='fas fa-warehouse',
+        view_toggle=[
+            {'view': 'cards', 'icon': 'fas fa-id-card', 'label': 'תצוגת כרטיסים', 'active': True},
+            {'view': 'table', 'icon': 'fas fa-table', 'label': 'תצוגת טבלה', 'active': False}
+        ],
+        export_url=url_for('admin.export_items'),
+        primary_actions=[
+            {'url': url_for('admin.receipt_scanner'), 'icon': 'fas fa-receipt', 'label': 'סריקת קבלות AI'}
+        ],
+        secondary_actions=[
+            {'url': url_for('admin.monthly_cost_reports'), 'icon': 'fas fa-chart-line', 'label': 'דוחות עלויות'}
+        ]
+    ) }}
     
     <!-- Bulk Actions Bar -->
     <div class="bulk-actions-bar" id="bulkActionsBar">
@@ -279,8 +276,8 @@
                 </div>
             </div>
             
-            <!-- EXCEL GRID VIEW (Hidden by default) -->
-            <div id="excelView" class="view-content excel-view" style="display:none;">
+            <!-- TABLE GRID VIEW (Hidden by default) -->
+            <div id="tableView" class="view-content excel-view" style="display:none;">
                 <table class="excel-grid">
                     <thead>
                         <tr>
@@ -529,13 +526,13 @@
 // View Toggle Functionality
 function toggleView(view) {
     // Get all view buttons
-    const buttons = document.querySelectorAll('.btn-view');
+    const buttons = document.querySelectorAll('.btn-toggle');
     const cardView = document.getElementById('cardView');
-    const excelView = document.getElementById('excelView');
+    const tableView = document.getElementById('tableView');
     
     // If no view specified (mobile toggle), switch between views
     if (!view) {
-        view = cardView.style.display !== 'none' ? 'excel' : 'cards';
+        view = cardView.style.display !== 'none' ? 'table' : 'cards';
     }
     
     // Update button states
@@ -547,12 +544,12 @@ function toggleView(view) {
     });
     
     // Show/hide views
-    if (view === 'excel') {
+    if (view === 'table') {
         cardView.style.display = 'none';
-        excelView.style.display = 'block';
+        tableView.style.display = 'block';
     } else {
         cardView.style.display = 'block';
-        excelView.style.display = 'none';
+        tableView.style.display = 'none';
     }
     
     // Save preference
@@ -562,8 +559,8 @@ function toggleView(view) {
 // Load view preference on page load
 document.addEventListener('DOMContentLoaded', function() {
     const savedView = localStorage.getItem('stockViewPreference') || 'cards';
-    if (savedView === 'excel') {
-        toggleView('excel');
+    if (savedView === 'table') {
+        toggleView('table');
     }
 });
 

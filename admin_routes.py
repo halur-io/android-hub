@@ -15,6 +15,7 @@ from wtforms import StringField, TextAreaField, SubmitField, BooleanField, Decim
 from wtforms.validators import DataRequired, URL, Optional
 from sqlalchemy.orm import joinedload
 from PIL import Image
+from utilities.exporting import build_export_response
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -4856,6 +4857,73 @@ def update_stock_item_field():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# ===== UNIFIED EXPORT ROUTES =====
+
+@admin_bp.route('/stock/export/suppliers')
+@login_required
+@require_permission('stock.view')
+def export_suppliers():
+    """Export suppliers to Excel/CSV"""
+    from models import Supplier
+    
+    format_type = request.args.get('format', 'excel')
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    
+    columns = [
+        {'field': 'id', 'header': 'ID'},
+        {'field': 'name', 'header': 'שם הספק'},
+        {'field': 'contact_person', 'header': 'איש קשר'},
+        {'field': 'phone', 'header': 'טלפון'},
+        {'field': 'email', 'header': 'אימייל'},
+        {'field': 'address', 'header': 'כתובת'},
+        {'field': 'created_at', 'header': 'תאריך יצירה'}
+    ]
+    
+    return build_export_response(suppliers, columns, format_type, 'suppliers')
+
+@admin_bp.route('/stock/export/categories')
+@login_required
+@require_permission('stock.view')
+def export_categories():
+    """Export categories to Excel/CSV"""
+    from models import StockCategory
+    
+    format_type = request.args.get('format', 'excel')
+    categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+    
+    columns = [
+        {'field': 'id', 'header': 'ID'},
+        {'field': 'name_he', 'header': 'שם עברית'},
+        {'field': 'name_en', 'header': 'שם אנגלית'},
+        {'field': 'description', 'header': 'תיאור'}
+    ]
+    
+    return build_export_response(categories, columns, format_type, 'categories')
+
+@admin_bp.route('/stock/export/items')
+@login_required
+@require_permission('stock.view')
+def export_items():
+    """Export stock items to Excel/CSV using unified export"""
+    from models import StockItem
+    
+    format_type = request.args.get('format', 'excel')
+    items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+    
+    columns = [
+        {'field': 'id', 'header': 'ID'},
+        {'field': 'name_he', 'header': 'שם עברית'},
+        {'field': 'name_en', 'header': 'שם אנגלית'},
+        {'field': 'category', 'header': 'קטגוריה', 'formatter': lambda x: x.name_he if x else ''},
+        {'field': 'unit_he', 'header': 'יחידה'},
+        {'field': 'primary_supplier', 'header': 'ספק', 'formatter': lambda x: x.name if x else ''},
+        {'field': 'cost_per_unit', 'header': 'עלות/יח\''},
+        {'field': 'min_stock_level', 'header': 'מינימום'},
+        {'field': 'max_stock_level', 'header': 'מקסימום'}
+    ]
+    
+    return build_export_response(items, columns, format_type, 'stock_items')
 
 @admin_bp.route('/stock/item/<int:item_id>/delete', methods=['POST'])
 @login_required

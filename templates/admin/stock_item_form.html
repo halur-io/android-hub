@@ -220,7 +220,20 @@
             
             <div class="form-group">
                 <label class="form-label">יחידת מידה</label>
-                <input type="text" name="unit" class="form-control" value="{{ item.unit_he if item else 'יחידות' }}" placeholder="יחידות, ק״ג, ליטר...">
+                <select name="unit" class="form-control">
+                    <option value="יחידות" {% if not item or item.unit_he == 'יחידות' %}selected{% endif %}>יחידות</option>
+                    <option value="ק״ג" {% if item and item.unit_he == 'ק״ג' %}selected{% endif %}>ק״ג</option>
+                    <option value="גרם" {% if item and item.unit_he == 'גרם' %}selected{% endif %}>גרם</option>
+                    <option value="ליטר" {% if item and item.unit_he == 'ליטר' %}selected{% endif %}>ליטר</option>
+                    <option value="מ״ל" {% if item and item.unit_he == 'מ״ל' %}selected{% endif %}>מ״ל</option>
+                    <option value="חבילה" {% if item and item.unit_he == 'חבילה' %}selected{% endif %}>חבילה</option>
+                    <option value="קופסה" {% if item and item.unit_he == 'קופסה' %}selected{% endif %}>קופסה</option>
+                    <option value="שק" {% if item and item.unit_he == 'שק' %}selected{% endif %}>שק</option>
+                    <option value="בקבוק" {% if item and item.unit_he == 'בקבוק' %}selected{% endif %}>בקבוק</option>
+                    <option value="צנצנת" {% if item and item.unit_he == 'צנצנת' %}selected{% endif %}>צנצנת</option>
+                    <option value="מארז" {% if item and item.unit_he == 'מארז' %}selected{% endif %}>מארז</option>
+                    <option value="מנה" {% if item and item.unit_he == 'מנה' %}selected{% endif %}>מנה</option>
+                </select>
             </div>
         </div>
         

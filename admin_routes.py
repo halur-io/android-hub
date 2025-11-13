@@ -5496,6 +5496,7 @@ def quick_create_supplier():
             contact_person=data.get('contact_name', '').strip(),
             phone=data.get('phone', '').strip(),
             email=data.get('email', '').strip(),
+            address=data.get('address', '').strip(),
             is_active=True
         )
         

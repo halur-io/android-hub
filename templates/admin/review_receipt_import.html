@@ -490,11 +490,9 @@ function openNewSupplierModal() {
     if (suggestedDetails.address) {
         document.getElementById('supplier-address').value = suggestedDetails.address;
     }
+    {% endif %}
     
-    // Show AI notice if we pre-filled anything
-    updateAINoticeVisibility();
-    
-    // Add input listeners to dynamically hide notice when all fields cleared
+    // Always setup input listeners and update visibility
     const fields = ['supplier-name', 'supplier-contact', 'supplier-phone', 'supplier-email', 'supplier-address'];
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
@@ -503,9 +501,9 @@ function openNewSupplierModal() {
             field.addEventListener('input', updateAINoticeVisibility);
         }
     });
-    {% else %}
-    aiNotice.classList.add('d-none');
-    {% endif %}
+    
+    // Update notice visibility based on current field values
+    updateAINoticeVisibility();
     
     modal.show();
 }
@@ -514,6 +512,8 @@ function openNewSupplierModal() {
 function updateAINoticeVisibility() {
     const aiNotice = document.getElementById('ai-suggestion-notice');
     
+    // Only show AI notice if we actually have AI-suggested details
+    {% if suggested_supplier_details %}
     // Check if any fields have values
     const hasValues = 
         document.getElementById('supplier-name').value.trim() ||
@@ -527,6 +527,10 @@ function updateAINoticeVisibility() {
     } else {
         aiNotice.classList.add('d-none');
     }
+    {% else %}
+    // No AI suggestions, always hide notice
+    aiNotice.classList.add('d-none');
+    {% endif %}
 }
 
 async function saveNewSupplier() {
@@ -565,7 +569,8 @@ async function saveNewSupplier() {
                 name: name,
                 contact_name: formData.get('contact_name') || '',
                 phone: formData.get('phone') || '',
-                email: formData.get('email') || ''
+                email: formData.get('email') || '',
+                address: formData.get('address') || ''
             })
         });
         

@@ -122,6 +122,11 @@ try:
     app.register_blueprint(admin_bp)
     # Exempt quick supplier creation from CSRF (already protected by login/permissions)
     csrf.exempt('admin.quick_create_supplier')
+    # Exempt bulk operation endpoints from CSRF (protected by login/permissions)
+    csrf.exempt('admin.bulk_delete_items')
+    csrf.exempt('admin.bulk_delete_suppliers')
+    csrf.exempt('admin.bulk_delete_categories')
+    csrf.exempt('admin.bulk_edit_items')
 except Exception as e:
     print(f"Error registering admin blueprint: {e}")
 

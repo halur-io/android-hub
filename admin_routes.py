@@ -4597,10 +4597,10 @@ def stock_management():
         items = []
         suppliers = []
         categories = []
-        all_suppliers = []  # For filter dropdown
         
-        # Load all suppliers for filter dropdown
+        # Load all suppliers and categories for filter dropdown and bulk edit modal
         all_suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+        all_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
         
         if view == 'items':
             from sqlalchemy import func
@@ -4732,6 +4732,7 @@ def stock_management():
                              receipts=receipts if view == 'receipts' and 'receipts' in locals() else None,
                              selected_supplier_name=selected_supplier_name if 'selected_supplier_name' in locals() else None,
                              all_suppliers=all_suppliers,
+                             all_categories=all_categories,
                              selected_supplier=supplier_filter)
     except Exception as e:
         logger.error(f"ERROR in stock_management: {str(e)}")
@@ -7314,6 +7315,208 @@ def careers_delete():
         db.session.rollback()
         current_app.logger.error(f"Error deleting career position: {str(e)}")
         return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+# ===== BULK OPERATIONS =====
+
+@admin_bp.route('/bulk-delete-items', methods=['POST'])
+@login_required
+@require_permission('stock.delete')
+def bulk_delete_items():
+    """Bulk delete stock items"""
+    try:
+        from models import StockItem, StockLevel
+        import json
+        
+        data = request.get_json()
+        ids = data.get('ids', [])
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No items selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 items per batch'}), 400
+        
+        # Get items to delete
+        items = StockItem.query.filter(StockItem.id.in_(ids)).all()
+        
+        if not items:
+            return jsonify({'success': False, 'message': 'No items found'}), 404
+        
+        # Delete in transaction
+        deleted_count = 0
+        for item in items:
+            # Delete associated stock levels
+            StockLevel.query.filter_by(item_id=item.id).delete()
+            db.session.delete(item)
+            deleted_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk delete items error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/bulk-delete-suppliers', methods=['POST'])
+@login_required
+@require_permission('stock.delete')
+def bulk_delete_suppliers():
+    """Bulk delete suppliers"""
+    try:
+        from models import Supplier, StockItem
+        import json
+        
+        data = request.get_json()
+        ids = data.get('ids', [])
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No suppliers selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 suppliers per batch'}), 400
+        
+        # Check for dependencies
+        items_count = StockItem.query.filter(StockItem.primary_supplier_id.in_(ids)).count()
+        if items_count > 0:
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete suppliers: {items_count} items are linked to these suppliers'
+            }), 400
+        
+        # Get suppliers to delete
+        suppliers = Supplier.query.filter(Supplier.id.in_(ids)).all()
+        
+        if not suppliers:
+            return jsonify({'success': False, 'message': 'No suppliers found'}), 404
+        
+        # Delete in transaction
+        deleted_count = 0
+        for supplier in suppliers:
+            db.session.delete(supplier)
+            deleted_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk delete suppliers error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/bulk-delete-categories', methods=['POST'])
+@login_required
+@require_permission('stock.delete')
+def bulk_delete_categories():
+    """Bulk delete categories"""
+    try:
+        from models import StockCategory, StockItem
+        import json
+        
+        data = request.get_json()
+        ids = data.get('ids', [])
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No categories selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 categories per batch'}), 400
+        
+        # Check for dependencies
+        items_count = StockItem.query.filter(StockItem.category_id.in_(ids)).count()
+        if items_count > 0:
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete categories: {items_count} items are linked to these categories'
+            }), 400
+        
+        # Get categories to delete
+        categories = StockCategory.query.filter(StockCategory.id.in_(ids)).all()
+        
+        if not categories:
+            return jsonify({'success': False, 'message': 'No categories found'}), 404
+        
+        # Delete in transaction
+        deleted_count = 0
+        for category in categories:
+            db.session.delete(category)
+            deleted_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk delete categories error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/bulk-edit-items', methods=['POST'])
+@login_required
+@require_permission('stock.edit')
+def bulk_edit_items():
+    """Bulk edit stock items"""
+    try:
+        from models import StockItem
+        from audit_logger import log_item_update
+        import json
+        
+        data = request.get_json()
+        ids = data.get('ids', [])
+        updates = data.get('updates', {})
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No items selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 items per batch'}), 400
+        
+        if not updates:
+            return jsonify({'success': False, 'message': 'No updates specified'}), 400
+        
+        # Get items to update
+        items = StockItem.query.filter(StockItem.id.in_(ids)).all()
+        
+        if not items:
+            return jsonify({'success': False, 'message': 'No items found'}), 404
+        
+        # Update in transaction
+        updated_count = 0
+        for item in items:
+            # Store old values for audit
+            old_values = {}
+            
+            # Update only specified fields
+            if 'category_id' in updates:
+                old_values['category_id'] = item.category_id
+                item.category_id = updates['category_id']
+            
+            if 'primary_supplier_id' in updates:
+                old_values['primary_supplier_id'] = item.primary_supplier_id
+                item.primary_supplier_id = updates['primary_supplier_id']
+            
+            if 'minimum_stock' in updates:
+                old_values['minimum_stock'] = item.minimum_stock
+                item.minimum_stock = updates['minimum_stock']
+            
+            # Flush to get updated values
+            db.session.flush()
+            
+            # Log audit for each item
+            log_item_update(item.id, old_values, current_user.id)
+            
+            updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'updated_count': updated_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk edit items error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # ===== AUDIT LOG API =====
 

@@ -4861,6 +4861,17 @@ def edit_stock_item(item_id):
             item.minimum_stock = float(request.form.get('minimum_stock', 0) or 0)
             item.cost_per_unit = float(request.form.get('cost_per_unit', 0) or 0)
             
+            # Flush changes to get dirty state, then record audit
+            db.session.flush()
+            
+            # Record audit log
+            from audit_logger import record_entity_audit
+            try:
+                record_entity_audit(item, 'update')
+            except Exception as audit_error:
+                current_app.logger.error(f"Audit logging failed: {audit_error}")
+            
+            # Commit both the item changes and audit log together
             db.session.commit()
             
             flash('פריט עודכן בהצלחה', 'success')
@@ -5181,6 +5192,14 @@ def delete_stock_item(item_id):
             item_id = request.get_json().get('item_id', item_id)
         
         item = StockItem.query.get_or_404(item_id)
+        
+        # Record audit log before deletion
+        from audit_logger import record_entity_audit
+        try:
+            record_entity_audit(item, 'delete')
+        except Exception as audit_error:
+            current_app.logger.error(f"Audit logging failed: {audit_error}")
+        
         db.session.delete(item)
         db.session.commit()
         
@@ -5636,6 +5655,17 @@ def edit_supplier(supplier_id):
             supplier.payment_terms = request.form.get('payment_terms', '').strip()
             supplier.notes = request.form.get('notes', '').strip()
             
+            # Flush changes to get dirty state
+            db.session.flush()
+            
+            # Record audit log
+            from audit_logger import record_entity_audit
+            try:
+                record_entity_audit(supplier, 'update')
+            except Exception as audit_error:
+                current_app.logger.error(f"Audit logging failed: {audit_error}")
+            
+            # Commit both changes together
             db.session.commit()
             
             flash('פרטי ספק עודכנו בהצלחה', 'success')
@@ -7273,3 +7303,34 @@ def careers_delete():
         db.session.rollback()
         current_app.logger.error(f"Error deleting career position: {str(e)}")
         return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+# ===== AUDIT LOG API =====
+
+@admin_bp.route('/api/audit/<entity_type>/<int:entity_id>')
+@login_required
+def get_audit_history_api(entity_type, entity_id):
+    """
+    API endpoint to fetch audit history for a specific entity.
+    Returns paginated JSON with audit log entries.
+    """
+    try:
+        from audit_logger import get_audit_history
+        
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Fetch audit history
+        history = get_audit_history(entity_type, entity_id, page, per_page)
+        
+        return jsonify({
+            'success': True,
+            'data': history
+        })
+    
+    except Exception as e:
+        current_app.logger.error(f"Error fetching audit history: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

@@ -535,6 +535,7 @@
                             </div>
                             <div class="item-actions">
                                 <button class="btn-edit btn-view-item" style="background: #007bff;" data-item='{{ {
+                                    "id": item.id,
                                     "name_he": item.name_he,
                                     "name_en": item.name_en or "",
                                     "total_available": item_data.total_available|float,
@@ -633,6 +634,7 @@
                             </div>
                             <div class="item-actions">
                                 <button class="btn-edit btn-view-supplier" style="background: #007bff;" data-supplier='{{ {
+                                    "id": supplier.id,
                                     "name": supplier.name,
                                     "contact_person": supplier.contact_person or "",
                                     "phone": supplier.phone or "",
@@ -915,10 +917,19 @@ function showItemDetail(itemData) {
         html += '</div></div>';
     }
     
+    // Add audit timeline section
+    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';
+    html += '<h4 style="margin: 0 0 1rem 0; color: var(--text-primary); font-size: 1.1rem;"><i class="fas fa-history"></i> היסטוריית שינויים</h4>';
+    html += '<div id="audit-timeline"></div>';
+    html += '</div>';
+    
     html += '</div>';
     
     content.innerHTML = html;
     modal.style.display = 'block';
+    
+    // Load audit history
+    loadAuditHistory('stock_item', itemData.id);
 }
 
 function showSupplierDetail(supplierData) {
@@ -954,10 +965,130 @@ function showSupplierDetail(supplierData) {
         html += '<div><strong style="color: var(--text-secondary);">הערות:</strong><br>' + supplierData.notes + '</div>';
     }
     
+    // Add audit timeline section
+    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';
+    html += '<h4 style="margin: 0 0 1rem 0; color: var(--text-primary); font-size: 1.1rem;"><i class="fas fa-history"></i> היסטוריית שינויים</h4>';
+    html += '<div id="audit-timeline"></div>';
+    html += '</div>';
+    
     html += '</div>';
     
     content.innerHTML = html;
     modal.style.display = 'block';
+    
+    // Load audit history
+    loadAuditHistory('supplier', supplierData.id);
+}
+
+// Load and display audit history
+function loadAuditHistory(entityType, entityId) {
+    const timelineEl = document.getElementById('audit-timeline');
+    if (!timelineEl) return;
+    
+    // Show loading state
+    timelineEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> טוען...</div>';
+    
+    // Fetch audit history
+    fetch(`/admin/api/audit/${entityType}/${entityId}?per_page=10`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.entries.length > 0) {
+                let html = '<div style="display: flex; flex-direction: column; gap: 0.75rem;">';
+                
+                data.data.entries.forEach(entry => {
+                    html += '<div style="padding: 0.75rem; background: var(--bg-main); border-radius: 8px; border-right: 3px solid var(--accent-primary);">';
+                    
+                    // Header with action and user
+                    html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">';
+                    html += '<div>';
+                    
+                    // Action badge
+                    let actionColor = entry.action === 'create' ? '#28a745' : entry.action === 'update' ? '#007bff' : '#dc3545';
+                    html += '<span style="background: ' + actionColor + '; color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + entry.action_display_he + '</span>';
+                    
+                    html += '<span style="margin-right: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">על ידי ' + entry.user_name + '</span>';
+                    html += '</div>';
+                    
+                    // Timestamp
+                    html += '<div style="color: var(--text-secondary); font-size: 0.75rem;">';
+                    html += '<i class="far fa-clock"></i> ' + entry.performed_at_display;
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    // Changes details
+                    if (entry.changes && Object.keys(entry.changes).length > 0) {
+                        html += '<div style="margin-top: 0.5rem; font-size: 0.875rem;">';
+                        
+                        // For create/delete, show new_values or old_values
+                        if (entry.changes.new_values) {
+                            html += '<div style="color: var(--text-secondary); margin-bottom: 0.25rem;">פריט נוצר עם ערכים:</div>';
+                            Object.keys(entry.changes.new_values).forEach(key => {
+                                html += '<div style="margin-right: 1rem; color: var(--text-primary);">';
+                                html += '<strong>' + formatFieldName(key) + ':</strong> ' + entry.changes.new_values[key];
+                                html += '</div>';
+                            });
+                        } else if (entry.changes.old_values) {
+                            html += '<div style="color: var(--text-secondary);">פריט נמחק</div>';
+                        } else {
+                            // For updates, show field changes
+                            Object.keys(entry.changes).forEach(field => {
+                                const change = entry.changes[field];
+                                html += '<div style="margin-bottom: 0.25rem;">';
+                                html += '<strong>' + formatFieldName(field) + ':</strong> ';
+                                html += '<span style="color: #dc3545; text-decoration: line-through;">' + (change.old || 'ריק') + '</span> ';
+                                html += '<i class="fas fa-arrow-left" style="color: var(--accent-primary); font-size: 0.75rem; margin: 0 0.25rem;"></i> ';
+                                html += '<span style="color: #28a745; font-weight: 600;">' + (change.new || 'ריק') + '</span>';
+                                html += '</div>';
+                            });
+                        }
+                        
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                });
+                
+                html += '</div>';
+                
+                // Show total if more entries exist
+                if (data.data.total > data.data.entries.length) {
+                    html += '<div style="text-align: center; margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">';
+                    html += 'מוצג ' + data.data.entries.length + ' מתוך ' + data.data.total + ' שינויים';
+                    html += '</div>';
+                }
+                
+                timelineEl.innerHTML = html;
+            } else {
+                timelineEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.875rem;">אין שינויים להצגה</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading audit history:', error);
+            timelineEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #dc3545; font-size: 0.875rem;">שגיאה בטעינת היסטוריה</div>';
+        });
+}
+
+// Format field names for display
+function formatFieldName(fieldName) {
+    const fieldMap = {
+        'name_he': 'שם עברית',
+        'name_en': 'שם אנגלית',
+        'name': 'שם',
+        'contact_person': 'איש קשר',
+        'phone': 'טלפון',
+        'email': 'אימייל',
+        'address': 'כתובת',
+        'payment_terms': 'תנאי תשלום',
+        'notes': 'הערות',
+        'unit_he': 'יחידה',
+        'unit_en': 'Unit',
+        'minimum_stock': 'מלאי מינימום',
+        'cost_per_unit': 'עלות/יח\'',
+        'category_id': 'קטגוריה',
+        'primary_supplier_id': 'ספק',
+        'is_active': 'פעיל'
+    };
+    return fieldMap[fieldName] || fieldName;
 }
 
 // Close modal on outside click - check if click is on the overlay itself

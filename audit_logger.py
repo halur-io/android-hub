@@ -113,14 +113,13 @@ def record_audit(entity_type, entity_id, action, changes=None, user_id=None, con
         )
         
         db.session.add(audit_entry)
-        db.session.commit()
+        # Don't commit here - let the caller commit to keep in same transaction
         
         return audit_entry
     
     except Exception as e:
         # Log error but don't fail the main operation
         print(f"Audit logging error: {e}")
-        db.session.rollback()
         return None
 
 

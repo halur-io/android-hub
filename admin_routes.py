@@ -7347,6 +7347,9 @@ def bulk_delete_items():
         # Delete in transaction
         deleted_count = 0
         for item in items:
+            # Delete associated stock alerts
+            from models import StockAlert
+            StockAlert.query.filter_by(item_id=item.id).delete()
             # Delete associated stock levels
             StockLevel.query.filter_by(item_id=item.id).delete()
             db.session.delete(item)

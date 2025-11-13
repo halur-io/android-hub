@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
+from app import csrf
 # from flask_wtf.csrf import exempt  # Not available in this version
 from werkzeug.utils import secure_filename
 from database import db
@@ -5460,6 +5461,7 @@ def add_supplier():
 @admin_bp.route('/suppliers/quick-create', methods=['POST'])
 @login_required
 @require_permission('stock.manage')
+@csrf.exempt
 def quick_create_supplier():
     """Quick supplier creation for receipt review (AJAX endpoint)"""
     from models import Supplier

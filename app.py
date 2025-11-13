@@ -120,6 +120,8 @@ from routes import *
 try:
     from admin_routes import admin_bp
     app.register_blueprint(admin_bp)
+    # Exempt quick supplier creation from CSRF (already protected by login/permissions)
+    csrf.exempt('admin.quick_create_supplier')
 except Exception as e:
     print(f"Error registering admin blueprint: {e}")
 

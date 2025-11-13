@@ -1445,10 +1445,15 @@ function getSelectedIds() {
     return Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
 }
 
-// Get selected type
+// Get selected type (from any checked checkbox)
 function getSelectedType() {
-    const checkbox = document.querySelector('.item-checkbox:checked');
-    return checkbox ? checkbox.dataset.type : null;
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    if (checkboxes.length === 0) return null;
+    
+    // Get type from first checked checkbox
+    const type = checkboxes[0].dataset.type;
+    console.log('Selected type:', type, 'from', checkboxes.length, 'checkboxes');
+    return type;
 }
 
 // Store current deletion data

@@ -4654,8 +4654,19 @@ def stock_management():
                 
                 items.append(item_data)
         elif view == 'suppliers':
-            suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
-            logger.info(f"Loaded {len(suppliers)} suppliers")
+            # Get suppliers with item counts
+            suppliers_raw = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+            
+            # Enrich with item counts
+            suppliers = []
+            for supplier in suppliers_raw:
+                item_count = StockItem.query.filter_by(primary_supplier_id=supplier.id, is_active=True).count()
+                suppliers.append({
+                    'supplier': supplier,
+                    'item_count': item_count
+                })
+            
+            logger.info(f"Loaded {len(suppliers)} suppliers with item counts")
         elif view == 'categories':
             categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
             logger.info(f"Loaded {len(categories)} categories")

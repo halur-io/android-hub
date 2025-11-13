@@ -606,11 +606,13 @@
                 {% if view_mode == 'card' %}
                     <!-- Card View -->
                     <div class="card-grid">
-                        {% for supplier in suppliers %}
+                        {% for supplier_info in suppliers %}
+                        {% set supplier = supplier_info.supplier %}
+                        {% set item_count = supplier_info.item_count %}
                         <div class="item-card">
                             <div class="item-header">
                                 <h3 class="item-title">{{ supplier.name }}</h3>
-                                <span class="item-badge">ספק</span>
+                                <span class="item-badge" style="background: var(--accent-primary);">{{ item_count }} פריטים</span>
                             </div>
                             <div class="item-details">
                                 {% if supplier.contact_person %}
@@ -657,11 +659,14 @@
                 {% else %}
                     <!-- List View -->
                     <div class="list-view">
-                        {% for supplier in suppliers %}
+                        {% for supplier_info in suppliers %}
+                        {% set supplier = supplier_info.supplier %}
+                        {% set item_count = supplier_info.item_count %}
                         <div class="list-item">
                             <div class="list-item-main">
                                 <h4 class="list-item-title">{{ supplier.name }}</h4>
                                 <div class="list-item-subtitle">
+                                    <strong>{{ item_count }} פריטים</strong> • 
                                     {{ supplier.contact_person or 'ללא איש קשר' }} • 
                                     {{ supplier.phone or 'ללא טלפון' }}
                                 </div>
@@ -964,6 +969,17 @@ function showSupplierDetail(supplierData) {
     if (supplierData.notes) {
         html += '<div><strong style="color: var(--text-secondary);">הערות:</strong><br>' + supplierData.notes + '</div>';
     }
+    
+    // Add quick action buttons section
+    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';
+    html += '<h4 style="margin: 0 0 0.75rem 0; color: var(--text-primary); font-size: 1.1rem;"><i class="fas fa-bolt"></i> פעולות מהירות</h4>';
+    html += '<div style="display: flex; gap: 0.5rem;">';
+    html += '<a href="/admin/stock-management?view=receipts&mode=list&supplier_id=' + supplierData.id + '" style="flex: 1; padding: 0.75rem; background: var(--accent-primary); color: white; border-radius: 8px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600;">';
+    html += '<i class="fas fa-receipt"></i>';
+    html += '<span>צפה בכל הקבלות</span>';
+    html += '</a>';
+    html += '</div>';
+    html += '</div>';
     
     // Add audit timeline section
     html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';

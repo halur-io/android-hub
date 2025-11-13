@@ -1494,8 +1494,12 @@ function closeConfirmModal() {
 
 // Confirm and execute bulk delete
 function confirmBulkDelete() {
+    console.log('Confirming delete with:', pendingDelete);
+    const ids = pendingDelete.ids;
+    const type = pendingDelete.type;
     closeConfirmModal();
-    performBulkDelete(pendingDelete.ids, pendingDelete.type);
+    console.log('About to delete:', ids.length, 'items of type:', type);
+    performBulkDelete(ids, type);
 }
 
 // Show toast notification
@@ -1529,6 +1533,8 @@ function getCSRFToken() {
 
 // Perform bulk delete
 function performBulkDelete(ids, type) {
+    console.log('performBulkDelete called with ids:', ids, 'type:', type);
+    
     // Map entity types to correct plural forms
     const endpointMap = {
         'item': '/admin/bulk-delete-items',
@@ -1537,9 +1543,11 @@ function performBulkDelete(ids, type) {
     };
     
     const endpoint = endpointMap[type];
+    console.log('Endpoint for type', type, ':', endpoint);
+    
     if (!endpoint) {
         console.error('Unknown entity type:', type);
-        alert('שגיאה: סוג ישות לא ידוע');
+        showToast('שגיאה: סוג ישות לא ידוע', 'error');
         return;
     }
     

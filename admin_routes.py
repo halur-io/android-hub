@@ -4599,13 +4599,56 @@ def stock_management():
         all_suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
         
         if view == 'items':
+            from sqlalchemy import func
+            from models import StockLevel, Branch
+            
             # Apply supplier filter if specified
             if supplier_filter:
-                items = StockItem.query.filter_by(is_active=True, primary_supplier_id=supplier_filter).order_by(StockItem.name_he).all()
-                logger.info(f"Loaded {len(items)} items for supplier {supplier_filter}")
+                items_query = StockItem.query.filter_by(is_active=True, primary_supplier_id=supplier_filter)
             else:
-                items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
-                logger.info(f"Loaded {len(items)} items")
+                items_query = StockItem.query.filter_by(is_active=True)
+            
+            # Get items with aggregated stock levels
+            items_raw = items_query.order_by(StockItem.name_he).all()
+            logger.info(f"Loaded {len(items_raw)} items")
+            
+            # Enrich items with stock level totals
+            items = []
+            for item in items_raw:
+                # Aggregate stock across all branches
+                stock_aggregates = db.session.query(
+                    func.sum(StockLevel.current_quantity).label('total_current'),
+                    func.sum(StockLevel.reserved_quantity).label('total_reserved'),
+                    func.sum(StockLevel.available_quantity).label('total_available')
+                ).filter(StockLevel.item_id == item.id).first()
+                
+                # Create enriched item dict
+                item_data = {
+                    'item': item,
+                    'total_current': float(stock_aggregates.total_current or 0),
+                    'total_reserved': float(stock_aggregates.total_reserved or 0),
+                    'total_available': float(stock_aggregates.total_available or 0),
+                    'is_low_stock': (stock_aggregates.total_available or 0) < item.minimum_stock if item.minimum_stock else False,
+                    'branches': []
+                }
+                
+                # Get branch-level breakdown
+                branch_levels = db.session.query(StockLevel, Branch).join(
+                    Branch, StockLevel.branch_id == Branch.id
+                ).filter(
+                    StockLevel.item_id == item.id,
+                    Branch.is_active == True
+                ).all()
+                
+                for level, branch in branch_levels:
+                    item_data['branches'].append({
+                        'name': branch.name_he,
+                        'current': float(level.current_quantity),
+                        'reserved': float(level.reserved_quantity),
+                        'available': float(level.available_quantity)
+                    })
+                
+                items.append(item_data)
         elif view == 'suppliers':
             suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
             logger.info(f"Loaded {len(suppliers)} suppliers")

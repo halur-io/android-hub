@@ -492,13 +492,22 @@
                 {% if view_mode == 'card' %}
                     <!-- Card View -->
                     <div class="card-grid">
-                        {% for item in items %}
+                        {% for item_data in items %}
+                        {% set item = item_data.item %}
                         <div class="item-card">
                             <div class="item-header">
                                 <h3 class="item-title">{{ item.name_he }}</h3>
+                                {% if item_data.is_low_stock %}
+                                <span class="item-badge" style="background-color: var(--accent-danger);">מלאי נמוך</span>
+                                {% else %}
                                 <span class="item-badge">מלאי</span>
+                                {% endif %}
                             </div>
                             <div class="item-details">
+                                <div class="detail-row" style="font-weight: 700; color: var(--accent-primary); font-size: 1.1rem;">
+                                    <i class="fas fa-boxes"></i>
+                                    <span>{{ "%.1f"|format(item_data.total_available) }} {{ item.unit_he }}</span>
+                                </div>
                                 {% if item.category %}
                                 <div class="detail-row">
                                     <i class="fas fa-tag"></i>
@@ -534,11 +543,18 @@
                 {% else %}
                     <!-- List View -->
                     <div class="list-view">
-                        {% for item in items %}
+                        {% for item_data in items %}
+                        {% set item = item_data.item %}
                         <div class="list-item">
                             <div class="list-item-main">
-                                <h4 class="list-item-title">{{ item.name_he }}</h4>
+                                <h4 class="list-item-title">
+                                    {{ item.name_he }}
+                                    {% if item_data.is_low_stock %}
+                                    <span class="item-badge" style="background-color: var(--accent-danger); font-size: 0.7rem; padding: 0.15rem 0.4rem; margin-right: 0.3rem;">נמוך</span>
+                                    {% endif %}
+                                </h4>
                                 <div class="list-item-subtitle">
+                                    <strong style="color: var(--accent-primary);">{{ "%.1f"|format(item_data.total_available) }} {{ item.unit_he }}</strong> • 
                                     {{ item.category.name_he if item.category else 'ללא קטגוריה' }} • 
                                     {{ item.primary_supplier.name if item.primary_supplier else 'ללא ספק' }}
                                 </div>

@@ -7321,6 +7321,7 @@ def careers_delete():
 @admin_bp.route('/bulk-delete-items', methods=['POST'])
 @login_required
 @require_permission('stock.delete')
+@csrf.exempt
 def bulk_delete_items():
     """Bulk delete stock items"""
     try:
@@ -7363,6 +7364,7 @@ def bulk_delete_items():
 @admin_bp.route('/bulk-delete-suppliers', methods=['POST'])
 @login_required
 @require_permission('stock.delete')
+@csrf.exempt
 def bulk_delete_suppliers():
     """Bulk delete suppliers"""
     try:
@@ -7411,6 +7413,7 @@ def bulk_delete_suppliers():
 @admin_bp.route('/bulk-delete-categories', methods=['POST'])
 @login_required
 @require_permission('stock.delete')
+@csrf.exempt
 def bulk_delete_categories():
     """Bulk delete categories"""
     try:
@@ -7459,6 +7462,7 @@ def bulk_delete_categories():
 @admin_bp.route('/bulk-edit-items', methods=['POST'])
 @login_required
 @require_permission('stock.edit')
+@csrf.exempt
 def bulk_edit_items():
     """Bulk edit stock items"""
     try:

@@ -1411,13 +1411,17 @@ function performBulkDelete(ids, type) {
     
     const csrfToken = getCSRFToken();
     
-    // Use FormData instead of JSON for CSRF compatibility
+    // Use FormData for Flask-WTF compatibility
     const formData = new FormData();
     formData.append('csrf_token', csrfToken);
     formData.append('ids', JSON.stringify(ids));
     
     fetch(endpoint, {
         method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
         body: formData
     })
     .then(response => {
@@ -1478,7 +1482,7 @@ function performBulkEdit() {
     
     const csrfToken = getCSRFToken();
     
-    // Use FormData instead of JSON for CSRF compatibility
+    // Use FormData for Flask-WTF compatibility
     const formData = new FormData();
     formData.append('csrf_token', csrfToken);
     formData.append('ids', JSON.stringify(ids));
@@ -1486,6 +1490,10 @@ function performBulkEdit() {
     
     fetch('/admin/bulk-edit-items', {
         method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
         body: formData
     })
     .then(response => {

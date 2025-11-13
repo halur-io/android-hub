@@ -197,14 +197,19 @@
                     
                     <div class="mb-3">
                         <label class="form-label">בחר ספק</label>
-                        <select name="supplier_id" class="form-select" required>
-                            <option value="">-- בחר ספק --</option>
-                            {% for supplier in suppliers %}
-                            <option value="{{ supplier.id }}" {% if receipt_import.suggested_supplier and supplier.id == receipt_import.suggested_supplier.id %}selected{% endif %}>
-                                {{ supplier.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
+                        <div class="d-flex gap-2">
+                            <select name="supplier_id" id="supplier-select" class="form-select" required>
+                                <option value="">-- בחר ספק --</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}" {% if receipt_import.suggested_supplier and supplier.id == receipt_import.suggested_supplier.id %}selected{% endif %}>
+                                    {{ supplier.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-primary" onclick="openNewSupplierModal()" style="white-space: nowrap;">
+                                <i class="fas fa-plus"></i> ספק חדש
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="row">
@@ -311,6 +316,84 @@
         </div>
     </div>
 </div>
+
+<!-- Quick Add Supplier Modal -->
+<div class="modal fade" id="newSupplierModal" tabindex="-1" aria-labelledby="newSupplierModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header" style="background: #F7F5F0; border-bottom: 1px solid #E5E3DD;">
+                <h5 class="modal-title" id="newSupplierModalLabel" style="color: #2F2F2F; font-weight: 600;">
+                    <i class="fas fa-truck"></i> הוספת ספק חדש
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background: #FFFFFF;">
+                <form id="quick-supplier-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <div class="mb-3">
+                        <label for="supplier-name" class="form-label" style="color: #2F2F2F; font-weight: 600;">
+                            שם הספק <span style="color: #dc3545;">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="supplier-name" 
+                               name="name" 
+                               required
+                               style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="supplier-contact" class="form-label" style="color: #6B6B6B;">
+                            איש קשר (אופציונלי)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="supplier-contact" 
+                               name="contact_name"
+                               style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="supplier-phone" class="form-label" style="color: #6B6B6B;">
+                                טלפון (אופציונלי)
+                            </label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="supplier-phone" 
+                                   name="phone"
+                                   style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="supplier-email" class="form-label" style="color: #6B6B6B;">
+                                אימייל (אופציונלי)
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="supplier-email" 
+                                   name="email"
+                                   style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                        </div>
+                    </div>
+                    
+                    <div id="supplier-error-message" class="alert alert-danger d-none" role="alert" style="border-radius: 8px;">
+                        <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="background: #F7F5F0; border-top: 1px solid #E5E3DD;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+                    ביטול
+                </button>
+                <button type="button" class="btn btn-primary" id="save-supplier-btn" onclick="saveNewSupplier()" style="background: #C96F44; border: none; border-radius: 8px;">
+                    <i class="fas fa-save"></i> שמור ספק
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -350,6 +433,96 @@ function rejectReceipt() {
         }
         
         form.submit();
+    }
+}
+
+// Quick Supplier Modal Functions
+function openNewSupplierModal() {
+    const modal = new bootstrap.Modal(document.getElementById('newSupplierModal'));
+    // Reset form and hide errors
+    document.getElementById('quick-supplier-form').reset();
+    document.getElementById('supplier-error-message').classList.add('d-none');
+    modal.show();
+}
+
+async function saveNewSupplier() {
+    const form = document.getElementById('quick-supplier-form');
+    const saveBtn = document.getElementById('save-supplier-btn');
+    const errorDiv = document.getElementById('supplier-error-message');
+    const errorText = document.getElementById('error-text');
+    
+    // Get form data
+    const formData = new FormData(form);
+    const name = formData.get('name').trim();
+    
+    // Validate
+    if (!name) {
+        errorText.textContent = 'שם הספק הוא שדה חובה';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Hide previous errors
+    errorDiv.classList.add('d-none');
+    
+    // Disable button and show loading
+    saveBtn.disabled = true;
+    const originalHTML = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+    
+    try {
+        const response = await fetch('{{ url_for("admin.quick_create_supplier") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                csrf_token: formData.get('csrf_token'),
+                name: name,
+                contact_name: formData.get('contact_name') || '',
+                phone: formData.get('phone') || '',
+                email: formData.get('email') || ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Add new supplier to dropdown
+            const select = document.getElementById('supplier-select');
+            const option = new Option(result.supplier.name, result.supplier.id, true, true);
+            select.add(option);
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('newSupplierModal'));
+            modal.hide();
+            
+            // Show success message (optional)
+            alert(`ספק "${result.supplier.name}" נוסף בהצלחה!`);
+        } else if (response.status === 409) {
+            // Duplicate supplier - focus existing one
+            errorText.textContent = result.error || 'ספק עם שם זה כבר קיים במערכת';
+            errorDiv.classList.remove('d-none');
+            
+            // Try to select existing supplier if ID provided
+            if (result.existing_id) {
+                const select = document.getElementById('supplier-select');
+                select.value = result.existing_id;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('newSupplierModal'));
+                modal.hide();
+            }
+        } else {
+            errorText.textContent = result.error || 'שגיאה ביצירת הספק';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Error creating supplier:', error);
+        errorText.textContent = 'שגיאה בתקשורת עם השרת';
+        errorDiv.classList.remove('d-none');
+    } finally {
+        // Re-enable button
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHTML;
     }
 }
 </script>

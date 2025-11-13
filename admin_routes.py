@@ -5457,6 +5457,63 @@ def add_supplier():
     
     return render_template('admin/add_supplier.html')
 
+@admin_bp.route('/suppliers/quick-create', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def quick_create_supplier():
+    """Quick supplier creation for receipt review (AJAX endpoint)"""
+    from models import Supplier
+    import json
+    
+    try:
+        # Get JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'לא התקבל מידע'}), 400
+        
+        # Validate required field
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'שם הספק הוא שדה חובה'}), 400
+        
+        # Check for duplicate (case-insensitive)
+        existing = Supplier.query.filter(
+            db.func.lower(Supplier.name) == db.func.lower(name)
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'error': f'ספק עם השם "{name}" כבר קיים במערכת',
+                'existing_id': existing.id
+            }), 409  # Conflict
+        
+        # Create new supplier with minimal required fields
+        supplier = Supplier(
+            name=name,
+            contact_person=data.get('contact_name', '').strip(),
+            phone=data.get('phone', '').strip(),
+            email=data.get('email', '').strip(),
+            is_active=True
+        )
+        
+        db.session.add(supplier)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'supplier': {
+                'id': supplier.id,
+                'name': supplier.name
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Error in quick_create_supplier: {str(e)}")
+        return jsonify({'success': False, 'error': 'שגיאה ביצירת הספק'}), 500
+
 @admin_bp.route('/stock-suppliers/<int:supplier_id>/edit', methods=['GET', 'POST'])
 @login_required
 @require_permission('stock.manage')

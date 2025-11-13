@@ -1441,6 +1441,57 @@ class SupplierItem(db.Model):
     def __repr__(self):
         return f'<SupplierItem {self.supplier.name} - {self.stock_item.name_he}>'
 
+# Comprehensive Audit Log for Stock Management
+class AuditLog(db.Model):
+    """
+    Comprehensive audit trail for all stock management changes.
+    Tracks who did what, when, and what changed across all stock entities.
+    """
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Entity information
+    entity_type = db.Column(db.String(50), nullable=False)  # stock_item, supplier, stock_category, stock_level, receipt, etc.
+    entity_id = db.Column(db.Integer, nullable=False)  # ID of the entity that was changed
+    
+    # Action tracking
+    action = db.Column(db.String(20), nullable=False)  # create, update, delete
+    
+    # User tracking
+    performed_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'), nullable=True)  # Null for system actions
+    performed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Change details (JSONB for PostgreSQL)
+    changes = db.Column(db.JSON)  # {field: {old: value, new: value}} or {new_values: {}} for create or {old_values: {}} for delete
+    
+    # Additional context
+    context = db.Column(db.JSON)  # {source: 'web'/'api'/'import', ip_address: '...', user_agent: '...', etc.}
+    
+    # Relationships
+    user = db.relationship('AdminUser', backref='audit_actions')
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_audit_entity', 'entity_type', 'entity_id', 'performed_at'),
+        db.Index('idx_audit_user', 'performed_by', 'performed_at'),
+        db.Index('idx_audit_date', 'performed_at'),
+    )
+    
+    def __repr__(self):
+        return f'<AuditLog {self.action} {self.entity_type}:{self.entity_id} by User {self.performed_by}>'
+    
+    def get_user_display_name(self):
+        """Get the display name of the user who performed the action"""
+        if not self.user:
+            return 'מערכת' if hasattr(self, '_is_rtl') else 'System'
+        return self.user.username
+    
+    def get_action_display(self, lang='he'):
+        """Get localized action name"""
+        actions_he = {'create': 'נוצר', 'update': 'עודכן', 'delete': 'נמחק'}
+        actions_en = {'create': 'Created', 'update': 'Updated', 'delete': 'Deleted'}
+        return actions_he.get(self.action, self.action) if lang == 'he' else actions_en.get(self.action, self.action)
+
 # Print Template for customizable checklist printing
 class PrintTemplate(db.Model):
     __tablename__ = 'print_templates'

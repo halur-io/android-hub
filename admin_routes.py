@@ -4661,27 +4661,50 @@ def stock_management():
             logger.info(f"Loaded {len(categories)} categories")
         elif view == 'receipts':
             from sqlalchemy import func, case
-            # Group receipts by supplier with aggregates - INCLUDE receipts without supplier
-            receipt_groups_raw = db.session.query(
-                Receipt.supplier_id.label('supplier_id'),
-                case(
-                    (Receipt.supplier_id.isnot(None), Supplier.name),
-                    else_=None
-                ).label('supplier_name'),
-                func.count(Receipt.id).label('count'),
-                func.sum(Receipt.total_amount).label('total_amount'),
-                func.max(Receipt.receipt_date).label('latest_date')
-            ).outerjoin(Supplier, Receipt.supplier_id == Supplier.id
-            ).group_by(Receipt.supplier_id, Supplier.name
-            ).order_by(func.sum(Receipt.total_amount).desc()
-            ).all()
             
-            receipt_groups = [{'supplier_id': g.supplier_id, 'supplier_name': g.supplier_name, 
-                              'count': g.count, 'total_amount': float(g.total_amount or 0), 
-                              'latest_date': g.latest_date} for g in receipt_groups_raw]
-            logger.info(f"Loaded {len(receipt_groups)} receipt groups (including no-supplier)")
+            # Check if viewing receipts for specific supplier
+            receipt_supplier_id = request.args.get('supplier_id', type=int)
+            
+            if receipt_supplier_id is not None:
+                # Show individual receipts for this supplier (or None for no-supplier)
+                receipts_query = Receipt.query
+                if receipt_supplier_id == 0:
+                    # 0 means "no supplier"
+                    receipts_query = receipts_query.filter(Receipt.supplier_id.is_(None))
+                    selected_supplier_name = "ללא ספק"
+                else:
+                    receipts_query = receipts_query.filter(Receipt.supplier_id == receipt_supplier_id)
+                    selected_supplier = Supplier.query.get(receipt_supplier_id)
+                    selected_supplier_name = selected_supplier.name if selected_supplier else "Unknown"
+                
+                receipts = receipts_query.order_by(Receipt.receipt_date.desc()).all()
+                logger.info(f"Loaded {len(receipts)} receipts for supplier {receipt_supplier_id}")
+            else:
+                # Group receipts by supplier with aggregates - INCLUDE receipts without supplier
+                receipts = None
+                selected_supplier_name = None
+                receipt_groups_raw = db.session.query(
+                    Receipt.supplier_id.label('supplier_id'),
+                    case(
+                        (Receipt.supplier_id.isnot(None), Supplier.name),
+                        else_=None
+                    ).label('supplier_name'),
+                    func.count(Receipt.id).label('count'),
+                    func.sum(Receipt.total_amount).label('total_amount'),
+                    func.max(Receipt.receipt_date).label('latest_date')
+                ).outerjoin(Supplier, Receipt.supplier_id == Supplier.id
+                ).group_by(Receipt.supplier_id, Supplier.name
+                ).order_by(func.sum(Receipt.total_amount).desc()
+                ).all()
+                
+                receipt_groups = [{'supplier_id': g.supplier_id or 0, 'supplier_name': g.supplier_name, 
+                                  'count': g.count, 'total_amount': float(g.total_amount or 0), 
+                                  'latest_date': g.latest_date} for g in receipt_groups_raw]
+                logger.info(f"Loaded {len(receipt_groups)} receipt groups (including no-supplier)")
         else:
             receipt_groups = []
+            receipts = None
+            selected_supplier_name = None
         
         logger.info("Rendering template admin/stock_simple.html")
         return render_template('admin/stock_simple.html',
@@ -4694,7 +4717,9 @@ def stock_management():
                              items=items,
                              suppliers=suppliers,
                              categories=categories,
-                             receipt_groups=receipt_groups if view == 'receipts' else [],
+                             receipt_groups=receipt_groups if view == 'receipts' and 'receipt_groups' in locals() else [],
+                             receipts=receipts if view == 'receipts' and 'receipts' in locals() else None,
+                             selected_supplier_name=selected_supplier_name if 'selected_supplier_name' in locals() else None,
                              all_suppliers=all_suppliers,
                              selected_supplier=supplier_filter)
     except Exception as e:

@@ -748,50 +748,95 @@
             {% endif %}
         
         {% elif current_view == 'receipts' %}
-            <!-- Receipts - Supplier Grouped View -->
-            {% if receipt_groups %}
-                <div class="card-grid">
-                    {% for group in receipt_groups %}
-                    <div class="item-card">
-                        <div class="item-header">
-                            <h3 class="item-title">{{ group.supplier_name or 'ללא ספק' }}</h3>
-                            <span class="item-badge" style="background: #007bff;">קבלות</span>
+            {% if receipts is not none %}
+                <!-- Individual Receipt List for Supplier -->
+                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <a href="{{ url_for('admin.stock_management', view='receipts') }}" class="btn-icon btn-icon-edit">
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                    <h3 style="margin: 0; color: var(--text-primary);">קבלות - {{ selected_supplier_name }}</h3>
+                </div>
+                
+                {% if receipts %}
+                    <div class="list-view">
+                        {% for receipt in receipts %}
+                        <div class="list-item">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">
+                                    <i class="fas fa-receipt" style="color: var(--accent-secondary);"></i>
+                                    קבלה #{{ receipt.receipt_number or receipt.id }}
+                                </h4>
+                                <div class="list-item-subtitle">
+                                    <span><i class="fas fa-calendar"></i> {{ receipt.receipt_date.strftime('%d/%m/%Y') if receipt.receipt_date else 'ללא תאריך' }}</span>
+                                    <span style="margin: 0 0.5rem;">•</span>
+                                    <span style="font-weight: 700; color: var(--accent-primary);"><i class="fas fa-shekel-sign"></i> ₪{{ "%.2f"|format(receipt.total_amount or 0) }}</span>
+                                    {% if receipt.is_verified %}
+                                    <span style="margin: 0 0.5rem;">•</span>
+                                    <span style="color: #28a745;"><i class="fas fa-check-circle"></i> מאומת</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('static', filename=receipt.image_path.replace('static/', '')) }}" target="_blank" class="btn-icon btn-icon-view">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
                         </div>
-                        <div class="item-details">
-                            <div class="detail-row" style="font-weight: 700; color: var(--accent-primary);">
-                                <i class="fas fa-receipt"></i>
-                                <span>{{ group.count }} קבלות</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <h4>אין קבלות</h4>
+                        <p>לא נמצאו קבלות עבור ספק זה</p>
+                    </div>
+                {% endif %}
+            {% else %}
+                <!-- Receipts - Supplier Grouped View -->
+                {% if receipt_groups %}
+                    <div class="card-grid">
+                        {% for group in receipt_groups %}
+                        <div class="item-card">
+                            <div class="item-header">
+                                <h3 class="item-title">{{ group.supplier_name or 'ללא ספק' }}</h3>
+                                <span class="item-badge" style="background: #007bff;">קבלות</span>
                             </div>
-                            <div class="detail-row">
-                                <i class="fas fa-shekel-sign"></i>
-                                <span>סה"כ: ₪{{ "%.2f"|format(group.total_amount) }}</span>
+                            <div class="item-details">
+                                <div class="detail-row" style="font-weight: 700; color: var(--accent-primary);">
+                                    <i class="fas fa-receipt"></i>
+                                    <span>{{ group.count }} קבלות</span>
+                                </div>
+                                <div class="detail-row">
+                                    <i class="fas fa-shekel-sign"></i>
+                                    <span>סה"כ: ₪{{ "%.2f"|format(group.total_amount) }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>אחרונה: {{ group.latest_date.strftime('%d/%m/%Y') if group.latest_date else 'לא ידוע' }}</span>
+                                </div>
                             </div>
-                            <div class="detail-row">
-                                <i class="fas fa-calendar"></i>
-                                <span>אחרונה: {{ group.latest_date.strftime('%d/%m/%Y') if group.latest_date else 'לא ידוע' }}</span>
+                            <div class="item-actions">
+                                <a href="{{ url_for('admin.stock_management', view='receipts', mode='list', supplier_id=group.supplier_id) }}" class="btn-edit" style="flex: 1;">
+                                    <i class="fas fa-folder-open"></i>
+                                    <span>צפה בקבלות</span>
+                                </a>
                             </div>
                         </div>
-                        <div class="item-actions">
-                            <a href="{{ url_for('admin.stock_management', view='receipts', mode='list', supplier_id=group.supplier_id) }}" class="btn-edit" style="flex: 1;">
-                                <i class="fas fa-folder-open"></i>
-                                <span>צפה בקבלות</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <h4>אין קבלות</h4>
+                        <p>התחל בסריקת קבלות למערכת</p>
+                        <div style="margin-top: 1rem;">
+                            <a href="{{ url_for('admin.receipt_scanner') }}" class="action-btn" style="background: #007bff;">
+                                <i class="fas fa-camera"></i>
+                                <span>סרוק קבלה</span>
                             </a>
                         </div>
                     </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-receipt"></i>
-                    <h4>אין קבלות</h4>
-                    <p>התחל בסריקת קבלות למערכת</p>
-                    <div style="margin-top: 1rem;">
-                        <a href="{{ url_for('admin.receipt_scanner') }}" class="action-btn" style="background: #007bff;">
-                            <i class="fas fa-camera"></i>
-                            <span>סרוק קבלה</span>
-                        </a>
-                    </div>
-                </div>
+                {% endif %}
             {% endif %}
         {% endif %}
     </div>

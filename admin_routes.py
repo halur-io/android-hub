@@ -4600,7 +4600,7 @@ def stock_management():
         if view == 'items':
             # Apply supplier filter if specified
             if supplier_filter:
-                items = StockItem.query.filter_by(is_active=True, supplier_id=supplier_filter).order_by(StockItem.name_he).all()
+                items = StockItem.query.filter_by(is_active=True, primary_supplier_id=supplier_filter).order_by(StockItem.name_he).all()
                 logger.info(f"Loaded {len(items)} items for supplier {supplier_filter}")
             else:
                 items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
@@ -6201,8 +6201,8 @@ def review_receipt_import(import_id):
     
     # If supplier is suggested, show supplier items first
     if receipt_import.suggested_supplier_id:
-        supplier_items = [item for item in all_stock_items if item.supplier_id == receipt_import.suggested_supplier_id]
-        other_items = [item for item in all_stock_items if item.supplier_id != receipt_import.suggested_supplier_id]
+        supplier_items = [item for item in all_stock_items if item.primary_supplier_id == receipt_import.suggested_supplier_id]
+        other_items = [item for item in all_stock_items if item.primary_supplier_id != receipt_import.suggested_supplier_id]
         stock_items = supplier_items + other_items
     else:
         stock_items = all_stock_items
@@ -6345,7 +6345,8 @@ def approve_receipt_import(import_id):
                         unit_he=receipt_item.unit_of_measure or 'יחידות',
                         unit_en=receipt_item.unit_of_measure or 'units',
                         cost_per_unit=unit_price or 0,
-                        supplier_id=supplier_id,  # Link to supplier
+                        primary_supplier_id=supplier_id,  # Link to supplier
+                        item_type='ingredient',  # Default type for scanned items
                         is_active=True
                     )
                     db.session.add(stock_item)

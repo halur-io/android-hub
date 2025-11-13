@@ -328,6 +328,19 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="background: #FFFFFF;">
+                <!-- AI Detection Notice -->
+                <div id="ai-suggestion-notice" class="alert d-none" style="background: #E8F4F8; border: 1px solid #B8E0F0; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: start; gap: 0.5rem;">
+                        <i class="fas fa-magic" style="color: #0EA5E9; margin-top: 2px;"></i>
+                        <div style="flex: 1;">
+                            <strong style="color: #0369A1;">פרטים שזוהו אוטומטית</strong>
+                            <p style="margin: 0.25rem 0 0 0; color: #0C4A6E; font-size: 0.9rem;">
+                                הפרטים הבאים זוהו מהקבלה באמצעות בינה מלאכותית. אנא בדוק ותקן במידת הצורך.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
                 <form id="quick-supplier-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     
@@ -375,6 +388,17 @@
                                    name="email"
                                    style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
                         </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="supplier-address" class="form-label" style="color: #6B6B6B;">
+                            כתובת (אופציונלי)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="supplier-address" 
+                               name="address"
+                               style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
                     </div>
                     
                     <div id="supplier-error-message" class="alert alert-danger d-none" role="alert" style="border-radius: 8px;">
@@ -439,10 +463,70 @@ function rejectReceipt() {
 // Quick Supplier Modal Functions
 function openNewSupplierModal() {
     const modal = new bootstrap.Modal(document.getElementById('newSupplierModal'));
+    const form = document.getElementById('quick-supplier-form');
+    const aiNotice = document.getElementById('ai-suggestion-notice');
+    
     // Reset form and hide errors
-    document.getElementById('quick-supplier-form').reset();
+    form.reset();
     document.getElementById('supplier-error-message').classList.add('d-none');
+    
+    // Check if we have AI-suggested supplier details
+    {% if suggested_supplier_details %}
+    const suggestedDetails = {{ suggested_supplier_details|tojson }};
+    
+    // Pre-fill form with AI-detected data
+    if (suggestedDetails.name) {
+        document.getElementById('supplier-name').value = suggestedDetails.name;
+    }
+    if (suggestedDetails.contact_person) {
+        document.getElementById('supplier-contact').value = suggestedDetails.contact_person;
+    }
+    if (suggestedDetails.phone) {
+        document.getElementById('supplier-phone').value = suggestedDetails.phone;
+    }
+    if (suggestedDetails.email) {
+        document.getElementById('supplier-email').value = suggestedDetails.email;
+    }
+    if (suggestedDetails.address) {
+        document.getElementById('supplier-address').value = suggestedDetails.address;
+    }
+    
+    // Show AI notice if we pre-filled anything
+    updateAINoticeVisibility();
+    
+    // Add input listeners to dynamically hide notice when all fields cleared
+    const fields = ['supplier-name', 'supplier-contact', 'supplier-phone', 'supplier-email', 'supplier-address'];
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.removeEventListener('input', updateAINoticeVisibility);
+            field.addEventListener('input', updateAINoticeVisibility);
+        }
+    });
+    {% else %}
+    aiNotice.classList.add('d-none');
+    {% endif %}
+    
     modal.show();
+}
+
+// Update AI notice visibility based on form content
+function updateAINoticeVisibility() {
+    const aiNotice = document.getElementById('ai-suggestion-notice');
+    
+    // Check if any fields have values
+    const hasValues = 
+        document.getElementById('supplier-name').value.trim() ||
+        document.getElementById('supplier-contact').value.trim() ||
+        document.getElementById('supplier-phone').value.trim() ||
+        document.getElementById('supplier-email').value.trim() ||
+        document.getElementById('supplier-address').value.trim();
+    
+    if (hasValues) {
+        aiNotice.classList.remove('d-none');
+    } else {
+        aiNotice.classList.add('d-none');
+    }
 }
 
 async function saveNewSupplier() {

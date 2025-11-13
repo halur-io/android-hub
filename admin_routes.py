@@ -5978,6 +5978,10 @@ CRITICAL RULES:
 Required JSON structure:
 {
   "supplier_name": "exact supplier name from receipt",
+  "supplier_phone": "phone number if found on receipt (format: 03-1234567 or 050-1234567)",
+  "supplier_email": "email if found on receipt",
+  "supplier_address": "full address if found on receipt (in original language)",
+  "supplier_contact_person": "contact person name if found",
   "receipt_date": "YYYY-MM-DD",
   "total_amount": 0.00,
   "items": [
@@ -5990,6 +5994,13 @@ Required JSON structure:
     }
   ]
 }
+
+Supplier details extraction:
+- Look for phone numbers (Israeli format: 02-xxx, 03-xxx, 04-xxx, 050-xxx, 052-xxx, etc.)
+- Look for email addresses (any valid email format)
+- Look for addresses (street, city, postal code)
+- Look for contact person names (usually near "איש קשר", "ליצירת קשר", "Contact")
+- If not found, set to null
 
 Number parsing:
 - Israeli decimal separator: both . and , are valid
@@ -6266,10 +6277,24 @@ def review_receipt_import(import_id):
     else:
         stock_items = all_stock_items
     
+    # Extract supplier details from OCR for auto-fill
+    suggested_supplier_details = None
+    if receipt_import.ai_raw_response and not receipt_import.suggested_supplier_id:
+        # Only suggest if supplier wasn't matched
+        ai_data = receipt_import.ai_raw_response
+        suggested_supplier_details = {
+            'name': ai_data.get('supplier_name', ''),
+            'phone': ai_data.get('supplier_phone', ''),
+            'email': ai_data.get('supplier_email', ''),
+            'address': ai_data.get('supplier_address', ''),
+            'contact_person': ai_data.get('supplier_contact_person', '')
+        }
+    
     return render_template('admin/review_receipt_import.html',
                          receipt_import=receipt_import,
                          suppliers=suppliers,
-                         stock_items=stock_items)
+                         stock_items=stock_items,
+                         suggested_supplier_details=suggested_supplier_details)
 
 @admin_bp.route('/receipt-scanner/approve/<int:import_id>', methods=['POST'])
 @login_required

@@ -1022,10 +1022,16 @@ class Receipt(db.Model):
     notes = db.Column(db.Text)
     processing_errors = db.Column(db.Text)
     
+    # User tracking
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    processed_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))  # Who processed the receipt
+    
     # Relationships
     supplier = db.relationship('Supplier', backref='receipts')
     branch = db.relationship('Branch', backref='receipts')
-    verifier = db.relationship('AdminUser', backref='verified_receipts')
+    creator = db.relationship('AdminUser', foreign_keys=[created_by], backref='created_receipts')
+    processor = db.relationship('AdminUser', foreign_keys=[processed_by], backref='processed_receipts')
+    verifier = db.relationship('AdminUser', foreign_keys=[verified_by], backref='verified_receipts')
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -1223,6 +1229,129 @@ class ReceiptItem(db.Model):
     
     def __repr__(self):
         return f'<ReceiptItem {self.item_description}>'
+
+# Custom Fields System for Receipts
+class CustomFieldDefinition(db.Model):
+    """Defines custom fields that can be added to receipts"""
+    __tablename__ = 'custom_field_definitions'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Field configuration
+    field_name = db.Column(db.String(100), nullable=False)  # e.g., "Status", "Priority"
+    field_key = db.Column(db.String(100), nullable=False, unique=True)  # e.g., "status", "priority"
+    field_type = db.Column(db.String(20), nullable=False)  # text, number, dropdown, date, checkbox
+    
+    # For dropdown fields
+    dropdown_options = db.Column(db.JSON)  # List of options: ["New", "In Progress", "Completed"]
+    
+    # Validation rules
+    number_min = db.Column(db.Float)  # Minimum value for number fields
+    number_max = db.Column(db.Float)  # Maximum value for number fields
+    text_regex = db.Column(db.String(255))  # Regex pattern for text validation
+    text_max_length = db.Column(db.Integer)  # Max length for text fields
+    date_min = db.Column(db.Date)  # Minimum date
+    date_max = db.Column(db.Date)  # Maximum date
+    
+    # Display configuration
+    is_required = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    is_system = db.Column(db.Boolean, default=False)  # System-default fields (can't be deleted)
+    display_order = db.Column(db.Integer, default=0)
+    
+    # Metadata
+    default_value = db.Column(db.String(255))
+    help_text = db.Column(db.String(255))
+    
+    # Tracking
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.Index('idx_field_active_order', 'field_type', 'is_active', 'display_order'),
+    )
+    
+    def __repr__(self):
+        return f'<CustomFieldDefinition {self.field_name} ({self.field_type})>'
+
+class CustomFieldAssignment(db.Model):
+    """Defines which custom fields apply to which receipts (scoping)"""
+    __tablename__ = 'custom_field_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    field_definition_id = db.Column(db.Integer, db.ForeignKey('custom_field_definitions.id'), nullable=False)
+    
+    # Scoping: null = applies to all, or specific branch/supplier
+    scope_type = db.Column(db.String(20))  # null, 'branch', 'supplier'
+    scope_id = db.Column(db.Integer)  # branch_id or supplier_id
+    
+    # Relationships
+    field_definition = db.relationship('CustomFieldDefinition', backref='assignments')
+    
+    # Tracking
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Unique constraint
+    __table_args__ = (db.UniqueConstraint('field_definition_id', 'scope_type', 'scope_id', name='unique_field_scope'),)
+    
+    def __repr__(self):
+        return f'<CustomFieldAssignment field={self.field_definition_id} scope={self.scope_type}:{self.scope_id}>'
+
+class ReceiptCustomFieldValue(db.Model):
+    """Stores custom field values for each receipt"""
+    __tablename__ = 'receipt_custom_field_values'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Relationships
+    receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'), nullable=False)
+    field_definition_id = db.Column(db.Integer, db.ForeignKey('custom_field_definitions.id'), nullable=False)
+    
+    # Value storage (only one will be populated based on field_type)
+    value_text = db.Column(db.Text)
+    value_number = db.Column(db.Float)
+    value_date = db.Column(db.Date)
+    value_boolean = db.Column(db.Boolean)
+    
+    # Relationships
+    receipt = db.relationship('Receipt', backref='custom_field_values')
+    field_definition = db.relationship('CustomFieldDefinition', backref='values')
+    
+    # Tracking
+    updated_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Indexes for performance
+    __table_args__ = (
+        db.UniqueConstraint('receipt_id', 'field_definition_id', name='unique_receipt_field'),
+        db.Index('idx_receipt_field', 'receipt_id', 'field_definition_id'),
+    )
+    
+    def __repr__(self):
+        return f'<ReceiptCustomFieldValue receipt={self.receipt_id} field={self.field_definition_id}>'
+
+class ReceiptCustomFieldAudit(db.Model):
+    """Audit trail for custom field value changes"""
+    __tablename__ = 'receipt_custom_field_audit'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    receipt_id = db.Column(db.Integer, db.ForeignKey('receipts.id'), nullable=False)
+    field_definition_id = db.Column(db.Integer, db.ForeignKey('custom_field_definitions.id'), nullable=False)
+    
+    # Change tracking
+    old_value = db.Column(db.JSON)  # Previous value (any type)
+    new_value = db.Column(db.JSON)  # New value (any type)
+    changed_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'), nullable=False)
+    changed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    receipt = db.relationship('Receipt', backref='field_audit_log')
+    field_definition = db.relationship('CustomFieldDefinition', backref='audit_log')
+    user = db.relationship('AdminUser', backref='field_changes')
+    
+    def __repr__(self):
+        return f'<ReceiptCustomFieldAudit receipt={self.receipt_id} field={self.field_definition_id} by={self.changed_by}>'
 
 # File Import tracking
 class FileImport(db.Model):

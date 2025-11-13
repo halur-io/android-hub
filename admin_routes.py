@@ -4809,13 +4809,24 @@ def stock_management_old():
                          suppliers=suppliers,
                          stock_categories=stock_categories)
 
-@admin_bp.route('/stock/item/add', methods=['POST'])
+@admin_bp.route('/stock/item/add', methods=['GET', 'POST'])
 @login_required
 @require_permission('stock.manage')
 def add_stock_item():
     """Add new stock item"""
-    from models import StockItem
+    from models import StockItem, StockCategory, Supplier
     
+    if request.method == 'GET':
+        # Show the add form
+        categories = StockCategory.query.order_by(StockCategory.name_he).all()
+        suppliers = Supplier.query.order_by(Supplier.name).all()
+        return render_template('admin/stock_item_form.html', 
+                             item=None,
+                             categories=categories,
+                             suppliers=suppliers,
+                             title='הוספת פריט חדש')
+    
+    # POST - Process the form
     try:
         name_he = request.form.get('name_he')
         name_en = request.form.get('name_en', name_he)  # Use Hebrew name if English not provided
@@ -4856,7 +4867,18 @@ def edit_stock_item(item_id):
     from models import StockItem, StockCategory, Supplier
     
     item = StockItem.query.get_or_404(item_id)
+    categories = StockCategory.query.order_by(StockCategory.name_he).all()
+    suppliers = Supplier.query.order_by(Supplier.name).all()
     
+    if request.method == 'GET':
+        # Show the edit form
+        return render_template('admin/stock_item_form.html', 
+                             item=item,
+                             categories=categories,
+                             suppliers=suppliers,
+                             title=f'עריכת פריט: {item.name_he}')
+    
+    # POST - Process the form
     if request.method == 'POST':
         try:
             item.name_he = request.form['name_he'].strip()
@@ -4895,23 +4917,25 @@ def edit_stock_item(item_id):
         except Exception as e:
             db.session.rollback()
             flash(f'שגיאה בעדכון פריט: {str(e)}', 'error')
-    
-    # Load categories and suppliers for dropdowns
-    categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
-    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
-    
-    return render_template('admin/edit_stock_item.html', 
-                         item=item, 
-                         categories=categories, 
-                         suppliers=suppliers)
+            return render_template('admin/stock_item_form.html', 
+                                 item=item,
+                                 categories=categories,
+                                 suppliers=suppliers,
+                                 title=f'עריכת פריט: {item.name_he}')
 
-@admin_bp.route('/stock/category/add', methods=['POST'])
+@admin_bp.route('/stock/category/add', methods=['GET', 'POST'])
 @login_required
 @require_permission('stock.manage')
 def add_stock_category():
     """Add new stock category"""
     from models import StockCategory
     
+    if request.method == 'GET':
+        # For now, redirect to stock management (we can add a form later)
+        flash('השתמש בדף ניהול המלאי להוספת קטגוריה', 'info')
+        return redirect(url_for('admin.stock_management', view='categories'))
+    
+    # POST - Process the form
     try:
         name_he = request.form.get('name_he')
         name_en = request.form.get('name_en', '')

@@ -4584,6 +4584,10 @@ def stock_management():
         category_count = StockCategory.query.filter_by(is_active=True).count()
         logger.info(f"Category count: {category_count}")
         
+        from models import Receipt
+        receipt_count = Receipt.query.count()
+        logger.info(f"Receipt count: {receipt_count}")
+        
         # Get view parameters (default: items, card)
         view = request.args.get('view', 'items')
         view_mode = request.args.get('mode', 'card')  # 'card' or 'list'
@@ -4655,6 +4659,29 @@ def stock_management():
         elif view == 'categories':
             categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
             logger.info(f"Loaded {len(categories)} categories")
+        elif view == 'receipts':
+            from sqlalchemy import func, case
+            # Group receipts by supplier with aggregates - INCLUDE receipts without supplier
+            receipt_groups_raw = db.session.query(
+                Receipt.supplier_id.label('supplier_id'),
+                case(
+                    (Receipt.supplier_id.isnot(None), Supplier.name),
+                    else_=None
+                ).label('supplier_name'),
+                func.count(Receipt.id).label('count'),
+                func.sum(Receipt.total_amount).label('total_amount'),
+                func.max(Receipt.receipt_date).label('latest_date')
+            ).outerjoin(Supplier, Receipt.supplier_id == Supplier.id
+            ).group_by(Receipt.supplier_id, Supplier.name
+            ).order_by(func.sum(Receipt.total_amount).desc()
+            ).all()
+            
+            receipt_groups = [{'supplier_id': g.supplier_id, 'supplier_name': g.supplier_name, 
+                              'count': g.count, 'total_amount': float(g.total_amount or 0), 
+                              'latest_date': g.latest_date} for g in receipt_groups_raw]
+            logger.info(f"Loaded {len(receipt_groups)} receipt groups (including no-supplier)")
+        else:
+            receipt_groups = []
         
         logger.info("Rendering template admin/stock_simple.html")
         return render_template('admin/stock_simple.html',
@@ -4663,9 +4690,11 @@ def stock_management():
                              stock_count=stock_count,
                              supplier_count=supplier_count,
                              category_count=category_count,
+                             receipt_count=receipt_count,
                              items=items,
                              suppliers=suppliers,
                              categories=categories,
+                             receipt_groups=receipt_groups if view == 'receipts' else [],
                              all_suppliers=all_suppliers,
                              selected_supplier=supplier_filter)
     except Exception as e:

@@ -37,6 +37,12 @@ csrf.exempt('admin.parse_word_menu_demo')
 csrf.exempt('admin.upload_single_gallery')
 csrf.exempt('admin.upload_media')
 
+# Exempt bulk operations from CSRF (protected by login + permissions)
+csrf.exempt('admin.bulk_delete_items')
+csrf.exempt('admin.bulk_delete_suppliers')
+csrf.exempt('admin.bulk_delete_categories')
+csrf.exempt('admin.bulk_edit_items')
+
 # Exempt API blueprint from CSRF
 try:
     from api_routes import api_bp

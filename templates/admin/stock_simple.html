@@ -534,16 +534,23 @@
                                 </div>
                             </div>
                             <div class="item-actions">
+                                <button class="btn-edit btn-view-item" style="background: #007bff;" data-item='{{ {
+                                    "name_he": item.name_he,
+                                    "name_en": item.name_en or "",
+                                    "total_available": item_data.total_available|float,
+                                    "unit_he": item.unit_he,
+                                    "category_name_he": item.category.name_he if item.category else "",
+                                    "supplier_name": item.primary_supplier.name if item.primary_supplier else "",
+                                    "minimum_stock": item.minimum_stock|int if item.minimum_stock else 0,
+                                    "branches": item_data.branches
+                                }|tojson }}'>
+                                    <i class="fas fa-eye"></i>
+                                    <span>צפה</span>
+                                </button>
                                 <a href="{{ url_for('admin.edit_stock_item', item_id=item.id, view='items', mode='card') }}" class="btn-edit">
                                     <i class="fas fa-edit"></i>
                                     <span>ערוך</span>
                                 </a>
-                                <form action="{{ url_for('admin.delete_stock_item', item_id=item.id) }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק פריט זה?');">
-                                    <button type="submit" class="btn-delete" style="width: 100%;">
-                                        <i class="fas fa-trash"></i>
-                                        <span>מחק</span>
-                                    </button>
-                                </form>
                             </div>
                         </div>
                         {% endfor %}
@@ -625,16 +632,22 @@
                                 {% endif %}
                             </div>
                             <div class="item-actions">
+                                <button class="btn-edit btn-view-supplier" style="background: #007bff;" data-supplier='{{ {
+                                    "name": supplier.name,
+                                    "contact_person": supplier.contact_person or "",
+                                    "phone": supplier.phone or "",
+                                    "email": supplier.email or "",
+                                    "address": supplier.address or "",
+                                    "payment_terms": supplier.payment_terms or "",
+                                    "notes": supplier.notes or ""
+                                }|tojson }}'>
+                                    <i class="fas fa-eye"></i>
+                                    <span>צפה</span>
+                                </button>
                                 <a href="{{ url_for('admin.edit_supplier', supplier_id=supplier.id) }}" class="btn-edit">
                                     <i class="fas fa-edit"></i>
                                     <span>ערוך</span>
                                 </a>
-                                <form action="{{ url_for('admin.delete_supplier', supplier_id=supplier.id) }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק ספק זה?');">
-                                    <button type="submit" class="btn-delete" style="width: 100%;">
-                                        <i class="fas fa-trash"></i>
-                                        <span>מחק</span>
-                                    </button>
-                                </form>
                             </div>
                         </div>
                         {% endfor %}
@@ -842,13 +855,164 @@
     </div>
 </div>
 
+<!-- Detail View Modal -->
+<div id="detail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; overflow-y: auto;">
+    <div style="min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: var(--bg-card); border-radius: 12px; max-width: 500px; width: 100%; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="padding: 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="modal-title" style="margin: 0; color: var(--text-primary);"></h3>
+                <button onclick="closeDetailModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-content" style="padding: 1.25rem; max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+
 <script>
+function closeDetailModal() {
+    document.getElementById('detail-modal').style.display = 'none';
+}
+
+function showItemDetail(itemData) {
+    const modal = document.getElementById('detail-modal');
+    const title = document.getElementById('modal-title');
+    const content = document.getElementById('modal-content');
+    
+    title.innerHTML = '<i class="fas fa-box"></i> ' + itemData.name_he;
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+    
+    html += '<div><strong style="color: var(--text-secondary);">שם באנגלית:</strong><br>' + (itemData.name_en || 'לא הוזן') + '</div>';
+    
+    html += '<div><strong style="color: var(--text-secondary);">כמות זמינה:</strong><br><span style="font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);">' + itemData.total_available + '</span></div>';
+    
+    if (itemData.unit_he) {
+        html += '<div><strong style="color: var(--text-secondary);">יחידה:</strong><br>' + itemData.unit_he + '</div>';
+    }
+    
+    if (itemData.category_name_he) {
+        html += '<div><strong style="color: var(--text-secondary);">קטגוריה:</strong><br>' + itemData.category_name_he + '</div>';
+    }
+    
+    if (itemData.supplier_name) {
+        html += '<div><strong style="color: var(--text-secondary);">ספק ראשי:</strong><br>' + itemData.supplier_name + '</div>';
+    }
+    
+    if (itemData.minimum_stock) {
+        html += '<div><strong style="color: var(--text-secondary);">מלאי מינימום:</strong><br>' + itemData.minimum_stock + '</div>';
+    }
+    
+    if (itemData.branches && itemData.branches.length > 0) {
+        html += '<div><strong style="color: var(--text-secondary);">פילוח לפי סניפים:</strong>';
+        html += '<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">';
+        itemData.branches.forEach(branch => {
+            html += '<div style="padding: 0.5rem; background: var(--bg-main); border-radius: 6px;">';
+            html += '<strong>' + branch.name + ':</strong> ' + branch.available + ' זמין';
+            html += '</div>';
+        });
+        html += '</div></div>';
+    }
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+    modal.style.display = 'block';
+}
+
+function showSupplierDetail(supplierData) {
+    const modal = document.getElementById('detail-modal');
+    const title = document.getElementById('modal-title');
+    const content = document.getElementById('modal-content');
+    
+    title.innerHTML = '<i class="fas fa-truck"></i> ' + supplierData.name;
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+    
+    if (supplierData.contact_person) {
+        html += '<div><strong style="color: var(--text-secondary);">איש קשר:</strong><br>' + supplierData.contact_person + '</div>';
+    }
+    
+    if (supplierData.phone) {
+        html += '<div><strong style="color: var(--text-secondary);">טלפון:</strong><br><a href="tel:' + supplierData.phone + '" style="color: var(--accent-primary);">' + supplierData.phone + '</a></div>';
+    }
+    
+    if (supplierData.email) {
+        html += '<div><strong style="color: var(--text-secondary);">אימייל:</strong><br><a href="mailto:' + supplierData.email + '" style="color: var(--accent-primary);">' + supplierData.email + '</a></div>';
+    }
+    
+    if (supplierData.address) {
+        html += '<div><strong style="color: var(--text-secondary);">כתובת:</strong><br>' + supplierData.address + '</div>';
+    }
+    
+    if (supplierData.payment_terms) {
+        html += '<div><strong style="color: var(--text-secondary);">תנאי תשלום:</strong><br>' + supplierData.payment_terms + '</div>';
+    }
+    
+    if (supplierData.notes) {
+        html += '<div><strong style="color: var(--text-secondary);">הערות:</strong><br>' + supplierData.notes + '</div>';
+    }
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+    modal.style.display = 'block';
+}
+
+// Close modal on outside click - check if click is on the overlay itself
+const modal = document.getElementById('detail-modal');
+if (modal) {
+    modal.addEventListener('click', function(e) {
+        // Only close if clicking the overlay background, not the content
+        if (e.target === this) {
+            closeDetailModal();
+        }
+    });
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        const modal = document.getElementById('detail-modal');
+        if (modal && modal.style.display !== 'none') {
+            closeDetailModal();
+        }
+    }
+});
+
 // Smooth scroll for active tab
 document.addEventListener('DOMContentLoaded', function() {
     const activeTab = document.querySelector('.tab-link.active');
     if (activeTab) {
         activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
+    
+    // Item detail view buttons
+    document.querySelectorAll('.btn-view-item').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            try {
+                const itemData = JSON.parse(this.dataset.item);
+                showItemDetail(itemData);
+            } catch (err) {
+                console.error('Error parsing item data:', err);
+            }
+        });
+    });
+    
+    // Supplier detail view buttons
+    document.querySelectorAll('.btn-view-supplier').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            try {
+                const supplierData = JSON.parse(this.dataset.supplier);
+                showSupplierDetail(supplierData);
+            } catch (err) {
+                console.error('Error parsing supplier data:', err);
+            }
+        });
+    });
     
     // Supplier filter handler
     const supplierFilter = document.getElementById('supplier-filter');

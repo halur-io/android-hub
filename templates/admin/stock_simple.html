@@ -1395,15 +1395,33 @@ function getCSRFToken() {
 
 // Perform bulk delete
 function performBulkDelete(ids, type) {
-    const endpoint = `/admin/bulk-delete-${type}s`;
+    // Map entity types to correct plural forms
+    const endpointMap = {
+        'item': '/admin/bulk-delete-items',
+        'supplier': '/admin/bulk-delete-suppliers',
+        'category': '/admin/bulk-delete-categories'
+    };
+    
+    const endpoint = endpointMap[type];
+    if (!endpoint) {
+        console.error('Unknown entity type:', type);
+        alert('שגיאה: סוג ישות לא ידוע');
+        return;
+    }
+    
+    const csrfToken = getCSRFToken();
     
     fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
+            'X-CSRFToken': csrfToken,
+            'X-CSRF-Token': csrfToken
         },
-        body: JSON.stringify({ ids: ids })
+        body: JSON.stringify({ 
+            ids: ids,
+            csrf_token: csrfToken
+        })
     })
     .then(response => {
         if (!response.ok) {
@@ -1461,15 +1479,19 @@ function performBulkEdit() {
         return false;
     }
     
+    const csrfToken = getCSRFToken();
+    
     fetch('/admin/bulk-edit-items', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCSRFToken()
+            'X-CSRFToken': csrfToken,
+            'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({
             ids: ids,
-            updates: updates
+            updates: updates,
+            csrf_token: csrfToken
         })
     })
     .then(response => {

@@ -1411,17 +1411,14 @@ function performBulkDelete(ids, type) {
     
     const csrfToken = getCSRFToken();
     
+    // Use FormData instead of JSON for CSRF compatibility
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('ids', JSON.stringify(ids));
+    
     fetch(endpoint, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-            'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({ 
-            ids: ids,
-            csrf_token: csrfToken
-        })
+        body: formData
     })
     .then(response => {
         if (!response.ok) {
@@ -1481,18 +1478,15 @@ function performBulkEdit() {
     
     const csrfToken = getCSRFToken();
     
+    // Use FormData instead of JSON for CSRF compatibility
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('ids', JSON.stringify(ids));
+    formData.append('updates', JSON.stringify(updates));
+    
     fetch('/admin/bulk-edit-items', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-            'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({
-            ids: ids,
-            updates: updates,
-            csrf_token: csrfToken
-        })
+        body: formData
     })
     .then(response => {
         if (!response.ok) {

@@ -7327,8 +7327,9 @@ def bulk_delete_items():
         from models import StockItem, StockLevel
         import json
         
-        data = request.get_json()
-        ids = data.get('ids', [])
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
         
         if not ids:
             return jsonify({'success': False, 'message': 'No items selected'}), 400
@@ -7368,8 +7369,9 @@ def bulk_delete_suppliers():
         from models import Supplier, StockItem
         import json
         
-        data = request.get_json()
-        ids = data.get('ids', [])
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
         
         if not ids:
             return jsonify({'success': False, 'message': 'No suppliers selected'}), 400
@@ -7415,8 +7417,9 @@ def bulk_delete_categories():
         from models import StockCategory, StockItem
         import json
         
-        data = request.get_json()
-        ids = data.get('ids', [])
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
         
         if not ids:
             return jsonify({'success': False, 'message': 'No categories selected'}), 400
@@ -7463,9 +7466,11 @@ def bulk_edit_items():
         from audit_logger import log_item_update
         import json
         
-        data = request.get_json()
-        ids = data.get('ids', [])
-        updates = data.get('updates', {})
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        updates_str = request.form.get('updates', '{}')
+        ids = json.loads(ids_str)
+        updates = json.loads(updates_str)
         
         if not ids:
             return jsonify({'success': False, 'message': 'No items selected'}), 400

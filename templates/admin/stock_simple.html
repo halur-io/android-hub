@@ -914,6 +914,93 @@
     </div>
 </div>
 
+<!-- Elegant Confirmation Modal -->
+<div id="confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; backdrop-filter: blur(4px); animation: fadeIn 0.2s ease;">
+    <div style="min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: var(--bg-card); border-radius: 16px; max-width: 420px; width: 100%; margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; overflow: hidden;">
+            <!-- Icon Header -->
+            <div style="padding: 2rem 1.5rem 1rem; text-align: center; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                <div style="width: 64px; height: 64px; margin: 0 auto; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3);">
+                    <i class="fas fa-trash-alt" style="font-size: 28px; color: white;"></i>
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 1.5rem;">
+                <h3 style="margin: 0 0 1rem; color: var(--text-primary); font-size: 1.35rem; font-weight: 700; text-align: center;" id="confirm-title">
+                    אישור מחיקה
+                </h3>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 1rem; line-height: 1.6; text-align: center;" id="confirm-message">
+                    האם אתה בטוח שברצונך למחוק את הפריטים הנבחרים?
+                </p>
+                
+                <!-- Warning notice -->
+                <div style="margin-top: 1rem; padding: 0.875rem; background: rgba(220, 53, 69, 0.1); border-right: 3px solid #dc3545; border-radius: 8px;">
+                    <p style="margin: 0; color: var(--text-primary); font-size: 0.875rem; font-weight: 500;">
+                        <i class="fas fa-exclamation-triangle" style="margin-left: 0.5rem; color: #dc3545;"></i>
+                        פעולה זו אינה ניתנת לביטול
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="padding: 0 1.5rem 1.5rem; display: flex; gap: 0.75rem;">
+                <button onclick="closeConfirmModal()" type="button" style="flex: 1; padding: 0.875rem; border: 2px solid var(--border-color); background: var(--bg-main); color: var(--text-primary); border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fas fa-times" style="margin-left: 0.5rem;"></i>
+                    ביטול
+                </button>
+                <button onclick="confirmBulkDelete()" type="button" style="flex: 1; padding: 0.875rem; border: none; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);">
+                    <i class="fas fa-check" style="margin-left: 0.5rem;"></i>
+                    אישור מחיקה
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div id="success-toast" style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #28a745 0%, #218838 100%); color: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(40, 167, 69, 0.4); z-index: 10001; animation: slideDown 0.3s ease; min-width: 300px; text-align: center;">
+    <i class="fas fa-check-circle" style="margin-left: 0.5rem; font-size: 1.2rem;"></i>
+    <span id="success-message">הפעולה בוצעה בהצלחה</span>
+</div>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes slideDown {
+    from { 
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+#confirm-modal button:hover {
+    transform: translateY(-2px);
+}
+
+#confirm-modal button:active {
+    transform: translateY(0);
+}
+</style>
+
 <!-- Bulk Edit Modal -->
 <div id="bulk-edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; overflow-y: auto;">
     <div style="min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem;">
@@ -1364,15 +1451,21 @@ function getSelectedType() {
     return checkbox ? checkbox.dataset.type : null;
 }
 
-// Show bulk delete confirmation
+// Store current deletion data
+let pendingDelete = { ids: [], type: null };
+
+// Show elegant bulk delete confirmation
 function showBulkDeleteConfirm() {
     const ids = getSelectedIds();
     const type = getSelectedType();
     
     if (ids.length === 0) {
-        alert('אנא בחר פריטים למחיקה');
+        showToast('אנא בחר פריטים למחיקה', 'warning');
         return;
     }
+    
+    // Store for confirmation
+    pendingDelete = { ids, type };
     
     const typeDisplay = {
         'item': 'פריטים',
@@ -1380,11 +1473,47 @@ function showBulkDeleteConfirm() {
         'category': 'קטגוריות'
     };
     
-    const message = `האם אתה בטוח שברצונך למחוק ${ids.length} ${typeDisplay[type]}?`;
+    // Update modal content
+    document.getElementById('confirm-message').textContent = 
+        `האם אתה בטוח שברצונך למחוק ${ids.length} ${typeDisplay[type]}? פעולה זו תמחק את הרשומות לצמיתות מהמערכת.`;
     
-    if (confirm(message)) {
-        performBulkDelete(ids, type);
+    // Show modal
+    document.getElementById('confirm-modal').style.display = 'block';
+}
+
+// Close confirmation modal
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').style.display = 'none';
+    pendingDelete = { ids: [], type: null };
+}
+
+// Confirm and execute bulk delete
+function confirmBulkDelete() {
+    closeConfirmModal();
+    performBulkDelete(pendingDelete.ids, pendingDelete.type);
+}
+
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('success-toast');
+    const messageEl = document.getElementById('success-message');
+    
+    messageEl.textContent = message;
+    
+    // Update colors based on type
+    if (type === 'warning') {
+        toast.style.background = 'linear-gradient(135deg, #ffc107 0%, #ff9800 100%)';
+    } else if (type === 'error') {
+        toast.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+    } else {
+        toast.style.background = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
     }
+    
+    toast.style.display = 'block';
+    
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
 }
 
 // Get CSRF token
@@ -1433,15 +1562,23 @@ function performBulkDelete(ids, type) {
     })
     .then(data => {
         if (data.success) {
-            alert(`${data.deleted_count} פריטים נמחקו בהצלחה`);
-            window.location.reload();
+            const typeDisplay = {
+                'item': 'פריטים',
+                'supplier': 'ספקים',
+                'category': 'קטגוריות'
+            };
+            showToast(`${data.deleted_count} ${typeDisplay[type]} נמחקו בהצלחה`, 'success');
+            clearSelection();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
-            alert('שגיאה: ' + (data.message || 'לא ניתן למחוק'));
+            showToast('שגיאה: ' + (data.message || 'לא ניתן למחוק'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('שגיאה במחיקה: ' + error.message);
+        showToast('שגיאה במחיקה: ' + error.message, 'error');
     });
 }
 

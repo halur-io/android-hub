@@ -4835,6 +4835,7 @@ def add_stock_item():
         unit = request.form.get('unit', 'יחידות')
         minimum_stock = request.form.get('minimum_stock', 0, type=float)
         cost_per_unit = request.form.get('cost_per_unit', 0, type=float)
+        item_type = request.form.get('item_type', 'ingredient')
         
         item = StockItem(
             name_he=name_he,
@@ -4845,7 +4846,7 @@ def add_stock_item():
             unit_en=unit,
             minimum_stock=minimum_stock,
             cost_per_unit=cost_per_unit,
-            item_type='ingredient',  # Default to ingredient
+            item_type=item_type,
             is_active=True
         )
         
@@ -4894,6 +4895,7 @@ def edit_stock_item(item_id):
             item.unit_en = request.form.get('unit', 'units').strip()
             item.minimum_stock = float(request.form.get('minimum_stock', 0) or 0)
             item.cost_per_unit = float(request.form.get('cost_per_unit', 0) or 0)
+            item.item_type = request.form.get('item_type', 'ingredient')
             
             # Flush changes to get dirty state, then record audit
             db.session.flush()

@@ -208,19 +208,32 @@
         
         <div class="form-row">
             <div class="form-group">
+                <label class="form-label">סוג פריט</label>
+                <select name="item_type" class="form-control">
+                    <option value="ingredient" {% if not item or item.item_type == 'ingredient' %}selected{% endif %}>מרכיב</option>
+                    <option value="packaging" {% if item and item.item_type == 'packaging' %}selected{% endif %}>אריזה</option>
+                    <option value="supply" {% if item and item.item_type == 'supply' %}selected{% endif %}>ציוד</option>
+                    <option value="finished_product" {% if item and item.item_type == 'finished_product' %}selected{% endif %}>מוצר מוגמר</option>
+                    <option value="other" {% if item and item.item_type == 'other' %}selected{% endif %}>אחר</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
                 <label class="form-label">יחידת מידה</label>
                 <input type="text" name="unit" class="form-control" value="{{ item.unit_he if item else 'יחידות' }}" placeholder="יחידות, ק״ג, ליטר...">
             </div>
-            
+        </div>
+        
+        <div class="form-row">
             <div class="form-group">
                 <label class="form-label">עלות ליחידה (₪)</label>
                 <input type="number" name="cost_per_unit" class="form-control" value="{{ item.cost_per_unit if item else 0 }}" step="0.01" min="0">
             </div>
-        </div>
-        
-        <div class="form-group">
-            <label class="form-label">מלאי מינימלי</label>
-            <input type="number" name="minimum_stock" class="form-control" value="{{ item.minimum_stock if item else 0 }}" step="0.01" min="0">
+            
+            <div class="form-group">
+                <label class="form-label">מלאי מינימלי</label>
+                <input type="number" name="minimum_stock" class="form-control" value="{{ item.minimum_stock if item else 0 }}" step="0.01" min="0">
+            </div>
         </div>
         
         <div class="form-actions">

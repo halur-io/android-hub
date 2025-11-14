@@ -7586,3 +7586,51 @@ def get_audit_history_api(entity_type, entity_id):
             'success': False,
             'error': str(e)
         }), 500
+
+# ===== TABIT INTEGRATION =====
+
+@admin_bp.route('/tabit/test-connection')
+@login_required
+@require_permission('stock.manage')
+def tabit_test_connection():
+    """Test connection to Tabit and take screenshots"""
+    from tabit_automation import TabitAutomation
+    
+    try:
+        automation = TabitAutomation()
+        result = automation.test_connection()
+        
+        if result:
+            flash('✅ החיבור ל-Tabit הצליח! צילום מסך נשמר ב-static/tabit_logged_in.png', 'success')
+        else:
+            flash('❌ החיבור ל-Tabit נכשל. בדוק את ה-logs לפרטים נוספים', 'danger')
+    except Exception as e:
+        flash(f'❌ שגיאה בחיבור ל-Tabit: {str(e)}', 'danger')
+        current_app.logger.error(f"Tabit connection error: {e}")
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/tabit/explore')
+@login_required
+@require_permission('stock.manage')
+def tabit_explore():
+    """Explore Tabit interface interactively"""
+    flash('מפעיל חיפוש אינטראקטיבי ב-Tabit... בדוק את הטרמינל', 'info')
+    
+    try:
+        from tabit_automation import TabitAutomation
+        import threading
+        
+        def run_exploration():
+            automation = TabitAutomation()
+            automation.explore_tabit_interface()
+        
+        # Run in background thread
+        thread = threading.Thread(target=run_exploration)
+        thread.start()
+        
+        flash('חיפוש אינטראקטיבי התחיל. צילומי מסך יישמרו ב-static/', 'success')
+    except Exception as e:
+        flash(f'שגיאה: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))

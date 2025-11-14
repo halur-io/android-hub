@@ -7594,20 +7594,7 @@ def get_audit_history_api(entity_type, entity_id):
 @require_permission('stock.manage')
 def tabit_test_connection():
     """Test connection to Tabit and take screenshots"""
-    from tabit_automation import TabitAutomation
-    
-    try:
-        automation = TabitAutomation()
-        result = automation.test_connection()
-        
-        if result:
-            flash('✅ החיבור ל-Tabit הצליח! צילום מסך נשמר ב-static/tabit_logged_in.png', 'success')
-        else:
-            flash('❌ החיבור ל-Tabit נכשל. בדוק את ה-logs לפרטים נוספים', 'danger')
-    except Exception as e:
-        flash(f'❌ שגיאה בחיבור ל-Tabit: {str(e)}', 'danger')
-        current_app.logger.error(f"Tabit connection error: {e}")
-    
+    flash('⚠️ אינטגרציית Tabit זמינה בקרוב. הפיצ\'ר עדיין בפיתוח.', 'info')
     return redirect(url_for('admin.stock_management'))
 
 @admin_bp.route('/tabit/explore')

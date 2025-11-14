@@ -68,7 +68,12 @@ class TabitAutomation:
             
             # Click login button
             logger.info("Looking for login button...")
-            login_button = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"], button:contains("Login"), button:contains("Sign in")')
+            try:
+                # Try to find submit button first
+                login_button = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
+            except:
+                # If not found, try finding button with text
+                login_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Login') or contains(text(), 'Sign') or contains(text(), 'התחבר')]")
             login_button.click()
             logger.info("✅ Login button clicked")
             

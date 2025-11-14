@@ -147,6 +147,8 @@ def users():
 @require_permission('users.create')
 def add_user():
     """Add new admin user"""
+    from models import Role, Permission
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
@@ -186,19 +188,41 @@ def add_user():
         )
         new_user.set_password(password)
         
+        # Assign roles
+        role_ids = request.form.getlist('roles')
+        if role_ids:
+            roles = Role.query.filter(Role.id.in_(role_ids)).all()
+            new_user.roles = roles
+        
         db.session.add(new_user)
         db.session.commit()
         
         flash(f'המשתמש {username} נוסף בהצלחה!', 'success')
         return redirect(url_for('admin.users'))
     
-    return render_template('admin/edit_user.html', user=None)
+    # Load roles and permissions for the form
+    roles = Role.query.filter_by(is_active=True).order_by(Role.display_name).all()
+    permissions = Permission.query.filter_by(is_active=True).order_by(Permission.category, Permission.display_name).all()
+    
+    # Group permissions by category
+    permission_categories = {}
+    for perm in permissions:
+        if perm.category not in permission_categories:
+            permission_categories[perm.category] = []
+        permission_categories[perm.category].append(perm)
+    
+    return render_template('admin/edit_user.html', 
+                         user=None, 
+                         roles=roles,
+                         permission_categories=permission_categories)
 
 @admin_bp.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @require_permission('users.edit')
 def edit_user(user_id):
     """Edit existing admin user"""
+    from models import Role, Permission
+    
     user = AdminUser.query.get_or_404(user_id)
     
     if request.method == 'POST':
@@ -239,14 +263,43 @@ def edit_user(user_id):
             user.set_password(password)
         elif password and len(password) < 6:
             flash('הסיסמה חייבת להכיל לפחות 6 תווים', 'error')
-            return render_template('admin/edit_user.html', user=user)
+            roles = Role.query.filter_by(is_active=True).order_by(Role.display_name).all()
+            permissions = Permission.query.filter_by(is_active=True).order_by(Permission.category, Permission.display_name).all()
+            permission_categories = {}
+            for perm in permissions:
+                if perm.category not in permission_categories:
+                    permission_categories[perm.category] = []
+                permission_categories[perm.category].append(perm)
+            return render_template('admin/edit_user.html', user=user, roles=roles, permission_categories=permission_categories)
+        
+        # Assign roles
+        role_ids = request.form.getlist('roles')
+        if role_ids:
+            roles = Role.query.filter(Role.id.in_(role_ids)).all()
+            user.roles = roles
+        else:
+            user.roles = []
         
         db.session.commit()
         
         flash(f'פרטי המשתמש {username} עודכנו בהצלחה!', 'success')
         return redirect(url_for('admin.users'))
     
-    return render_template('admin/edit_user.html', user=user)
+    # Load roles and permissions for the form
+    roles = Role.query.filter_by(is_active=True).order_by(Role.display_name).all()
+    permissions = Permission.query.filter_by(is_active=True).order_by(Permission.category, Permission.display_name).all()
+    
+    # Group permissions by category
+    permission_categories = {}
+    for perm in permissions:
+        if perm.category not in permission_categories:
+            permission_categories[perm.category] = []
+        permission_categories[perm.category].append(perm)
+    
+    return render_template('admin/edit_user.html', 
+                         user=user,
+                         roles=roles,
+                         permission_categories=permission_categories)
 
 @admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required

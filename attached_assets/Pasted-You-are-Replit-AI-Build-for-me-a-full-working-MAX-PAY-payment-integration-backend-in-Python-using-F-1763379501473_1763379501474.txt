@@ -1,0 +1,135 @@
+You are Replit AI. Build for me a full working MAX PAY payment integration backend in Python using Flask.
+
+I want a REST API server that connects my restaurant ordering website to Max (Max Pay) for online payments.  
+Build all files and code exactly as follows:
+
+# ---------------------------
+# GENERAL REQUIREMENTS
+# ---------------------------
+- Use Python 3 + Flask
+- Create endpoints for:
+    1) /create-payment   (POST)
+    2) /webhook/max      (POST)
+- Use environment variables for:
+    MAX_API_KEY
+    MAX_MERCHANT_ID
+    MAX_API_URL      (use placeholder until I replace with real Max URL)
+    MAX_WEBHOOK_SECRET
+- Everything must be modular, clean, well-documented, and production-ready.
+- Return JSON responses always.
+
+# ---------------------------
+# CREATE-PAYMENT ENDPOINT
+# ---------------------------
+POST /create-payment  
+Input JSON:
+{
+  "order_id": "12345",
+  "amount": 129.90
+}
+
+Process:
+1. Validate input.
+2. Create payload to Max API:
+   {
+     "merchantId": MAX_MERCHANT_ID,
+     "amount": <amount>,
+     "currency": "ILS",
+     "orderId": <order_id>,
+     "successUrl": "https://mydomain.com/success",
+     "cancelUrl": "https://mydomain.com/cancel"
+   }
+3. Send POST request to MAX_API_URL using headers:
+   {
+     "Authorization": "Bearer {MAX_API_KEY}",
+     "Content-Type": "application/json"
+   }
+4. Read Max response and return:
+{
+  "payment_url": "https://..."
+}
+
+If there is an error, return:
+{
+  "error": true,
+  "message": "..."
+}
+
+# ---------------------------
+# WEBHOOK ENDPOINT
+# ---------------------------
+POST /webhook/max  
+- Validate signature using MAX_WEBHOOK_SECRET.
+- Max will send JSON:
+  {
+    "orderId": "...",
+    "transactionId": "...",
+    "status": "approved" | "declined" | "error",
+    "amount": 129.90
+  }
+
+Logic:
+- If signature invalid → return 401.
+- If approved → print "ORDER PAID".
+- If declined → print "ORDER FAILED".
+- Always return 200 OK.
+
+# ---------------------------
+# PROJECT STRUCTURE
+# ---------------------------
+Create this file structure:
+
+/main.py
+/config.py
+/services/maxpay.py
+/utils/security.py
+/requirements.txt
+/README.md
+
+# ---------------------------
+# CONTENT OF FILES
+# ---------------------------
+
+### requirements.txt
+Flask
+python-dotenv
+requests
+hmac
+hashlib
+
+### config.py
+- Load env variables:
+  MAX_API_KEY
+  MAX_MERCHANT_ID
+  MAX_API_URL
+  MAX_WEBHOOK_SECRET
+
+### services/maxpay.py
+- Function: create_payment(order_id, amount)
+- Send request to Max API
+- Return payment_url or error
+
+### utils/security.py
+- Function verify_signature(data, signature, secret)
+- Use HMAC SHA256
+
+### main.py
+- Setup Flask app
+- Add /create-payment and /webhook/max routes
+- Use functions from services/ and utils/
+
+### README.md
+Include instructions:
+- How to run on Replit
+- How to set environment variables
+- How to test endpoints with curl/Postman
+- Where to replace MAX_API_URL with real Max endpoint
+
+# ---------------------------
+# FINAL NOTES
+# ---------------------------
+- Make sure it runs without errors immediately.
+- Make the code clean and readable.
+- Add logging.
+- Do not skip any file.
+- Produce the entire project code in the Replit workspace.

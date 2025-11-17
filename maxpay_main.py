@@ -19,6 +19,15 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Validate configuration on app initialization (fail fast if misconfigured)
+try:
+    Config.validate()
+    logger.info("Configuration validated successfully on app initialization")
+except ValueError as e:
+    logger.error(f"Configuration error: {str(e)}")
+    logger.error("CRITICAL: Missing required environment variables. Cannot start application.")
+    raise
+
 # Initialize Max Pay service
 maxpay_service = MaxPayService()
 
@@ -113,7 +122,7 @@ def create_payment():
         logger.error(f"Unexpected error in /create-payment: {str(e)}")
         return jsonify({
             'error': True,
-            'message': f'Internal server error: {str(e)}'
+            'message': 'Internal server error occurred. Please contact support.'
         }), 500
 
 
@@ -149,23 +158,27 @@ def webhook_max():
         if signature:
             signature = extract_signature_from_header(signature)
         
-        # Verify signature if present
-        if signature:
-            is_valid = verify_signature(
-                raw_body,
-                signature,
-                Config.MAX_WEBHOOK_SECRET
-            )
-            
-            if not is_valid:
-                logger.warning("Invalid webhook signature received")
-                return jsonify({
-                    'error': 'Invalid signature'
-                }), 401
-            
-            logger.info("Webhook signature verified successfully")
-        else:
-            logger.warning("No signature found in webhook headers - proceeding without verification")
+        # Signature is REQUIRED for security - reject unsigned webhooks
+        if not signature:
+            logger.error("Webhook rejected: No signature header provided")
+            return jsonify({
+                'error': 'Signature required'
+            }), 401
+        
+        # Verify signature
+        is_valid = verify_signature(
+            raw_body,
+            signature,
+            Config.MAX_WEBHOOK_SECRET
+        )
+        
+        if not is_valid:
+            logger.warning("Invalid webhook signature received")
+            return jsonify({
+                'error': 'Invalid signature'
+            }), 401
+        
+        logger.info("Webhook signature verified successfully")
         
         # Parse JSON payload
         data = request.get_json()
@@ -227,7 +240,7 @@ def webhook_max():
         # Still return 200 to prevent Max Pay from retrying
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': 'Webhook processing error'
         }), 200
 
 

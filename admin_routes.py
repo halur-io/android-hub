@@ -694,25 +694,25 @@ def settings():
         
         # Order & Delivery Settings
         min_order = request.form.get('minimum_order_amount')
-        if min_order:
+        if min_order and min_order.lower() != 'nan':
             settings.minimum_order_amount = float(min_order)
         
         delivery_fee = request.form.get('delivery_fee')
-        if delivery_fee:
+        if delivery_fee and delivery_fee.lower() != 'nan':
             settings.delivery_fee = float(delivery_fee)
         
         free_delivery = request.form.get('free_delivery_threshold')
-        if free_delivery:
+        if free_delivery and free_delivery.lower() != 'nan':
             settings.free_delivery_threshold = float(free_delivery)
         
         settings.estimated_delivery_time = request.form.get('estimated_delivery_time') or '45-60'
         
         tax = request.form.get('tax_rate')
-        if tax:
+        if tax and tax.lower() != 'nan':
             settings.tax_rate = float(tax)
         
         service_fee = request.form.get('service_fee_percentage')
-        if service_fee:
+        if service_fee and service_fee.lower() != 'nan':
             settings.service_fee_percentage = float(service_fee)
         
         settings.currency_symbol = request.form.get('currency_symbol') or '₪'
@@ -1037,8 +1037,10 @@ def edit_menu_item(id=None):
         item.ingredients_en = request.form.get('ingredients_en')
         
         # Pricing
-        item.base_price = float(request.form.get('base_price', 0))
-        item.discount_percentage = float(request.form.get('discount_percentage', 0))
+        base_price_val = request.form.get('base_price', 0)
+        item.base_price = float(base_price_val) if str(base_price_val).lower() != 'nan' else 0
+        discount_val = request.form.get('discount_percentage', 0)
+        item.discount_percentage = float(discount_val) if str(discount_val).lower() != 'nan' else 0
         
         # Handle dietary properties (many-to-many relationship)
         selected_property_ids = request.form.getlist('dietary_properties')
@@ -1265,7 +1267,8 @@ def add_item_price(item_id):
     price.menu_item_id = item_id
     price.size_name_he = request.form.get('size_name_he')
     price.size_name_en = request.form.get('size_name_en')
-    price.price = float(request.form.get('price'))
+    price_val = request.form.get('price')
+    price.price = float(price_val) if price_val and price_val.lower() != 'nan' else 0
     price.is_default = request.form.get('is_default') == 'on'
     price.display_order = int(request.form.get('display_order', 0))
     
@@ -1293,7 +1296,8 @@ def add_item_variation(item_id):
     variation.variation_type = request.form.get('variation_type')
     variation.name_he = request.form.get('name_he')
     variation.name_en = request.form.get('name_en')
-    variation.price_modifier = float(request.form.get('price_modifier', 0))
+    price_mod_val = request.form.get('price_modifier', 0)
+    variation.price_modifier = float(price_mod_val) if str(price_mod_val).lower() != 'nan' else 0
     variation.is_default = request.form.get('is_default') == 'on'
     variation.display_order = int(request.form.get('display_order', 0))
     
@@ -4981,8 +4985,10 @@ def edit_stock_item(item_id):
             
             item.unit_he = request.form.get('unit', 'יחידות').strip()
             item.unit_en = request.form.get('unit', 'units').strip()
-            item.minimum_stock = float(request.form.get('minimum_stock', 0) or 0)
-            item.cost_per_unit = float(request.form.get('cost_per_unit', 0) or 0)
+            min_stock_val = request.form.get('minimum_stock', 0) or 0
+            item.minimum_stock = float(min_stock_val) if str(min_stock_val).lower() != 'nan' else 0
+            cost_val = request.form.get('cost_per_unit', 0) or 0
+            item.cost_per_unit = float(cost_val) if str(cost_val).lower() != 'nan' else 0
             item.item_type = request.form.get('item_type', 'ingredient')
             
             # Flush changes to get dirty state, then record audit
@@ -5675,6 +5681,7 @@ def add_supplier():
         from models import Supplier
         
         try:
+            min_order_val = request.form.get('minimum_order', 0) or 0
             supplier = Supplier(
                 name=request.form['name'].strip(),
                 contact_person=request.form.get('contact_person', '').strip(),
@@ -5683,7 +5690,7 @@ def add_supplier():
                 address=request.form.get('address', '').strip(),
                 delivery_days=request.form.get('delivery_days', '1111111'),
                 delivery_time=request.form.get('delivery_time', '').strip(),
-                minimum_order=float(request.form.get('minimum_order', 0) or 0),
+                minimum_order=float(min_order_val) if str(min_order_val).lower() != 'nan' else 0,
                 payment_terms=request.form.get('payment_terms', '').strip(),
                 notes=request.form.get('notes', '').strip()
             )
@@ -5777,7 +5784,8 @@ def edit_supplier(supplier_id):
             supplier.address = request.form.get('address', '').strip()
             supplier.delivery_days = request.form.get('delivery_days', '1111111')
             supplier.delivery_time = request.form.get('delivery_time', '').strip()
-            supplier.minimum_order = float(request.form.get('minimum_order', 0) or 0)
+            min_order_val = request.form.get('minimum_order', 0) or 0
+            supplier.minimum_order = float(min_order_val) if str(min_order_val).lower() != 'nan' else 0
             supplier.payment_terms = request.form.get('payment_terms', '').strip()
             supplier.notes = request.form.get('notes', '').strip()
             

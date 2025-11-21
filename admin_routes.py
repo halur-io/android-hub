@@ -4484,12 +4484,12 @@ def create_role():
         
         if not name or not display_name:
             flash('שם התפקיד ושם התצוגה נדרשים', 'error')
-            return redirect(request.url)
+            return redirect(url_for('admin.create_role'))
         
         # Check if role already exists
         if Role.query.filter_by(name=name).first():
             flash('תפקיד עם השם הזה כבר קיים', 'error')
-            return redirect(request.url)
+            return redirect(url_for('admin.create_role'))
         
         # Create new role
         role = Role(
@@ -4533,7 +4533,7 @@ def edit_role(role_id):
         
         if not display_name:
             flash('שם התצוגה נדרש', 'error')
-            return redirect(request.url)
+            return redirect(url_for('admin.edit_role', role_id=role_id))
         
         role.display_name = display_name
         role.description = description
@@ -6029,11 +6029,11 @@ def upload_receipt():
             
             if not file or file.filename == '':
                 flash('לא נבחר קובץ', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.upload_receipt'))
             
             if not branch_id:
                 flash('חובה לבחור סניף', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.upload_receipt'))
             
             # Validate file type
             allowed_extensions = {'jpg', 'jpeg', 'png', 'pdf'}
@@ -6042,7 +6042,7 @@ def upload_receipt():
             
             if file_extension not in allowed_extensions:
                 flash('סוג קובץ לא נתמך. אנא העלה JPG, PNG או PDF', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.upload_receipt'))
             
             # Create upload directory if it doesn't exist
             upload_dir = os.path.join('static', 'uploads', 'receipts')
@@ -6109,7 +6109,7 @@ def upload_receipt():
             
         except Exception as e:
             flash(f'שגיאה בהעלאת הקבלה: {str(e)}', 'error')
-            return redirect(request.url)
+            return redirect(url_for('admin.upload_receipt'))
     
     # GET request - show upload form
     from models import Branch, Supplier

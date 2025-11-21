@@ -57,6 +57,11 @@ class SiteSettingsForm(FlaskForm):
     minimum_order_amount = DecimalField('סכום הזמנה מינימלי / Minimum Order Amount', validators=[Optional()])
     tax_rate = DecimalField('אחוז מע"מ / Tax Rate (%)', validators=[Optional()])
     
+    # Form Email Configuration
+    contact_form_email = StringField('Email for Contact Form / אימייל לטופס יצירת קשר', validators=[DataRequired()])
+    catering_form_email = StringField('Email for Catering Form / אימייל לטופס קייטרינג', validators=[DataRequired()])
+    careers_form_email = StringField('Email for Careers Form / אימייל לטופס קריירה', validators=[DataRequired()])
+    
     submit = SubmitField('שמור')
 
 UPLOAD_FOLDER = 'static/uploads'
@@ -701,6 +706,11 @@ def settings():
             settings.service_fee_percentage = float(service_fee)
         
         settings.currency_symbol = request.form.get('currency_symbol') or '₪'
+        
+        # Form Email Configuration
+        settings.contact_form_email = request.form.get('contact_form_email') or 'info@sumo-restaurant.co.il'
+        settings.catering_form_email = request.form.get('catering_form_email') or 'info@sumo-restaurant.co.il'
+        settings.careers_form_email = request.form.get('careers_form_email') or 'info@sumo-restaurant.co.il'
         
         # Advanced Features
         settings.google_analytics_id = request.form.get('google_analytics_id')

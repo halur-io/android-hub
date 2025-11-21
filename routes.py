@@ -242,9 +242,12 @@ def catering_page():
                 
                 # Send email notification to restaurant
                 try:
+                    from models import SiteSettings
+                    settings = SiteSettings.query.first()
+                    recipient_email = settings.catering_form_email if settings else 'info@sumo-restaurant.co.il'
                     msg = Message(
                         subject=f'Catering Inquiry from {name}',
-                        recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
+                        recipients=[recipient_email],
                         body=f'''
 New Catering Inquiry:
 
@@ -335,13 +338,16 @@ def careers_page():
                     success = True
                     
                     # Send email notification to restaurant
+                    from models import SiteSettings
+                    settings = SiteSettings.query.first()
+                    recipient_email = settings.careers_form_email if settings else 'info@sumo-restaurant.co.il'
                     position_name = position_other_text if position_other_text else \
                                    (CareerPosition.query.get(position_id).title_en if position_id else 'Unknown')
                     
                     try:
                         msg = Message(
                             subject=f'Job Application from {name} - {position_name}',
-                            recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
+                            recipients=[recipient_email],
                             body=f'''
 New Job Application:
 

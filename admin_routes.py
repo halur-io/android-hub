@@ -10,6 +10,7 @@ from app import mail
 import os
 from datetime import datetime
 import json
+from urllib.parse import urlparse
 import pandas as pd
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField, BooleanField, DecimalField, IntegerField
@@ -115,6 +116,10 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             next_page = request.args.get('next')
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
             flash(f'Welcome back, {user.username}!', 'success')
             return redirect(next_page) if next_page else redirect(url_for('admin.dashboard'))
         else:

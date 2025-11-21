@@ -180,6 +180,11 @@ class SiteSettings(db.Model):
     service_fee_percentage = db.Column(db.Float, default=0.0)  # Service fee %
     currency_symbol = db.Column(db.String(10), default='₪')
     
+    # Form Email Configuration - Where form messages are sent
+    contact_form_email = db.Column(db.String(255), default='info@sumo-restaurant.co.il')  # Contact form recipient
+    catering_form_email = db.Column(db.String(255), default='info@sumo-restaurant.co.il')  # Catering form recipient
+    careers_form_email = db.Column(db.String(255), default='info@sumo-restaurant.co.il')  # Careers form recipient
+    
     # Catering & Special Events Settings (Homepage Section)
     enable_catering_section = db.Column(db.Boolean, default=True)
     catering_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')

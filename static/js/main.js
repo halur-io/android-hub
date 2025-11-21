@@ -474,14 +474,14 @@ function initFormSubmissionStates() {
         form.addEventListener('submit', function() {
             const submitBtn = form.querySelector('button[type="submit"]');
             if (submitBtn) {
-                submitBtn.setAttribute('data-original-text', submitBtn.innerHTML);
+                submitBtn.setAttribute('data-original-text', submitBtn.textContent);
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח...';
                 
                 // Re-enable after 3 seconds as fallback
                 setTimeout(() => {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = submitBtn.getAttribute('data-original-text') || 'שליחה';
+                    submitBtn.textContent = submitBtn.getAttribute('data-original-text') || 'שליחה';
                 }, 3000);
             }
         });

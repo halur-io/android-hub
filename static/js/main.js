@@ -326,12 +326,22 @@ function initGalleryEffects() {
 function createLightbox(src, alt) {
     const lightbox = document.createElement('div');
     lightbox.className = 'lightbox';
-    lightbox.innerHTML = `
-        <div class="lightbox-content">
-            <span class="lightbox-close">&times;</span>
-            <img src="${src}" alt="${alt}">
-        </div>
-    `;
+    
+    // Create structure using safe DOM methods to prevent XSS
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'lightbox-content';
+    
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'lightbox-close';
+    closeBtn.textContent = '×';
+    
+    const img = document.createElement('img');
+    img.setAttribute('src', src);
+    img.setAttribute('alt', alt);
+    
+    contentDiv.appendChild(closeBtn);
+    contentDiv.appendChild(img);
+    lightbox.appendChild(contentDiv);
     
     // Add styles
     lightbox.style.cssText = `
@@ -348,14 +358,12 @@ function createLightbox(src, alt) {
         cursor: pointer;
     `;
     
-    const content = lightbox.querySelector('.lightbox-content');
-    content.style.cssText = `
+    contentDiv.style.cssText = `
         position: relative;
         max-width: 90%;
         max-height: 90%;
     `;
     
-    const img = lightbox.querySelector('img');
     img.style.cssText = `
         width: 100%;
         height: auto;
@@ -363,7 +371,6 @@ function createLightbox(src, alt) {
         object-fit: contain;
     `;
     
-    const closeBtn = lightbox.querySelector('.lightbox-close');
     closeBtn.style.cssText = `
         position: absolute;
         top: -40px;

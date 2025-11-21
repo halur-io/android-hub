@@ -141,7 +141,12 @@ def set_language(lang):
     """Set admin panel language preference"""
     if lang in ['he', 'en']:
         session['admin_language'] = lang
-    return redirect(request.referrer or url_for('admin.dashboard'))
+    next_page = request.referrer
+    if next_page:
+        parsed = urlparse(next_page)
+        if parsed.netloc:
+            next_page = None
+    return redirect(next_page or url_for('admin.dashboard'))
 
 # User Management Routes
 @admin_bp.route('/users')
@@ -1984,7 +1989,12 @@ def finalize_direct_excel_import():
         
         if not selected_items:
             flash('❌ לא נבחרו מנות לייבוא', 'error')
-            return redirect(request.referrer)
+            next_page = request.referrer
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            return redirect(next_page or url_for('admin.menu'))
             
         success_count = 0
         error_count = 0
@@ -2055,7 +2065,12 @@ def finalize_direct_excel_import():
         except Exception as e:
             db.session.rollback()
             flash(f'❌ שגיאה בשמירת הנתונים: {str(e)}', 'error')
-            return redirect(request.referrer)
+            next_page = request.referrer
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            return redirect(next_page or url_for('admin.menu'))
         
         # Success message
         if success_count > 0:
@@ -2088,7 +2103,12 @@ def finalize_excel_import():
         
         if not selected_items:
             flash('❌ לא נבחרו מנות לייבוא', 'error')
-            return redirect(request.referrer)
+            next_page = request.referrer
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            return redirect(next_page or url_for('admin.menu'))
             
         success_count = 0
         error_count = 0

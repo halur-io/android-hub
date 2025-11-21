@@ -536,7 +536,13 @@ def newsletter_subscribe():
     else:
         flash('אנא הזן כתובת אימייל' if context['language'] == 'he' else 'Please enter an email', 'error')
     
-    return redirect(request.referrer or url_for('index'))
+    next_page = request.referrer
+    if next_page:
+        from urllib.parse import urlparse
+        parsed = urlparse(next_page)
+        if parsed.netloc:
+            next_page = None
+    return redirect(next_page or url_for('index'))
 
 @app.route('/accessibility')
 def accessibility_statement():

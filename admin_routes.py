@@ -6787,11 +6787,11 @@ def import_stock_data():
             
             if not file or file.filename == '':
                 flash('לא נבחר קובץ', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.import_stock_data'))
             
             if not branch_id and import_type in ['stock_levels']:
                 flash('חובה לבחור סניף עבור יבוא רמות מלאי', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.import_stock_data'))
             
             # Validate file type
             allowed_extensions = {'csv', 'xlsx', 'xls'}
@@ -6800,7 +6800,7 @@ def import_stock_data():
             
             if file_extension not in allowed_extensions:
                 flash('סוג קובץ לא נתמך. אנא העלה CSV או Excel', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.import_stock_data'))
             
             # Save file temporarily
             upload_dir = os.path.join('static', 'uploads', 'import')
@@ -6820,7 +6820,7 @@ def import_stock_data():
             except Exception as e:
                 os.remove(temp_path)
                 flash(f'שגיאה בקריאת הקובץ: {str(e)}', 'error')
-                return redirect(request.url)
+                return redirect(url_for('admin.import_stock_data'))
             
             success_count = 0
             error_count = 0
@@ -6968,7 +6968,7 @@ def import_stock_data():
             
         except Exception as e:
             flash(f'שגיאה בייבוא: {str(e)}', 'error')
-            return redirect(request.url)
+            return redirect(url_for('admin.import_stock_data'))
     
     # GET request - show import form
     from models import Branch

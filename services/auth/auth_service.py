@@ -12,6 +12,11 @@ import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
+# Get JWT secret from environment - fail fast if not configured
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable must be set")
+
 class Customer(db.Model):
     """Customer accounts with phone verification"""
     __tablename__ = 'customers'
@@ -49,7 +54,7 @@ class Customer(db.Model):
             'phone': self.phone,
             'exp': datetime.utcnow() + timedelta(days=30)
         }
-        return jwt.encode(payload, os.environ.get('JWT_SECRET', 'dev-secret'), algorithm='HS256')
+        return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
 class CustomerAddress(db.Model):
     """Customer delivery addresses"""
@@ -186,7 +191,7 @@ def get_profile():
         if not token:
             return jsonify({'error': 'Authentication required'}), 401
         
-        payload = jwt.decode(token, os.environ.get('JWT_SECRET', 'dev-secret'), algorithms=['HS256'])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         customer = Customer.query.get(payload['customer_id'])
         
         if not customer:
@@ -222,7 +227,7 @@ def update_profile():
         if not token:
             return jsonify({'error': 'Authentication required'}), 401
         
-        payload = jwt.decode(token, os.environ.get('JWT_SECRET', 'dev-secret'), algorithms=['HS256'])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         customer = Customer.query.get(payload['customer_id'])
         
         if not customer:
@@ -250,7 +255,7 @@ def add_address():
         if not token:
             return jsonify({'error': 'Authentication required'}), 401
         
-        payload = jwt.decode(token, os.environ.get('JWT_SECRET', 'dev-secret'), algorithms=['HS256'])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
         
         data = request.json
         address = CustomerAddress(

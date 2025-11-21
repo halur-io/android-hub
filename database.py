@@ -38,48 +38,8 @@ def init_db(app):
         from services.kitchen.kitchen_service import KitchenStation, KitchenQueue, PrinterConfig
         from services.payment.payment_service import PaymentTransaction, PaymentConfig
         
+        # Create all tables (fast - no data creation)
         db.create_all()
-        
-        # Create default data
-        from models import AdminUser, SiteSettings, Role, Permission
-        
-        # Try to create default roles and permissions
-        try:
-            create_default_roles_and_permissions()
-        except Exception as e:
-            # Tables might not exist, recreate everything
-            print(f"Database error: {e}")
-            print("Recreating database...")
-            db.drop_all()
-            db.create_all()
-            create_default_roles_and_permissions()
-        
-        # Create default admin user if not exists
-        try:
-            admin = AdminUser.query.filter_by(username='khalilshiban').first()
-        except Exception as e:
-            print(f"Admin user query error: {e}")
-            admin = None
-            
-        if not admin:
-            admin = AdminUser(
-                username='khalilshiban',
-                email='khalil@sumo.com',
-                is_superadmin=True,
-                is_active=True
-            )
-            admin.set_password('Winston35!')
-            db.session.add(admin)
-            db.session.commit()
-            print("Created superadmin user: khalilshiban")
-        
-        # Create default site settings if not exists
-        settings = SiteSettings.query.first()
-        if not settings:
-            settings = SiteSettings()
-            db.session.add(settings)
-            db.session.commit()
-            print("Created default site settings")
 
 def create_default_roles_and_permissions():
     """Create default roles and permissions for the system"""
@@ -258,6 +218,45 @@ def create_default_roles_and_permissions():
     
     db.session.commit()
     print("Created default roles and permissions")
+
+def init_default_data():
+    """Initialize default data - called lazily after app startup"""
+    with db.engine.begin() as conn:
+        from models import AdminUser, SiteSettings, Role, Permission
+        
+        # Initialize default roles and permissions
+        try:
+            create_default_roles_and_permissions()
+        except Exception as e:
+            print(f"Error creating default roles/permissions: {e}")
+        
+        # Create default admin user if not exists
+        try:
+            admin = AdminUser.query.filter_by(username='khalilshiban').first()
+            if not admin:
+                admin = AdminUser(
+                    username='khalilshiban',
+                    email='khalil@sumo.com',
+                    is_superadmin=True,
+                    is_active=True
+                )
+                admin.set_password('Winston35!')
+                db.session.add(admin)
+                db.session.commit()
+                print("Created superadmin user: khalilshiban")
+        except Exception as e:
+            print(f"Error creating admin user: {e}")
+        
+        # Create default site settings if not exists
+        try:
+            settings = SiteSettings.query.first()
+            if not settings:
+                settings = SiteSettings()
+                db.session.add(settings)
+                db.session.commit()
+                print("Created default site settings")
+        except Exception as e:
+            print(f"Error creating default site settings: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):

@@ -468,10 +468,16 @@ function sendToAI() {
     // Add user message
     const userDiv = document.createElement('div');
     userDiv.className = 'ai-message user';
-    userDiv.innerHTML = `
-        <span class="ai-icon">👤</span>
-        <p>${userMessage}</p>
-    `;
+    
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'ai-icon';
+    iconSpan.textContent = '👤';
+    
+    const messagePara = document.createElement('p');
+    messagePara.textContent = userMessage;
+    
+    userDiv.appendChild(iconSpan);
+    userDiv.appendChild(messagePara);
     messages.appendChild(userDiv);
     
     // Clear input

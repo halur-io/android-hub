@@ -46,13 +46,6 @@ try:
 except Exception as e:
     logging.error(f"Error registering API blueprint: {e}")
 
-# Exempt auth service from CSRF (API endpoints handle their own security)
-def exempt_auth_service():
-    csrf.exempt('auth.send_otp')
-    csrf.exempt('auth.verify_otp')
-    csrf.exempt('auth.get_profile')
-    csrf.exempt('auth.update_profile')
-    csrf.exempt('auth.add_address')
 
 # Initialize Flask-Login
 from flask_login import LoginManager
@@ -149,14 +142,13 @@ try:
     from services.payment.payment_service import payment_bp
     
     app.register_blueprint(config_bp)
+    # Exempt auth blueprint from CSRF (uses JWT token-based auth)
+    csrf.exempt(auth_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(order_bp)
     app.register_blueprint(delivery_bp)
     app.register_blueprint(kitchen_bp)
     app.register_blueprint(payment_bp)
-    
-    # Exempt auth service endpoints from CSRF (API uses token-based auth)
-    exempt_auth_service()
     
     logging.info("All microservices registered successfully")
 except Exception as e:

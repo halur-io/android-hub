@@ -1,4 +1,4 @@
-from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory, session
+from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory, session, current_app
 from flask_mail import Message
 from app import app, mail
 from database import db
@@ -738,7 +738,6 @@ def example2_contact():
                 name=form.name.data,
                 email=form.email.data,
                 phone=form.phone.data,
-                subject=form.subject.data,
                 message=form.message.data
             )
             db.session.add(contact)

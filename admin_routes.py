@@ -694,26 +694,41 @@ def settings():
         
         # Order & Delivery Settings
         min_order = request.form.get('minimum_order_amount')
-        if min_order and min_order.lower() != 'nan':
-            settings.minimum_order_amount = float(min_order)
+        if min_order and min_order.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.minimum_order_amount = float(min_order)
+            except (ValueError, OverflowError):
+                pass
         
         delivery_fee = request.form.get('delivery_fee')
-        if delivery_fee and delivery_fee.lower() != 'nan':
-            settings.delivery_fee = float(delivery_fee)
+        if delivery_fee and delivery_fee.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.delivery_fee = float(delivery_fee)
+            except (ValueError, OverflowError):
+                pass
         
         free_delivery = request.form.get('free_delivery_threshold')
-        if free_delivery and free_delivery.lower() != 'nan':
-            settings.free_delivery_threshold = float(free_delivery)
+        if free_delivery and free_delivery.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.free_delivery_threshold = float(free_delivery)
+            except (ValueError, OverflowError):
+                pass
         
         settings.estimated_delivery_time = request.form.get('estimated_delivery_time') or '45-60'
         
         tax = request.form.get('tax_rate')
-        if tax and tax.lower() != 'nan':
-            settings.tax_rate = float(tax)
+        if tax and tax.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.tax_rate = float(tax)
+            except (ValueError, OverflowError):
+                pass
         
         service_fee = request.form.get('service_fee_percentage')
-        if service_fee and service_fee.lower() != 'nan':
-            settings.service_fee_percentage = float(service_fee)
+        if service_fee and service_fee.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.service_fee_percentage = float(service_fee)
+            except (ValueError, OverflowError):
+                pass
         
         settings.currency_symbol = request.form.get('currency_symbol') or '₪'
         

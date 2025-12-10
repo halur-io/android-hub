@@ -240,31 +240,25 @@ def catering_page():
                 
                 success = True
                 
-                # Send email notification to restaurant
+                # Send email notification via SendGrid
                 try:
+                    from sendgrid_helper import send_new_message_notification
                     from models import SiteSettings
                     settings = SiteSettings.query.first()
-                    recipient_email = settings.catering_form_email if settings else 'info@sumo-restaurant.co.il'
-                    msg = Message(
-                        subject=f'Catering Inquiry from {name}',
-                        recipients=[recipient_email],
-                        body=f'''
-New Catering Inquiry:
-
-Name: {name}
-Email: {email}
-Phone: {phone}
-Event Date: {event_date if event_date else 'Not specified'}
-Event Type: {event_type if event_type else 'Not specified'}
-Guest Count: {guest_count if guest_count else 'Not specified'}
-
-Message:
-{message}
-'''
-                    )
-                    mail.send(msg)
+                    recipient_email = settings.catering_form_email if settings and settings.catering_form_email else None
+                    
+                    if recipient_email:
+                        send_new_message_notification('catering', {
+                            'name': name,
+                            'email': email,
+                            'phone': phone,
+                            'event_type': event_type,
+                            'event_date': event_date,
+                            'guest_count': guest_count,
+                            'message': message
+                        }, recipient_email)
                 except Exception as email_error:
-                    current_app.logger.error(f"Error sending catering email: {str(email_error)}")
+                    current_app.logger.error(f"Error sending catering email via SendGrid: {str(email_error)}")
                 
         except Exception as e:
             db.session.rollback()
@@ -337,32 +331,25 @@ def careers_page():
                     
                     success = True
                     
-                    # Send email notification to restaurant
-                    from models import SiteSettings
-                    settings = SiteSettings.query.first()
-                    recipient_email = settings.careers_form_email if settings else 'info@sumo-restaurant.co.il'
-                    position_name = position_other_text if position_other_text else \
-                                   (CareerPosition.query.get(position_id).title_en if position_id else 'Unknown')
-                    
+                    # Send email notification via SendGrid
                     try:
-                        msg = Message(
-                            subject=f'Job Application from {name} - {position_name}',
-                            recipients=[recipient_email],
-                            body=f'''
-New Job Application:
-
-Name: {name}
-Email: {email}
-Phone: {phone}
-Position: {position_name}
-
-Message:
-{message}
-'''
-                        )
-                        mail.send(msg)
+                        from sendgrid_helper import send_new_message_notification
+                        from models import SiteSettings
+                        settings = SiteSettings.query.first()
+                        recipient_email = settings.careers_form_email if settings and settings.careers_form_email else None
+                        position_name = position_other_text if position_other_text else \
+                                       (CareerPosition.query.get(position_id).title_en if position_id else 'Unknown')
+                        
+                        if recipient_email:
+                            send_new_message_notification('career', {
+                                'name': name,
+                                'email': email,
+                                'phone': phone,
+                                'position': position_name,
+                                'message': message
+                            }, recipient_email)
                     except Exception as email_error:
-                        current_app.logger.error(f"Error sending career email: {str(email_error)}")
+                        current_app.logger.error(f"Error sending career email via SendGrid: {str(email_error)}")
                 
         except Exception as e:
             db.session.rollback()
@@ -410,25 +397,22 @@ def contact_page():
             db.session.add(contact)
             db.session.commit()
             
-            # Try to send email notification
+            # Try to send email notification via SendGrid
             try:
-                msg = Message(
-                    subject=f'Contact from {form.name.data}',
-                    recipients=[app.config.get('MAIL_USERNAME', 'info@sumo-restaurant.co.il')],
-                    body=f'''
-New contact message:
-
-Name: {form.name.data}
-Email: {form.email.data}
-Phone: {form.phone.data}
-
-Message:
-{form.message.data}
-'''
-                )
-                mail.send(msg)
+                from sendgrid_helper import send_new_message_notification
+                from models import SiteSettings
+                site_settings = SiteSettings.query.first()
+                admin_email = site_settings.contact_form_email if site_settings and site_settings.contact_form_email else None
+                
+                if admin_email:
+                    send_new_message_notification('contact', {
+                        'name': form.name.data,
+                        'email': form.email.data,
+                        'phone': form.phone.data,
+                        'message': form.message.data
+                    }, admin_email)
             except Exception as email_error:
-                logging.error(f'Error sending contact email: {email_error}')
+                logging.error(f'Error sending contact email via SendGrid: {email_error}')
             
             flash('Message sent successfully!' if context['language'] == 'en' else 'ההודעה נשלחה בהצלחה!', 'success')
             return redirect(url_for('contact_page'))

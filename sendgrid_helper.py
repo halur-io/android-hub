@@ -46,8 +46,10 @@ def send_email_notification(to_email, subject, html_content, plain_text=None):
     api_key, from_email = get_sendgrid_credentials()
     
     if not api_key or not from_email:
-        logging.warning('SendGrid credentials not available, skipping email')
+        logging.error(f'SendGrid credentials not available - api_key: {bool(api_key)}, from_email: {from_email}')
         return False
+    
+    logging.info(f'Sending email to {to_email} from {from_email} with subject: {subject}')
     
     try:
         response = requests.post(

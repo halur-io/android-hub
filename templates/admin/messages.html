@@ -80,14 +80,24 @@
                                 <td>{{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}</td>
                                 <td>{{ message.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                 <td>
-                                    {% if not message.is_read %}
-                                    <button class="btn btn-sm btn-success mark-read mark-read-contact" data-id="{{ message.id }}">
-                                        <i class="fas fa-check"></i> סמן
-                                    </button>
-                                    {% endif %}
-                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#forwardContactModal{{ message.id }}">
-                                        <i class="fas fa-share"></i> העבר
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if not message.is_read %}
+                                            <li><a class="dropdown-item mark-read-contact" href="#" data-id="{{ message.id }}"><i class="fas fa-check me-2"></i>סמן כנקראה</a></li>
+                                            {% endif %}
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#forwardContactModal{{ message.id }}"><i class="fas fa-share me-2"></i>העבר</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete_contact_message', id=message.id) }}" onsubmit="return confirm('האם למחוק הודעה זו?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>מחק</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                             
@@ -166,14 +176,24 @@
                                 <td>{{ contact.guest_count or '-' }}</td>
                                 <td>{{ contact.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                 <td>
-                                    {% if not contact.is_read %}
-                                    <button class="btn btn-sm btn-success mark-read mark-read-catering" data-id="{{ contact.id }}">
-                                        <i class="fas fa-check"></i> סמן
-                                    </button>
-                                    {% endif %}
-                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#forwardCateringModal{{ contact.id }}">
-                                        <i class="fas fa-share"></i> העבר
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if not contact.is_read %}
+                                            <li><a class="dropdown-item mark-read-catering" href="#" data-id="{{ contact.id }}"><i class="fas fa-check me-2"></i>סמן כנקראה</a></li>
+                                            {% endif %}
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#forwardCateringModal{{ contact.id }}"><i class="fas fa-share me-2"></i>העבר</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete_catering_contact', id=contact.id) }}" onsubmit="return confirm('האם למחוק פנייה זו?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>מחק</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                             
@@ -251,14 +271,24 @@
                                 <td>{{ application.message[:100] if application.message else '-' }}{% if application.message and application.message|length > 100 %}...{% endif %}</td>
                                 <td>{{ application.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                 <td>
-                                    {% if not application.is_read %}
-                                    <button class="btn btn-sm btn-success mark-read mark-read-career" data-id="{{ application.id }}">
-                                        <i class="fas fa-check"></i> סמן
-                                    </button>
-                                    {% endif %}
-                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#forwardCareerModal{{ application.id }}">
-                                        <i class="fas fa-share"></i> העבר
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if not application.is_read %}
+                                            <li><a class="dropdown-item mark-read-career" href="#" data-id="{{ application.id }}"><i class="fas fa-check me-2"></i>סמן כנקראה</a></li>
+                                            {% endif %}
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#forwardCareerModal{{ application.id }}"><i class="fas fa-share me-2"></i>העבר</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete_career_application', id=application.id) }}" onsubmit="return confirm('האם למחוק מועמדות זו?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>מחק</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </td>
                             </tr>
                             

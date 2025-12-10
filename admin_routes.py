@@ -4188,6 +4188,35 @@ def mark_career_application_read(id):
     db.session.commit()
     return jsonify({'success': True})
 
+@admin_bp.route('/messages/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_contact_message(id):
+    message = ContactMessage.query.get_or_404(id)
+    db.session.delete(message)
+    db.session.commit()
+    flash('ההודעה נמחקה בהצלחה', 'success')
+    return redirect(url_for('admin.messages', tab='contact'))
+
+@admin_bp.route('/catering-contacts/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_catering_contact(id):
+    from models import CateringContact
+    contact = CateringContact.query.get_or_404(id)
+    db.session.delete(contact)
+    db.session.commit()
+    flash('הפנייה נמחקה בהצלחה', 'success')
+    return redirect(url_for('admin.messages', tab='catering'))
+
+@admin_bp.route('/career-applications/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_career_application(id):
+    from models import CareerContact
+    application = CareerContact.query.get_or_404(id)
+    db.session.delete(application)
+    db.session.commit()
+    flash('המועמדות נמחקה בהצלחה', 'success')
+    return redirect(url_for('admin.messages', tab='careers'))
+
 # Email forwarding routes
 @admin_bp.route('/messages/forward/<int:id>', methods=['POST'])
 @login_required

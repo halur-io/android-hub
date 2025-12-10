@@ -4221,7 +4221,7 @@ def delete_career_application(id):
 @admin_bp.route('/messages/forward/<int:id>', methods=['POST'])
 @login_required
 def forward_message(id):
-    from flask_mail import Message as MailMessage
+    from sendgrid_helper import send_email_notification
     message = ContactMessage.query.get_or_404(id)
     
     recipient_email = request.form.get('email')
@@ -4230,23 +4230,23 @@ def forward_message(id):
         return redirect(url_for('admin.messages'))
     
     try:
-        msg = MailMessage(
-            subject=f'Forwarded: Contact from {message.name}',
-            recipients=[recipient_email],
-            body=f'''
-Forwarded Contact Message:
-
-Name: {message.name}
-Email: {message.email}
-Phone: {message.phone}
-Date: {message.created_at.strftime('%Y-%m-%d %H:%M')}
-
-Message:
-{message.message}
-'''
-        )
-        mail.send(msg)
-        flash('ההודעה הועברה בהצלחה', 'success')
+        subject = f'העברה: הודעת קשר מ-{message.name}'
+        html_content = f'''
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>הודעת קשר מועברת</h2>
+            <p><strong>שם:</strong> {message.name}</p>
+            <p><strong>אימייל:</strong> {message.email}</p>
+            <p><strong>טלפון:</strong> {message.phone}</p>
+            <p><strong>תאריך:</strong> {message.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <hr>
+            <p><strong>הודעה:</strong></p>
+            <p>{message.message}</p>
+        </div>
+        '''
+        if send_email_notification(recipient_email, subject, html_content):
+            flash('ההודעה הועברה בהצלחה', 'success')
+        else:
+            flash('שגיאה בהעברת ההודעה', 'error')
     except Exception as e:
         current_app.logger.error(f"Error forwarding message: {str(e)}")
         flash('שגיאה בהעברת ההודעה', 'error')
@@ -4256,7 +4256,7 @@ Message:
 @admin_bp.route('/catering-contacts/forward/<int:id>', methods=['POST'])
 @login_required
 def forward_catering_contact(id):
-    from flask_mail import Message as MailMessage
+    from sendgrid_helper import send_email_notification
     from models import CateringContact
     contact = CateringContact.query.get_or_404(id)
     
@@ -4266,26 +4266,27 @@ def forward_catering_contact(id):
         return redirect(url_for('admin.catering_contacts'))
     
     try:
-        msg = MailMessage(
-            subject=f'Forwarded: Catering Inquiry from {contact.name}',
-            recipients=[recipient_email],
-            body=f'''
-Forwarded Catering Inquiry:
-
-Name: {contact.name}
-Email: {contact.email}
-Phone: {contact.phone}
-Event Date: {contact.event_date or 'Not specified'}
-Event Type: {contact.event_type or 'Not specified'}
-Guest Count: {contact.guest_count or 'Not specified'}
-Date Received: {contact.created_at.strftime('%Y-%m-%d %H:%M')}
-
-Message:
-{contact.message}
-'''
-        )
-        mail.send(msg)
-        flash('ההודעה הועברה בהצלחה', 'success')
+        event_date_str = contact.event_date.strftime('%Y-%m-%d') if contact.event_date else 'לא צוין'
+        subject = f'העברה: פנייה לקייטרינג מ-{contact.name}'
+        html_content = f'''
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>פנייה לקייטרינג מועברת</h2>
+            <p><strong>שם:</strong> {contact.name}</p>
+            <p><strong>אימייל:</strong> {contact.email}</p>
+            <p><strong>טלפון:</strong> {contact.phone}</p>
+            <p><strong>תאריך אירוע:</strong> {event_date_str}</p>
+            <p><strong>סוג אירוע:</strong> {contact.event_type or 'לא צוין'}</p>
+            <p><strong>מספר אורחים:</strong> {contact.guest_count or 'לא צוין'}</p>
+            <p><strong>תאריך קבלה:</strong> {contact.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <hr>
+            <p><strong>הודעה:</strong></p>
+            <p>{contact.message}</p>
+        </div>
+        '''
+        if send_email_notification(recipient_email, subject, html_content):
+            flash('ההודעה הועברה בהצלחה', 'success')
+        else:
+            flash('שגיאה בהעברת ההודעה', 'error')
     except Exception as e:
         current_app.logger.error(f"Error forwarding catering contact: {str(e)}")
         flash('שגיאה בהעברת ההודעה', 'error')
@@ -4295,7 +4296,7 @@ Message:
 @admin_bp.route('/career-applications/forward/<int:id>', methods=['POST'])
 @login_required
 def forward_career_application(id):
-    from flask_mail import Message as MailMessage
+    from sendgrid_helper import send_email_notification
     from models import CareerContact
     application = CareerContact.query.get_or_404(id)
     
@@ -4305,27 +4306,27 @@ def forward_career_application(id):
         return redirect(url_for('admin.career_applications'))
     
     position_name = application.position_other if application.position_other else \
-                   (application.position.title_en if application.position else 'Unknown')
+                   (application.position.title_en if application.position else 'לא צוין')
     
     try:
-        msg = MailMessage(
-            subject=f'Forwarded: Job Application from {application.name} - {position_name}',
-            recipients=[recipient_email],
-            body=f'''
-Forwarded Job Application:
-
-Name: {application.name}
-Email: {application.email}
-Phone: {application.phone}
-Position: {position_name}
-Date Received: {application.created_at.strftime('%Y-%m-%d %H:%M')}
-
-Message:
-{application.message}
-'''
-        )
-        mail.send(msg)
-        flash('ההודעה הועברה בהצלחה', 'success')
+        subject = f'העברה: מועמדות לעבודה מ-{application.name} - {position_name}'
+        html_content = f'''
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>מועמדות לעבודה מועברת</h2>
+            <p><strong>שם:</strong> {application.name}</p>
+            <p><strong>אימייל:</strong> {application.email}</p>
+            <p><strong>טלפון:</strong> {application.phone}</p>
+            <p><strong>משרה:</strong> {position_name}</p>
+            <p><strong>תאריך קבלה:</strong> {application.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <hr>
+            <p><strong>הודעה:</strong></p>
+            <p>{application.message}</p>
+        </div>
+        '''
+        if send_email_notification(recipient_email, subject, html_content):
+            flash('ההודעה הועברה בהצלחה', 'success')
+        else:
+            flash('שגיאה בהעברת ההודעה', 'error')
     except Exception as e:
         current_app.logger.error(f"Error forwarding career application: {str(e)}")
         flash('שגיאה בהעברת ההודעה', 'error')

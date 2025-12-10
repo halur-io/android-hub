@@ -77,10 +77,10 @@ def send_email_notification(to_email, subject, html_content, plain_text=None):
         logging.error(f'Error sending email via SendGrid: {e}')
         return False
 
-def send_new_message_notification(message_type, message_data, admin_email):
+def send_new_message_notification(message_type, message_data, admin_email, custom_subject=None):
     """Send notification for new message received"""
     if message_type == 'contact':
-        subject = f"הודעת יצירת קשר חדשה - {message_data.get('name', 'לקוח')}"
+        subject = custom_subject or f"הודעת יצירת קשר חדשה - {message_data.get('name', 'לקוח')}"
         html_content = f"""
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>הודעת יצירת קשר חדשה</h2>
@@ -93,7 +93,7 @@ def send_new_message_notification(message_type, message_data, admin_email):
         </div>
         """
     elif message_type == 'catering':
-        subject = f"פנייה חדשה לקייטרינג - {message_data.get('name', 'לקוח')}"
+        subject = custom_subject or f"פנייה חדשה לקייטרינג - {message_data.get('name', 'לקוח')}"
         html_content = f"""
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>פנייה חדשה לקייטרינג</h2>
@@ -109,7 +109,7 @@ def send_new_message_notification(message_type, message_data, admin_email):
         </div>
         """
     elif message_type == 'career':
-        subject = f"מועמדות חדשה לעבודה - {message_data.get('name', 'מועמד')}"
+        subject = custom_subject or f"מועמדות חדשה לעבודה - {message_data.get('name', 'מועמד')}"
         html_content = f"""
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>מועמדות חדשה לעבודה</h2>

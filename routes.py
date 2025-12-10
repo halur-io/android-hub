@@ -248,6 +248,7 @@ def catering_page():
                     recipient_email = settings.catering_form_email if settings and settings.catering_form_email else None
                     
                     if recipient_email:
+                        custom_subject = settings.catering_email_subject if settings and settings.catering_email_subject else None
                         send_new_message_notification('catering', {
                             'name': name,
                             'email': email,
@@ -256,7 +257,7 @@ def catering_page():
                             'event_date': event_date,
                             'guest_count': guest_count,
                             'message': message
-                        }, recipient_email)
+                        }, recipient_email, custom_subject)
                 except Exception as email_error:
                     current_app.logger.error(f"Error sending catering email via SendGrid: {str(email_error)}")
                 
@@ -341,13 +342,14 @@ def careers_page():
                                        (CareerPosition.query.get(position_id).title_en if position_id else 'Unknown')
                         
                         if recipient_email:
+                            custom_subject = settings.careers_email_subject if settings and settings.careers_email_subject else None
                             send_new_message_notification('career', {
                                 'name': name,
                                 'email': email,
                                 'phone': phone,
                                 'position': position_name,
                                 'message': message
-                            }, recipient_email)
+                            }, recipient_email, custom_subject)
                     except Exception as email_error:
                         current_app.logger.error(f"Error sending career email via SendGrid: {str(email_error)}")
                 
@@ -405,12 +407,13 @@ def contact_page():
                 admin_email = site_settings.contact_form_email if site_settings and site_settings.contact_form_email else None
                 
                 if admin_email:
+                    custom_subject = site_settings.contact_email_subject if site_settings and site_settings.contact_email_subject else None
                     send_new_message_notification('contact', {
                         'name': form.name.data,
                         'email': form.email.data,
                         'phone': form.phone.data,
                         'message': form.message.data
-                    }, admin_email)
+                    }, admin_email, custom_subject)
             except Exception as email_error:
                 logging.error(f'Error sending contact email via SendGrid: {email_error}')
             

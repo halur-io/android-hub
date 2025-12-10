@@ -185,6 +185,11 @@ class SiteSettings(db.Model):
     catering_form_email = db.Column(db.String(255), default='info@sumo-restaurant.co.il')  # Catering form recipient
     careers_form_email = db.Column(db.String(255), default='info@sumo-restaurant.co.il')  # Careers form recipient
     
+    # Email Subject Configuration - Custom subjects for notification emails
+    contact_email_subject = db.Column(db.String(255), default='הודעה חדשה מהאתר')
+    catering_email_subject = db.Column(db.String(255), default='פנייה חדשה לקייטרינג')
+    careers_email_subject = db.Column(db.String(255), default='מועמדות חדשה לעבודה')
+    
     # Catering & Special Events Settings (Homepage Section)
     enable_catering_section = db.Column(db.Boolean, default=True)
     catering_title_he = db.Column(db.String(200), default='קייטרינג ואירועים מיוחדים')

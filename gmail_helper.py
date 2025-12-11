@@ -52,12 +52,13 @@ def get_gmail_credentials():
         return None
 
 def send_email_via_gmail(to_email, subject, html_content, plain_text=None):
-    """Send email using Gmail API"""
+    """Send email using Gmail API. Returns (success, error_message)"""
     access_token = get_gmail_credentials()
     
     if not access_token:
-        logging.error('Gmail credentials not available')
-        return False
+        error_msg = 'Gmail credentials not available - please reconnect Gmail'
+        logging.error(error_msg)
+        return False, error_msg
     
     try:
         message = MIMEMultipart('alternative')
@@ -86,13 +87,15 @@ def send_email_via_gmail(to_email, subject, html_content, plain_text=None):
         
         if response.status_code in (200, 201, 202):
             logging.info(f'Email sent successfully via Gmail to {to_email}')
-            return True
+            return True, None
         else:
-            logging.error(f'Gmail API error: {response.status_code} - {response.text}')
-            return False
+            error_msg = f'Gmail API error {response.status_code}: {response.text}'
+            logging.error(error_msg)
+            return False, error_msg
     except Exception as e:
-        logging.error(f'Error sending email via Gmail: {e}')
-        return False
+        error_msg = f'Error sending email: {str(e)}'
+        logging.error(error_msg)
+        return False, error_msg
 
 def send_new_message_notification(message_type, message_data, admin_email, custom_subject=None):
     """Send notification for new message received"""

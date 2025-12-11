@@ -4243,13 +4243,14 @@ def forward_message(id):
             <p>{message.message}</p>
         </div>
         '''
-        if send_email_via_gmail(recipient_email, subject, html_content):
+        success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
+        if success:
             flash('ההודעה הועברה בהצלחה', 'success')
         else:
-            flash('שגיאה בהעברת ההודעה', 'error')
+            flash(f'שגיאה בהעברת ההודעה: {error_msg}', 'error')
     except Exception as e:
         current_app.logger.error(f"Error forwarding message: {str(e)}")
-        flash('שגיאה בהעברת ההודעה', 'error')
+        flash(f'שגיאה בהעברת ההודעה: {str(e)}', 'error')
     
     return redirect(url_for('admin.messages'))
 
@@ -4283,13 +4284,14 @@ def forward_catering_contact(id):
             <p>{contact.message}</p>
         </div>
         '''
-        if send_email_via_gmail(recipient_email, subject, html_content):
+        success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
+        if success:
             flash('ההודעה הועברה בהצלחה', 'success')
         else:
-            flash('שגיאה בהעברת ההודעה', 'error')
+            flash(f'שגיאה בהעברת ההודעה: {error_msg}', 'error')
     except Exception as e:
         current_app.logger.error(f"Error forwarding catering contact: {str(e)}")
-        flash('שגיאה בהעברת ההודעה', 'error')
+        flash(f'שגיאה בהעברת ההודעה: {str(e)}', 'error')
     
     return redirect(url_for('admin.catering_contacts'))
 
@@ -4323,13 +4325,14 @@ def forward_career_application(id):
             <p>{application.message}</p>
         </div>
         '''
-        if send_email_via_gmail(recipient_email, subject, html_content):
+        success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
+        if success:
             flash('ההודעה הועברה בהצלחה', 'success')
         else:
-            flash('שגיאה בהעברת ההודעה', 'error')
+            flash(f'שגיאה בהעברת ההודעה: {error_msg}', 'error')
     except Exception as e:
         current_app.logger.error(f"Error forwarding career application: {str(e)}")
-        flash('שגיאה בהעברת ההודעה', 'error')
+        flash(f'שגיאה בהעברת ההודעה: {str(e)}', 'error')
     
     return redirect(url_for('admin.career_applications'))
 

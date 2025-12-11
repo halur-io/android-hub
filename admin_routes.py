@@ -4221,7 +4221,7 @@ def delete_career_application(id):
 @admin_bp.route('/messages/forward/<int:id>', methods=['POST'])
 @login_required
 def forward_message(id):
-    from sendgrid_helper import send_email_notification
+    from gmail_helper import send_email_via_gmail
     message = ContactMessage.query.get_or_404(id)
     
     recipient_email = request.form.get('email')
@@ -4243,7 +4243,7 @@ def forward_message(id):
             <p>{message.message}</p>
         </div>
         '''
-        if send_email_notification(recipient_email, subject, html_content):
+        if send_email_via_gmail(recipient_email, subject, html_content):
             flash('ההודעה הועברה בהצלחה', 'success')
         else:
             flash('שגיאה בהעברת ההודעה', 'error')
@@ -4256,7 +4256,7 @@ def forward_message(id):
 @admin_bp.route('/catering-contacts/forward/<int:id>', methods=['POST'])
 @login_required
 def forward_catering_contact(id):
-    from sendgrid_helper import send_email_notification
+    from gmail_helper import send_email_via_gmail
     from models import CateringContact
     contact = CateringContact.query.get_or_404(id)
     
@@ -4283,7 +4283,7 @@ def forward_catering_contact(id):
             <p>{contact.message}</p>
         </div>
         '''
-        if send_email_notification(recipient_email, subject, html_content):
+        if send_email_via_gmail(recipient_email, subject, html_content):
             flash('ההודעה הועברה בהצלחה', 'success')
         else:
             flash('שגיאה בהעברת ההודעה', 'error')
@@ -4296,7 +4296,7 @@ def forward_catering_contact(id):
 @admin_bp.route('/career-applications/forward/<int:id>', methods=['POST'])
 @login_required
 def forward_career_application(id):
-    from sendgrid_helper import send_email_notification
+    from gmail_helper import send_email_via_gmail
     from models import CareerContact
     application = CareerContact.query.get_or_404(id)
     
@@ -4323,7 +4323,7 @@ def forward_career_application(id):
             <p>{application.message}</p>
         </div>
         '''
-        if send_email_notification(recipient_email, subject, html_content):
+        if send_email_via_gmail(recipient_email, subject, html_content):
             flash('ההודעה הועברה בהצלחה', 'success')
         else:
             flash('שגיאה בהעברת ההודעה', 'error')

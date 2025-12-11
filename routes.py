@@ -242,7 +242,7 @@ def catering_page():
                 
                 # Send email notification via SendGrid
                 try:
-                    from sendgrid_helper import send_new_message_notification
+                    from gmail_helper import send_new_message_notification
                     from models import SiteSettings
                     settings = SiteSettings.query.first()
                     recipient_email = settings.catering_form_email if settings and settings.catering_form_email else None
@@ -334,7 +334,7 @@ def careers_page():
                     
                     # Send email notification via SendGrid
                     try:
-                        from sendgrid_helper import send_new_message_notification
+                        from gmail_helper import send_new_message_notification
                         from models import SiteSettings
                         settings = SiteSettings.query.first()
                         recipient_email = settings.careers_form_email if settings and settings.careers_form_email else None
@@ -401,7 +401,7 @@ def contact_page():
             
             # Try to send email notification via SendGrid
             try:
-                from sendgrid_helper import send_new_message_notification
+                from gmail_helper import send_new_message_notification
                 from models import SiteSettings
                 site_settings = SiteSettings.query.first()
                 admin_email = site_settings.contact_form_email if site_settings and site_settings.contact_form_email else None

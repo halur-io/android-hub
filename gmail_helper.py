@@ -51,7 +51,7 @@ def get_gmail_credentials():
         logging.error(f'Error getting Gmail credentials: {e}')
         return None
 
-def send_email_via_gmail(to_email, subject, html_content, plain_text=None):
+def send_email_via_gmail(to_email, subject, html_content, plain_text=None, from_email=None):
     """Send email using Gmail API. Returns (success, error_message)"""
     access_token = get_gmail_credentials()
     
@@ -60,8 +60,12 @@ def send_email_via_gmail(to_email, subject, html_content, plain_text=None):
         logging.error(error_msg)
         return False, error_msg
     
+    # Default sender email
+    sender_email = from_email or os.environ.get('GMAIL_SENDER_EMAIL', 'info@sumo-rest.co.il')
+    
     try:
         message = MIMEMultipart('alternative')
+        message['From'] = sender_email
         message['To'] = to_email
         message['Subject'] = subject
         

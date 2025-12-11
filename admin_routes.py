@@ -21,6 +21,18 @@ from utilities.exporting import build_export_response
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+# Security: Protect all admin routes at the blueprint level
+PUBLIC_ADMIN_ROUTES = ['admin.login', 'admin.admin_redirect', 'admin.api_settings', 'admin.api_branches', 'admin.api_gallery', 'admin.api_menu']
+
+@admin_bp.before_request
+def require_login():
+    """Ensure all admin routes require authentication except login and public APIs"""
+    if request.endpoint in PUBLIC_ADMIN_ROUTES:
+        return None
+    if not current_user.is_authenticated:
+        flash('יש להתחבר כדי לגשת לעמוד זה', 'error')
+        return redirect(url_for('admin.login', next=request.url))
+
 # Context processor to inject admin language into all admin templates
 @admin_bp.context_processor
 def inject_admin_language():
@@ -1357,10 +1369,9 @@ def edit_dietary_property(id=None):
     return render_template('admin/edit_dietary_property.html', property=prop)
 
 @admin_bp.route('/menu/dietary-properties/toggle/<int:id>', methods=['POST'])
+@login_required
 def toggle_dietary_property(id):
-    # Check if user is logged in manually (bypass login_required for API)
-    if not current_user.is_authenticated:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    """Toggle dietary property active status"""
     
     try:
         prop = DietaryProperty.query.get_or_404(id)

@@ -4231,13 +4231,14 @@ def forward_message(id):
     
     try:
         subject = f'העברה: הודעת קשר מ-{message.name}'
+        created_at_str = message.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(message.created_at, 'strftime') else str(message.created_at)
         html_content = f'''
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>הודעת קשר מועברת</h2>
             <p><strong>שם:</strong> {message.name}</p>
             <p><strong>אימייל:</strong> {message.email}</p>
             <p><strong>טלפון:</strong> {message.phone}</p>
-            <p><strong>תאריך:</strong> {message.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <p><strong>תאריך:</strong> {created_at_str}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
             <p>{message.message}</p>
@@ -4267,7 +4268,8 @@ def forward_catering_contact(id):
         return redirect(url_for('admin.catering_contacts'))
     
     try:
-        event_date_str = contact.event_date.strftime('%Y-%m-%d') if contact.event_date else 'לא צוין'
+        event_date_str = contact.event_date.strftime('%Y-%m-%d') if hasattr(contact.event_date, 'strftime') else (str(contact.event_date) if contact.event_date else 'לא צוין')
+        created_at_str = contact.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(contact.created_at, 'strftime') else str(contact.created_at)
         subject = f'העברה: פנייה לקייטרינג מ-{contact.name}'
         html_content = f'''
         <div dir="rtl" style="font-family: Arial, sans-serif;">
@@ -4278,7 +4280,7 @@ def forward_catering_contact(id):
             <p><strong>תאריך אירוע:</strong> {event_date_str}</p>
             <p><strong>סוג אירוע:</strong> {contact.event_type or 'לא צוין'}</p>
             <p><strong>מספר אורחים:</strong> {contact.guest_count or 'לא צוין'}</p>
-            <p><strong>תאריך קבלה:</strong> {contact.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <p><strong>תאריך קבלה:</strong> {created_at_str}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
             <p>{contact.message}</p>
@@ -4311,6 +4313,7 @@ def forward_career_application(id):
                    (application.position.title_en if application.position else 'לא צוין')
     
     try:
+        created_at_str = application.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(application.created_at, 'strftime') else str(application.created_at)
         subject = f'העברה: מועמדות לעבודה מ-{application.name} - {position_name}'
         html_content = f'''
         <div dir="rtl" style="font-family: Arial, sans-serif;">
@@ -4319,7 +4322,7 @@ def forward_career_application(id):
             <p><strong>אימייל:</strong> {application.email}</p>
             <p><strong>טלפון:</strong> {application.phone}</p>
             <p><strong>משרה:</strong> {position_name}</p>
-            <p><strong>תאריך קבלה:</strong> {application.created_at.strftime('%Y-%m-%d %H:%M')}</p>
+            <p><strong>תאריך קבלה:</strong> {created_at_str}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
             <p>{application.message}</p>

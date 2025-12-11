@@ -30,6 +30,8 @@
         
         .sidebar {
             min-height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
             background: var(--sumo-navy);
             color: white;
             position: fixed;
@@ -696,6 +698,9 @@
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.messages' %}active{% endif %}" href="{{ url_for('admin.messages') }}">
                 <i class="fas fa-envelope me-2"></i> {{ 'הודעות' if (admin_language or 'he') == 'he' else 'Messages' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.newsletter' %}active{% endif %}" href="{{ url_for('admin.newsletter') }}">
+                <i class="fas fa-newspaper me-2"></i> {{ 'ניוזלטר' if (admin_language or 'he') == 'he' else 'Newsletter' }}
             </a>
             <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
                 <i class="fas fa-calendar-check me-2"></i> {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'Reservations' }}

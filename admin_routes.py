@@ -26,6 +26,17 @@ PUBLIC_ADMIN_ROUTES = ['admin.login', 'admin.admin_redirect', 'admin.api_setting
 
 # Route to permission mapping for RBAC enforcement
 ROUTE_PERMISSIONS = {
+    # Users
+    'admin.users': 'users.view',
+    'admin.add_user': 'users.create',
+    'admin.edit_user': 'users.edit',
+    'admin.delete_user': 'users.delete',
+    # Roles
+    'admin.roles': 'roles.view',
+    'admin.create_role': 'roles.create',
+    'admin.edit_role': 'roles.edit',
+    'admin.delete_role': 'roles.delete',
+    'admin.permissions': 'roles.view',
     # Settings
     'admin.settings': 'settings.view',
     'admin.payment_settings': 'settings.edit',

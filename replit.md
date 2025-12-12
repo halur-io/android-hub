@@ -76,3 +76,17 @@ The admin panel uses a comprehensive RBAC system:
 - Fixed XSS vulnerability in form submission button handling (static/js/main.js, line 484)
 - Changed from innerHTML to textContent for safer DOM manipulation
 - Implemented centralized RBAC enforcement via before_request hook in admin routes
+- Added users.* and roles.* permissions to ROUTE_PERMISSIONS for complete coverage
+- Sidebar and dashboard correctly hide unauthorized links based on user permissions
+
+## RBAC Permission Categories
+- `users.view/create/edit/delete` - User management
+- `roles.view/create/edit/delete` - Role management  
+- `settings.view/edit` - Site settings, gallery, messages, newsletter, reservations
+- `menu.view/edit` - Menu management
+- `branches.view/edit` - Branch management
+- `stock.view/manage/suppliers/transactions/alerts/analytics/shopping_lists/settings` - Stock operations
+- `checklists.view/edit` - Task checklists
+- `kitchen.view/manage` - Kitchen operations
+- `reports.view` - Reports access
+- `system.admin` - System configuration

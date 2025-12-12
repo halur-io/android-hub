@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html {% if language == 'he' %}dir="rtl" lang="he"{% else %}dir="ltr" lang="en"{% endif %}>
 <head>
+    {% if settings and settings.google_tag_manager_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ settings.google_tag_manager_id }}');</script>
+    <!-- End Google Tag Manager -->
+    {% elif settings and settings.google_analytics_id %}
+    <!-- Google tag (gtag.js) - fallback when GTM not configured -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ settings.google_analytics_id }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ settings.google_analytics_id }}');
+    </script>
+    {% endif %}
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -82,6 +101,12 @@
     </script>
 </head>
 <body class="{{ 'rtl' if language == 'he' else 'ltr' }}">
+    {% if settings and settings.google_tag_manager_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ settings.google_tag_manager_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
     
     <!-- Smart App Banner (Mobile Only) -->
     {% if settings.enable_app_download and settings.show_app_banner and (settings.app_store_url or settings.google_play_url) %}

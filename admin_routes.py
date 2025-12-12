@@ -750,6 +750,7 @@ def settings():
         settings.careers_form_email = request.form.get('careers_form_email') or 'info@sumo-restaurant.co.il'
         
         # Advanced Features
+        settings.google_tag_manager_id = request.form.get('google_tag_manager_id')
         settings.google_analytics_id = request.form.get('google_analytics_id')
         settings.facebook_pixel_id = request.form.get('facebook_pixel_id')
         settings.maintenance_mode = request.form.get('maintenance_mode') == 'on'

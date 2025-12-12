@@ -237,6 +237,7 @@ class SiteSettings(db.Model):
     
     # Advanced Features
     google_analytics_id = db.Column(db.String(50))  # GA tracking ID
+    google_tag_manager_id = db.Column(db.String(50))  # GTM container ID (GTM-XXXXXXX)
     facebook_pixel_id = db.Column(db.String(50))  # FB Pixel ID
     maintenance_mode = db.Column(db.Boolean, default=False)  # Show maintenance page
     announcement_text_he = db.Column(db.String(500))  # Top banner announcement

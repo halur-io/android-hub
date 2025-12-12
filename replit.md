@@ -8,7 +8,23 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ Contact forms save to database
 - ✅ Admin panel for managing content
 - ✅ XSS vulnerability fixed in form submission buttons
+- ✅ Google Tag Manager integration for tracking
+- ✅ SEO: robots.txt, sitemap.xml, Google verification file
 - ⏸️ Email notifications: Not configured yet (optional)
+
+## Google Tag Manager Setup
+GTM tracks page views and menu dish interactions automatically.
+
+**To enable:**
+1. Create a GTM container at https://tagmanager.google.com
+2. Copy your Container ID (GTM-XXXXXXX)
+3. Go to Admin → Site Settings → Advanced → Analytics & Tracking
+4. Paste your GTM ID and save
+
+**Events tracked:**
+- `dish_view` - When a menu dish is clicked (includes dish name, category, price)
+- `menu_category_view` - When switching menu categories
+- `add_to_cart` - When adding items to cart
 
 ## Email Configuration (Optional - For Future Setup)
 The website works perfectly without email notifications. All messages are saved to the database and can be viewed in the admin panel at `/admin`.

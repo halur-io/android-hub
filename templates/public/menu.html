@@ -75,7 +75,13 @@
                 <!-- Menu Items -->
                 <div class="{% if show_images %}menu-items-grid{% else %}menu-items-list{% endif %}">
                     {% for item in category.items %}
-                    <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}">
+                    <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}"
+                         data-dish-id="{{ item.id }}"
+                         data-dish-name="{{ item.name_he }}"
+                         data-dish-name-en="{{ item.name_en }}"
+                         data-dish-category="{{ category.name_he }}"
+                         data-dish-price="{{ item.base_price }}"
+                         onclick="trackDishView(this)">
                         {% if show_images and item.image_path %}
                         <div class="item-image-wrapper" onclick="openImageModal('{{ item.image_path }}')">
                             <img src="{{ item.image_path }}" 
@@ -538,6 +544,53 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeImageModal();
     }
+});
+
+// Track dish views/clicks for Google Tag Manager
+function trackDishView(element) {
+    if (typeof dataLayer !== 'undefined') {
+        dataLayer.push({
+            'event': 'dish_view',
+            'dish_id': element.dataset.dishId,
+            'dish_name': element.dataset.dishName,
+            'dish_name_en': element.dataset.dishNameEn,
+            'dish_category': element.dataset.dishCategory,
+            'dish_price': parseFloat(element.dataset.dishPrice) || 0
+        });
+    }
+}
+
+// Track category tab changes
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryTabs = document.querySelectorAll('.menu-category-tabs .nav-link');
+    categoryTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            if (typeof dataLayer !== 'undefined') {
+                dataLayer.push({
+                    'event': 'menu_category_view',
+                    'category_name': this.textContent.trim()
+                });
+            }
+        });
+    });
+    
+    // Track add to cart events
+    const addToCartButtons = document.querySelectorAll('.btn-add-to-order');
+    addToCartButtons.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menuItem = this.closest('.menu-item-elegant');
+            if (menuItem && typeof dataLayer !== 'undefined') {
+                dataLayer.push({
+                    'event': 'add_to_cart',
+                    'dish_id': menuItem.dataset.dishId,
+                    'dish_name': menuItem.dataset.dishName,
+                    'dish_category': menuItem.dataset.dishCategory,
+                    'dish_price': parseFloat(menuItem.dataset.dishPrice) || 0
+                });
+            }
+        });
+    });
 });
 </script>
 

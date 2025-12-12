@@ -545,6 +545,16 @@ def privacy_policy_page():
     context['privacy'] = privacy
     return render_template('public/privacy.html', **context)
 
+@app.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt for search engines"""
+    return send_from_directory('static', 'robots.txt', mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    """Serve sitemap.xml for search engines"""
+    return send_from_directory('static', 'sitemap.xml', mimetype='application/xml')
+
 @app.errorhandler(404)
 def not_found(error):
     # Check if this is an admin route

@@ -555,6 +555,11 @@ def sitemap_xml():
     """Serve sitemap.xml for search engines"""
     return send_from_directory('static', 'sitemap.xml', mimetype='application/xml')
 
+@app.route('/google9f7698618241dd42.html')
+def google_verification():
+    """Serve Google Search Console verification file"""
+    return send_from_directory('static', 'google9f7698618241dd42.html', mimetype='text/html')
+
 @app.errorhandler(404)
 def not_found(error):
     # Check if this is an admin route

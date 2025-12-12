@@ -657,27 +657,27 @@
             <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
                 <i class="fas fa-dashboard me-2"></i> {{ 'לוח בקרה' if (admin_language or 'he') == 'he' else 'Dashboard' }}
             </a>
+            {% if has_permission('checklists.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.checklist' %}active{% endif %}" href="{{ url_for('admin.checklist') }}">
                 <i class="fas fa-clipboard-check me-2"></i> {{ 'רשימות משימות' if (admin_language or 'he') == 'he' else 'Task Lists' }}
             </a>
+            {% endif %}
+            {% if has_permission('menu.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.menu_wizard' %}active{% endif %}" href="{{ url_for('admin.menu_wizard') }}">
                 <i class="fas fa-magic me-2"></i> {{ 'אשף תפריט' if (admin_language or 'he') == 'he' else 'Menu Wizard' }}
             </a>
+            {% endif %}
             {% if has_permission('stock.view') %}
             <a class="nav-link {% if 'stock' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.stock_management') }}">
                 <i class="fas fa-boxes me-2"></i> {{ 'ניהול מלאי' if (admin_language or 'he') == 'he' else 'Stock Management' }}
             </a>
             {% endif %}
-            {# Receipts feature - coming soon
-            {% if has_permission('stock.manage') %}
-            <a class="nav-link {% if 'receipt' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.receipts') }}">
-                <i class="fas fa-receipt me-2"></i> {{ 'ניהול קבלות' if (admin_language or 'he') == 'he' else 'Receipt Management' }}
-            </a>
-            {% endif %}
-            #}
+            {% if has_permission('users.view') %}
             <a class="nav-link {% if request.endpoint in ['admin.users', 'admin.edit_user', 'admin.add_user'] %}active{% endif %}" href="{{ url_for('admin.users') }}">
                 <i class="fas fa-users me-2"></i> {{ 'ניהול משתמשים' if (admin_language or 'he') == 'he' else 'User Management' }}
             </a>
+            {% endif %}
+            {% if has_permission('settings.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
                 <i class="fas fa-cog me-2"></i> {{ 'הגדרות אתר' if (admin_language or 'he') == 'he' else 'Site Settings' }}
             </a>
@@ -687,12 +687,18 @@
             <a class="nav-link {% if request.endpoint == 'admin.media' %}active{% endif %}" href="{{ url_for('admin.media') }}">
                 <i class="fas fa-images me-2"></i> {{ 'מדיה' if (admin_language or 'he') == 'he' else 'Media' }}
             </a>
+            {% endif %}
+            {% if has_permission('branches.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.branches' %}active{% endif %}" href="{{ url_for('admin.branches') }}">
                 <i class="fas fa-store me-2"></i> {{ 'סניפים' if (admin_language or 'he') == 'he' else 'Branches' }}
             </a>
+            {% endif %}
+            {% if has_permission('menu.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.menu' %}active{% endif %}" href="{{ url_for('admin.menu') }}">
                 <i class="fas fa-utensils me-2"></i> {{ 'תפריט' if (admin_language or 'he') == 'he' else 'Menu' }}
             </a>
+            {% endif %}
+            {% if has_permission('settings.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.gallery' %}active{% endif %}" href="{{ url_for('admin.gallery') }}">
                 <i class="fas fa-photo-video me-2"></i> {{ 'גלריה' if (admin_language or 'he') == 'he' else 'Gallery' }}
             </a>
@@ -705,6 +711,8 @@
             <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
                 <i class="fas fa-calendar-check me-2"></i> {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'Reservations' }}
             </a>
+            {% endif %}
+            {% if has_permission('system.admin') %}
             <hr class="my-3">
             <a class="nav-link {% if request.endpoint == 'admin.microservices_dashboard' %}active{% endif %}" href="{{ url_for('admin.microservices_dashboard') }}">
                 <i class="fas fa-microchip me-2"></i> {{ 'מערכת הזמנות' if (admin_language or 'he') == 'he' else 'Ordering System' }}
@@ -712,9 +720,12 @@
             <a class="nav-link {% if request.endpoint == 'admin.system_config' %}active{% endif %}" href="{{ url_for('admin.system_config') }}">
                 <i class="fas fa-cogs me-2"></i> {{ 'הגדרות מערכת' if (admin_language or 'he') == 'he' else 'System Settings' }}
             </a>
+            {% endif %}
+            {% if has_permission('kitchen.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.kitchen_config' %}active{% endif %}" href="{{ url_for('admin.kitchen_config') }}">
                 <i class="fas fa-print me-2"></i> {{ 'מדפסות SNBC' if (admin_language or 'he') == 'he' else 'SNBC Printers' }}
             </a>
+            {% endif %}
             <hr class="my-3">
             <a class="nav-link" href="{{ url_for('admin.logout') }}">
                 <i class="fas fa-sign-out-alt me-2"></i> {{ 'יציאה' if (admin_language or 'he') == 'he' else 'Logout' }}

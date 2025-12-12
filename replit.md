@@ -43,6 +43,36 @@ Access the admin panel at `/admin` to:
 - Update site content
 - Check messages from visitors
 
-## Recent Security Fix
+## Role-Based Access Control (RBAC)
+The admin panel uses a comprehensive RBAC system:
+
+**How it works:**
+- Roles (admin, manager, kitchen, cashier, delivery, viewer) contain sets of permissions
+- Users are assigned roles via Admin → User Management → Edit User
+- Superadmins (is_superadmin=true) bypass all permission checks
+- The sidebar dynamically shows/hides menu items based on user permissions
+
+**Permission enforcement:**
+- `admin_routes.py` has a `ROUTE_PERMISSIONS` mapping that defines required permissions for each route
+- The `before_request` hook checks permissions before allowing access
+- Routes without explicit mapping in `ROUTE_PERMISSIONS` only require login
+
+**Available roles:**
+- `superadmin` - Full system access
+- `admin` - Administrative functions
+- `manager` - Operations management
+- `kitchen` - Kitchen operations and stock
+- `cashier` - Payment and orders
+- `delivery` - Delivery management
+- `viewer` - Read-only access
+
+**Files:**
+- `permissions.py` - Permission decorators and utilities
+- `admin_routes.py` - ROUTE_PERMISSIONS mapping and before_request hook
+- `models.py` - Role, Permission, AdminUser models
+- `templates/admin/base.html` - Sidebar with permission checks
+
+## Recent Security Fixes
 - Fixed XSS vulnerability in form submission button handling (static/js/main.js, line 484)
 - Changed from innerHTML to textContent for safer DOM manipulation
+- Implemented centralized RBAC enforcement via before_request hook in admin routes

@@ -24,14 +24,105 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 # Security: Protect all admin routes at the blueprint level
 PUBLIC_ADMIN_ROUTES = ['admin.login', 'admin.admin_redirect', 'admin.api_settings', 'admin.api_branches', 'admin.api_gallery', 'admin.api_menu']
 
+# Route to permission mapping for RBAC enforcement
+ROUTE_PERMISSIONS = {
+    # Settings
+    'admin.settings': 'settings.view',
+    'admin.payment_settings': 'settings.edit',
+    # Menu
+    'admin.menu': 'menu.view',
+    'admin.edit_category': 'menu.edit',
+    'admin.edit_menu_item': 'menu.edit',
+    'admin.menu_settings': 'menu.view',
+    'admin.save_menu_settings': 'menu.edit',
+    'admin.toggle_item_availability': 'menu.edit',
+    'admin.dietary_properties': 'menu.view',
+    'admin.edit_dietary_property': 'menu.edit',
+    'admin.toggle_dietary_property': 'menu.edit',
+    'admin.delete_dietary_property': 'menu.edit',
+    'admin.reorder_dietary_properties': 'menu.edit',
+    'admin.menu_reorder': 'menu.edit',
+    'admin.reorder_items': 'menu.edit',
+    'admin.reorder_categories': 'menu.edit',
+    'admin.menu_import': 'menu.edit',
+    'admin.menu_import_upload': 'menu.edit',
+    'admin.menu_import_process': 'menu.edit',
+    'admin.delete_menu_item': 'menu.edit',
+    'admin.delete_category': 'menu.edit',
+    'admin.excel_menu_upload': 'menu.edit',
+    'admin.excel_upload_simple': 'menu.edit',
+    # Media/Gallery
+    'admin.media': 'settings.view',
+    'admin.upload_media': 'settings.edit',
+    'admin.delete_media': 'settings.edit',
+    'admin.gallery': 'settings.view',
+    'admin.edit_gallery_item': 'settings.edit',
+    'admin.toggle_gallery_item': 'settings.edit',
+    'admin.delete_gallery_item': 'settings.edit',
+    # Branches
+    'admin.branches': 'branches.view',
+    'admin.edit_branch': 'branches.edit',
+    'admin.delete_branch': 'branches.edit',
+    # Messages/Contacts
+    'admin.messages': 'settings.view',
+    'admin.mark_message_read': 'settings.edit',
+    'admin.delete_message': 'settings.edit',
+    'admin.forward_message': 'settings.edit',
+    'admin.catering_contacts': 'settings.view',
+    'admin.mark_catering_read': 'settings.edit',
+    'admin.delete_catering': 'settings.edit',
+    'admin.forward_catering': 'settings.edit',
+    'admin.career_applications': 'settings.view',
+    'admin.mark_application_read': 'settings.edit',
+    'admin.delete_application': 'settings.edit',
+    'admin.forward_application': 'settings.edit',
+    # Reservations
+    'admin.reservations': 'settings.view',
+    'admin.update_reservation_status': 'settings.edit',
+    # Newsletter
+    'admin.newsletter': 'settings.view',
+    'admin.export_newsletter': 'settings.edit',
+    'admin.delete_newsletter_subscriber': 'settings.edit',
+    # Stock
+    'admin.stock_management': 'stock.view',
+    'admin.stock_items': 'stock.view',
+    'admin.stock_suppliers': 'stock.suppliers',
+    'admin.stock_transactions': 'stock.transactions',
+    'admin.stock_alerts': 'stock.alerts',
+    'admin.stock_analytics': 'stock.analytics',
+    'admin.shopping_lists': 'stock.shopping_lists',
+    'admin.stock_settings': 'stock.settings',
+    # Checklists
+    'admin.checklists': 'checklists.view',
+    'admin.edit_checklist': 'checklists.edit',
+    # Kitchen
+    'admin.kitchen': 'kitchen.view',
+    'admin.kitchen_config': 'kitchen.manage',
+    # Reports
+    'admin.reports': 'reports.view',
+    # System
+    'admin.microservices': 'system.admin',
+    'admin.system_config': 'system.admin',
+}
+
 @admin_bp.before_request
 def require_login():
-    """Ensure all admin routes require authentication except login and public APIs"""
+    """Ensure all admin routes require authentication and proper permissions"""
     if request.endpoint in PUBLIC_ADMIN_ROUTES:
         return None
     if not current_user.is_authenticated:
         flash('יש להתחבר כדי לגשת לעמוד זה', 'error')
         return redirect(url_for('admin.login', next=request.url))
+    
+    # Check route-level permissions (superadmins bypass all checks)
+    if current_user.is_superadmin:
+        return None
+    
+    # Check if this route requires a specific permission
+    required_permission = ROUTE_PERMISSIONS.get(request.endpoint)
+    if required_permission and not current_user.has_permission(required_permission):
+        flash('אין לך הרשאה לגשת לעמוד זה', 'error')
+        return redirect(url_for('admin.dashboard'))
 
 # Context processor to inject admin language into all admin templates
 @admin_bp.context_processor

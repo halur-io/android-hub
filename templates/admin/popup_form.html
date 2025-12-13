@@ -459,6 +459,240 @@
                     </div>
                 </div>
                 
+                <div class="form-section" data-section="form_collection" data-default-collapsed="true">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        <i class="fas fa-envelope-open-text"></i>
+                        איסוף פרטים והרשמות
+                        <i class="fas fa-chevron-down accordion-icon"></i>
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="enable_form" id="enable_form" {{ 'checked' if popup and popup.enable_form }}>
+                                    הפעל טופס איסוף פרטים
+                                </label>
+                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">הפעל כדי להציג טופס לאיסוף פרטי לקוחות בפופאפ</p>
+                            </div>
+                        </div>
+                        
+                        <div id="formFieldsContainer">
+                            <h4 style="margin: 1.5rem 0 1rem; color: #1B2951; font-size: 1rem;">שדות הטופס</h4>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="collect_email" {{ 'checked' if not popup or popup.collect_email }}>
+                                        איסוף אימייל
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="email_required" {{ 'checked' if not popup or popup.email_required }}>
+                                        שדה חובה
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט שדה אימייל (עברית)</label>
+                                    <input type="text" name="email_placeholder_he" class="form-input" value="{{ popup.email_placeholder_he if popup else 'הזן את האימייל שלך' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט שדה אימייל (אנגלית)</label>
+                                    <input type="text" name="email_placeholder_en" class="form-input" value="{{ popup.email_placeholder_en if popup else 'Enter your email' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="collect_name" {{ 'checked' if popup and popup.collect_name }}>
+                                        איסוף שם
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="name_required" {{ 'checked' if popup and popup.name_required }}>
+                                        שדה חובה
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט שדה שם (עברית)</label>
+                                    <input type="text" name="name_placeholder_he" class="form-input" value="{{ popup.name_placeholder_he if popup else 'הזן את שמך' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט שדה שם (אנגלית)</label>
+                                    <input type="text" name="name_placeholder_en" class="form-input" value="{{ popup.name_placeholder_en if popup else 'Enter your name' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="collect_phone" {{ 'checked' if popup and popup.collect_phone }}>
+                                        איסוף טלפון
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="phone_required" {{ 'checked' if popup and popup.phone_required }}>
+                                        שדה חובה
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט שדה טלפון (עברית)</label>
+                                    <input type="text" name="phone_placeholder_he" class="form-input" value="{{ popup.phone_placeholder_he if popup else 'הזן מספר טלפון' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט שדה טלפון (אנגלית)</label>
+                                    <input type="text" name="phone_placeholder_en" class="form-input" value="{{ popup.phone_placeholder_en if popup else 'Enter your phone number' }}">
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin: 1.5rem 0 1rem; color: #1B2951; font-size: 1rem;">כפתור שליחה והודעת הצלחה</h4>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט כפתור שליחה (עברית)</label>
+                                    <input type="text" name="form_submit_text_he" class="form-input" value="{{ popup.form_submit_text_he if popup else 'שלח' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט כפתור שליחה (אנגלית)</label>
+                                    <input type="text" name="form_submit_text_en" class="form-input" value="{{ popup.form_submit_text_en if popup else 'Submit' }}">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">הודעת הצלחה (עברית)</label>
+                                    <textarea name="form_success_message_he" class="form-input form-textarea" rows="2">{{ popup.form_success_message_he if popup else 'תודה! קיבלנו את הפרטים שלך' }}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">הודעת הצלחה (אנגלית)</label>
+                                    <textarea name="form_success_message_en" class="form-input form-textarea" rows="2">{{ popup.form_success_message_en if popup else 'Thank you! We received your details' }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin: 1.5rem 0 1rem; color: #1B2951; font-size: 1rem;">הסכמות ותקנון</h4>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="show_newsletter_consent" {{ 'checked' if not popup or popup.show_newsletter_consent }}>
+                                        הצג הסכמה לניוזלטר
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="newsletter_default_checked" {{ 'checked' if not popup or popup.newsletter_default_checked }}>
+                                        מסומן כברירת מחדל
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט הסכמה לניוזלטר (עברית)</label>
+                                    <input type="text" name="newsletter_consent_text_he" class="form-input" value="{{ popup.newsletter_consent_text_he if popup else 'אני מסכים/ה לקבל עדכונים ומבצעים במייל' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט הסכמה לניוזלטר (אנגלית)</label>
+                                    <input type="text" name="newsletter_consent_text_en" class="form-input" value="{{ popup.newsletter_consent_text_en if popup else 'I agree to receive updates and promotions by email' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="show_terms_consent" {{ 'checked' if popup and popup.show_terms_consent }}>
+                                        הצג הסכמה לתנאי שימוש
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="terms_consent_required" {{ 'checked' if popup and popup.terms_consent_required }}>
+                                        שדה חובה
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט הסכמה לתנאי שימוש (עברית)</label>
+                                    <input type="text" name="terms_consent_text_he" class="form-input" value="{{ popup.terms_consent_text_he if popup else 'אני מסכים/ה לתנאי השימוש' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט הסכמה לתנאי שימוש (אנגלית)</label>
+                                    <input type="text" name="terms_consent_text_en" class="form-input" value="{{ popup.terms_consent_text_en if popup else 'I agree to the terms of service' }}">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">קישור לדף תנאי השימוש</label>
+                                    <input type="url" name="terms_link" class="form-input" value="{{ popup.terms_link if popup else '' }}" placeholder="https://...">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" style="margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="show_marketing_consent" {{ 'checked' if popup and popup.show_marketing_consent }}>
+                                        הצג הסכמה לשיווק
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox">
+                                        <input type="checkbox" name="marketing_default_checked" {{ 'checked' if popup and popup.marketing_default_checked }}>
+                                        מסומן כברירת מחדל
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">טקסט הסכמה לשיווק (עברית)</label>
+                                    <input type="text" name="marketing_consent_text_he" class="form-input" value="{{ popup.marketing_consent_text_he if popup else 'אני מסכים/ה לקבל הודעות שיווקיות' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">טקסט הסכמה לשיווק (אנגלית)</label>
+                                    <input type="text" name="marketing_consent_text_en" class="form-input" value="{{ popup.marketing_consent_text_en if popup else 'I agree to receive marketing messages' }}">
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin: 1.5rem 0 1rem; color: #1B2951; font-size: 1rem;">שילוב קופונים</h4>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">קופון משויך</label>
+                                    <select name="associated_coupon_id" class="form-select">
+                                        <option value="">ללא קופון</option>
+                                        {% for coupon in coupons %}
+                                        <option value="{{ coupon.id }}" {{ 'selected' if popup and popup.associated_coupon_id == coupon.id }}>{{ coupon.name }} ({{ coupon.code }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-checkbox" style="margin-top: 2rem;">
+                                        <input type="checkbox" name="send_coupon_on_submit" {{ 'checked' if popup and popup.send_coupon_on_submit }}>
+                                        שלח קופון במייל לאחר הרשמה
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">נושא מייל הקופון (עברית)</label>
+                                    <input type="text" name="coupon_email_subject_he" class="form-input" value="{{ popup.coupon_email_subject_he if popup else 'הקופון שלך מגיע!' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">נושא מייל הקופון (אנגלית)</label>
+                                    <input type="text" name="coupon_email_subject_en" class="form-input" value="{{ popup.coupon_email_subject_en if popup else 'Your coupon has arrived!' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="form-section" data-section="design">
                     <div class="section-header" onclick="toggleSection(this)">
                         <i class="fas fa-palette"></i>

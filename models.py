@@ -1929,6 +1929,52 @@ class Popup(db.Model):
     allow_backdrop_close = db.Column(db.Boolean, default=True)
     auto_close_seconds = db.Column(db.Integer)
     
+    # Form Collection Settings
+    enable_form = db.Column(db.Boolean, default=False)  # Enable email collection form
+    form_submit_text_he = db.Column(db.String(100), default='שלח')  # Submit button text
+    form_submit_text_en = db.Column(db.String(100), default='Submit')
+    form_success_message_he = db.Column(db.Text, default='תודה! קיבלנו את הפרטים שלך')  # Success message
+    form_success_message_en = db.Column(db.Text, default='Thank you! We received your details')
+    
+    # Form Fields Configuration
+    collect_email = db.Column(db.Boolean, default=True)  # Email field (usually required)
+    email_required = db.Column(db.Boolean, default=True)
+    email_placeholder_he = db.Column(db.String(100), default='הזן את האימייל שלך')
+    email_placeholder_en = db.Column(db.String(100), default='Enter your email')
+    
+    collect_name = db.Column(db.Boolean, default=False)  # Name field
+    name_required = db.Column(db.Boolean, default=False)
+    name_placeholder_he = db.Column(db.String(100), default='הזן את שמך')
+    name_placeholder_en = db.Column(db.String(100), default='Enter your name')
+    
+    collect_phone = db.Column(db.Boolean, default=False)  # Phone field
+    phone_required = db.Column(db.Boolean, default=False)
+    phone_placeholder_he = db.Column(db.String(100), default='הזן מספר טלפון')
+    phone_placeholder_en = db.Column(db.String(100), default='Enter your phone number')
+    
+    # Consent Checkboxes
+    show_newsletter_consent = db.Column(db.Boolean, default=True)  # Newsletter subscription checkbox
+    newsletter_consent_text_he = db.Column(db.String(255), default='אני מסכים/ה לקבל עדכונים ומבצעים במייל')
+    newsletter_consent_text_en = db.Column(db.String(255), default='I agree to receive updates and promotions by email')
+    newsletter_default_checked = db.Column(db.Boolean, default=True)
+    
+    show_terms_consent = db.Column(db.Boolean, default=False)  # Terms & conditions checkbox
+    terms_consent_text_he = db.Column(db.String(255), default='אני מסכים/ה לתנאי השימוש')
+    terms_consent_text_en = db.Column(db.String(255), default='I agree to the terms of service')
+    terms_consent_required = db.Column(db.Boolean, default=False)
+    terms_link = db.Column(db.String(500))  # Link to terms page
+    
+    show_marketing_consent = db.Column(db.Boolean, default=False)  # Marketing consent checkbox
+    marketing_consent_text_he = db.Column(db.String(255), default='אני מסכים/ה לקבל הודעות שיווקיות')
+    marketing_consent_text_en = db.Column(db.String(255), default='I agree to receive marketing messages')
+    marketing_default_checked = db.Column(db.Boolean, default=False)
+    
+    # Coupon Integration
+    associated_coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id'), nullable=True)
+    send_coupon_on_submit = db.Column(db.Boolean, default=False)  # Send coupon after form submission
+    coupon_email_subject_he = db.Column(db.String(255), default='הקופון שלך מגיע!')
+    coupon_email_subject_en = db.Column(db.String(255), default='Your coupon has arrived!')
+    
     # Status
     is_active = db.Column(db.Boolean, default=False)
     priority = db.Column(db.Integer, default=0)
@@ -1945,6 +1991,7 @@ class Popup(db.Model):
     
     # Relationships
     creator = db.relationship('AdminUser', backref='created_popups')
+    associated_coupon = db.relationship('Coupon', foreign_keys=[associated_coupon_id], backref='associated_popups')
     
     def __repr__(self):
         return f'<Popup {self.name}>'
@@ -2000,7 +2047,38 @@ class Popup(db.Model):
             'close_button_position': self.close_button_position,
             'allow_backdrop_close': self.allow_backdrop_close,
             'auto_close_seconds': self.auto_close_seconds,
-            'priority': self.priority
+            'priority': self.priority,
+            'enable_form': self.enable_form,
+            'form_submit_text_he': self.form_submit_text_he,
+            'form_submit_text_en': self.form_submit_text_en,
+            'form_success_message_he': self.form_success_message_he,
+            'form_success_message_en': self.form_success_message_en,
+            'collect_email': self.collect_email,
+            'email_required': self.email_required,
+            'email_placeholder_he': self.email_placeholder_he,
+            'email_placeholder_en': self.email_placeholder_en,
+            'collect_name': self.collect_name,
+            'name_required': self.name_required,
+            'name_placeholder_he': self.name_placeholder_he,
+            'name_placeholder_en': self.name_placeholder_en,
+            'collect_phone': self.collect_phone,
+            'phone_required': self.phone_required,
+            'phone_placeholder_he': self.phone_placeholder_he,
+            'phone_placeholder_en': self.phone_placeholder_en,
+            'show_newsletter_consent': self.show_newsletter_consent,
+            'newsletter_consent_text_he': self.newsletter_consent_text_he,
+            'newsletter_consent_text_en': self.newsletter_consent_text_en,
+            'newsletter_default_checked': self.newsletter_default_checked,
+            'show_terms_consent': self.show_terms_consent,
+            'terms_consent_text_he': self.terms_consent_text_he,
+            'terms_consent_text_en': self.terms_consent_text_en,
+            'terms_consent_required': self.terms_consent_required,
+            'terms_link': self.terms_link,
+            'show_marketing_consent': self.show_marketing_consent,
+            'marketing_consent_text_he': self.marketing_consent_text_he,
+            'marketing_consent_text_en': self.marketing_consent_text_en,
+            'marketing_default_checked': self.marketing_default_checked,
+            'send_coupon_on_submit': self.send_coupon_on_submit
         }
 
 

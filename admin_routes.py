@@ -7945,6 +7945,53 @@ def create_popup():
         # Handle image display type
         popup.image_display_type = request.form.get('image_display_type', 'inline')
         
+        # Form Collection Settings
+        popup.enable_form = request.form.get('enable_form') == 'on'
+        popup.form_submit_text_he = request.form.get('form_submit_text_he', 'שלח')
+        popup.form_submit_text_en = request.form.get('form_submit_text_en', 'Submit')
+        popup.form_success_message_he = request.form.get('form_success_message_he', 'תודה! קיבלנו את הפרטים שלך')
+        popup.form_success_message_en = request.form.get('form_success_message_en', 'Thank you! We received your details')
+        
+        # Form Fields Configuration
+        popup.collect_email = request.form.get('collect_email') == 'on'
+        popup.email_required = request.form.get('email_required') == 'on'
+        popup.email_placeholder_he = request.form.get('email_placeholder_he', 'הזן את האימייל שלך')
+        popup.email_placeholder_en = request.form.get('email_placeholder_en', 'Enter your email')
+        
+        popup.collect_name = request.form.get('collect_name') == 'on'
+        popup.name_required = request.form.get('name_required') == 'on'
+        popup.name_placeholder_he = request.form.get('name_placeholder_he', 'הזן את שמך')
+        popup.name_placeholder_en = request.form.get('name_placeholder_en', 'Enter your name')
+        
+        popup.collect_phone = request.form.get('collect_phone') == 'on'
+        popup.phone_required = request.form.get('phone_required') == 'on'
+        popup.phone_placeholder_he = request.form.get('phone_placeholder_he', 'הזן מספר טלפון')
+        popup.phone_placeholder_en = request.form.get('phone_placeholder_en', 'Enter your phone number')
+        
+        # Consent Checkboxes
+        popup.show_newsletter_consent = request.form.get('show_newsletter_consent') == 'on'
+        popup.newsletter_consent_text_he = request.form.get('newsletter_consent_text_he', 'אני מסכים/ה לקבל עדכונים ומבצעים במייל')
+        popup.newsletter_consent_text_en = request.form.get('newsletter_consent_text_en', 'I agree to receive updates and promotions by email')
+        popup.newsletter_default_checked = request.form.get('newsletter_default_checked') == 'on'
+        
+        popup.show_terms_consent = request.form.get('show_terms_consent') == 'on'
+        popup.terms_consent_text_he = request.form.get('terms_consent_text_he', 'אני מסכים/ה לתנאי השימוש')
+        popup.terms_consent_text_en = request.form.get('terms_consent_text_en', 'I agree to the terms of service')
+        popup.terms_consent_required = request.form.get('terms_consent_required') == 'on'
+        popup.terms_link = request.form.get('terms_link')
+        
+        popup.show_marketing_consent = request.form.get('show_marketing_consent') == 'on'
+        popup.marketing_consent_text_he = request.form.get('marketing_consent_text_he', 'אני מסכים/ה לקבל הודעות שיווקיות')
+        popup.marketing_consent_text_en = request.form.get('marketing_consent_text_en', 'I agree to receive marketing messages')
+        popup.marketing_default_checked = request.form.get('marketing_default_checked') == 'on'
+        
+        # Coupon Integration
+        associated_coupon_id = request.form.get('associated_coupon_id')
+        popup.associated_coupon_id = int(associated_coupon_id) if associated_coupon_id else None
+        popup.send_coupon_on_submit = request.form.get('send_coupon_on_submit') == 'on'
+        popup.coupon_email_subject_he = request.form.get('coupon_email_subject_he', 'הקופון שלך מגיע!')
+        popup.coupon_email_subject_en = request.form.get('coupon_email_subject_en', 'Your coupon has arrived!')
+        
         # Handle image upload
         if 'image' in request.files:
             file = request.files['image']
@@ -7969,7 +8016,9 @@ def create_popup():
         flash('הפופאפ נוצר בהצלחה', 'success')
         return redirect(url_for('admin.popups'))
     
-    return render_template('admin/popup_form.html', popup=None)
+    # Get coupons for dropdown
+    coupons = Coupon.query.filter_by(is_active=True).order_by(Coupon.name).all()
+    return render_template('admin/popup_form.html', popup=None, coupons=coupons)
 
 
 @admin_bp.route('/popups/<int:popup_id>/edit', methods=['GET', 'POST'])
@@ -8037,6 +8086,53 @@ def edit_popup(popup_id):
         # Handle image display type
         popup.image_display_type = request.form.get('image_display_type', 'inline')
         
+        # Form Collection Settings
+        popup.enable_form = request.form.get('enable_form') == 'on'
+        popup.form_submit_text_he = request.form.get('form_submit_text_he', 'שלח')
+        popup.form_submit_text_en = request.form.get('form_submit_text_en', 'Submit')
+        popup.form_success_message_he = request.form.get('form_success_message_he', 'תודה! קיבלנו את הפרטים שלך')
+        popup.form_success_message_en = request.form.get('form_success_message_en', 'Thank you! We received your details')
+        
+        # Form Fields Configuration
+        popup.collect_email = request.form.get('collect_email') == 'on'
+        popup.email_required = request.form.get('email_required') == 'on'
+        popup.email_placeholder_he = request.form.get('email_placeholder_he', 'הזן את האימייל שלך')
+        popup.email_placeholder_en = request.form.get('email_placeholder_en', 'Enter your email')
+        
+        popup.collect_name = request.form.get('collect_name') == 'on'
+        popup.name_required = request.form.get('name_required') == 'on'
+        popup.name_placeholder_he = request.form.get('name_placeholder_he', 'הזן את שמך')
+        popup.name_placeholder_en = request.form.get('name_placeholder_en', 'Enter your name')
+        
+        popup.collect_phone = request.form.get('collect_phone') == 'on'
+        popup.phone_required = request.form.get('phone_required') == 'on'
+        popup.phone_placeholder_he = request.form.get('phone_placeholder_he', 'הזן מספר טלפון')
+        popup.phone_placeholder_en = request.form.get('phone_placeholder_en', 'Enter your phone number')
+        
+        # Consent Checkboxes
+        popup.show_newsletter_consent = request.form.get('show_newsletter_consent') == 'on'
+        popup.newsletter_consent_text_he = request.form.get('newsletter_consent_text_he', 'אני מסכים/ה לקבל עדכונים ומבצעים במייל')
+        popup.newsletter_consent_text_en = request.form.get('newsletter_consent_text_en', 'I agree to receive updates and promotions by email')
+        popup.newsletter_default_checked = request.form.get('newsletter_default_checked') == 'on'
+        
+        popup.show_terms_consent = request.form.get('show_terms_consent') == 'on'
+        popup.terms_consent_text_he = request.form.get('terms_consent_text_he', 'אני מסכים/ה לתנאי השימוש')
+        popup.terms_consent_text_en = request.form.get('terms_consent_text_en', 'I agree to the terms of service')
+        popup.terms_consent_required = request.form.get('terms_consent_required') == 'on'
+        popup.terms_link = request.form.get('terms_link')
+        
+        popup.show_marketing_consent = request.form.get('show_marketing_consent') == 'on'
+        popup.marketing_consent_text_he = request.form.get('marketing_consent_text_he', 'אני מסכים/ה לקבל הודעות שיווקיות')
+        popup.marketing_consent_text_en = request.form.get('marketing_consent_text_en', 'I agree to receive marketing messages')
+        popup.marketing_default_checked = request.form.get('marketing_default_checked') == 'on'
+        
+        # Coupon Integration
+        associated_coupon_id = request.form.get('associated_coupon_id')
+        popup.associated_coupon_id = int(associated_coupon_id) if associated_coupon_id else None
+        popup.send_coupon_on_submit = request.form.get('send_coupon_on_submit') == 'on'
+        popup.coupon_email_subject_he = request.form.get('coupon_email_subject_he', 'הקופון שלך מגיע!')
+        popup.coupon_email_subject_en = request.form.get('coupon_email_subject_en', 'Your coupon has arrived!')
+        
         # Handle image upload
         if 'image' in request.files:
             file = request.files['image']
@@ -8060,7 +8156,9 @@ def edit_popup(popup_id):
         flash('הפופאפ עודכן בהצלחה', 'success')
         return redirect(url_for('admin.popups'))
     
-    return render_template('admin/popup_form.html', popup=popup)
+    # Get coupons for dropdown
+    coupons = Coupon.query.filter_by(is_active=True).order_by(Coupon.name).all()
+    return render_template('admin/popup_form.html', popup=popup, coupons=coupons)
 
 
 @admin_bp.route('/popups/<int:popup_id>/delete', methods=['POST'])
@@ -8103,6 +8201,7 @@ def duplicate_popup(popup_id):
         button_url=original.button_url,
         button_action=original.button_action,
         image_path=original.image_path,
+        image_display_type=original.image_display_type,
         video_url=original.video_url,
         popup_type=original.popup_type,
         popup_size=original.popup_size,
@@ -8139,6 +8238,40 @@ def duplicate_popup(popup_id):
         close_button_position=original.close_button_position,
         allow_backdrop_close=original.allow_backdrop_close,
         auto_close_seconds=original.auto_close_seconds,
+        enable_form=original.enable_form,
+        form_submit_text_he=original.form_submit_text_he,
+        form_submit_text_en=original.form_submit_text_en,
+        form_success_message_he=original.form_success_message_he,
+        form_success_message_en=original.form_success_message_en,
+        collect_email=original.collect_email,
+        email_required=original.email_required,
+        email_placeholder_he=original.email_placeholder_he,
+        email_placeholder_en=original.email_placeholder_en,
+        collect_name=original.collect_name,
+        name_required=original.name_required,
+        name_placeholder_he=original.name_placeholder_he,
+        name_placeholder_en=original.name_placeholder_en,
+        collect_phone=original.collect_phone,
+        phone_required=original.phone_required,
+        phone_placeholder_he=original.phone_placeholder_he,
+        phone_placeholder_en=original.phone_placeholder_en,
+        show_newsletter_consent=original.show_newsletter_consent,
+        newsletter_consent_text_he=original.newsletter_consent_text_he,
+        newsletter_consent_text_en=original.newsletter_consent_text_en,
+        newsletter_default_checked=original.newsletter_default_checked,
+        show_terms_consent=original.show_terms_consent,
+        terms_consent_text_he=original.terms_consent_text_he,
+        terms_consent_text_en=original.terms_consent_text_en,
+        terms_consent_required=original.terms_consent_required,
+        terms_link=original.terms_link,
+        show_marketing_consent=original.show_marketing_consent,
+        marketing_consent_text_he=original.marketing_consent_text_he,
+        marketing_consent_text_en=original.marketing_consent_text_en,
+        marketing_default_checked=original.marketing_default_checked,
+        associated_coupon_id=original.associated_coupon_id,
+        send_coupon_on_submit=original.send_coupon_on_submit,
+        coupon_email_subject_he=original.coupon_email_subject_he,
+        coupon_email_subject_en=original.coupon_email_subject_en,
         is_active=False,
         priority=original.priority,
         created_by=current_user.id

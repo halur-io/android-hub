@@ -677,6 +677,11 @@
                 <i class="fas fa-users me-2"></i> {{ 'ניהול משתמשים' if (admin_language or 'he') == 'he' else 'User Management' }}
             </a>
             {% endif %}
+            {% if has_permission('roles.view') %}
+            <a class="nav-link {% if request.endpoint in ['admin.roles', 'admin.edit_role', 'admin.create_role', 'admin.permissions'] %}active{% endif %}" href="{{ url_for('admin.roles') }}">
+                <i class="fas fa-user-shield me-2"></i> {{ 'ניהול תפקידים' if (admin_language or 'he') == 'he' else 'Role Management' }}
+            </a>
+            {% endif %}
             {% if has_permission('settings.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
                 <i class="fas fa-cog me-2"></i> {{ 'הגדרות אתר' if (admin_language or 'he') == 'he' else 'Site Settings' }}

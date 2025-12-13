@@ -1,0 +1,291 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הרשאות מערכת{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --sumo-coral: #C75450;
+        --sumo-navy: #1B2951;
+        --success-green: #10b981;
+    }
+
+    .permissions-container {
+        padding: 1rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .hero-header {
+        background: linear-gradient(135deg, var(--sumo-navy) 0%, #2a3f73 100%);
+        border-radius: 20px;
+        padding: 2rem 1.5rem;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(27, 41, 81, 0.3);
+    }
+
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--sumo-coral);
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6b7280;
+    }
+
+    .permissions-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .category-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .category-header {
+        background: linear-gradient(135deg, var(--sumo-navy) 0%, #2a3f73 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .category-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        text-transform: capitalize;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .category-count {
+        background: rgba(255,255,255,0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+    }
+
+    .category-body {
+        padding: 1.5rem;
+    }
+
+    .permissions-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .permissions-table th,
+    .permissions-table td {
+        padding: 0.75rem;
+        text-align: right;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .permissions-table th {
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .permissions-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .permissions-table tr:hover td {
+        background: #f9fafb;
+    }
+
+    .perm-name {
+        font-weight: 600;
+        color: var(--sumo-navy);
+    }
+
+    .perm-code {
+        font-family: monospace;
+        font-size: 0.85rem;
+        background: #f3f4f6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        color: #6b7280;
+    }
+
+    .perm-description {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .perm-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .perm-status.active {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .perm-status.inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--sumo-coral);
+        text-decoration: none;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+        color: #b04540;
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 1.5rem;
+        }
+
+        .permissions-table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .stat-card {
+            flex: 1 1 calc(50% - 0.5rem);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="permissions-container">
+    <a href="{{ url_for('admin.roles') }}" class="back-link">
+        <i class="fas fa-arrow-right"></i>
+        {{ 'חזרה לניהול תפקידים' if (admin_language or 'he') == 'he' else 'Back to Role Management' }}
+    </a>
+
+    <div class="hero-header">
+        <h1 class="hero-title">
+            <i class="fas fa-key"></i>
+            {{ 'הרשאות מערכת' if (admin_language or 'he') == 'he' else 'System Permissions' }}
+        </h1>
+        <p class="hero-subtitle">{{ 'צפה בכל ההרשאות הזמינות במערכת' if (admin_language or 'he') == 'he' else 'View all available system permissions' }}</p>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{{ permissions_by_category.values()|sum(attribute='__len__', default=0) if permissions_by_category else 0 }}</div>
+            <div class="stat-label">{{ 'סה"כ הרשאות' if (admin_language or 'he') == 'he' else 'Total Permissions' }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ permissions_by_category|length if permissions_by_category else 0 }}</div>
+            <div class="stat-label">{{ 'קטגוריות' if (admin_language or 'he') == 'he' else 'Categories' }}</div>
+        </div>
+    </div>
+
+    {% if permissions_by_category %}
+    <div class="permissions-grid">
+        {% for category, perms in permissions_by_category.items() %}
+        <div class="category-card">
+            <div class="category-header">
+                <span class="category-title">
+                    <i class="fas fa-folder"></i>
+                    {{ category }}
+                </span>
+                <span class="category-count">{{ perms|length }} {{ 'הרשאות' if (admin_language or 'he') == 'he' else 'permissions' }}</span>
+            </div>
+            <div class="category-body">
+                <table class="permissions-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
+                            <th>{{ 'קוד' if (admin_language or 'he') == 'he' else 'Code' }}</th>
+                            <th>{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</th>
+                            <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for perm in perms %}
+                        <tr>
+                            <td class="perm-name">{{ perm.display_name }}</td>
+                            <td><code class="perm-code">{{ perm.name }}</code></td>
+                            <td class="perm-description">{{ perm.description or '-' }}</td>
+                            <td>
+                                <span class="perm-status {% if perm.is_active %}active{% else %}inactive{% endif %}">
+                                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                    {% if perm.is_active %}
+                                    {{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}
+                                    {% else %}
+                                    {{ 'לא פעיל' if (admin_language or 'he') == 'he' else 'Inactive' }}
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem; background: white; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <i class="fas fa-key" style="font-size: 4rem; color: #d1d5db; margin-bottom: 1rem;"></i>
+        <h2 style="color: var(--sumo-navy); margin-bottom: 0.5rem;">{{ 'אין הרשאות' if (admin_language or 'he') == 'he' else 'No Permissions' }}</h2>
+        <p style="color: #6b7280;">{{ 'לא נמצאו הרשאות במערכת' if (admin_language or 'he') == 'he' else 'No permissions found in the system' }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1893,6 +1893,9 @@ class Popup(db.Model):
     border_color = db.Column(db.String(20))
     border_width = db.Column(db.Integer, default=0)
     
+    # Element Positions (for drag-and-drop designer)
+    element_positions = db.Column(db.JSON, default=dict)  # Store element order/positions
+    
     # Timing Controls
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)

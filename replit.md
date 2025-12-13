@@ -35,6 +35,15 @@ The website includes a comprehensive popup system for displaying announcements, 
 - Analytics tracking (impressions, clicks, closes)
 - Rate limiting to prevent analytics manipulation
 
+**Popup Designer (New):**
+The popup editor features a modern split-screen design interface:
+- **Live Preview Panel** - Real-time preview on the left with device switching (desktop/tablet/mobile)
+- **Form Controls Panel** - Collapsible sections on the right for organized editing
+- **Drag-and-Drop** - Reorder popup elements (title, content, button, image) with SortableJS
+- **Element Position Storage** - Saved element order persists in `element_positions` JSONB column
+- **Responsive Preview** - Preview how popups look on different devices
+- **Live Updates** - "מתעדכן בזמן אמת" indicator shows changes update instantly
+
 **Admin Management:**
 Access at Admin → פופאפים (Popups) to:
 - Create and edit popups with live preview

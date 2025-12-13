@@ -20,7 +20,36 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ XSS vulnerability fixed in form submission buttons
 - ✅ Google Tag Manager integration for tracking
 - ✅ SEO: robots.txt, sitemap.xml, Google verification file
+- ✅ Popup system for announcements and promotions
 - ⏸️ Email notifications: Not configured yet (optional)
+
+## Popup System
+The website includes a comprehensive popup system for displaying announcements, promotions, or special messages to visitors.
+
+**Features:**
+- Full design controls (colors, fonts, border radius, shadows)
+- Timing controls (start/end dates, display delay)
+- Multiple trigger options (time delay, scroll percentage, exit intent)
+- Device targeting (desktop, mobile, tablet)
+- Display frequency (once per session, once ever, every X days)
+- Analytics tracking (impressions, clicks, closes)
+- Rate limiting to prevent analytics manipulation
+
+**Admin Management:**
+Access at Admin → פופאפים (Popups) to:
+- Create and edit popups with live preview
+- Set targeting and timing options
+- View analytics statistics
+- Activate/deactivate popups
+- Duplicate existing popups
+
+**Files:**
+- `models.py` - Popup model (line 1849+)
+- `admin_routes.py` - Admin CRUD routes (line 7861+)
+- `routes.py` - Public API endpoints (line 817+)
+- `templates/admin/popups.html` - Popup list page
+- `templates/admin/popup_form.html` - Popup editor
+- `static/js/popup-system.js` - Frontend display logic
 
 ## Google Tag Manager Setup
 GTM tracks page views and menu dish interactions automatically.

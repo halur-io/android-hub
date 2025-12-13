@@ -128,6 +128,8 @@ ROUTE_PERMISSIONS = {
     'admin.delete_coupon': 'settings.edit',
     'admin.toggle_coupon': 'settings.edit',
     'admin.duplicate_coupon': 'settings.edit',
+    'admin.generate_coupon_qr': 'settings.edit',
+    'admin.regenerate_coupon_qr': 'settings.edit',
 }
 
 @admin_bp.before_request
@@ -8360,3 +8362,43 @@ def duplicate_coupon(coupon_id):
     
     flash('הקופון שוכפל בהצלחה', 'success')
     return redirect(url_for('admin.edit_coupon', coupon_id=new_coupon.id))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/generate-qr', methods=['POST'])
+@login_required
+@require_permission('settings.edit')
+def generate_coupon_qr(coupon_id):
+    """Generate QR code for a coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    
+    try:
+        coupon.generate_qr_code()
+        db.session.commit()
+        flash('קוד QR נוצר בהצלחה', 'success')
+    except Exception as e:
+        flash(f'שגיאה ביצירת קוד QR: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.edit_coupon', coupon_id=coupon_id))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/regenerate-qr', methods=['POST'])
+@login_required
+@require_permission('settings.edit')
+def regenerate_coupon_qr(coupon_id):
+    """Regenerate QR code for a coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    
+    try:
+        import os
+        if coupon.qr_code_path:
+            old_path = coupon.qr_code_path.lstrip('/')
+            if os.path.exists(old_path):
+                os.remove(old_path)
+        
+        coupon.generate_qr_code()
+        db.session.commit()
+        flash('קוד QR נוצר מחדש בהצלחה', 'success')
+    except Exception as e:
+        flash(f'שגיאה ביצירת קוד QR: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.edit_coupon', coupon_id=coupon_id))

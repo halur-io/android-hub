@@ -2098,6 +2098,65 @@ class Coupon(db.Model):
         self.current_uses = self.get_usage_count() + 1
         db.session.add(usage)
         return usage
+    
+    def generate_qr_code(self, base_url=None):
+        """Generate QR code for this coupon"""
+        import qrcode
+        import os
+        from io import BytesIO
+        import base64
+        
+        upload_dir = 'static/uploads/qrcodes'
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        qr_data = self.code
+        if base_url:
+            qr_data = f"{base_url}?coupon={self.code}"
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        filename = f"coupon_qr_{self.id}_{self.code}.png"
+        filepath = os.path.join(upload_dir, filename)
+        img.save(filepath)
+        
+        self.qr_code_path = f"/static/uploads/qrcodes/{filename}"
+        self.qr_code_data = qr_data
+        
+        return self.qr_code_path
+    
+    def get_qr_code_base64(self):
+        """Get QR code as base64 string for embedding in emails"""
+        import qrcode
+        from io import BytesIO
+        import base64
+        
+        qr_data = self.qr_code_data or self.code
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
 class CouponUsage(db.Model):

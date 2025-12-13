@@ -186,6 +186,102 @@
         letter-spacing: 2px;
         margin-top: 0.5rem;
     }
+    
+    .qr-section {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    
+    .qr-preview {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .qr-image {
+        width: 150px;
+        height: 150px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 8px;
+        background: white;
+    }
+    
+    .qr-code-display {
+        background: #1B2951;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 1.1rem;
+        letter-spacing: 2px;
+    }
+    
+    .qr-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .btn-download, .btn-regenerate, .btn-generate-qr {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+        text-decoration: none;
+        border: none;
+    }
+    
+    .btn-download {
+        background: #059669;
+        color: white;
+    }
+    
+    .btn-download:hover {
+        background: #047857;
+        color: white;
+    }
+    
+    .btn-regenerate {
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .btn-regenerate:hover {
+        background: #e2e8f0;
+    }
+    
+    .btn-generate-qr {
+        background: linear-gradient(135deg, #1B2951 0%, #2a3f6e 100%);
+        color: white;
+    }
+    
+    .btn-generate-qr:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(27, 41, 81, 0.3);
+    }
+    
+    .qr-empty {
+        text-align: center;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        flex: 1;
+    }
+    
+    .qr-empty p {
+        margin: 0 0 1rem 0;
+        color: #64748b;
+    }
 </style>
 {% endblock %}
 
@@ -335,6 +431,47 @@
                     <label for="is_active">קופון פעיל</label>
                 </div>
             </div>
+            
+            {% if coupon %}
+            <div class="form-section">
+                <h3 class="section-title">
+                    <i class="fas fa-qrcode"></i>
+                    קוד QR
+                </h3>
+                <div class="qr-section">
+                    {% if coupon.qr_code_path %}
+                    <div class="qr-preview">
+                        <img src="{{ coupon.qr_code_path }}" alt="QR Code for {{ coupon.code }}" class="qr-image">
+                        <div class="qr-code-display">{{ coupon.code }}</div>
+                    </div>
+                    <div class="qr-actions">
+                        <a href="{{ coupon.qr_code_path }}" download="coupon_{{ coupon.code }}.png" class="btn-download">
+                            <i class="fas fa-download"></i>
+                            הורד QR
+                        </a>
+                        <form action="{{ url_for('admin.regenerate_coupon_qr', coupon_id=coupon.id) }}" method="POST" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-regenerate">
+                                <i class="fas fa-sync-alt"></i>
+                                צור מחדש
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="qr-empty">
+                        <p>לא נוצר עדיין קוד QR לקופון זה</p>
+                        <form action="{{ url_for('admin.generate_coupon_qr', coupon_id=coupon.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-generate-qr">
+                                <i class="fas fa-qrcode"></i>
+                                צור קוד QR
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
             
             <div class="form-actions">
                 <a href="{{ url_for('admin.coupons') }}" class="btn-cancel">

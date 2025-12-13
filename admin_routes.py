@@ -7937,12 +7937,19 @@ def create_popup():
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
-                filename = secure_filename(file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"popup_{timestamp}_{filename}"
-                filepath = os.path.join('static/uploads', filename)
-                file.save(filepath)
-                popup.image_path = f"/static/uploads/{filename}"
+                try:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"popup_{timestamp}_{filename}"
+                    upload_folder = 'static/uploads'
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    popup.image_path = f"/static/uploads/{filename}"
+                    print(f"Popup image saved: {filepath}")
+                except Exception as e:
+                    print(f"Error saving popup image: {e}")
+                    flash('שגיאה בשמירת התמונה', 'error')
         
         db.session.add(popup)
         db.session.commit()
@@ -8019,12 +8026,19 @@ def edit_popup(popup_id):
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename:
-                filename = secure_filename(file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"popup_{timestamp}_{filename}"
-                filepath = os.path.join('static/uploads', filename)
-                file.save(filepath)
-                popup.image_path = f"/static/uploads/{filename}"
+                try:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"popup_{timestamp}_{filename}"
+                    upload_folder = 'static/uploads'
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    popup.image_path = f"/static/uploads/{filename}"
+                    print(f"Popup image saved: {filepath}")
+                except Exception as e:
+                    print(f"Error saving popup image: {e}")
+                    flash('שגיאה בשמירת התמונה', 'error')
         
         db.session.commit()
         

@@ -247,6 +247,74 @@
         border-radius: 8px;
         object-fit: cover;
     }
+    
+    .file-upload-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+        width: 100%;
+    }
+    
+    .file-upload-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 1.5rem;
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+    
+    .file-upload-btn:hover {
+        border-color: #C75450;
+        background: #fef7f7;
+        color: #C75450;
+    }
+    
+    .file-upload-btn.has-file {
+        border-color: #22c55e;
+        background: #f0fdf4;
+        color: #166534;
+    }
+    
+    .file-upload-btn i {
+        font-size: 1.5rem;
+    }
+    
+    .file-upload-wrapper input[type="file"] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    
+    .file-name-display {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    
+    .new-image-preview {
+        margin-top: 1rem;
+        text-align: center;
+    }
+    
+    .new-image-preview img {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        object-fit: cover;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
 </style>
 {% endblock %}
 
@@ -301,9 +369,18 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">תמונה</label>
-                            <input type="file" name="image" accept="image/*" class="form-input">
+                            <div class="file-upload-wrapper">
+                                <div class="file-upload-btn" id="uploadBtn">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span id="uploadText">לחץ לבחירת תמונה או גרור לכאן</span>
+                                </div>
+                                <input type="file" name="image" id="imageInput" accept="image/*">
+                            </div>
+                            <div class="file-name-display" id="fileName"></div>
+                            <div class="new-image-preview" id="newImagePreview"></div>
                             {% if popup and popup.image_path %}
-                            <div class="image-preview-container">
+                            <div class="image-preview-container" id="currentImagePreview">
+                                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">תמונה נוכחית:</p>
                                 <img src="{{ popup.image_path }}" alt="Current image">
                             </div>
                             {% endif %}
@@ -636,6 +713,36 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Image upload handling
+    var imageInput = document.getElementById('imageInput');
+    var uploadBtn = document.getElementById('uploadBtn');
+    var uploadText = document.getElementById('uploadText');
+    var fileName = document.getElementById('fileName');
+    var newImagePreview = document.getElementById('newImagePreview');
+    
+    if (imageInput) {
+        imageInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                var file = this.files[0];
+                uploadBtn.classList.add('has-file');
+                uploadText.innerHTML = '<i class="fas fa-check-circle"></i> תמונה נבחרה';
+                fileName.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+                
+                // Show image preview
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    newImagePreview.innerHTML = '<p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">תצוגה מקדימה:</p><img src="' + e.target.result + '" alt="Preview">';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                uploadBtn.classList.remove('has-file');
+                uploadText.textContent = 'לחץ לבחירת תמונה או גרור לכאן';
+                fileName.textContent = '';
+                newImagePreview.innerHTML = '';
+            }
+        });
+    }
+    
     var colorInputs = document.querySelectorAll('.color-picker');
     colorInputs.forEach(function(input) {
         input.addEventListener('input', function() {

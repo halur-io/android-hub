@@ -1,0 +1,449 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול קופונים{% endblock %}
+
+{% block extra_css %}
+<style>
+    .coupons-container {
+        padding: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1B2951;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+    }
+    
+    .btn-create {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #C75450 0%, #b04540 100%);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(199, 84, 80, 0.4);
+        color: white;
+    }
+    
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1B2951;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+    
+    .coupons-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .coupon-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: visible;
+        transition: all 0.3s;
+    }
+    
+    .coupon-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    .coupon-header {
+        padding: 1.25rem;
+        background: linear-gradient(135deg, #1B2951 0%, #2a3f6e 100%);
+        border-radius: 16px 16px 0 0;
+        position: relative;
+    }
+    
+    .coupon-code {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        font-family: monospace;
+        letter-spacing: 2px;
+    }
+    
+    .coupon-discount {
+        display: inline-block;
+        background: #C75450;
+        color: white;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    
+    .coupon-status-badge {
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .coupon-status-badge.active {
+        background: #d1fae5;
+        color: #059669;
+    }
+    
+    .coupon-status-badge.inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .coupon-status-badge.expired {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .coupon-body {
+        padding: 1.25rem;
+    }
+    
+    .coupon-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1B2951;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .coupon-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .coupon-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+    
+    .coupon-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .coupon-stat {
+        text-align: center;
+    }
+    
+    .coupon-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1B2951;
+    }
+    
+    .coupon-stat-label {
+        font-size: 0.7rem;
+        color: #64748b;
+    }
+    
+    .coupon-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    
+    .action-menu {
+        position: relative;
+    }
+    
+    .btn-dots {
+        background: none;
+        border: 1px solid #e2e8f0;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .btn-dots:hover {
+        background: #f1f5f9;
+    }
+    
+    .action-dropdown {
+        position: absolute;
+        left: 0;
+        top: 100%;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        min-width: 180px;
+        z-index: 100;
+        display: none;
+        overflow: hidden;
+    }
+    
+    .action-dropdown.show {
+        display: block;
+    }
+    
+    .action-dropdown a,
+    .action-dropdown button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: none;
+        background: none;
+        text-align: right;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #334155;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .action-dropdown a:hover,
+    .action-dropdown button:hover {
+        background: #f1f5f9;
+    }
+    
+    .action-dropdown button.delete-action {
+        color: #dc2626;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #cbd5e1;
+        margin-bottom: 1.5rem;
+    }
+    
+    .empty-state h3 {
+        color: #1B2951;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+        color: #64748b;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="coupons-container">
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-ticket-alt"></i>
+            ניהול קופונים
+        </h1>
+        <a href="{{ url_for('admin.create_coupon') }}" class="btn-create">
+            <i class="fas fa-plus"></i>
+            יצירת קופון חדש
+        </a>
+    </div>
+    
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{{ coupons|length }}</div>
+            <div class="stat-label">סה"כ קופונים</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ coupons|selectattr('is_active')|list|length }}</div>
+            <div class="stat-label">פעילים</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ coupons|sum(attribute='current_uses') }}</div>
+            <div class="stat-label">שימושים כוללים</div>
+        </div>
+    </div>
+    
+    {% if coupons %}
+    <div class="coupons-grid">
+        {% for coupon in coupons %}
+        <div class="coupon-card">
+            <div class="coupon-header">
+                <div class="coupon-code">{{ coupon.code }}</div>
+                <div class="coupon-discount">
+                    {% if coupon.discount_type == 'percentage' %}
+                    {{ coupon.discount_value|int }}% הנחה
+                    {% elif coupon.discount_type == 'fixed_amount' %}
+                    ₪{{ coupon.discount_value|int }} הנחה
+                    {% else %}
+                    מוצר חינם
+                    {% endif %}
+                </div>
+                <span class="coupon-status-badge {% if coupon.is_valid() %}active{% elif not coupon.is_active %}inactive{% else %}expired{% endif %}">
+                    {% if coupon.is_valid() %}
+                    <i class="fas fa-check-circle"></i> פעיל
+                    {% elif not coupon.is_active %}
+                    <i class="fas fa-pause-circle"></i> מושבת
+                    {% else %}
+                    <i class="fas fa-clock"></i> פג תוקף
+                    {% endif %}
+                </span>
+            </div>
+            <div class="coupon-body">
+                <h3 class="coupon-name">{{ coupon.name }}</h3>
+                <div class="coupon-meta">
+                    {% if coupon.minimum_order_amount > 0 %}
+                    <span class="coupon-meta-item">
+                        <i class="fas fa-shopping-cart"></i>
+                        מינימום ₪{{ coupon.minimum_order_amount|int }}
+                    </span>
+                    {% endif %}
+                    {% if coupon.max_uses_per_email %}
+                    <span class="coupon-meta-item">
+                        <i class="fas fa-user"></i>
+                        {{ coupon.max_uses_per_email }} לכל לקוח
+                    </span>
+                    {% endif %}
+                    {% if coupon.end_date %}
+                    <span class="coupon-meta-item">
+                        <i class="fas fa-calendar"></i>
+                        עד {{ coupon.end_date.strftime('%d/%m/%Y') }}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <div class="coupon-stats">
+                    <div class="coupon-stat">
+                        <div class="coupon-stat-value">{{ coupon.current_uses }}</div>
+                        <div class="coupon-stat-label">שימושים</div>
+                    </div>
+                    <div class="coupon-stat">
+                        <div class="coupon-stat-value">{% if coupon.max_total_uses %}{{ coupon.max_total_uses }}{% else %}∞{% endif %}</div>
+                        <div class="coupon-stat-label">מקסימום</div>
+                    </div>
+                </div>
+                
+                <div class="coupon-actions">
+                    <div class="action-menu">
+                        <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="action-dropdown">
+                            <a href="{{ url_for('admin.edit_coupon', coupon_id=coupon.id) }}">
+                                <i class="fas fa-edit"></i> עריכה
+                            </a>
+                            <form action="{{ url_for('admin.toggle_coupon', coupon_id=coupon.id) }}" method="POST" style="margin: 0;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">
+                                    <i class="fas fa-{{ 'pause' if coupon.is_active else 'play' }}"></i>
+                                    {{ 'השבתה' if coupon.is_active else 'הפעלה' }}
+                                </button>
+                            </form>
+                            <form action="{{ url_for('admin.duplicate_coupon', coupon_id=coupon.id) }}" method="POST" style="margin: 0;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">
+                                    <i class="fas fa-copy"></i> שכפול
+                                </button>
+                            </form>
+                            <form action="{{ url_for('admin.delete_coupon', coupon_id=coupon.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם למחוק את הקופון?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="delete-action">
+                                    <i class="fas fa-trash"></i> מחיקה
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-ticket-alt"></i>
+        <h3>אין קופונים עדיין</h3>
+        <p>צור את הקופון הראשון שלך כדי להציע הנחות ללקוחות</p>
+        <a href="{{ url_for('admin.create_coupon') }}" class="btn-create">
+            <i class="fas fa-plus"></i>
+            יצירת קופון ראשון
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleActionMenu(event, button) {
+    event.stopPropagation();
+    var dropdown = button.nextElementSibling;
+    
+    document.querySelectorAll('.action-dropdown.show').forEach(function(d) {
+        if (d !== dropdown) d.classList.remove('show');
+    });
+    
+    dropdown.classList.toggle('show');
+}
+
+document.addEventListener('click', function() {
+    document.querySelectorAll('.action-dropdown.show').forEach(function(d) {
+        d.classList.remove('show');
+    });
+});
+</script>
+{% endblock %}

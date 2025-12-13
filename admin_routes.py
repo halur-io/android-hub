@@ -121,6 +121,13 @@ ROUTE_PERMISSIONS = {
     'admin.delete_popup': 'settings.edit',
     'admin.toggle_popup': 'settings.edit',
     'admin.duplicate_popup': 'settings.edit',
+    # Coupons
+    'admin.coupons': 'settings.view',
+    'admin.create_coupon': 'settings.edit',
+    'admin.edit_coupon': 'settings.edit',
+    'admin.delete_coupon': 'settings.edit',
+    'admin.toggle_coupon': 'settings.edit',
+    'admin.duplicate_coupon': 'settings.edit',
 }
 
 @admin_bp.before_request
@@ -8148,3 +8155,208 @@ def popup_analytics(popup_id):
     """View popup analytics"""
     popup = Popup.query.get_or_404(popup_id)
     return render_template('admin/popup_analytics.html', popup=popup)
+
+
+# ===== COUPON MANAGEMENT =====
+
+@admin_bp.route('/coupons')
+@login_required
+def coupons():
+    """List all coupons"""
+    coupons = Coupon.query.order_by(Coupon.created_at.desc()).all()
+    return render_template('admin/coupons.html', coupons=coupons)
+
+
+def safe_float(value, default=0.0):
+    """Safely convert value to float, returning default for empty/invalid values"""
+    if value is None or value == '':
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+def safe_int(value, default=None):
+    """Safely convert value to int, returning default for empty/invalid values"""
+    if value is None or value == '':
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+@admin_bp.route('/coupons/create', methods=['GET', 'POST'])
+@login_required
+def create_coupon():
+    """Create a new coupon"""
+    if request.method == 'POST':
+        import secrets
+        
+        code = request.form.get('code', '').strip().upper()
+        if not code:
+            code = secrets.token_hex(4).upper()
+        
+        name = request.form.get('name', '').strip()
+        discount_value = safe_float(request.form.get('discount_value'), 0)
+        
+        if not name:
+            flash('שם הקופון הוא שדה חובה', 'error')
+            popups = Popup.query.filter_by(is_active=True).all()
+            return render_template('admin/coupon_form.html', coupon=None, popups=popups)
+        
+        if discount_value <= 0:
+            flash('יש להזין ערך הנחה חיובי', 'error')
+            popups = Popup.query.filter_by(is_active=True).all()
+            return render_template('admin/coupon_form.html', coupon=None, popups=popups)
+        
+        coupon = Coupon(
+            name=name,
+            code=code,
+            description_he=request.form.get('description_he'),
+            description_en=request.form.get('description_en'),
+            discount_type=request.form.get('discount_type', 'percentage'),
+            discount_value=discount_value,
+            minimum_order_amount=safe_float(request.form.get('minimum_order_amount'), 0),
+            max_uses_per_email=safe_int(request.form.get('max_uses_per_email')),
+            is_active=request.form.get('is_active') == 'on',
+            created_by=current_user.id
+        )
+        
+        coupon.max_total_uses = safe_int(request.form.get('max_total_uses'))
+        coupon.maximum_discount_amount = safe_float(request.form.get('maximum_discount_amount'), None) if request.form.get('maximum_discount_amount') else None
+        
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        if start_date:
+            try:
+                coupon.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                coupon.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        
+        popup_id = request.form.get('popup_id')
+        if popup_id:
+            coupon.popup_id = safe_int(popup_id)
+        
+        db.session.add(coupon)
+        db.session.commit()
+        
+        flash('הקופון נוצר בהצלחה', 'success')
+        return redirect(url_for('admin.coupons'))
+    
+    popups = Popup.query.filter_by(is_active=True).all()
+    return render_template('admin/coupon_form.html', coupon=None, popups=popups)
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_coupon(coupon_id):
+    """Edit an existing coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        discount_value = safe_float(request.form.get('discount_value'), 0)
+        
+        if not name:
+            flash('שם הקופון הוא שדה חובה', 'error')
+            popups = Popup.query.all()
+            return render_template('admin/coupon_form.html', coupon=coupon, popups=popups)
+        
+        if discount_value <= 0:
+            flash('יש להזין ערך הנחה חיובי', 'error')
+            popups = Popup.query.all()
+            return render_template('admin/coupon_form.html', coupon=coupon, popups=popups)
+        
+        coupon.name = name
+        coupon.code = request.form.get('code', '').strip().upper()
+        coupon.description_he = request.form.get('description_he')
+        coupon.description_en = request.form.get('description_en')
+        coupon.discount_type = request.form.get('discount_type', 'percentage')
+        coupon.discount_value = discount_value
+        coupon.minimum_order_amount = safe_float(request.form.get('minimum_order_amount'), 0)
+        coupon.max_uses_per_email = safe_int(request.form.get('max_uses_per_email'))
+        coupon.is_active = request.form.get('is_active') == 'on'
+        
+        coupon.max_total_uses = safe_int(request.form.get('max_total_uses'))
+        coupon.maximum_discount_amount = safe_float(request.form.get('maximum_discount_amount'), None) if request.form.get('maximum_discount_amount') else None
+        
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        try:
+            coupon.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M') if start_date else None
+        except ValueError:
+            coupon.start_date = None
+        try:
+            coupon.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M') if end_date else None
+        except ValueError:
+            coupon.end_date = None
+        
+        coupon.popup_id = safe_int(request.form.get('popup_id'))
+        
+        db.session.commit()
+        
+        flash('הקופון עודכן בהצלחה', 'success')
+        return redirect(url_for('admin.coupons'))
+    
+    popups = Popup.query.all()
+    return render_template('admin/coupon_form.html', coupon=coupon, popups=popups)
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/delete', methods=['POST'])
+@login_required
+def delete_coupon(coupon_id):
+    """Delete a coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    db.session.delete(coupon)
+    db.session.commit()
+    flash('הקופון נמחק בהצלחה', 'success')
+    return redirect(url_for('admin.coupons'))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/toggle', methods=['POST'])
+@login_required
+def toggle_coupon(coupon_id):
+    """Toggle coupon active status"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    coupon.is_active = not coupon.is_active
+    db.session.commit()
+    status = 'פעיל' if coupon.is_active else 'מושבת'
+    flash(f'הקופון כעת {status}', 'success')
+    return redirect(url_for('admin.coupons'))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_coupon(coupon_id):
+    """Duplicate a coupon"""
+    import secrets
+    original = Coupon.query.get_or_404(coupon_id)
+    
+    new_coupon = Coupon(
+        name=f"{original.name} (העתק)",
+        code=secrets.token_hex(4).upper(),
+        description_he=original.description_he,
+        description_en=original.description_en,
+        discount_type=original.discount_type,
+        discount_value=original.discount_value,
+        minimum_order_amount=original.minimum_order_amount,
+        maximum_discount_amount=original.maximum_discount_amount,
+        max_total_uses=original.max_total_uses,
+        max_uses_per_email=original.max_uses_per_email,
+        start_date=original.start_date,
+        end_date=original.end_date,
+        popup_id=original.popup_id,
+        is_active=False,
+        created_by=current_user.id
+    )
+    
+    db.session.add(new_coupon)
+    db.session.commit()
+    
+    flash('הקופון שוכפל בהצלחה', 'success')
+    return redirect(url_for('admin.edit_coupon', coupon_id=new_coupon.id))

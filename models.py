@@ -2126,7 +2126,7 @@ class Coupon(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
     
     # Relationships
-    popup = db.relationship('Popup', backref='coupons')
+    popup = db.relationship('Popup', foreign_keys=[popup_id], backref='coupons')
     creator = db.relationship('AdminUser', backref='created_coupons')
     usages = db.relationship('CouponUsage', backref='coupon', lazy='dynamic', cascade='all, delete-orphan')
     

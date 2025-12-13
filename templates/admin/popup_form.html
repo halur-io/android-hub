@@ -1007,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     newImagePreview.innerHTML = '<p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">תצוגה מקדימה:</p><img src="' + e.target.result + '" alt="Preview">';
+                    updatePreview();
                 };
                 reader.readAsDataURL(file);
             } else {
@@ -1050,6 +1051,12 @@ document.addEventListener('DOMContentLoaded', function() {
             el.addEventListener('input', updatePreview);
         }
     });
+    
+    // Listen for image display type changes
+    var imageDisplayTypeSelect = document.querySelector('select[name="image_display_type"]');
+    if (imageDisplayTypeSelect) {
+        imageDisplayTypeSelect.addEventListener('change', updatePreview);
+    }
     
     updatePreview();
     
@@ -1135,7 +1142,20 @@ function updatePreview() {
     
     container.style.background = overlayColor;
     
-    popup.style.background = bgColor;
+    // Handle background image
+    var imageDisplayType = document.querySelector('select[name="image_display_type"]').value;
+    var existingImageEl = document.getElementById('existingImage');
+    var existingImagePath = existingImageEl ? existingImageEl.src : null;
+    var newImagePreview = document.getElementById('newImagePreview');
+    var newImageEl = newImagePreview ? newImagePreview.querySelector('img') : null;
+    var imagePath = newImageEl ? newImageEl.src : existingImagePath;
+    
+    if (imagePath && (imageDisplayType === 'background' || imageDisplayType === 'background_cover')) {
+        var bgSize = imageDisplayType === 'background_cover' ? 'cover' : 'contain';
+        popup.style.background = 'url(' + imagePath + ') center center / ' + bgSize + ' no-repeat, ' + bgColor;
+    } else {
+        popup.style.background = bgColor;
+    }
     popup.style.borderRadius = borderRadius + 'px';
     popup.style.padding = '2rem';
     popup.style.boxShadow = hasShadow ? '0 20px 60px rgba(0,0,0,0.4)' : 'none';

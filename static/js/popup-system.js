@@ -16,16 +16,22 @@
         },
         
         init: function(popupConfigs) {
+            console.log('[Popup] init called with', popupConfigs ? popupConfigs.length : 0, 'popups');
             if (!popupConfigs || !popupConfigs.length) return;
             
             this.loadShownState();
+            console.log('[Popup] Shown state:', this.shown);
             
             var self = this;
             popupConfigs.sort(function(a, b) { return b.priority - a.priority; });
             
             popupConfigs.forEach(function(config) {
+                console.log('[Popup] Checking popup', config.id, '- shouldShow:', self.shouldShow(config));
                 if (self.shouldShow(config)) {
+                    console.log('[Popup] Scheduling popup', config.id, 'trigger:', config.trigger_type);
                     self.schedulePopup(config);
+                } else {
+                    console.log('[Popup] Popup', config.id, 'will not show - checkDevice:', self.checkDevice(config), 'freq:', config.show_frequency);
                 }
             });
         },

@@ -635,14 +635,19 @@
     <script src="{{ url_for('static', filename='js/popup-system.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Popup] Fetching active popups...');
             fetch('/api/popups/active')
                 .then(function(response) { return response.json(); })
                 .then(function(popups) {
+                    console.log('[Popup] Received popups:', popups ? popups.length : 0, 'items');
                     if (popups && popups.length > 0) {
+                        console.log('[Popup] Initializing popup system with', popups.length, 'popups');
                         SitePopup.init(popups);
+                    } else {
+                        console.log('[Popup] No active popups to display');
                     }
                 })
-                .catch(function(err) { console.log('Popup error:', err); });
+                .catch(function(err) { console.log('[Popup] Error:', err); });
         });
     </script>
 </body>

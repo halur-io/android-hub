@@ -2078,7 +2078,11 @@ class Popup(db.Model):
             'marketing_consent_text_he': self.marketing_consent_text_he,
             'marketing_consent_text_en': self.marketing_consent_text_en,
             'marketing_default_checked': self.marketing_default_checked,
-            'send_coupon_on_submit': self.send_coupon_on_submit
+            'send_coupon_on_submit': self.send_coupon_on_submit,
+            'show_on_desktop': self.show_on_desktop if self.show_on_desktop is not None else True,
+            'show_on_mobile': self.show_on_mobile if self.show_on_mobile is not None else True,
+            'show_on_tablet': self.show_on_tablet if self.show_on_tablet is not None else True,
+            'show_every_x_days': self.show_every_x_days
         }
 
 

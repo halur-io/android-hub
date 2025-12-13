@@ -2002,3 +2002,242 @@ class Popup(db.Model):
             'auto_close_seconds': self.auto_close_seconds,
             'priority': self.priority
         }
+
+
+# ===== COUPON SYSTEM =====
+
+class Coupon(db.Model):
+    """Coupon/discount codes for promotions"""
+    __tablename__ = 'coupons'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Basic Information
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(50), unique=True, nullable=False)  # The actual coupon code
+    description_he = db.Column(db.Text)
+    description_en = db.Column(db.Text)
+    
+    # Discount Settings
+    discount_type = db.Column(db.String(20), default='percentage')  # 'percentage', 'fixed_amount', 'free_item'
+    discount_value = db.Column(db.Float, default=0)  # Percentage (0-100) or fixed amount
+    minimum_order_amount = db.Column(db.Float, default=0)  # Minimum order to apply coupon
+    maximum_discount_amount = db.Column(db.Float)  # Cap for percentage discounts
+    
+    # Usage Limits
+    max_total_uses = db.Column(db.Integer)  # Total uses allowed (null = unlimited)
+    max_uses_per_email = db.Column(db.Integer, default=1)  # Uses per email address
+    current_uses = db.Column(db.Integer, default=0)  # Track current usage count
+    
+    # Validity Period
+    start_date = db.Column(db.DateTime)
+    end_date = db.Column(db.DateTime)
+    
+    # QR Code
+    qr_code_path = db.Column(db.String(500))  # Path to generated QR code image
+    qr_code_data = db.Column(db.Text)  # QR code data/URL
+    
+    # Popup Association (optional)
+    popup_id = db.Column(db.Integer, db.ForeignKey('popups.id'), nullable=True)
+    
+    # Status
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    
+    # Relationships
+    popup = db.relationship('Popup', backref='coupons')
+    creator = db.relationship('AdminUser', backref='created_coupons')
+    usages = db.relationship('CouponUsage', backref='coupon', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Coupon {self.code}>'
+    
+    def is_valid(self):
+        """Check if coupon is currently valid"""
+        if not self.is_active:
+            return False
+        now = datetime.utcnow()
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+        if self.max_total_uses and self.current_uses >= self.max_total_uses:
+            return False
+        return True
+    
+    def can_be_used_by_email(self, email):
+        """Check if email can still use this coupon"""
+        if not self.is_valid():
+            return False
+        # If max_uses_per_email is None/NULL, unlimited uses per email are allowed
+        if self.max_uses_per_email is None:
+            return True
+        normalized_email = email.lower().strip()
+        usage_count = CouponUsage.query.filter_by(
+            coupon_id=self.id,
+            email=normalized_email
+        ).count()
+        return usage_count < self.max_uses_per_email
+    
+    def get_usage_count(self):
+        """Get actual usage count from database (derived, not cached)"""
+        return self.usages.count()
+    
+    def record_usage(self, email, lead_id=None):
+        """Record a coupon usage"""
+        normalized_email = email.lower().strip()
+        usage = CouponUsage(
+            coupon_id=self.id,
+            email=normalized_email,
+            lead_id=lead_id
+        )
+        # Use derived count for validation, but still track current_uses for quick display
+        self.current_uses = self.get_usage_count() + 1
+        db.session.add(usage)
+        return usage
+
+
+class CouponUsage(db.Model):
+    """Track individual coupon uses"""
+    __tablename__ = 'coupon_usages'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id'), nullable=False, index=True)
+    email = db.Column(db.String(255), nullable=False, index=True)  # Indexed for email lookups
+    lead_id = db.Column(db.Integer, db.ForeignKey('popup_leads.id'), nullable=True)
+    
+    # Usage Details
+    used_at = db.Column(db.DateTime, default=datetime.utcnow)
+    order_amount = db.Column(db.Float)  # Order amount when coupon was used (optional)
+    discount_applied = db.Column(db.Float)  # Actual discount given
+    
+    # Composite index for coupon+email lookups (most common query)
+    __table_args__ = (
+        db.Index('idx_coupon_email', 'coupon_id', 'email'),
+    )
+    
+    def __repr__(self):
+        return f'<CouponUsage {self.coupon_id} - {self.email}>'
+
+
+# ===== POPUP LEADS SYSTEM =====
+
+class PopupLead(db.Model):
+    """Leads collected through popup forms"""
+    __tablename__ = 'popup_leads'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Lead Information
+    email = db.Column(db.String(255), nullable=False, index=True)  # Indexed for lookups
+    name = db.Column(db.String(100))
+    phone = db.Column(db.String(20))
+    
+    # Source
+    popup_id = db.Column(db.Integer, db.ForeignKey('popups.id'), nullable=True)
+    source_page = db.Column(db.String(500))  # URL where popup was shown
+    
+    # Coupon Association
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id'), nullable=True)
+    coupon_code_sent = db.Column(db.String(50))  # The actual code that was sent
+    coupon_sent_at = db.Column(db.DateTime)  # When coupon email was sent
+    
+    # Status
+    email_verified = db.Column(db.Boolean, default=False)
+    is_subscribed = db.Column(db.Boolean, default=True)  # Newsletter subscription
+    
+    # UTM Tracking
+    utm_source = db.Column(db.String(100))
+    utm_medium = db.Column(db.String(100))
+    utm_campaign = db.Column(db.String(100))
+    
+    # Device/Browser Info
+    user_agent = db.Column(db.String(500))
+    ip_address = db.Column(db.String(45))  # IPv6 compatible
+    device_type = db.Column(db.String(20))  # desktop, mobile, tablet
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    popup = db.relationship('Popup', backref='leads')
+    coupon = db.relationship('Coupon', backref='leads')
+    consents = db.relationship('CustomerConsent', backref='lead', lazy='dynamic', cascade='all, delete-orphan')
+    coupon_usages = db.relationship('CouponUsage', backref='lead', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<PopupLead {self.email}>'
+
+
+# ===== CUSTOMER CONSENT TRACKING =====
+
+class CustomerConsent(db.Model):
+    """Track customer consents for GDPR/privacy compliance"""
+    __tablename__ = 'customer_consents'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Associated Lead
+    lead_id = db.Column(db.Integer, db.ForeignKey('popup_leads.id'), nullable=False, index=True)
+    email = db.Column(db.String(255), nullable=False, index=True)  # Indexed for quick lookup
+    
+    # Consent Types
+    consent_type = db.Column(db.String(50), nullable=False)
+    # Types: 'marketing_email', 'marketing_sms', 'terms_of_use', 
+    #        'privacy_policy', 'discount_policy', 'newsletter'
+    
+    # Consent Status
+    is_granted = db.Column(db.Boolean, default=False)
+    consent_text = db.Column(db.Text)  # The actual text shown to user
+    consent_version = db.Column(db.String(20), default='1.0')  # Version of consent text
+    
+    # Tracking
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    source_page = db.Column(db.String(500))
+    popup_id = db.Column(db.Integer, db.ForeignKey('popups.id'), nullable=True)
+    
+    # Timestamps
+    granted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    revoked_at = db.Column(db.DateTime)  # If consent was later revoked
+    
+    # Relationships
+    popup = db.relationship('Popup', backref='consents')
+    
+    def __repr__(self):
+        return f'<CustomerConsent {self.email} - {self.consent_type}>'
+    
+    def revoke(self):
+        """Revoke this consent"""
+        self.is_granted = False
+        self.revoked_at = datetime.utcnow()
+
+
+class ConsentSettings(db.Model):
+    """Global settings for consent texts and requirements"""
+    __tablename__ = 'consent_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Consent Type
+    consent_type = db.Column(db.String(50), unique=True, nullable=False)
+    
+    # Display Settings
+    display_name_he = db.Column(db.String(100), nullable=False)
+    display_name_en = db.Column(db.String(100), nullable=False)
+    consent_text_he = db.Column(db.Text, nullable=False)
+    consent_text_en = db.Column(db.Text, nullable=False)
+    
+    # Configuration
+    is_required = db.Column(db.Boolean, default=False)  # Must be checked to submit
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    version = db.Column(db.String(20), default='1.0')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<ConsentSettings {self.consent_type}>'

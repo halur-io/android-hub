@@ -630,5 +630,20 @@
     </script>
     
     {% block extra_js %}{% endblock %}
+    
+    <!-- Popup System -->
+    <script src="{{ url_for('static', filename='js/popup-system.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/popups/active')
+                .then(function(response) { return response.json(); })
+                .then(function(popups) {
+                    if (popups && popups.length > 0) {
+                        SitePopup.init(popups);
+                    }
+                })
+                .catch(function(err) { console.log('Popup error:', err); });
+        });
+    </script>
 </body>
 </html>

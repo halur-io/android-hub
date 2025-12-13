@@ -716,6 +716,9 @@
             <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
                 <i class="fas fa-calendar-check me-2"></i> {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'Reservations' }}
             </a>
+            <a class="nav-link {% if request.endpoint in ['admin.popups', 'admin.create_popup', 'admin.edit_popup'] %}active{% endif %}" href="{{ url_for('admin.popups') }}">
+                <i class="fas fa-window-restore me-2"></i> {{ 'פופאפים' if (admin_language or 'he') == 'he' else 'Popups' }}
+            </a>
             {% endif %}
             {% if has_permission('system.admin') %}
             <hr class="my-3">

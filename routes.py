@@ -3,7 +3,7 @@ from flask_mail import Message
 from app import app, mail
 from database import db
 from forms import ContactForm, ReservationForm, NewsletterForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber, Popup
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -809,3 +809,68 @@ def example2_order():
                          **context,
                          ordering_disabled=False,
                          categories=categories)
+
+
+# ===== POPUP SYSTEM API =====
+
+def _validate_popup_request():
+    """Basic validation for popup analytics requests"""
+    referer = request.headers.get('Referer', '')
+    host = request.host
+    if referer and host not in referer:
+        return False
+    return True
+
+def _rate_limit_popup_tracking(popup_id, action):
+    """Simple session-based rate limiting for popup tracking"""
+    key = f'popup_{action}_{popup_id}'
+    if session.get(key):
+        return False
+    session[key] = True
+    return True
+
+@app.route('/api/popups/active')
+def api_active_popups():
+    """Get all currently active popups for frontend display"""
+    popups = Popup.query.filter_by(is_active=True).order_by(Popup.priority.desc()).all()
+    active_popups = [p.to_frontend_config() for p in popups if p.is_currently_active()]
+    return jsonify(active_popups)
+
+@app.route('/api/popup/<int:popup_id>/impression', methods=['POST'])
+def api_popup_impression(popup_id):
+    """Track popup impression with rate limiting"""
+    if not _validate_popup_request():
+        return jsonify({'success': False}), 403
+    if not _rate_limit_popup_tracking(popup_id, 'imp'):
+        return jsonify({'success': True})
+    popup = Popup.query.get(popup_id)
+    if popup:
+        popup.total_impressions = (popup.total_impressions or 0) + 1
+        db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/popup/<int:popup_id>/click', methods=['POST'])
+def api_popup_click(popup_id):
+    """Track popup CTA button click with rate limiting"""
+    if not _validate_popup_request():
+        return jsonify({'success': False}), 403
+    if not _rate_limit_popup_tracking(popup_id, 'click'):
+        return jsonify({'success': True})
+    popup = Popup.query.get(popup_id)
+    if popup:
+        popup.total_cta_clicks = (popup.total_cta_clicks or 0) + 1
+        db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/popup/<int:popup_id>/close', methods=['POST'])
+def api_popup_close(popup_id):
+    """Track popup close with rate limiting"""
+    if not _validate_popup_request():
+        return jsonify({'success': False}), 403
+    if not _rate_limit_popup_tracking(popup_id, 'close'):
+        return jsonify({'success': True})
+    popup = Popup.query.get(popup_id)
+    if popup:
+        popup.total_closes = (popup.total_closes or 0) + 1
+        db.session.commit()
+    return jsonify({'success': True})

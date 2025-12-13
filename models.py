@@ -1867,6 +1867,7 @@ class Popup(db.Model):
     
     # Media
     image_path = db.Column(db.String(500))
+    image_display_type = db.Column(db.String(20), default='inline')  # 'inline', 'background', 'background_cover'
     video_url = db.Column(db.String(500))
     
     # Design Settings
@@ -1970,6 +1971,7 @@ class Popup(db.Model):
             'button_url': self.button_url,
             'button_action': self.button_action,
             'image_path': self.image_path,
+            'image_display_type': self.image_display_type or 'inline',
             'video_url': self.video_url,
             'popup_type': self.popup_type,
             'popup_size': self.popup_size,

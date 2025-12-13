@@ -135,7 +135,13 @@
                 positionStyles = 'margin:1rem;';
             }
             
-            popup.style.cssText = 'background:' + (config.background_color || '#fff') + ';border-radius:' + (config.border_radius || 12) + 'px;padding:2rem;width:90%;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 20px 60px rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';';
+            var bgStyle = 'background:' + (config.background_color || '#fff') + ';';
+            if (config.image_path && config.image_display_type === 'background') {
+                bgStyle = 'background:url(' + config.image_path + ') center center / contain no-repeat, ' + (config.background_color || '#fff') + ';';
+            } else if (config.image_path && config.image_display_type === 'background_cover') {
+                bgStyle = 'background:url(' + config.image_path + ') center center / cover no-repeat, ' + (config.background_color || '#fff') + ';';
+            }
+            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;padding:2rem;width:90%;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 20px 60px rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';';
             
             if (config.show_close_button) {
                 var closeBtn = document.createElement('button');
@@ -145,7 +151,7 @@
                 popup.appendChild(closeBtn);
             }
             
-            if (config.image_path) {
+            if (config.image_path && (!config.image_display_type || config.image_display_type === 'inline')) {
                 var img = document.createElement('img');
                 img.src = config.image_path;
                 img.style.cssText = 'max-width:100%;height:auto;border-radius:8px;margin-bottom:1rem;';

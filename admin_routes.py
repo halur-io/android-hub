@@ -7933,6 +7933,9 @@ def create_popup():
         if max_impressions:
             popup.max_impressions_per_user = int(max_impressions)
         
+        # Handle image display type
+        popup.image_display_type = request.form.get('image_display_type', 'inline')
+        
         # Handle image upload
         if 'image' in request.files:
             file = request.files['image']
@@ -8021,6 +8024,9 @@ def edit_popup(popup_id):
         
         max_impressions = request.form.get('max_impressions_per_user')
         popup.max_impressions_per_user = int(max_impressions) if max_impressions else None
+        
+        # Handle image display type
+        popup.image_display_type = request.form.get('image_display_type', 'inline')
         
         # Handle image upload
         if 'image' in request.files:

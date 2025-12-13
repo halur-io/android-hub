@@ -239,7 +239,93 @@
     .user-actions {
         display: flex;
         gap: 0.5rem;
-        justify-content: space-between;
+        justify-content: flex-end;
+    }
+
+    /* 3-Dot Action Menu */
+    .action-menu {
+        position: relative;
+    }
+
+    .btn-dots {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .btn-dots:hover {
+        background: #f3f4f6;
+        color: var(--sumo-coral);
+    }
+
+    .action-dropdown {
+        position: absolute;
+        left: 0;
+        top: 100%;
+        margin-top: 0.25rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        border: 1px solid #e5e7eb;
+        min-width: 150px;
+        z-index: 100;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+    }
+
+    .action-menu:hover .action-dropdown,
+    .action-menu.open .action-dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .action-dropdown a,
+    .action-dropdown button {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: none;
+        background: none;
+        color: #374151;
+        font-size: 0.9rem;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s ease;
+    }
+
+    .action-dropdown a:first-child {
+        border-radius: 10px 10px 0 0;
+    }
+
+    .action-dropdown button:last-child,
+    .action-dropdown a:last-child {
+        border-radius: 0 0 10px 10px;
+    }
+
+    .action-dropdown a:hover,
+    .action-dropdown button:hover {
+        background: #f3f4f6;
+    }
+
+    .action-dropdown .delete-action {
+        color: #dc2626;
+    }
+
+    .action-dropdown .delete-action:hover {
+        background: #fef2f2;
     }
 
     .btn-card {
@@ -635,17 +721,23 @@
                 </div>
 
                 <div class="user-actions">
-                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn-card btn-edit">
-                        <i class="fas fa-edit"></i>
-                        עריכה
-                    </a>
-                    {% if user.id != current_user.id %}
-                    <button class="btn-card btn-delete" 
-                            onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
-                        <i class="fas fa-trash"></i>
-                        מחיקה
-                    </button>
-                    {% endif %}
+                    <div class="action-menu">
+                        <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="action-dropdown">
+                            <a href="{{ url_for('admin.edit_user', user_id=user.id) }}">
+                                <i class="fas fa-edit"></i>
+                                עריכה
+                            </a>
+                            {% if user.id != current_user.id %}
+                            <button class="delete-action" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                <i class="fas fa-trash"></i>
+                                מחיקה
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -694,14 +786,23 @@
                             {% endif %}
                         </td>
                         <td style="padding: 1rem; text-align: center;">
-                            <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" style="color: var(--sumo-coral); margin-left: 0.5rem;" title="עריכה">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            {% if user.id != current_user.id %}
-                            <button onclick="deleteUser({{ user.id }}, '{{ user.username }}')" style="color: #dc2626; background: none; border: none; cursor: pointer;" title="מחיקה">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            {% endif %}
+                            <div class="action-menu" style="display: inline-block;">
+                                <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="action-dropdown" style="left: auto; right: 0;">
+                                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}">
+                                        <i class="fas fa-edit"></i>
+                                        עריכה
+                                    </a>
+                                    {% if user.id != current_user.id %}
+                                    <button class="delete-action" onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                        <i class="fas fa-trash"></i>
+                                        מחיקה
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -820,7 +921,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// View toggle functionality (cards/list)
+// View toggle functionality (cards/list) with localStorage persistence
 function toggleView(view) {
     const cardsView = document.getElementById('users-cards-view');
     const listView = document.getElementById('users-list-view');
@@ -845,7 +946,61 @@ function toggleView(view) {
         if (cardsView) cardsView.style.display = 'none';
         if (listView) listView.style.display = 'block';
     }
+    
+    // Save view preference to localStorage
+    localStorage.setItem('usersViewPreference', view);
 }
+
+// Restore saved view preference on page load - runs early in DOMContentLoaded
+(function() {
+    const savedView = localStorage.getItem('usersViewPreference');
+    if (savedView && savedView !== 'cards') {
+        // Apply saved view immediately when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleView(savedView);
+        });
+    }
+})();
+
+// 3-dot action menu toggle with full accessibility support
+function toggleActionMenu(event, button) {
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = button.closest('.action-menu');
+    const dropdown = menu.querySelector('.action-dropdown');
+    
+    // Close all other open menus
+    document.querySelectorAll('.action-menu.open').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+    
+    // Toggle current menu
+    menu.classList.toggle('open');
+    
+    // Focus first link if opening
+    if (menu.classList.contains('open') && dropdown) {
+        const firstLink = dropdown.querySelector('a, button');
+        if (firstLink) firstLink.focus();
+    }
+}
+
+// Close action menus when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.action-menu')) {
+        document.querySelectorAll('.action-menu.open').forEach(m => {
+            m.classList.remove('open');
+        });
+    }
+});
+
+// Close action menus with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        document.querySelectorAll('.action-menu.open').forEach(m => {
+            m.classList.remove('open');
+        });
+    }
+});
 
 // User deletion functionality
 function deleteUser(userId, username) {

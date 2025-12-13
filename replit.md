@@ -90,3 +90,26 @@ The admin panel uses a comprehensive RBAC system:
 - `kitchen.view/manage` - Kitchen operations
 - `reports.view` - Reports access
 - `system.admin` - System configuration
+
+## UI/UX Design Preferences
+
+**Action Buttons Pattern:**
+- ALL action buttons (edit, delete, view, etc.) MUST be placed under a 3-dot dropdown menu
+- Use `<i class="fas fa-ellipsis-v"></i>` for the 3-dot icon
+- This creates a cleaner UI and is consistent across all admin pages
+- Example pattern:
+```html
+<div class="action-menu">
+  <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+    <i class="fas fa-ellipsis-v"></i>
+  </button>
+  <div class="action-dropdown">
+    <a href="edit_url"><i class="fas fa-edit"></i> עריכה</a>
+    <button class="delete-action"><i class="fas fa-trash"></i> מחיקה</button>
+  </div>
+</div>
+```
+
+**View State Persistence:**
+- Use localStorage to save user's view preferences (cards vs list view)
+- Restore preference on page load

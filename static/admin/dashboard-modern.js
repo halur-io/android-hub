@@ -246,14 +246,32 @@ function addActivityItem() {
     
     const item = document.createElement('div');
     item.className = `timeline-item ${activity.type} animate__animated animate__slideInRight`;
-    item.innerHTML = `
-        <span class="timeline-icon"><i class="fas ${activity.icon}"></i></span>
-        <div class="timeline-content">
-            <strong>${activity.text}</strong>
-            <span class="timeline-meta">עכשיו • ${activity.meta}</span>
-        </div>
-        ${activity.type === 'new-order' ? '<span class="timeline-badge">חדש</span>' : ''}
-    `;
+    
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'timeline-icon';
+    const icon = document.createElement('i');
+    icon.className = `fas ${activity.icon}`;
+    iconSpan.appendChild(icon);
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'timeline-content';
+    const strong = document.createElement('strong');
+    strong.textContent = activity.text;
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'timeline-meta';
+    metaSpan.textContent = `עכשיו • ${activity.meta}`;
+    contentDiv.appendChild(strong);
+    contentDiv.appendChild(metaSpan);
+    
+    item.appendChild(iconSpan);
+    item.appendChild(contentDiv);
+    
+    if (activity.type === 'new-order') {
+        const badge = document.createElement('span');
+        badge.className = 'timeline-badge';
+        badge.textContent = 'חדש';
+        item.appendChild(badge);
+    }
     
     timeline.insertBefore(item, timeline.firstChild);
     

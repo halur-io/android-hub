@@ -573,15 +573,23 @@
 
     <!-- Users Tab Content -->
     <div class="tab-content active" data-content="users">
-        <div class="action-buttons">
+        <div class="action-buttons" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <a href="{{ url_for('admin.add_user') }}" class="btn-action btn-primary-action">
                 <i class="fas fa-user-plus"></i>
                 הוסף משתמש חדש
             </a>
+            <div class="view-toggle" style="display: flex; gap: 0.5rem;">
+                <button class="btn-view active" data-view="cards" onclick="toggleView('cards')" style="padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 8px; background: var(--sumo-coral); color: white; cursor: pointer;">
+                    <i class="fas fa-th-large"></i> כרטיסים
+                </button>
+                <button class="btn-view" data-view="list" onclick="toggleView('list')" style="padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 8px; background: white; color: #374151; cursor: pointer;">
+                    <i class="fas fa-list"></i> רשימה
+                </button>
+            </div>
         </div>
 
         {% if users %}
-        <div class="users-grid">
+        <div class="users-grid" id="users-cards-view">
             {% for user in users %}
             <div class="user-card">
                 <div class="user-header">
@@ -641,6 +649,64 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
+        
+        <!-- List View -->
+        <div class="users-list-view" id="users-list-view" style="display: none;">
+            <table style="width: 100%; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-collapse: collapse; overflow: hidden;">
+                <thead>
+                    <tr style="background: var(--sumo-navy); color: white;">
+                        <th style="padding: 1rem; text-align: right;">שם משתמש</th>
+                        <th style="padding: 1rem; text-align: right;">אימייל</th>
+                        <th style="padding: 1rem; text-align: right;">תפקידים</th>
+                        <th style="padding: 1rem; text-align: right;">סטטוס</th>
+                        <th style="padding: 1rem; text-align: center;">פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--sumo-coral), #e67e73); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                    {{ user.username[0].upper() }}
+                                </div>
+                                <strong>{{ user.username }}</strong>
+                            </div>
+                        </td>
+                        <td style="padding: 1rem;">{{ user.email }}</td>
+                        <td style="padding: 1rem;">
+                            {% for role in user.roles %}
+                                <span style="display: inline-block; padding: 0.25rem 0.5rem; background: #f3f4f6; border-radius: 4px; font-size: 0.8rem; margin: 0.1rem;">{{ role.display_name }}</span>
+                            {% else %}
+                                <span style="color: #9ca3af;">-</span>
+                            {% endfor %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if user.is_superadmin %}
+                                <span style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.75rem; background: #fef3c7; color: #92400e; border-radius: 20px; font-size: 0.8rem;">
+                                    <i class="fas fa-crown"></i> מנהל מערכת
+                                </span>
+                            {% else %}
+                                <span style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.75rem; background: #d1fae5; color: #059669; border-radius: 20px; font-size: 0.8rem;">
+                                    <i class="fas fa-check"></i> פעיל
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" style="color: var(--sumo-coral); margin-left: 0.5rem;" title="עריכה">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if user.id != current_user.id %}
+                            <button onclick="deleteUser({{ user.id }}, '{{ user.username }}')" style="color: #dc2626; background: none; border: none; cursor: pointer;" title="מחיקה">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         {% else %}
         <div class="empty-state">
@@ -754,6 +820,33 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// View toggle functionality (cards/list)
+function toggleView(view) {
+    const cardsView = document.getElementById('users-cards-view');
+    const listView = document.getElementById('users-list-view');
+    const buttons = document.querySelectorAll('.btn-view');
+    
+    buttons.forEach(btn => {
+        if (btn.dataset.view === view) {
+            btn.style.background = 'var(--sumo-coral)';
+            btn.style.color = 'white';
+            btn.classList.add('active');
+        } else {
+            btn.style.background = 'white';
+            btn.style.color = '#374151';
+            btn.classList.remove('active');
+        }
+    });
+    
+    if (view === 'cards') {
+        if (cardsView) cardsView.style.display = 'grid';
+        if (listView) listView.style.display = 'none';
+    } else {
+        if (cardsView) cardsView.style.display = 'none';
+        if (listView) listView.style.display = 'block';
+    }
+}
+
 // User deletion functionality
 function deleteUser(userId, username) {
     if (confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${username}"?`)) {
@@ -761,6 +854,7 @@ function deleteUser(userId, username) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
             }
         })
         .then(response => response.json())

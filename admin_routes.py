@@ -114,6 +114,13 @@ ROUTE_PERMISSIONS = {
     # System
     'admin.microservices': 'system.admin',
     'admin.system_config': 'system.admin',
+    # Popups
+    'admin.popups': 'settings.view',
+    'admin.create_popup': 'settings.edit',
+    'admin.edit_popup': 'settings.edit',
+    'admin.delete_popup': 'settings.edit',
+    'admin.toggle_popup': 'settings.edit',
+    'admin.duplicate_popup': 'settings.edit',
 }
 
 @admin_bp.before_request
@@ -7847,3 +7854,277 @@ def get_audit_history_api(entity_type, entity_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+# ===== POPUP MANAGEMENT =====
+
+@admin_bp.route('/popups')
+@login_required
+def popups():
+    """List all popups"""
+    popups = Popup.query.order_by(Popup.priority.desc(), Popup.created_at.desc()).all()
+    return render_template('admin/popups.html', popups=popups)
+
+
+@admin_bp.route('/popups/create', methods=['GET', 'POST'])
+@login_required
+def create_popup():
+    """Create a new popup"""
+    if request.method == 'POST':
+        popup = Popup(
+            name=request.form.get('name'),
+            title_he=request.form.get('title_he'),
+            title_en=request.form.get('title_en'),
+            content_he=request.form.get('content_he'),
+            content_en=request.form.get('content_en'),
+            button_text_he=request.form.get('button_text_he'),
+            button_text_en=request.form.get('button_text_en'),
+            button_url=request.form.get('button_url'),
+            button_action=request.form.get('button_action', 'link'),
+            popup_type=request.form.get('popup_type', 'modal'),
+            popup_size=request.form.get('popup_size', 'medium'),
+            popup_position=request.form.get('popup_position', 'center'),
+            background_color=request.form.get('background_color', '#ffffff'),
+            title_color=request.form.get('title_color', '#1B2951'),
+            text_color=request.form.get('text_color', '#333333'),
+            button_bg_color=request.form.get('button_bg_color', '#C75450'),
+            button_text_color=request.form.get('button_text_color', '#ffffff'),
+            overlay_color=request.form.get('overlay_color', 'rgba(0,0,0,0.5)'),
+            title_font_size=int(request.form.get('title_font_size', 24)),
+            content_font_size=int(request.form.get('content_font_size', 16)),
+            border_radius=int(request.form.get('border_radius', 12)),
+            has_shadow=request.form.get('has_shadow') == 'on',
+            border_color=request.form.get('border_color'),
+            border_width=int(request.form.get('border_width', 0)),
+            show_delay_seconds=int(request.form.get('show_delay_seconds', 3)),
+            show_frequency=request.form.get('show_frequency', 'once_per_session'),
+            show_every_x_days=int(request.form.get('show_every_x_days', 1)),
+            trigger_type=request.form.get('trigger_type', 'time_delay'),
+            scroll_percentage=int(request.form.get('scroll_percentage', 50)),
+            exit_intent=request.form.get('exit_intent') == 'on',
+            show_on_all_pages=request.form.get('show_on_all_pages') == 'on',
+            show_on_desktop=request.form.get('show_on_desktop') == 'on',
+            show_on_mobile=request.form.get('show_on_mobile') == 'on',
+            show_on_tablet=request.form.get('show_on_tablet') == 'on',
+            animation_in=request.form.get('animation_in', 'fadeIn'),
+            animation_out=request.form.get('animation_out', 'fadeOut'),
+            animation_duration=int(request.form.get('animation_duration', 300)),
+            show_close_button=request.form.get('show_close_button') == 'on',
+            close_button_position=request.form.get('close_button_position', 'top-right'),
+            allow_backdrop_close=request.form.get('allow_backdrop_close') == 'on',
+            priority=int(request.form.get('priority', 0)),
+            is_active=request.form.get('is_active') == 'on',
+            created_by=current_user.id
+        )
+        
+        # Handle dates
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        if start_date:
+            popup.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M')
+        if end_date:
+            popup.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M')
+        
+        auto_close = request.form.get('auto_close_seconds')
+        if auto_close:
+            popup.auto_close_seconds = int(auto_close)
+        
+        max_impressions = request.form.get('max_impressions_per_user')
+        if max_impressions:
+            popup.max_impressions_per_user = int(max_impressions)
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"popup_{timestamp}_{filename}"
+                filepath = os.path.join('static/uploads', filename)
+                file.save(filepath)
+                popup.image_path = f"/static/uploads/{filename}"
+        
+        db.session.add(popup)
+        db.session.commit()
+        
+        flash('הפופאפ נוצר בהצלחה', 'success')
+        return redirect(url_for('admin.popups'))
+    
+    return render_template('admin/popup_form.html', popup=None)
+
+
+@admin_bp.route('/popups/<int:popup_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_popup(popup_id):
+    """Edit an existing popup"""
+    popup = Popup.query.get_or_404(popup_id)
+    
+    if request.method == 'POST':
+        popup.name = request.form.get('name')
+        popup.title_he = request.form.get('title_he')
+        popup.title_en = request.form.get('title_en')
+        popup.content_he = request.form.get('content_he')
+        popup.content_en = request.form.get('content_en')
+        popup.button_text_he = request.form.get('button_text_he')
+        popup.button_text_en = request.form.get('button_text_en')
+        popup.button_url = request.form.get('button_url')
+        popup.button_action = request.form.get('button_action', 'link')
+        popup.popup_type = request.form.get('popup_type', 'modal')
+        popup.popup_size = request.form.get('popup_size', 'medium')
+        popup.popup_position = request.form.get('popup_position', 'center')
+        popup.background_color = request.form.get('background_color', '#ffffff')
+        popup.title_color = request.form.get('title_color', '#1B2951')
+        popup.text_color = request.form.get('text_color', '#333333')
+        popup.button_bg_color = request.form.get('button_bg_color', '#C75450')
+        popup.button_text_color = request.form.get('button_text_color', '#ffffff')
+        popup.overlay_color = request.form.get('overlay_color', 'rgba(0,0,0,0.5)')
+        popup.title_font_size = int(request.form.get('title_font_size', 24))
+        popup.content_font_size = int(request.form.get('content_font_size', 16))
+        popup.border_radius = int(request.form.get('border_radius', 12))
+        popup.has_shadow = request.form.get('has_shadow') == 'on'
+        popup.border_color = request.form.get('border_color')
+        popup.border_width = int(request.form.get('border_width', 0))
+        popup.show_delay_seconds = int(request.form.get('show_delay_seconds', 3))
+        popup.show_frequency = request.form.get('show_frequency', 'once_per_session')
+        popup.show_every_x_days = int(request.form.get('show_every_x_days', 1))
+        popup.trigger_type = request.form.get('trigger_type', 'time_delay')
+        popup.scroll_percentage = int(request.form.get('scroll_percentage', 50))
+        popup.exit_intent = request.form.get('exit_intent') == 'on'
+        popup.show_on_all_pages = request.form.get('show_on_all_pages') == 'on'
+        popup.show_on_desktop = request.form.get('show_on_desktop') == 'on'
+        popup.show_on_mobile = request.form.get('show_on_mobile') == 'on'
+        popup.show_on_tablet = request.form.get('show_on_tablet') == 'on'
+        popup.animation_in = request.form.get('animation_in', 'fadeIn')
+        popup.animation_out = request.form.get('animation_out', 'fadeOut')
+        popup.animation_duration = int(request.form.get('animation_duration', 300))
+        popup.show_close_button = request.form.get('show_close_button') == 'on'
+        popup.close_button_position = request.form.get('close_button_position', 'top-right')
+        popup.allow_backdrop_close = request.form.get('allow_backdrop_close') == 'on'
+        popup.priority = int(request.form.get('priority', 0))
+        popup.is_active = request.form.get('is_active') == 'on'
+        
+        # Handle dates
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        popup.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M') if start_date else None
+        popup.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M') if end_date else None
+        
+        auto_close = request.form.get('auto_close_seconds')
+        popup.auto_close_seconds = int(auto_close) if auto_close else None
+        
+        max_impressions = request.form.get('max_impressions_per_user')
+        popup.max_impressions_per_user = int(max_impressions) if max_impressions else None
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"popup_{timestamp}_{filename}"
+                filepath = os.path.join('static/uploads', filename)
+                file.save(filepath)
+                popup.image_path = f"/static/uploads/{filename}"
+        
+        db.session.commit()
+        
+        flash('הפופאפ עודכן בהצלחה', 'success')
+        return redirect(url_for('admin.popups'))
+    
+    return render_template('admin/popup_form.html', popup=popup)
+
+
+@admin_bp.route('/popups/<int:popup_id>/delete', methods=['POST'])
+@login_required
+def delete_popup(popup_id):
+    """Delete a popup"""
+    popup = Popup.query.get_or_404(popup_id)
+    db.session.delete(popup)
+    db.session.commit()
+    flash('הפופאפ נמחק בהצלחה', 'success')
+    return redirect(url_for('admin.popups'))
+
+
+@admin_bp.route('/popups/<int:popup_id>/toggle', methods=['POST'])
+@login_required
+def toggle_popup(popup_id):
+    """Toggle popup active status"""
+    popup = Popup.query.get_or_404(popup_id)
+    popup.is_active = not popup.is_active
+    db.session.commit()
+    status = 'פעיל' if popup.is_active else 'מושבת'
+    flash(f'הפופאפ כעת {status}', 'success')
+    return redirect(url_for('admin.popups'))
+
+
+@admin_bp.route('/popups/<int:popup_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_popup(popup_id):
+    """Duplicate a popup"""
+    original = Popup.query.get_or_404(popup_id)
+    
+    new_popup = Popup(
+        name=f"{original.name} (העתק)",
+        title_he=original.title_he,
+        title_en=original.title_en,
+        content_he=original.content_he,
+        content_en=original.content_en,
+        button_text_he=original.button_text_he,
+        button_text_en=original.button_text_en,
+        button_url=original.button_url,
+        button_action=original.button_action,
+        image_path=original.image_path,
+        video_url=original.video_url,
+        popup_type=original.popup_type,
+        popup_size=original.popup_size,
+        popup_position=original.popup_position,
+        background_color=original.background_color,
+        title_color=original.title_color,
+        text_color=original.text_color,
+        button_bg_color=original.button_bg_color,
+        button_text_color=original.button_text_color,
+        overlay_color=original.overlay_color,
+        title_font_size=original.title_font_size,
+        content_font_size=original.content_font_size,
+        border_radius=original.border_radius,
+        has_shadow=original.has_shadow,
+        border_color=original.border_color,
+        border_width=original.border_width,
+        show_delay_seconds=original.show_delay_seconds,
+        show_frequency=original.show_frequency,
+        show_every_x_days=original.show_every_x_days,
+        max_impressions_per_user=original.max_impressions_per_user,
+        trigger_type=original.trigger_type,
+        scroll_percentage=original.scroll_percentage,
+        exit_intent=original.exit_intent,
+        show_on_all_pages=original.show_on_all_pages,
+        target_pages=original.target_pages,
+        exclude_pages=original.exclude_pages,
+        show_on_desktop=original.show_on_desktop,
+        show_on_mobile=original.show_on_mobile,
+        show_on_tablet=original.show_on_tablet,
+        animation_in=original.animation_in,
+        animation_out=original.animation_out,
+        animation_duration=original.animation_duration,
+        show_close_button=original.show_close_button,
+        close_button_position=original.close_button_position,
+        allow_backdrop_close=original.allow_backdrop_close,
+        auto_close_seconds=original.auto_close_seconds,
+        is_active=False,
+        priority=original.priority,
+        created_by=current_user.id
+    )
+    
+    db.session.add(new_popup)
+    db.session.commit()
+    
+    flash('הפופאפ שוכפל בהצלחה', 'success')
+    return redirect(url_for('admin.edit_popup', popup_id=new_popup.id))
+
+
+@admin_bp.route('/popups/<int:popup_id>/analytics')
+@login_required
+def popup_analytics(popup_id):
+    """View popup analytics"""
+    popup = Popup.query.get_or_404(popup_id)
+    return render_template('admin/popup_analytics.html', popup=popup)

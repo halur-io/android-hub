@@ -1,0 +1,725 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'עריכת פופאפ' if popup else 'יצירת פופאפ חדש' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .popup-form-container {
+        padding: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1B2951;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+    }
+    
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+    
+    .back-link:hover {
+        color: #C75450;
+    }
+    
+    .form-layout {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 2rem;
+    }
+    
+    @media (max-width: 1100px) {
+        .form-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .form-main {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .section-header {
+        background: linear-gradient(135deg, #1B2951 0%, #2a3f73 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .section-body {
+        padding: 1.5rem;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #C75450;
+        box-shadow: 0 0 0 3px rgba(199, 84, 80, 0.1);
+    }
+    
+    .form-textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+    
+    .color-input-wrapper {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .color-picker {
+        width: 50px;
+        height: 40px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    
+    .color-text {
+        flex: 1;
+    }
+    
+    .form-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+    }
+    
+    .form-checkbox input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: #C75450;
+    }
+    
+    .form-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background: white;
+        cursor: pointer;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding: 1.5rem;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #C75450 0%, #b04540 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(199, 84, 80, 0.4);
+    }
+    
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #334155;
+    }
+    
+    .btn-secondary:hover {
+        background: #cbd5e1;
+    }
+    
+    .preview-panel {
+        position: sticky;
+        top: 80px;
+    }
+    
+    .preview-container {
+        background: #1B2951;
+        border-radius: 16px;
+        padding: 2rem;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .preview-popup {
+        max-width: 100%;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    
+    .range-value {
+        display: inline-block;
+        min-width: 40px;
+        text-align: center;
+        font-weight: 600;
+        color: #C75450;
+    }
+    
+    .image-preview-container {
+        margin-top: 1rem;
+        text-align: center;
+    }
+    
+    .image-preview-container img {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="popup-form-container">
+    <a href="{{ url_for('admin.popups') }}" class="back-link">
+        <i class="fas fa-arrow-right"></i>
+        חזרה לרשימת הפופאפים
+    </a>
+    
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-window-restore"></i>
+            {{ 'עריכת פופאפ' if popup else 'יצירת פופאפ חדש' }}
+        </h1>
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data" id="popupForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="form-layout">
+            <div class="form-main">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-info-circle"></i>
+                        פרטים בסיסיים
+                    </div>
+                    <div class="section-body">
+                        <div class="form-group">
+                            <label class="form-label">שם הפופאפ (לזיהוי פנימי)</label>
+                            <input type="text" name="name" class="form-input" value="{{ popup.name if popup else '' }}" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">כותרת (עברית)</label>
+                                <input type="text" name="title_he" id="title_he" class="form-input" value="{{ popup.title_he if popup else '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">כותרת (אנגלית)</label>
+                                <input type="text" name="title_en" id="title_en" class="form-input" value="{{ popup.title_en if popup else '' }}">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">תוכן (עברית)</label>
+                                <textarea name="content_he" id="content_he" class="form-input form-textarea">{{ popup.content_he if popup else '' }}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">תוכן (אנגלית)</label>
+                                <textarea name="content_en" id="content_en" class="form-input form-textarea">{{ popup.content_en if popup else '' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">תמונה</label>
+                            <input type="file" name="image" accept="image/*" class="form-input">
+                            {% if popup and popup.image_path %}
+                            <div class="image-preview-container">
+                                <img src="{{ popup.image_path }}" alt="Current image">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-mouse-pointer"></i>
+                        כפתור קריאה לפעולה (CTA)
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">טקסט כפתור (עברית)</label>
+                                <input type="text" name="button_text_he" id="button_text_he" class="form-input" value="{{ popup.button_text_he if popup else '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">טקסט כפתור (אנגלית)</label>
+                                <input type="text" name="button_text_en" id="button_text_en" class="form-input" value="{{ popup.button_text_en if popup else '' }}">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">קישור הכפתור</label>
+                                <input type="url" name="button_url" class="form-input" value="{{ popup.button_url if popup else '' }}" placeholder="https://...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">פעולת כפתור</label>
+                                <select name="button_action" class="form-select">
+                                    <option value="link" {{ 'selected' if not popup or popup.button_action == 'link' }}>קישור רגיל</option>
+                                    <option value="new_tab" {{ 'selected' if popup and popup.button_action == 'new_tab' }}>פתיחה בטאב חדש</option>
+                                    <option value="close" {{ 'selected' if popup and popup.button_action == 'close' }}>סגירת הפופאפ</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-palette"></i>
+                        עיצוב
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">סוג פופאפ</label>
+                                <select name="popup_type" id="popup_type" class="form-select">
+                                    <option value="modal" {{ 'selected' if not popup or popup.popup_type == 'modal' }}>מודאל (מרכז)</option>
+                                    <option value="slide_in" {{ 'selected' if popup and popup.popup_type == 'slide_in' }}>נכנס מהצד</option>
+                                    <option value="banner" {{ 'selected' if popup and popup.popup_type == 'banner' }}>באנר (למעלה/למטה)</option>
+                                    <option value="floating" {{ 'selected' if popup and popup.popup_type == 'floating' }}>צף בפינה</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">גודל</label>
+                                <select name="popup_size" id="popup_size" class="form-select">
+                                    <option value="small" {{ 'selected' if popup and popup.popup_size == 'small' }}>קטן</option>
+                                    <option value="medium" {{ 'selected' if not popup or popup.popup_size == 'medium' }}>בינוני</option>
+                                    <option value="large" {{ 'selected' if popup and popup.popup_size == 'large' }}>גדול</option>
+                                    <option value="fullscreen" {{ 'selected' if popup and popup.popup_size == 'fullscreen' }}>מסך מלא</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">מיקום</label>
+                                <select name="popup_position" id="popup_position" class="form-select">
+                                    <option value="center" {{ 'selected' if not popup or popup.popup_position == 'center' }}>מרכז</option>
+                                    <option value="top" {{ 'selected' if popup and popup.popup_position == 'top' }}>למעלה</option>
+                                    <option value="bottom" {{ 'selected' if popup and popup.popup_position == 'bottom' }}>למטה</option>
+                                    <option value="top-right" {{ 'selected' if popup and popup.popup_position == 'top-right' }}>ימין למעלה</option>
+                                    <option value="bottom-right" {{ 'selected' if popup and popup.popup_position == 'bottom-right' }}>ימין למטה</option>
+                                    <option value="top-left" {{ 'selected' if popup and popup.popup_position == 'top-left' }}>שמאל למעלה</option>
+                                    <option value="bottom-left" {{ 'selected' if popup and popup.popup_position == 'bottom-left' }}>שמאל למטה</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">צבע רקע</label>
+                                <div class="color-input-wrapper">
+                                    <input type="color" name="background_color" id="background_color" class="color-picker" value="{{ popup.background_color if popup else '#ffffff' }}">
+                                    <input type="text" class="form-input color-text" value="{{ popup.background_color if popup else '#ffffff' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">צבע כותרת</label>
+                                <div class="color-input-wrapper">
+                                    <input type="color" name="title_color" id="title_color" class="color-picker" value="{{ popup.title_color if popup else '#1B2951' }}">
+                                    <input type="text" class="form-input color-text" value="{{ popup.title_color if popup else '#1B2951' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">צבע טקסט</label>
+                                <div class="color-input-wrapper">
+                                    <input type="color" name="text_color" id="text_color" class="color-picker" value="{{ popup.text_color if popup else '#333333' }}">
+                                    <input type="text" class="form-input color-text" value="{{ popup.text_color if popup else '#333333' }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">צבע רקע כפתור</label>
+                                <div class="color-input-wrapper">
+                                    <input type="color" name="button_bg_color" id="button_bg_color" class="color-picker" value="{{ popup.button_bg_color if popup else '#C75450' }}">
+                                    <input type="text" class="form-input color-text" value="{{ popup.button_bg_color if popup else '#C75450' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">צבע טקסט כפתור</label>
+                                <div class="color-input-wrapper">
+                                    <input type="color" name="button_text_color" id="button_text_color" class="color-picker" value="{{ popup.button_text_color if popup else '#ffffff' }}">
+                                    <input type="text" class="form-input color-text" value="{{ popup.button_text_color if popup else '#ffffff' }}" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">צבע שכבת הכיסוי</label>
+                                <input type="text" name="overlay_color" id="overlay_color" class="form-input" value="{{ popup.overlay_color if popup else 'rgba(0,0,0,0.5)' }}" placeholder="rgba(0,0,0,0.5)">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">גודל כותרת (פיקסלים): <span class="range-value" id="title_size_val">{{ popup.title_font_size if popup else 24 }}</span></label>
+                                <input type="range" name="title_font_size" id="title_font_size" min="14" max="48" value="{{ popup.title_font_size if popup else 24 }}" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">גודל טקסט (פיקסלים): <span class="range-value" id="content_size_val">{{ popup.content_font_size if popup else 16 }}</span></label>
+                                <input type="range" name="content_font_size" id="content_font_size" min="12" max="24" value="{{ popup.content_font_size if popup else 16 }}" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">עיגול פינות (פיקסלים): <span class="range-value" id="radius_val">{{ popup.border_radius if popup else 12 }}</span></label>
+                                <input type="range" name="border_radius" id="border_radius" min="0" max="50" value="{{ popup.border_radius if popup else 12 }}" class="form-input">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="has_shadow" {{ 'checked' if not popup or popup.has_shadow }}>
+                                    הוספת צל
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-clock"></i>
+                        תזמון והצגה
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">תאריך התחלה</label>
+                                <input type="datetime-local" name="start_date" class="form-input" value="{{ popup.start_date.strftime('%Y-%m-%dT%H:%M') if popup and popup.start_date else '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">תאריך סיום</label>
+                                <input type="datetime-local" name="end_date" class="form-input" value="{{ popup.end_date.strftime('%Y-%m-%dT%H:%M') if popup and popup.end_date else '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">השהייה לפני הצגה (שניות)</label>
+                                <input type="number" name="show_delay_seconds" class="form-input" value="{{ popup.show_delay_seconds if popup else 3 }}" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">סגירה אוטומטית (שניות, ריק = ללא)</label>
+                                <input type="number" name="auto_close_seconds" class="form-input" value="{{ popup.auto_close_seconds if popup and popup.auto_close_seconds else '' }}" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">תדירות הצגה</label>
+                                <select name="show_frequency" class="form-select">
+                                    <option value="always" {{ 'selected' if popup and popup.show_frequency == 'always' }}>בכל ביקור</option>
+                                    <option value="once_per_session" {{ 'selected' if not popup or popup.show_frequency == 'once_per_session' }}>פעם אחת לסשן</option>
+                                    <option value="once_per_day" {{ 'selected' if popup and popup.show_frequency == 'once_per_day' }}>פעם ביום</option>
+                                    <option value="once_ever" {{ 'selected' if popup and popup.show_frequency == 'once_ever' }}>פעם אחת בלבד</option>
+                                    <option value="every_x_days" {{ 'selected' if popup and popup.show_frequency == 'every_x_days' }}>כל X ימים</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">טריגר להצגה</label>
+                                <select name="trigger_type" class="form-select">
+                                    <option value="time_delay" {{ 'selected' if not popup or popup.trigger_type == 'time_delay' }}>אחרי השהייה</option>
+                                    <option value="scroll" {{ 'selected' if popup and popup.trigger_type == 'scroll' }}>אחרי גלילה</option>
+                                    <option value="exit_intent" {{ 'selected' if popup and popup.trigger_type == 'exit_intent' }}>כוונת יציאה</option>
+                                    <option value="immediate" {{ 'selected' if popup and popup.trigger_type == 'immediate' }}>מיידי</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">אחוז גלילה להצגה</label>
+                                <input type="number" name="scroll_percentage" class="form-input" value="{{ popup.scroll_percentage if popup else 50 }}" min="0" max="100">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">עדיפות (גבוה יותר = מוצג קודם)</label>
+                                <input type="number" name="priority" class="form-input" value="{{ popup.priority if popup else 0 }}" min="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-cog"></i>
+                        אפשרויות נוספות
+                    </div>
+                    <div class="section-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">אנימציית כניסה</label>
+                                <select name="animation_in" class="form-select">
+                                    <option value="fadeIn" {{ 'selected' if not popup or popup.animation_in == 'fadeIn' }}>Fade In</option>
+                                    <option value="slideInUp" {{ 'selected' if popup and popup.animation_in == 'slideInUp' }}>Slide In Up</option>
+                                    <option value="slideInDown" {{ 'selected' if popup and popup.animation_in == 'slideInDown' }}>Slide In Down</option>
+                                    <option value="slideInRight" {{ 'selected' if popup and popup.animation_in == 'slideInRight' }}>Slide In Right</option>
+                                    <option value="zoomIn" {{ 'selected' if popup and popup.animation_in == 'zoomIn' }}>Zoom In</option>
+                                    <option value="bounceIn" {{ 'selected' if popup and popup.animation_in == 'bounceIn' }}>Bounce In</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">אנימציית יציאה</label>
+                                <select name="animation_out" class="form-select">
+                                    <option value="fadeOut" {{ 'selected' if not popup or popup.animation_out == 'fadeOut' }}>Fade Out</option>
+                                    <option value="slideOutUp" {{ 'selected' if popup and popup.animation_out == 'slideOutUp' }}>Slide Out Up</option>
+                                    <option value="slideOutDown" {{ 'selected' if popup and popup.animation_out == 'slideOutDown' }}>Slide Out Down</option>
+                                    <option value="zoomOut" {{ 'selected' if popup and popup.animation_out == 'zoomOut' }}>Zoom Out</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">משך אנימציה (מילישניות)</label>
+                                <input type="number" name="animation_duration" class="form-input" value="{{ popup.animation_duration if popup else 300 }}" min="100" max="1000">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="show_close_button" {{ 'checked' if not popup or popup.show_close_button }}>
+                                    הצגת כפתור סגירה
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="allow_backdrop_close" {{ 'checked' if not popup or popup.allow_backdrop_close }}>
+                                    סגירה בלחיצה על הרקע
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="show_on_all_pages" {{ 'checked' if not popup or popup.show_on_all_pages }}>
+                                    הצגה בכל הדפים
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="show_on_desktop" {{ 'checked' if not popup or popup.show_on_desktop }}>
+                                    הצגה בדסקטופ
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="show_on_mobile" {{ 'checked' if not popup or popup.show_on_mobile }}>
+                                    הצגה במובייל
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="show_on_tablet" {{ 'checked' if not popup or popup.show_on_tablet }}>
+                                    הצגה בטאבלט
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" name="is_active" {{ 'checked' if popup and popup.is_active }}>
+                                    פופאפ פעיל
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <a href="{{ url_for('admin.popups') }}" class="btn btn-secondary">ביטול</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            {{ 'עדכון' if popup else 'יצירה' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preview-panel">
+                <div class="form-section">
+                    <div class="section-header">
+                        <i class="fas fa-eye"></i>
+                        תצוגה מקדימה
+                    </div>
+                    <div class="preview-container" id="preview_container">
+                        <div class="preview-popup" id="preview_popup">
+                            <h3 id="preview_title">כותרת הפופאפ</h3>
+                            <p id="preview_content">תוכן הפופאפ יופיע כאן</p>
+                            <button id="preview_button" style="display: none;">כפתור</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var colorInputs = document.querySelectorAll('.color-picker');
+    colorInputs.forEach(function(input) {
+        input.addEventListener('input', function() {
+            this.nextElementSibling.value = this.value;
+            updatePreview();
+        });
+    });
+    
+    var rangeInputs = {
+        'title_font_size': 'title_size_val',
+        'content_font_size': 'content_size_val',
+        'border_radius': 'radius_val'
+    };
+    
+    Object.keys(rangeInputs).forEach(function(inputId) {
+        var input = document.getElementById(inputId);
+        var display = document.getElementById(rangeInputs[inputId]);
+        if (input && display) {
+            input.addEventListener('input', function() {
+                display.textContent = this.value;
+                updatePreview();
+            });
+        }
+    });
+    
+    var textInputs = ['title_he', 'title_en', 'content_he', 'content_en', 'button_text_he', 'button_text_en'];
+    textInputs.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', updatePreview);
+        }
+    });
+    
+    updatePreview();
+});
+
+function updatePreview() {
+    var popup = document.getElementById('preview_popup');
+    var container = document.getElementById('preview_container');
+    
+    var bgColor = document.getElementById('background_color').value;
+    var titleColor = document.getElementById('title_color').value;
+    var textColor = document.getElementById('text_color').value;
+    var btnBgColor = document.getElementById('button_bg_color').value;
+    var btnTextColor = document.getElementById('button_text_color').value;
+    var overlayColor = document.getElementById('overlay_color').value;
+    var titleSize = document.getElementById('title_font_size').value;
+    var contentSize = document.getElementById('content_font_size').value;
+    var borderRadius = document.getElementById('border_radius').value;
+    var hasShadow = document.querySelector('input[name="has_shadow"]').checked;
+    
+    container.style.background = overlayColor;
+    
+    popup.style.background = bgColor;
+    popup.style.borderRadius = borderRadius + 'px';
+    popup.style.padding = '2rem';
+    popup.style.boxShadow = hasShadow ? '0 20px 60px rgba(0,0,0,0.4)' : 'none';
+    
+    var title = document.getElementById('preview_title');
+    title.style.color = titleColor;
+    title.style.fontSize = titleSize + 'px';
+    title.textContent = document.getElementById('title_he').value || document.getElementById('title_en').value || 'כותרת הפופאפ';
+    
+    var content = document.getElementById('preview_content');
+    content.style.color = textColor;
+    content.style.fontSize = contentSize + 'px';
+    content.textContent = document.getElementById('content_he').value || document.getElementById('content_en').value || 'תוכן הפופאפ יופיע כאן';
+    
+    var btn = document.getElementById('preview_button');
+    var btnText = document.getElementById('button_text_he').value || document.getElementById('button_text_en').value;
+    if (btnText) {
+        btn.style.display = 'inline-block';
+        btn.style.background = btnBgColor;
+        btn.style.color = btnTextColor;
+        btn.style.border = 'none';
+        btn.style.padding = '0.75rem 1.5rem';
+        btn.style.borderRadius = '8px';
+        btn.style.marginTop = '1rem';
+        btn.style.cursor = 'pointer';
+        btn.style.fontWeight = '600';
+        btn.textContent = btnText;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

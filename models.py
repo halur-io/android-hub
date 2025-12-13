@@ -1842,3 +1842,161 @@ class CateringGalleryImage(db.Model):
     
     def __repr__(self):
         return f'<CateringGalleryImage {self.id}>'
+
+
+# ===== POPUP SYSTEM =====
+
+class Popup(db.Model):
+    __tablename__ = 'popups'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Basic Information
+    name = db.Column(db.String(100), nullable=False)
+    
+    # Content
+    title_he = db.Column(db.String(200))
+    title_en = db.Column(db.String(200))
+    content_he = db.Column(db.Text)
+    content_en = db.Column(db.Text)
+    
+    # Call to Action Button
+    button_text_he = db.Column(db.String(100))
+    button_text_en = db.Column(db.String(100))
+    button_url = db.Column(db.String(500))
+    button_action = db.Column(db.String(50), default='link')
+    
+    # Media
+    image_path = db.Column(db.String(500))
+    video_url = db.Column(db.String(500))
+    
+    # Design Settings
+    popup_type = db.Column(db.String(50), default='modal')
+    popup_size = db.Column(db.String(20), default='medium')
+    popup_position = db.Column(db.String(50), default='center')
+    
+    # Colors
+    background_color = db.Column(db.String(20), default='#ffffff')
+    title_color = db.Column(db.String(20), default='#1B2951')
+    text_color = db.Column(db.String(20), default='#333333')
+    button_bg_color = db.Column(db.String(20), default='#C75450')
+    button_text_color = db.Column(db.String(20), default='#ffffff')
+    overlay_color = db.Column(db.String(20), default='rgba(0,0,0,0.5)')
+    
+    # Typography
+    title_font_size = db.Column(db.Integer, default=24)
+    content_font_size = db.Column(db.Integer, default=16)
+    
+    # Border & Shadow
+    border_radius = db.Column(db.Integer, default=12)
+    has_shadow = db.Column(db.Boolean, default=True)
+    border_color = db.Column(db.String(20))
+    border_width = db.Column(db.Integer, default=0)
+    
+    # Timing Controls
+    start_date = db.Column(db.DateTime)
+    end_date = db.Column(db.DateTime)
+    show_delay_seconds = db.Column(db.Integer, default=3)
+    
+    # Display Frequency
+    show_frequency = db.Column(db.String(50), default='once_per_session')
+    show_every_x_days = db.Column(db.Integer, default=1)
+    max_impressions_per_user = db.Column(db.Integer)
+    
+    # Trigger Options
+    trigger_type = db.Column(db.String(50), default='time_delay')
+    scroll_percentage = db.Column(db.Integer, default=50)
+    exit_intent = db.Column(db.Boolean, default=False)
+    
+    # Page Targeting
+    show_on_all_pages = db.Column(db.Boolean, default=True)
+    target_pages = db.Column(db.JSON)
+    exclude_pages = db.Column(db.JSON)
+    
+    # Device Targeting
+    show_on_desktop = db.Column(db.Boolean, default=True)
+    show_on_mobile = db.Column(db.Boolean, default=True)
+    show_on_tablet = db.Column(db.Boolean, default=True)
+    
+    # Animation
+    animation_in = db.Column(db.String(50), default='fadeIn')
+    animation_out = db.Column(db.String(50), default='fadeOut')
+    animation_duration = db.Column(db.Integer, default=300)
+    
+    # Close Button
+    show_close_button = db.Column(db.Boolean, default=True)
+    close_button_position = db.Column(db.String(20), default='top-right')
+    allow_backdrop_close = db.Column(db.Boolean, default=True)
+    auto_close_seconds = db.Column(db.Integer)
+    
+    # Status
+    is_active = db.Column(db.Boolean, default=False)
+    priority = db.Column(db.Integer, default=0)
+    
+    # Analytics
+    total_impressions = db.Column(db.Integer, default=0)
+    total_closes = db.Column(db.Integer, default=0)
+    total_cta_clicks = db.Column(db.Integer, default=0)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    
+    # Relationships
+    creator = db.relationship('AdminUser', backref='created_popups')
+    
+    def __repr__(self):
+        return f'<Popup {self.name}>'
+    
+    def is_currently_active(self):
+        if not self.is_active:
+            return False
+        now = datetime.utcnow()
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+        return True
+    
+    def to_frontend_config(self):
+        return {
+            'id': self.id,
+            'title_he': self.title_he,
+            'title_en': self.title_en,
+            'content_he': self.content_he,
+            'content_en': self.content_en,
+            'button_text_he': self.button_text_he,
+            'button_text_en': self.button_text_en,
+            'button_url': self.button_url,
+            'button_action': self.button_action,
+            'image_path': self.image_path,
+            'video_url': self.video_url,
+            'popup_type': self.popup_type,
+            'popup_size': self.popup_size,
+            'popup_position': self.popup_position,
+            'background_color': self.background_color,
+            'title_color': self.title_color,
+            'text_color': self.text_color,
+            'button_bg_color': self.button_bg_color,
+            'button_text_color': self.button_text_color,
+            'overlay_color': self.overlay_color,
+            'title_font_size': self.title_font_size,
+            'content_font_size': self.content_font_size,
+            'border_radius': self.border_radius,
+            'has_shadow': self.has_shadow,
+            'border_color': self.border_color,
+            'border_width': self.border_width,
+            'show_delay_seconds': self.show_delay_seconds,
+            'show_frequency': self.show_frequency,
+            'trigger_type': self.trigger_type,
+            'scroll_percentage': self.scroll_percentage,
+            'exit_intent': self.exit_intent,
+            'animation_in': self.animation_in,
+            'animation_out': self.animation_out,
+            'animation_duration': self.animation_duration,
+            'show_close_button': self.show_close_button,
+            'close_button_position': self.close_button_position,
+            'allow_backdrop_close': self.allow_backdrop_close,
+            'auto_close_seconds': self.auto_close_seconds,
+            'priority': self.priority
+        }

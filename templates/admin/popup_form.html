@@ -608,7 +608,7 @@
 {% block content %}
 <form method="POST" enctype="multipart/form-data" id="popupForm">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<input type="hidden" name="element_positions" id="element_positions" value="{{ popup.element_positions if popup and popup.element_positions else '{}' }}">
+<input type="hidden" name="element_positions" id="element_positions" value='{{ (popup.element_positions if popup and popup.element_positions else {})|tojson }}'>
 
 <div class="popup-designer">
     <div class="designer-preview">
@@ -1071,6 +1071,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     initLivePreview();
     initDragDrop();
+    restoreElementPositions();
     initImageUpload();
     initColorPickers();
     initRangeInputs();
@@ -1213,6 +1214,38 @@ function saveElementPositions() {
     });
     
     document.getElementById('element_positions').value = JSON.stringify(positions);
+}
+
+function restoreElementPositions() {
+    var positionsField = document.getElementById('element_positions');
+    if (!positionsField || !positionsField.value) return;
+    
+    var positions;
+    try {
+        positions = JSON.parse(positionsField.value);
+    } catch (e) {
+        console.warn('Failed to parse element positions:', e);
+        return;
+    }
+    
+    if (!positions || typeof positions !== 'object' || Object.keys(positions).length === 0) return;
+    
+    var popupInner = document.getElementById('livePopupInner');
+    var elements = Array.from(popupInner.querySelectorAll('.draggable-element, .popup-form-element'));
+    
+    elements.sort(function(a, b) {
+        var orderA = (positions[a.id] && positions[a.id].order !== undefined) ? positions[a.id].order : 999;
+        var orderB = (positions[b.id] && positions[b.id].order !== undefined) ? positions[b.id].order : 999;
+        return orderA - orderB;
+    });
+    
+    var closeBtn = popupInner.querySelector('.close-btn');
+    elements.forEach(function(el) {
+        popupInner.appendChild(el);
+    });
+    if (closeBtn) {
+        popupInner.insertBefore(closeBtn, popupInner.firstChild);
+    }
 }
 
 function initImageUpload() {

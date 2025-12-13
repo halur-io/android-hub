@@ -76,10 +76,35 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+    }
+    
+    .section-header:hover {
+        background: linear-gradient(135deg, #243661 0%, #334b85 100%);
+    }
+    
+    .section-header .accordion-icon {
+        margin-right: auto;
+        transition: transform 0.3s ease;
+    }
+    
+    .section-header.collapsed .accordion-icon {
+        transform: rotate(-90deg);
     }
     
     .section-body {
         padding: 1.5rem;
+        overflow: hidden;
+        transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+    }
+    
+    .section-body.collapsed {
+        max-height: 0 !important;
+        padding-top: 0;
+        padding-bottom: 0;
+        opacity: 0;
     }
     
     .form-row {
@@ -337,10 +362,11 @@
         
         <div class="form-layout">
             <div class="form-main">
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section" data-section="basics">
+                    <div class="section-header" onclick="toggleSection(this)">
                         <i class="fas fa-info-circle"></i>
                         פרטים בסיסיים
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
                     <div class="section-body">
                         <div class="form-group">
@@ -399,10 +425,11 @@
                     </div>
                 </div>
                 
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section" data-section="cta">
+                    <div class="section-header" onclick="toggleSection(this)">
                         <i class="fas fa-mouse-pointer"></i>
                         כפתור קריאה לפעולה (CTA)
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
                     <div class="section-body">
                         <div class="form-row">
@@ -432,10 +459,11 @@
                     </div>
                 </div>
                 
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section" data-section="design">
+                    <div class="section-header" onclick="toggleSection(this)">
                         <i class="fas fa-palette"></i>
                         עיצוב
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
                     <div class="section-body">
                         <div class="form-row">
@@ -542,10 +570,11 @@
                     </div>
                 </div>
                 
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section" data-section="timing" data-default-collapsed="true">
+                    <div class="section-header" onclick="toggleSection(this)">
                         <i class="fas fa-clock"></i>
                         תזמון והצגה
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
                     <div class="section-body">
                         <div class="form-row">
@@ -605,10 +634,11 @@
                     </div>
                 </div>
                 
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section" data-section="options" data-default-collapsed="true">
+                    <div class="section-header" onclick="toggleSection(this)">
                         <i class="fas fa-cog"></i>
                         אפשרויות נוספות
+                        <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
                     <div class="section-body">
                         <div class="form-row">
@@ -788,7 +818,71 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     updatePreview();
+    
+    // Initialize accordion sections - store state in localStorage
+    initAccordionState();
 });
+
+function toggleSection(header) {
+    var sectionBody = header.nextElementSibling;
+    var section = header.parentElement;
+    var sectionName = section.dataset.section;
+    var isCollapsed = header.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        // Expanding
+        header.classList.remove('collapsed');
+        sectionBody.style.maxHeight = sectionBody.scrollHeight + 'px';
+        sectionBody.classList.remove('collapsed');
+        // After transition, remove max-height to allow dynamic content
+        setTimeout(function() {
+            sectionBody.style.maxHeight = 'none';
+        }, 300);
+    } else {
+        // Collapsing - set current height first for animation
+        sectionBody.style.maxHeight = sectionBody.scrollHeight + 'px';
+        // Force reflow
+        sectionBody.offsetHeight;
+        header.classList.add('collapsed');
+        sectionBody.style.maxHeight = '0';
+        sectionBody.classList.add('collapsed');
+    }
+    
+    // Store state in localStorage
+    var accordionState = JSON.parse(localStorage.getItem('popupFormAccordion') || '{}');
+    accordionState[sectionName] = !isCollapsed;
+    localStorage.setItem('popupFormAccordion', JSON.stringify(accordionState));
+}
+
+function initAccordionState() {
+    var accordionState = JSON.parse(localStorage.getItem('popupFormAccordion') || '{}');
+    var sections = document.querySelectorAll('.form-section[data-section]');
+    
+    sections.forEach(function(section) {
+        var sectionName = section.dataset.section;
+        var header = section.querySelector('.section-header');
+        var body = section.querySelector('.section-body');
+        var defaultCollapsed = section.dataset.defaultCollapsed === 'true';
+        
+        // Determine if section should be collapsed
+        var shouldBeCollapsed;
+        if (accordionState[sectionName] !== undefined) {
+            shouldBeCollapsed = accordionState[sectionName];
+        } else {
+            shouldBeCollapsed = defaultCollapsed;
+        }
+        
+        if (shouldBeCollapsed) {
+            header.classList.add('collapsed');
+            body.classList.add('collapsed');
+            body.style.maxHeight = '0';
+        } else {
+            header.classList.remove('collapsed');
+            body.classList.remove('collapsed');
+            body.style.maxHeight = 'none';
+        }
+    });
+}
 
 function updatePreview() {
     var popup = document.getElementById('preview_popup');

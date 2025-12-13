@@ -5,6 +5,16 @@
         config: null,
         shown: {},
         
+        // Push event to Google Tag Manager dataLayer
+        pushGTMEvent: function(eventName, eventData) {
+            if (typeof window.dataLayer !== 'undefined') {
+                window.dataLayer.push({
+                    'event': eventName,
+                    ...eventData
+                });
+            }
+        },
+        
         init: function(popupConfigs) {
             if (!popupConfigs || !popupConfigs.length) return;
             
@@ -174,21 +184,27 @@
                 popup.appendChild(p);
             }
             
-            var btnText = isHe ? config.button_text_he : config.button_text_en;
-            if (btnText) {
-                var btn = document.createElement('a');
-                btn.textContent = btnText;
-                btn.href = config.button_url || '#';
-                if (config.button_action === 'new_tab') btn.target = '_blank';
-                btn.style.cssText = 'display:inline-block;background:' + (config.button_bg_color || '#C75450') + ';color:' + (config.button_text_color || '#fff') + ';padding:0.875rem 2rem;border-radius:8px;text-decoration:none;font-weight:600;transition:transform 0.2s;';
-                btn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
-                btn.onmouseout = function() { this.style.transform = 'scale(1)'; };
-                if (config.button_action === 'close') {
-                    btn.onclick = function(e) { e.preventDefault(); self.closePopup(overlay, config); };
-                } else {
-                    btn.onclick = function() { self.trackClick(config.id); };
+            // Form or Button
+            if (config.enable_form) {
+                var form = this.createForm(config, isHe, overlay);
+                popup.appendChild(form);
+            } else {
+                var btnText = isHe ? config.button_text_he : config.button_text_en;
+                if (btnText) {
+                    var btn = document.createElement('a');
+                    btn.textContent = btnText;
+                    btn.href = config.button_url || '#';
+                    if (config.button_action === 'new_tab') btn.target = '_blank';
+                    btn.style.cssText = 'display:inline-block;background:' + (config.button_bg_color || '#C75450') + ';color:' + (config.button_text_color || '#fff') + ';padding:0.875rem 2rem;border-radius:8px;text-decoration:none;font-weight:600;transition:transform 0.2s;';
+                    btn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
+                    btn.onmouseout = function() { this.style.transform = 'scale(1)'; };
+                    if (config.button_action === 'close') {
+                        btn.onclick = function(e) { e.preventDefault(); self.closePopup(overlay, config); };
+                    } else {
+                        btn.onclick = function() { self.trackClick(config.id, config); };
+                    }
+                    popup.appendChild(btn);
                 }
-                popup.appendChild(btn);
             }
             
             overlay.appendChild(popup);
@@ -207,7 +223,7 @@
             }
             
             this.markShown(config);
-            this.trackImpression(config.id);
+            this.trackImpression(config.id, config);
             
             if (config.auto_close_seconds) {
                 setTimeout(function() {
@@ -227,7 +243,7 @@
                 if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
             }, config.animation_duration || 300);
             
-            this.trackClose(config.id);
+            this.trackClose(config.id, config);
         },
         
         markShown: function(config) {
@@ -236,16 +252,249 @@
             sessionStorage.setItem('popup_' + config.id, '1');
         },
         
-        trackImpression: function(popupId) {
+        createForm: function(config, isHe, overlay) {
+            var self = this;
+            var form = document.createElement('form');
+            form.style.cssText = 'margin-top:1rem;text-align:' + (isHe ? 'right' : 'left') + ';';
+            
+            var inputStyle = 'width:100%;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:' + (isHe ? 'rtl' : 'ltr') + ';';
+            
+            // Name field
+            if (config.collect_name) {
+                var nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.name = 'name';
+                nameInput.placeholder = isHe ? config.name_placeholder_he : config.name_placeholder_en;
+                nameInput.required = config.name_required;
+                nameInput.style.cssText = inputStyle;
+                form.appendChild(nameInput);
+            }
+            
+            // Email field
+            if (config.collect_email) {
+                var emailInput = document.createElement('input');
+                emailInput.type = 'email';
+                emailInput.name = 'email';
+                emailInput.placeholder = isHe ? config.email_placeholder_he : config.email_placeholder_en;
+                emailInput.required = config.email_required;
+                emailInput.style.cssText = inputStyle;
+                form.appendChild(emailInput);
+            }
+            
+            // Phone field
+            if (config.collect_phone) {
+                var phoneInput = document.createElement('input');
+                phoneInput.type = 'tel';
+                phoneInput.name = 'phone';
+                phoneInput.placeholder = isHe ? config.phone_placeholder_he : config.phone_placeholder_en;
+                phoneInput.required = config.phone_required;
+                phoneInput.style.cssText = inputStyle;
+                form.appendChild(phoneInput);
+            }
+            
+            var checkboxStyle = 'display:flex;align-items:flex-start;margin-bottom:0.5rem;gap:0.5rem;font-size:13px;color:#666;cursor:pointer;';
+            var checkboxInputStyle = 'margin-top:2px;flex-shrink:0;';
+            
+            // Newsletter consent
+            if (config.show_newsletter_consent) {
+                var newsletterLabel = document.createElement('label');
+                newsletterLabel.style.cssText = checkboxStyle;
+                var newsletterCheck = document.createElement('input');
+                newsletterCheck.type = 'checkbox';
+                newsletterCheck.name = 'newsletter_consent';
+                newsletterCheck.checked = config.newsletter_default_checked;
+                newsletterCheck.style.cssText = checkboxInputStyle;
+                var newsletterText = document.createElement('span');
+                newsletterText.textContent = isHe ? config.newsletter_consent_text_he : config.newsletter_consent_text_en;
+                newsletterLabel.appendChild(newsletterCheck);
+                newsletterLabel.appendChild(newsletterText);
+                form.appendChild(newsletterLabel);
+            }
+            
+            // Terms consent
+            if (config.show_terms_consent) {
+                var termsLabel = document.createElement('label');
+                termsLabel.style.cssText = checkboxStyle;
+                var termsCheck = document.createElement('input');
+                termsCheck.type = 'checkbox';
+                termsCheck.name = 'terms_consent';
+                termsCheck.required = config.terms_consent_required;
+                termsCheck.style.cssText = checkboxInputStyle;
+                var termsText = document.createElement('span');
+                termsText.textContent = isHe ? config.terms_consent_text_he : config.terms_consent_text_en;
+                termsLabel.appendChild(termsCheck);
+                termsLabel.appendChild(termsText);
+                form.appendChild(termsLabel);
+            }
+            
+            // Marketing consent
+            if (config.show_marketing_consent) {
+                var marketingLabel = document.createElement('label');
+                marketingLabel.style.cssText = checkboxStyle;
+                var marketingCheck = document.createElement('input');
+                marketingCheck.type = 'checkbox';
+                marketingCheck.name = 'marketing_consent';
+                marketingCheck.checked = config.marketing_default_checked;
+                marketingCheck.style.cssText = checkboxInputStyle;
+                var marketingText = document.createElement('span');
+                marketingText.textContent = isHe ? config.marketing_consent_text_he : config.marketing_consent_text_en;
+                marketingLabel.appendChild(marketingCheck);
+                marketingLabel.appendChild(marketingText);
+                form.appendChild(marketingLabel);
+            }
+            
+            // Submit button
+            var submitBtn = document.createElement('button');
+            submitBtn.type = 'submit';
+            submitBtn.textContent = isHe ? config.form_submit_text_he : config.form_submit_text_en;
+            submitBtn.style.cssText = 'width:100%;margin-top:1rem;background:' + (config.button_bg_color || '#C75450') + ';color:' + (config.button_text_color || '#fff') + ';padding:0.875rem 2rem;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:transform 0.2s;';
+            submitBtn.onmouseover = function() { this.style.transform = 'scale(1.02)'; };
+            submitBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
+            form.appendChild(submitBtn);
+            
+            // Form submission handler
+            form.onsubmit = function(e) {
+                e.preventDefault();
+                self.submitForm(form, config, overlay, isHe);
+            };
+            
+            return form;
+        },
+        
+        submitForm: function(form, config, overlay, isHe) {
+            var self = this;
+            var submitBtn = form.querySelector('button[type="submit"]');
+            var originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = isHe ? 'שולח...' : 'Submitting...';
+            
+            var formData = {
+                email: form.querySelector('input[name="email"]') ? form.querySelector('input[name="email"]').value : '',
+                name: form.querySelector('input[name="name"]') ? form.querySelector('input[name="name"]').value : '',
+                phone: form.querySelector('input[name="phone"]') ? form.querySelector('input[name="phone"]').value : '',
+                newsletter_consent: form.querySelector('input[name="newsletter_consent"]') ? form.querySelector('input[name="newsletter_consent"]').checked : false,
+                terms_consent: form.querySelector('input[name="terms_consent"]') ? form.querySelector('input[name="terms_consent"]').checked : false,
+                marketing_consent: form.querySelector('input[name="marketing_consent"]') ? form.querySelector('input[name="marketing_consent"]').checked : false,
+                source_page: window.location.href,
+                screen_width: window.innerWidth,
+                language: isHe ? 'he' : 'en',
+                utm_source: self.getUrlParam('utm_source'),
+                utm_medium: self.getUrlParam('utm_medium'),
+                utm_campaign: self.getUrlParam('utm_campaign')
+            };
+            
+            fetch('/api/popup/' + config.id + '/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    self.trackFormSubmit(config.id, config);
+                    self.showFormSuccess(form, config, isHe, data.message, data.coupon_code, overlay);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    alert(data.error || (isHe ? 'אירעה שגיאה' : 'An error occurred'));
+                }
+            })
+            .catch(function(error) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                console.error('Form submission error:', error);
+                alert(isHe ? 'אירעה שגיאה בשליחה' : 'Error submitting form');
+            });
+        },
+        
+        showFormSuccess: function(form, config, isHe, message, couponCode, overlay) {
+            var self = this;
+            form.innerHTML = '';
+            
+            var successDiv = document.createElement('div');
+            successDiv.style.cssText = 'text-align:center;padding:1rem;';
+            
+            var checkmark = document.createElement('div');
+            checkmark.innerHTML = '&#10003;';
+            checkmark.style.cssText = 'font-size:48px;color:#28a745;margin-bottom:1rem;';
+            successDiv.appendChild(checkmark);
+            
+            var successMsg = document.createElement('p');
+            successMsg.textContent = message || (isHe ? 'תודה!' : 'Thank you!');
+            successMsg.style.cssText = 'font-size:18px;color:#333;margin:0 0 1rem 0;';
+            successDiv.appendChild(successMsg);
+            
+            if (couponCode) {
+                var couponDiv = document.createElement('div');
+                couponDiv.style.cssText = 'background:#f8f9fa;border:2px dashed #C75450;border-radius:8px;padding:1rem;margin:1rem 0;';
+                var couponLabel = document.createElement('p');
+                couponLabel.textContent = isHe ? 'קוד הקופון שלך:' : 'Your coupon code:';
+                couponLabel.style.cssText = 'font-size:12px;color:#666;margin:0 0 0.5rem 0;';
+                var couponCodeEl = document.createElement('p');
+                couponCodeEl.textContent = couponCode;
+                couponCodeEl.style.cssText = 'font-size:24px;font-weight:bold;color:#1B2951;margin:0;letter-spacing:2px;';
+                couponDiv.appendChild(couponLabel);
+                couponDiv.appendChild(couponCodeEl);
+                successDiv.appendChild(couponDiv);
+                
+                var emailNote = document.createElement('p');
+                emailNote.textContent = isHe ? 'הקופון נשלח גם לאימייל שלך' : 'Coupon also sent to your email';
+                emailNote.style.cssText = 'font-size:12px;color:#888;margin:0.5rem 0 0 0;';
+                successDiv.appendChild(emailNote);
+            }
+            
+            form.appendChild(successDiv);
+            
+            setTimeout(function() {
+                self.closePopup(overlay, config);
+            }, 5000);
+        },
+        
+        getUrlParam: function(name) {
+            var url = new URL(window.location.href);
+            return url.searchParams.get(name) || '';
+        },
+        
+        trackImpression: function(popupId, config) {
             fetch('/api/popup/' + popupId + '/impression', { method: 'POST' }).catch(function(){});
+            // Push to GTM
+            var lang = document.documentElement.lang || 'he';
+            this.pushGTMEvent('popup_impression', {
+                'popup_id': popupId,
+                'popup_title': config ? (lang === 'he' ? config.title_he : config.title_en) : '',
+                'popup_type': config ? config.popup_type : '',
+                'popup_position': config ? config.popup_position : ''
+            });
         },
         
-        trackClick: function(popupId) {
+        trackClick: function(popupId, config) {
             fetch('/api/popup/' + popupId + '/click', { method: 'POST' }).catch(function(){});
+            // Push to GTM
+            var lang = document.documentElement.lang || 'he';
+            this.pushGTMEvent('popup_cta_click', {
+                'popup_id': popupId,
+                'popup_title': config ? (lang === 'he' ? config.title_he : config.title_en) : '',
+                'button_url': config ? config.button_url : ''
+            });
         },
         
-        trackClose: function(popupId) {
+        trackClose: function(popupId, config) {
             fetch('/api/popup/' + popupId + '/close', { method: 'POST' }).catch(function(){});
+            // Push to GTM
+            var lang = document.documentElement.lang || 'he';
+            this.pushGTMEvent('popup_close', {
+                'popup_id': popupId,
+                'popup_title': config ? (lang === 'he' ? config.title_he : config.title_en) : ''
+            });
+        },
+        
+        trackFormSubmit: function(popupId, config) {
+            // Push to GTM
+            var lang = document.documentElement.lang || 'he';
+            this.pushGTMEvent('popup_form_submit', {
+                'popup_id': popupId,
+                'popup_title': config ? (lang === 'he' ? config.title_he : config.title_en) : ''
+            });
         }
     };
     

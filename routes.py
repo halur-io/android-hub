@@ -3,7 +3,8 @@ from flask_mail import Message
 from app import app, mail
 from database import db
 from forms import ContactForm, ReservationForm, NewsletterForm
-from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber, Popup
+from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber, Popup, PopupLead, CustomerConsent, Coupon
+from datetime import datetime
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -874,3 +875,219 @@ def api_popup_close(popup_id):
         popup.total_closes = (popup.total_closes or 0) + 1
         db.session.commit()
     return jsonify({'success': True})
+
+
+@app.route('/api/popup/<int:popup_id>/submit', methods=['POST'])
+def api_popup_form_submit(popup_id):
+    """Handle popup form submission - collect lead, record consents, send coupon"""
+    if not _validate_popup_request():
+        return jsonify({'success': False, 'error': 'Invalid request'}), 403
+    
+    popup = Popup.query.get(popup_id)
+    if not popup or not popup.enable_form:
+        return jsonify({'success': False, 'error': 'Popup not found or form not enabled'}), 404
+    
+    try:
+        data = request.get_json() or {}
+        
+        email = (data.get('email') or '').strip().lower()
+        name = (data.get('name') or '').strip()
+        phone = (data.get('phone') or '').strip()
+        source_page = data.get('source_page', '')
+        
+        newsletter_consent = data.get('newsletter_consent', False)
+        terms_consent = data.get('terms_consent', False)
+        marketing_consent = data.get('marketing_consent', False)
+        
+        if popup.collect_email and popup.email_required and not email:
+            return jsonify({'success': False, 'error': 'Email is required'}), 400
+        if popup.collect_name and popup.name_required and not name:
+            return jsonify({'success': False, 'error': 'Name is required'}), 400
+        if popup.collect_phone and popup.phone_required and not phone:
+            return jsonify({'success': False, 'error': 'Phone is required'}), 400
+        if popup.show_terms_consent and popup.terms_consent_required and not terms_consent:
+            return jsonify({'success': False, 'error': 'Terms consent is required'}), 400
+        
+        user_agent = request.headers.get('User-Agent', '')[:500]
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip_address and ',' in ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+        
+        width = data.get('screen_width', 0)
+        device_type = 'desktop'
+        if width:
+            if width < 768:
+                device_type = 'mobile'
+            elif width < 1024:
+                device_type = 'tablet'
+        
+        lead = PopupLead(
+            email=email,
+            name=name if name else None,
+            phone=phone if phone else None,
+            popup_id=popup_id,
+            source_page=source_page[:500] if source_page else None,
+            user_agent=user_agent,
+            ip_address=ip_address[:45] if ip_address else None,
+            device_type=device_type,
+            is_subscribed=newsletter_consent,
+            utm_source=data.get('utm_source'),
+            utm_medium=data.get('utm_medium'),
+            utm_campaign=data.get('utm_campaign')
+        )
+        db.session.add(lead)
+        db.session.flush()
+        
+        lang = data.get('language', 'he')
+        
+        if popup.show_newsletter_consent:
+            consent = CustomerConsent(
+                lead_id=lead.id,
+                email=email,
+                consent_type='newsletter',
+                is_granted=newsletter_consent,
+                consent_text=popup.newsletter_consent_text_he if lang == 'he' else popup.newsletter_consent_text_en,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                source_page=source_page,
+                popup_id=popup_id
+            )
+            db.session.add(consent)
+        
+        if popup.show_terms_consent:
+            consent = CustomerConsent(
+                lead_id=lead.id,
+                email=email,
+                consent_type='terms_of_use',
+                is_granted=terms_consent,
+                consent_text=popup.terms_consent_text_he if lang == 'he' else popup.terms_consent_text_en,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                source_page=source_page,
+                popup_id=popup_id
+            )
+            db.session.add(consent)
+        
+        if popup.show_marketing_consent:
+            consent = CustomerConsent(
+                lead_id=lead.id,
+                email=email,
+                consent_type='marketing_email',
+                is_granted=marketing_consent,
+                consent_text=popup.marketing_consent_text_he if lang == 'he' else popup.marketing_consent_text_en,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                source_page=source_page,
+                popup_id=popup_id
+            )
+            db.session.add(consent)
+        
+        if newsletter_consent and email:
+            existing_subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
+            if existing_subscriber:
+                if not existing_subscriber.is_active:
+                    existing_subscriber.is_active = True
+                    existing_subscriber.unsubscribed_at = None
+            else:
+                subscriber = NewsletterSubscriber(
+                    email=email,
+                    source='popup'
+                )
+                db.session.add(subscriber)
+        
+        coupon_sent = False
+        coupon_code = None
+        if popup.send_coupon_on_submit and popup.associated_coupon_id:
+            coupon = Coupon.query.get(popup.associated_coupon_id)
+            if coupon and coupon.is_valid() and coupon.can_be_used_by_email(email):
+                lead.coupon_id = coupon.id
+                lead.coupon_code_sent = coupon.code
+                lead.coupon_sent_at = datetime.utcnow()
+                coupon_code = coupon.code
+                
+                try:
+                    from gmail_helper import send_email_via_gmail
+                    
+                    subject = popup.coupon_email_subject_he if lang == 'he' else popup.coupon_email_subject_en
+                    qr_base64 = coupon.get_qr_code_base64()
+                    
+                    settings = SiteSettings.query.first()
+                    restaurant_name = settings.restaurant_name if settings else 'המסעדה'
+                    
+                    if lang == 'he':
+                        html_content = f"""
+                        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                            <h1 style="color: #C75450; text-align: center;">הקופון שלך הגיע!</h1>
+                            <p style="font-size: 18px; text-align: center;">שלום{' ' + name if name else ''},</p>
+                            <p style="text-align: center;">תודה שנרשמת! הנה הקופון המיוחד שלך:</p>
+                            
+                            <div style="background: #f8f9fa; border: 2px dashed #C75450; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                                <p style="font-size: 14px; color: #666; margin: 0 0 10px 0;">קוד הקופון שלך:</p>
+                                <p style="font-size: 32px; font-weight: bold; color: #1B2951; margin: 0; letter-spacing: 2px;">{coupon.code}</p>
+                                {f'<p style="font-size: 14px; color: #666; margin-top: 10px;">{coupon.description_he}</p>' if coupon.description_he else ''}
+                            </div>
+                            
+                            <div style="text-align: center; margin: 20px 0;">
+                                <p style="color: #666; margin-bottom: 10px;">או סרוק את הקוד:</p>
+                                <img src="data:image/png;base64,{qr_base64}" alt="QR Code" style="width: 150px; height: 150px;"/>
+                            </div>
+                            
+                            <p style="text-align: center; color: #888; font-size: 12px;">
+                                {f'בתוקף עד: {coupon.end_date.strftime("%d/%m/%Y")}' if coupon.end_date else ''}
+                            </p>
+                            
+                            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                            <p style="text-align: center; color: #888; font-size: 12px;">{restaurant_name}</p>
+                        </div>
+                        """
+                    else:
+                        html_content = f"""
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                            <h1 style="color: #C75450; text-align: center;">Your Coupon Has Arrived!</h1>
+                            <p style="font-size: 18px; text-align: center;">Hello{' ' + name if name else ''},</p>
+                            <p style="text-align: center;">Thank you for signing up! Here's your special coupon:</p>
+                            
+                            <div style="background: #f8f9fa; border: 2px dashed #C75450; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                                <p style="font-size: 14px; color: #666; margin: 0 0 10px 0;">Your coupon code:</p>
+                                <p style="font-size: 32px; font-weight: bold; color: #1B2951; margin: 0; letter-spacing: 2px;">{coupon.code}</p>
+                                {f'<p style="font-size: 14px; color: #666; margin-top: 10px;">{coupon.description_en}</p>' if coupon.description_en else ''}
+                            </div>
+                            
+                            <div style="text-align: center; margin: 20px 0;">
+                                <p style="color: #666; margin-bottom: 10px;">Or scan the code:</p>
+                                <img src="data:image/png;base64,{qr_base64}" alt="QR Code" style="width: 150px; height: 150px;"/>
+                            </div>
+                            
+                            <p style="text-align: center; color: #888; font-size: 12px;">
+                                {f'Valid until: {coupon.end_date.strftime("%m/%d/%Y")}' if coupon.end_date else ''}
+                            </p>
+                            
+                            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                            <p style="text-align: center; color: #888; font-size: 12px;">{restaurant_name}</p>
+                        </div>
+                        """
+                    
+                    success, error = send_email_via_gmail(email, subject, html_content)
+                    if success:
+                        coupon_sent = True
+                        logging.info(f"Coupon email sent to {email} for popup {popup_id}")
+                    else:
+                        logging.error(f"Failed to send coupon email: {error}")
+                except Exception as email_error:
+                    logging.error(f"Error sending coupon email: {str(email_error)}")
+        
+        db.session.commit()
+        
+        success_message = popup.form_success_message_he if lang == 'he' else popup.form_success_message_en
+        
+        return jsonify({
+            'success': True,
+            'message': success_message,
+            'coupon_sent': coupon_sent,
+            'coupon_code': coupon_code if coupon_sent else None
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error processing popup form submission: {str(e)}")
+        return jsonify({'success': False, 'error': 'An error occurred'}), 500

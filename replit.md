@@ -1,5 +1,15 @@
 # Restaurant Website Project
 
+## Version
+**Current Version: 1.0.3**
+
+See `VERSION` file for the current deployment version.
+
+### Version History
+- **1.0.3** - View state persistence, 3-dot action menus, RBAC improvements
+- **1.0.2** - Previous deployment
+- **1.0.1** - Previous deployment
+
 ## Overview
 A fully functional restaurant website with contact forms, menu display, and admin panel.
 

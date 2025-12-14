@@ -1103,26 +1103,39 @@ function updateLivePreview() {
     var borderRadius = document.getElementById('border_radius').value;
     var hasShadow = document.querySelector('input[name="has_shadow"]').checked;
     
-    overlay.style.background = overlayColor;
+    overlay.style.backgroundColor = overlayColor;
     
     var imageDisplayType = document.getElementById('image_display_type').value;
     var existingImg = document.getElementById('existingImage');
     var previewImg = document.getElementById('previewImage');
     var imageElement = document.getElementById('imageElement');
-    var imgSrc = previewImg.src || (existingImg ? existingImg.src : '');
     
-    if (imgSrc && imgSrc !== window.location.href) {
+    var imgSrc = '';
+    var previewSrc = previewImg.getAttribute('src') || '';
+    var existingSrc = existingImg ? existingImg.getAttribute('src') : '';
+    
+    if (previewSrc && (previewSrc.startsWith('data:') || previewSrc.startsWith('/') || previewSrc.startsWith('http'))) {
+        imgSrc = previewSrc;
+    } else if (existingSrc && (existingSrc.startsWith('/') || existingSrc.startsWith('http'))) {
+        imgSrc = existingSrc;
+    }
+    
+    popup.style.backgroundImage = '';
+    popup.style.backgroundColor = bgColor;
+    
+    if (imgSrc) {
         if (imageDisplayType === 'background' || imageDisplayType === 'background_cover') {
             var bgSize = imageDisplayType === 'background_cover' ? 'cover' : 'contain';
-            popup.style.background = 'url(' + imgSrc + ') center center / ' + bgSize + ' no-repeat, ' + bgColor;
+            popup.style.backgroundImage = 'url(' + imgSrc + ')';
+            popup.style.backgroundSize = bgSize;
+            popup.style.backgroundPosition = 'center center';
+            popup.style.backgroundRepeat = 'no-repeat';
             imageElement.style.display = 'none';
         } else {
-            popup.style.background = bgColor;
             imageElement.style.display = 'block';
             previewImg.src = imgSrc;
         }
     } else {
-        popup.style.background = bgColor;
         imageElement.style.display = 'none';
     }
     

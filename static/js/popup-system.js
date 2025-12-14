@@ -172,11 +172,10 @@
                 bgStyle = 'background:url(' + config.image_path + ') center center / cover no-repeat, ' + (config.background_color || '#fff') + ';';
             }
             
-            // Mobile-optimized popup styles - auto height up to 80vh for better content fit
-            var mobileMaxHeight = isMobile ? 'max-height:80vh;' : 'max-height:85vh;';
+            // Mobile-optimized popup styles - NO max-height initially, let content determine size
             var mobilePadding = isMobile ? 'padding:4vw;' : 'padding:2rem;';
             
-            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;' + mobilePadding + 'width:92vw;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 4vw 12vw rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;overflow-y:auto;box-sizing:border-box;' + mobileMaxHeight + '-webkit-overflow-scrolling:touch;';
+            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;' + mobilePadding + 'width:92vw;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 4vw 12vw rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;box-sizing:border-box;';
             
             // Close button with minimum 44x44px tap area for accessibility
             if (config.show_close_button) {
@@ -188,11 +187,11 @@
                 popup.appendChild(closeBtn);
             }
             
-            // Image with responsive constraints - never overflow popup
+            // Image with responsive constraints - smaller on mobile to fit content
             if (config.image_path && (!config.image_display_type || config.image_display_type === 'inline')) {
                 var img = document.createElement('img');
                 img.src = config.image_path;
-                var imgMaxHeight = isMobile ? 'max-height:35vh;' : 'max-height:40vh;';
+                var imgMaxHeight = isMobile ? 'max-height:min(150px, 20vh);' : 'max-height:40vh;';
                 img.style.cssText = 'width:100%;max-width:100%;height:auto;' + imgMaxHeight + 'border-radius:2vw;margin-bottom:3vw;object-fit:contain;display:block;';
                 popup.appendChild(img);
             }
@@ -253,7 +252,20 @@
             overlay.appendChild(popup);
             document.body.appendChild(overlay);
             
+            // Dynamic sizing: only add max-height + scroll if content truly exceeds viewport
             requestAnimationFrame(function() {
+                var viewportHeight = window.innerHeight;
+                var maxAllowedHeight = viewportHeight * 0.9; // 90% of viewport
+                var popupHeight = popup.scrollHeight;
+                
+                if (popupHeight > maxAllowedHeight) {
+                    // Content exceeds viewport - enable scrolling
+                    popup.style.maxHeight = maxAllowedHeight + 'px';
+                    popup.style.overflowY = 'auto';
+                    popup.style.webkitOverflowScrolling = 'touch';
+                }
+                // Otherwise: no max-height, popup auto-sizes to fit content
+                
                 overlay.style.opacity = '1';
                 popup.style.transform = 'scale(1)';
                 popup.style.opacity = '1';

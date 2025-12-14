@@ -7889,9 +7889,16 @@ def popup_leads():
     # Get popup names for display
     popup_names = {p.id: p.name for p in Popup.query.all()}
     
+    # Get consent data for each lead
+    lead_consents = {}
+    for lead in leads.items:
+        consents = CustomerConsent.query.filter_by(lead_id=lead.id).all()
+        lead_consents[lead.id] = {c.consent_type: c.is_granted for c in consents}
+    
     return render_template('admin/popup_leads.html', 
                           leads=leads, 
-                          popup_names=popup_names)
+                          popup_names=popup_names,
+                          lead_consents=lead_consents)
 
 
 @admin_bp.route('/popups/create', methods=['GET', 'POST'])

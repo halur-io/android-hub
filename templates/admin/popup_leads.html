@@ -281,6 +281,8 @@
                     <th>אימייל</th>
                     <th>טלפון</th>
                     <th>מקור (פופאפ)</th>
+                    <th>תנאים</th>
+                    <th>קידום מכירות</th>
                     <th>ניוזלטר</th>
                     <th>מכשיר</th>
                     <th>תאריך</th>
@@ -288,6 +290,7 @@
             </thead>
             <tbody>
                 {% for lead in leads.items %}
+                {% set consents = lead_consents.get(lead.id, {}) %}
                 <tr>
                     <td class="lead-name">{{ lead.name or '-' }}</td>
                     <td class="lead-email">{{ lead.email }}</td>
@@ -297,6 +300,20 @@
                         <span class="badge badge-popup">{{ popup_names.get(lead.popup_id) }}</span>
                         {% else %}
                         <span class="badge badge-neutral">לא ידוע</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if consents.get('terms_of_use') %}
+                        <span class="consent-icon consent-yes" title="אישר תנאים"><i class="fas fa-check"></i></span>
+                        {% else %}
+                        <span class="consent-icon consent-no" title="לא אישר"><i class="fas fa-times"></i></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if consents.get('marketing_email') or consents.get('marketing_sms') %}
+                        <span class="consent-icon consent-yes" title="אישר קידום מכירות"><i class="fas fa-check"></i></span>
+                        {% else %}
+                        <span class="consent-icon consent-no" title="לא אישר"><i class="fas fa-times"></i></span>
                         {% endif %}
                     </td>
                     <td>

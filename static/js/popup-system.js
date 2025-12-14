@@ -157,7 +157,7 @@
             } else if (config.image_path && config.image_display_type === 'background_cover') {
                 bgStyle = 'background:url(' + config.image_path + ') center center / cover no-repeat, ' + (config.background_color || '#fff') + ';';
             }
-            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;padding:2rem;width:90%;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 20px 60px rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';';
+            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;padding:2rem;width:90%;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 20px 60px rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;overflow-y:auto;box-sizing:border-box;max-height:90vh;';
             
             if (config.show_close_button) {
                 var closeBtn = document.createElement('button');
@@ -170,7 +170,7 @@
             if (config.image_path && (!config.image_display_type || config.image_display_type === 'inline')) {
                 var img = document.createElement('img');
                 img.src = config.image_path;
-                img.style.cssText = 'max-width:100%;height:auto;border-radius:8px;margin-bottom:1rem;';
+                img.style.cssText = 'width:100%;max-width:100%;height:auto;border-radius:8px;margin-bottom:1rem;object-fit:contain;display:block;';
                 popup.appendChild(img);
             }
             

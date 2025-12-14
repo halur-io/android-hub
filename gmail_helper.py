@@ -101,13 +101,32 @@ def send_email_via_gmail(to_email, subject, html_content, plain_text=None, from_
         logging.error(error_msg)
         return False, error_msg
 
+def generate_unsubscribe_token(email):
+    """Generate a secure signed token for unsubscribe links"""
+    from itsdangerous import URLSafeTimedSerializer
+    secret_key = os.environ.get('SESSION_SECRET', 'fallback-secret-key')
+    serializer = URLSafeTimedSerializer(secret_key)
+    return serializer.dumps(email, salt='unsubscribe')
+
+def verify_unsubscribe_token(token, max_age_days=30):
+    """Verify an unsubscribe token and return the email. Returns None if invalid."""
+    from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+    secret_key = os.environ.get('SESSION_SECRET', 'fallback-secret-key')
+    serializer = URLSafeTimedSerializer(secret_key)
+    try:
+        email = serializer.loads(token, salt='unsubscribe', max_age=max_age_days * 24 * 60 * 60)
+        return email
+    except (SignatureExpired, BadSignature):
+        return None
+
 def add_unsubscribe_footer(html_content, email, base_url=None):
     """Add unsubscribe footer to email HTML content for newsletter subscribers"""
     import urllib.parse
     if not base_url:
         base_url = os.environ.get('BASE_URL', 'https://sumo-rest.co.il')
     
-    unsubscribe_url = f"{base_url}/newsletter/unsubscribe?email={urllib.parse.quote(email)}"
+    token = generate_unsubscribe_token(email)
+    unsubscribe_url = f"{base_url}/newsletter/unsubscribe?token={urllib.parse.quote(token)}"
     
     footer = f"""
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">

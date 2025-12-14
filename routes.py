@@ -536,16 +536,26 @@ def newsletter_subscribe():
 
 @app.route('/newsletter/unsubscribe', methods=['GET', 'POST'])
 def newsletter_unsubscribe():
-    """Newsletter unsubscribe page"""
+    """Newsletter unsubscribe page - supports secure token links and manual email entry"""
+    from gmail_helper import verify_unsubscribe_token
     context = get_context_data()
-    email = request.args.get('email', '') or request.form.get('email', '')
+    email = ''
     success = False
     error = None
+    token_valid = False
     
-    if request.method == 'POST' and email:
-        email = email.strip().lower()
+    token = request.args.get('token', '')
+    if token:
+        verified_email = verify_unsubscribe_token(token)
+        if verified_email:
+            email = verified_email
+            token_valid = True
+        else:
+            error = 'הקישור פג תוקף או אינו תקין. אנא הזן את האימייל שלך ידנית.' if context['language'] == 'he' else 'Link expired or invalid. Please enter your email manually.'
+    
+    if request.method == 'GET' and token_valid and email:
         try:
-            subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
+            subscriber = NewsletterSubscriber.query.filter_by(email=email.strip().lower()).first()
             if subscriber and subscriber.is_active:
                 subscriber.is_active = False
                 subscriber.unsubscribed_at = datetime.utcnow()
@@ -556,8 +566,26 @@ def newsletter_unsubscribe():
             else:
                 error = 'האימייל לא נמצא ברשימת התפוצה' if context['language'] == 'he' else 'Email not found in mailing list'
         except Exception as e:
-            logging.error(f'Error unsubscribing: {e}')
+            logging.error(f'Error unsubscribing via token: {e}')
             error = 'אירעה שגיאה' if context['language'] == 'he' else 'An error occurred'
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if email:
+            try:
+                subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
+                if subscriber and subscriber.is_active:
+                    subscriber.is_active = False
+                    subscriber.unsubscribed_at = datetime.utcnow()
+                    db.session.commit()
+                    success = True
+                elif subscriber and not subscriber.is_active:
+                    success = True
+                else:
+                    error = 'האימייל לא נמצא ברשימת התפוצה' if context['language'] == 'he' else 'Email not found in mailing list'
+            except Exception as e:
+                logging.error(f'Error unsubscribing: {e}')
+                error = 'אירעה שגיאה' if context['language'] == 'he' else 'An error occurred'
     
     return render_template('public/unsubscribe.html', 
                           **context, 

@@ -252,24 +252,37 @@
             overlay.appendChild(popup);
             document.body.appendChild(overlay);
             
-            // Dynamic sizing: only add max-height + scroll if content truly exceeds viewport
-            requestAnimationFrame(function() {
-                var viewportHeight = window.innerHeight;
-                var maxAllowedHeight = viewportHeight * 0.9; // 90% of viewport
+            // Dynamic sizing using REAL visual viewport (accounts for mobile browser chrome)
+            var adjustPopupSize = function() {
+                // Use visualViewport API for real mobile devices (accounts for address bar, nav bar)
+                var viewportHeight = window.visualViewport ? window.visualViewport.height : document.documentElement.clientHeight;
+                var overlayPadding = isMobile ? viewportHeight * 0.02 : 20; // 2vw or 20px
+                var maxAllowedHeight = viewportHeight - (overlayPadding * 2) - 20; // Leave 20px margin
                 var popupHeight = popup.scrollHeight;
                 
                 if (popupHeight > maxAllowedHeight) {
-                    // Content exceeds viewport - enable scrolling
+                    // Content exceeds visible viewport - enable scrolling
                     popup.style.maxHeight = maxAllowedHeight + 'px';
                     popup.style.overflowY = 'auto';
                     popup.style.webkitOverflowScrolling = 'touch';
+                } else {
+                    // Content fits - no scroll needed
+                    popup.style.maxHeight = '';
+                    popup.style.overflowY = 'visible';
                 }
-                // Otherwise: no max-height, popup auto-sizes to fit content
-                
+            };
+            
+            requestAnimationFrame(function() {
+                adjustPopupSize();
                 overlay.style.opacity = '1';
                 popup.style.transform = 'scale(1)';
                 popup.style.opacity = '1';
             });
+            
+            // Re-adjust when mobile browser chrome expands/collapses
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', adjustPopupSize);
+            }
             
             if (config.allow_backdrop_close) {
                 overlay.onclick = function(e) {

@@ -177,11 +177,14 @@
             
             popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;' + mobilePadding + 'width:92vw;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 4vw 12vw rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;box-sizing:border-box;';
             
-            // Close button with minimum 44x44px tap area for accessibility
+            // Close button - compact on desktop, larger tap area on mobile
             if (config.show_close_button) {
                 var closeBtn = document.createElement('button');
                 closeBtn.innerHTML = '&times;';
-                closeBtn.style.cssText = 'position:absolute;top:2vw;' + (config.close_button_position === 'top-left' ? 'left' : 'right') + ':2vw;background:rgba(0,0,0,0.1);border:none;font-size:max(6vw, 24px);cursor:pointer;color:#666;line-height:1;padding:0;min-width:44px;min-height:44px;width:max(10vw, 44px);height:max(10vw, 44px);border-radius:50%;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
+                var closeBtnSize = isMobile ? '36px' : '28px';
+                var closeBtnFontSize = isMobile ? '20px' : '18px';
+                var closeBtnPos = isMobile ? '2vw' : '8px';
+                closeBtn.style.cssText = 'position:absolute;top:' + closeBtnPos + ';' + (config.close_button_position === 'top-left' ? 'left' : 'right') + ':' + closeBtnPos + ';background:rgba(0,0,0,0.1);border:none;font-size:' + closeBtnFontSize + ';cursor:pointer;color:#666;line-height:1;padding:0;width:' + closeBtnSize + ';height:' + closeBtnSize + ';border-radius:50%;display:flex;align-items:center;justify-content:center;';
                 closeBtn.setAttribute('aria-label', isHe ? 'סגור' : 'Close');
                 closeBtn.onclick = function() { self.closePopup(overlay, config); };
                 popup.appendChild(closeBtn);

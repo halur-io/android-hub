@@ -101,6 +101,32 @@ def send_email_via_gmail(to_email, subject, html_content, plain_text=None, from_
         logging.error(error_msg)
         return False, error_msg
 
+def add_unsubscribe_footer(html_content, email, base_url=None):
+    """Add unsubscribe footer to email HTML content for newsletter subscribers"""
+    import urllib.parse
+    if not base_url:
+        base_url = os.environ.get('BASE_URL', 'https://sumo-rest.co.il')
+    
+    unsubscribe_url = f"{base_url}/newsletter/unsubscribe?email={urllib.parse.quote(email)}"
+    
+    footer = f"""
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 12px; color: #6b7280;">
+        <p>קיבלת הודעה זו כי נרשמת לניוזלטר שלנו.</p>
+        <p><a href="{unsubscribe_url}" style="color: #3b82f6; text-decoration: underline;">לחץ כאן להסרה מרשימת התפוצה</a></p>
+    </div>
+    """
+    
+    if '</div>' in html_content:
+        last_div = html_content.rfind('</div>')
+        return html_content[:last_div] + footer + html_content[last_div:]
+    else:
+        return html_content + footer
+
+def send_newsletter_email(to_email, subject, html_content, base_url=None):
+    """Send newsletter email with automatic unsubscribe footer. Returns (success, error_message)"""
+    content_with_footer = add_unsubscribe_footer(html_content, to_email, base_url)
+    return send_email_via_gmail(to_email, subject, content_with_footer)
+
 def send_new_message_notification(message_type, message_data, admin_email, custom_subject=None):
     """Send notification for new message received"""
     if message_type == 'contact':

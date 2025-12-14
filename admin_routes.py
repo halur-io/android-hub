@@ -7872,7 +7872,26 @@ def get_audit_history_api(entity_type, entity_id):
 def popups():
     """List all popups"""
     popups = Popup.query.order_by(Popup.priority.desc(), Popup.created_at.desc()).all()
-    return render_template('admin/popups.html', popups=popups)
+    total_leads = PopupLead.query.count()
+    return render_template('admin/popups.html', popups=popups, total_leads=total_leads)
+
+
+@admin_bp.route('/popups/leads')
+@login_required
+def popup_leads():
+    """View all popup leads (submitted contact details)"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+    
+    leads_query = PopupLead.query.order_by(PopupLead.created_at.desc())
+    leads = leads_query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Get popup names for display
+    popup_names = {p.id: p.name for p in Popup.query.all()}
+    
+    return render_template('admin/popup_leads.html', 
+                          leads=leads, 
+                          popup_names=popup_names)
 
 
 @admin_bp.route('/popups/create', methods=['GET', 'POST'])

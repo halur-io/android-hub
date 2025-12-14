@@ -533,6 +533,39 @@ def newsletter_subscribe():
             next_page = None
     return redirect(next_page or url_for('index'))
 
+
+@app.route('/newsletter/unsubscribe', methods=['GET', 'POST'])
+def newsletter_unsubscribe():
+    """Newsletter unsubscribe page"""
+    context = get_context_data()
+    email = request.args.get('email', '') or request.form.get('email', '')
+    success = False
+    error = None
+    
+    if request.method == 'POST' and email:
+        email = email.strip().lower()
+        try:
+            subscriber = NewsletterSubscriber.query.filter_by(email=email).first()
+            if subscriber and subscriber.is_active:
+                subscriber.is_active = False
+                subscriber.unsubscribed_at = datetime.utcnow()
+                db.session.commit()
+                success = True
+            elif subscriber and not subscriber.is_active:
+                success = True
+            else:
+                error = 'האימייל לא נמצא ברשימת התפוצה' if context['language'] == 'he' else 'Email not found in mailing list'
+        except Exception as e:
+            logging.error(f'Error unsubscribing: {e}')
+            error = 'אירעה שגיאה' if context['language'] == 'he' else 'An error occurred'
+    
+    return render_template('public/unsubscribe.html', 
+                          **context, 
+                          email=email, 
+                          success=success, 
+                          error=error)
+
+
 @app.route('/accessibility')
 def accessibility_statement():
     """Accessibility statement - IS 5568 compliance"""

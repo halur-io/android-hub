@@ -315,6 +315,11 @@
             <div class="stat-value">{{ popups|sum(attribute='total_cta_clicks') }}</div>
             <div class="stat-label">לחיצות על כפתור</div>
         </div>
+        <a href="{{ url_for('admin.popup_leads') }}" class="stat-card" style="text-decoration: none; cursor: pointer; transition: transform 0.2s;">
+            <div class="stat-value" style="color: #C75450;">{{ total_leads }}</div>
+            <div class="stat-label">לידים שהתקבלו</div>
+            <div style="font-size: 0.75rem; color: #C75450; margin-top: 0.25rem;"><i class="fas fa-arrow-left"></i> צפה בכל הלידים</div>
+        </a>
     </div>
     
     {% if popups %}

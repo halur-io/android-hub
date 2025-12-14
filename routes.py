@@ -1,6 +1,7 @@
 from flask import render_template, request, flash, redirect, url_for, jsonify, send_from_directory, session, current_app
 from flask_mail import Message
-from app import app, mail
+from flask_wtf.csrf import CSRFProtect
+from app import app, mail, csrf
 from database import db
 from forms import ContactForm, ReservationForm, NewsletterForm
 from models import MenuCategory, MenuItem, Branch, SiteSettings, MediaFile, MenuSettings, ReservationSettings, CustomSection, WorkingHours, TermsOfUse, PrivacyPolicy, GalleryPhoto, NewsletterSubscriber, Popup, PopupLead, CustomerConsent, Coupon
@@ -831,6 +832,7 @@ def _rate_limit_popup_tracking(popup_id, action):
     return True
 
 @app.route('/api/popups/active')
+@csrf.exempt
 def api_active_popups():
     """Get all currently active popups for frontend display"""
     popups = Popup.query.filter_by(is_active=True).order_by(Popup.priority.desc()).all()
@@ -838,6 +840,7 @@ def api_active_popups():
     return jsonify(active_popups)
 
 @app.route('/api/popup/<int:popup_id>/impression', methods=['POST'])
+@csrf.exempt
 def api_popup_impression(popup_id):
     """Track popup impression with rate limiting"""
     if not _validate_popup_request():
@@ -851,6 +854,7 @@ def api_popup_impression(popup_id):
     return jsonify({'success': True})
 
 @app.route('/api/popup/<int:popup_id>/click', methods=['POST'])
+@csrf.exempt
 def api_popup_click(popup_id):
     """Track popup CTA button click with rate limiting"""
     if not _validate_popup_request():
@@ -864,6 +868,7 @@ def api_popup_click(popup_id):
     return jsonify({'success': True})
 
 @app.route('/api/popup/<int:popup_id>/close', methods=['POST'])
+@csrf.exempt
 def api_popup_close(popup_id):
     """Track popup close with rate limiting"""
     if not _validate_popup_request():
@@ -878,6 +883,7 @@ def api_popup_close(popup_id):
 
 
 @app.route('/api/popup/<int:popup_id>/submit', methods=['POST'])
+@csrf.exempt
 def api_popup_form_submit(popup_id):
     """Handle popup form submission - collect lead, record consents, send coupon"""
     if not _validate_popup_request():

@@ -116,6 +116,7 @@ def fromjson_filter(value):
 
 # Import routes  
 from routes import *
+# Note: Popup API routes are exempted from CSRF using decorators in routes.py
 
 # Register admin blueprint
 try:

@@ -213,7 +213,9 @@
                     btn.textContent = btnText;
                     btn.href = config.button_url || '#';
                     if (config.button_action === 'new_tab') btn.target = '_blank';
-                    btn.style.cssText = 'display:inline-block;background:' + (config.button_bg_color || '#C75450') + ';color:' + (config.button_text_color || '#fff') + ';padding:0.875rem 2rem;border-radius:8px;text-decoration:none;font-weight:600;transition:transform 0.2s;';
+                    var btnBgOpacity = (config.button_bg_opacity !== undefined ? config.button_bg_opacity : 100) / 100;
+                    var btnBgStyle = btnBgOpacity < 1 ? self.hexToRgba(config.button_bg_color || '#C75450', btnBgOpacity) : (config.button_bg_color || '#C75450');
+                    btn.style.cssText = 'display:inline-block;background:' + btnBgStyle + ';color:' + (config.button_text_color || '#fff') + ';padding:0.875rem 2rem;border-radius:8px;text-decoration:none;font-weight:600;transition:transform 0.2s;';
                     btn.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
                     btn.onmouseout = function() { this.style.transform = 'scale(1)'; };
                     if (config.button_action === 'close') {

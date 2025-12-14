@@ -1884,6 +1884,7 @@ class Popup(db.Model):
     title_bg_color = db.Column(db.String(20), default='#000000')  # Title background color
     title_bg_opacity = db.Column(db.Integer, default=0)  # Title background opacity (0-100)
     button_bg_color = db.Column(db.String(20), default='#C75450')
+    button_bg_opacity = db.Column(db.Integer, default=100)  # Button background opacity (0-100)
     button_text_color = db.Column(db.String(20), default='#ffffff')
     overlay_color = db.Column(db.String(20), default='rgba(0,0,0,0.5)')
     
@@ -2038,6 +2039,7 @@ class Popup(db.Model):
             'title_bg_color': self.title_bg_color,
             'title_bg_opacity': self.title_bg_opacity,
             'button_bg_color': self.button_bg_color,
+            'button_bg_opacity': self.button_bg_opacity,
             'button_text_color': self.button_text_color,
             'overlay_color': self.overlay_color,
             'title_font_size': self.title_font_size,

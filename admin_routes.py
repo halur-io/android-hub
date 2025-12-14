@@ -7901,6 +7901,7 @@ def create_popup():
             title_bg_color=request.form.get('title_bg_color', '#000000'),
             title_bg_opacity=int(request.form.get('title_bg_opacity', 0)),
             button_bg_color=request.form.get('button_bg_color', '#C75450'),
+            button_bg_opacity=int(request.form.get('button_bg_opacity', 100)),
             button_text_color=request.form.get('button_text_color', '#ffffff'),
             overlay_color=request.form.get('overlay_color', 'rgba(0,0,0,0.5)'),
             title_font_size=int(request.form.get('title_font_size', 24)),
@@ -8052,6 +8053,7 @@ def edit_popup(popup_id):
         popup.title_bg_color = request.form.get('title_bg_color', '#000000')
         popup.title_bg_opacity = int(request.form.get('title_bg_opacity', 0))
         popup.button_bg_color = request.form.get('button_bg_color', '#C75450')
+        popup.button_bg_opacity = int(request.form.get('button_bg_opacity', 100))
         popup.button_text_color = request.form.get('button_text_color', '#ffffff')
         popup.overlay_color = request.form.get('overlay_color', 'rgba(0,0,0,0.5)')
         popup.title_font_size = int(request.form.get('title_font_size', 24))

@@ -863,7 +863,10 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <!-- Empty for alignment -->
+                        <label class="form-label">שקיפות רקע כפתור: <span class="range-value" id="button_bg_opacity_val">{{ popup.button_bg_opacity if popup else 100 }}</span>%</label>
+                        <div class="range-row">
+                            <input type="range" class="range-input live-input" name="button_bg_opacity" id="button_bg_opacity" min="0" max="100" value="{{ popup.button_bg_opacity if popup else 100 }}">
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -1221,6 +1224,7 @@ function updateLivePreview() {
     var titleBgColor = document.getElementById('title_bg_color').value;
     var titleBgOpacity = parseInt(document.getElementById('title_bg_opacity').value) || 0;
     var btnBgColor = document.getElementById('button_bg_color').value;
+    var btnBgOpacity = parseInt(document.getElementById('button_bg_opacity').value) || 100;
     var btnTextColor = document.getElementById('button_text_color').value;
     var overlayColor = document.getElementById('overlay_color').value;
     var titleSize = document.getElementById('title_font_size').value;
@@ -1301,7 +1305,8 @@ function updateLivePreview() {
     
     if (btnText) {
         btnElement.style.display = 'block';
-        btnPreview.style.background = btnBgColor;
+        var btnBgStyle = btnBgOpacity < 100 ? hexToRgba(btnBgColor, btnBgOpacity / 100) : btnBgColor;
+        btnPreview.style.background = btnBgStyle;
         btnPreview.style.color = btnTextColor;
         btnPreview.textContent = btnText;
     } else {
@@ -1369,6 +1374,7 @@ function updateLivePreview() {
     document.getElementById('radius_val').textContent = borderRadius;
     document.getElementById('text_bg_opacity_val').textContent = textBgOpacity;
     document.getElementById('title_bg_opacity_val').textContent = titleBgOpacity;
+    document.getElementById('button_bg_opacity_val').textContent = btnBgOpacity;
 }
 
 function initDragDrop() {

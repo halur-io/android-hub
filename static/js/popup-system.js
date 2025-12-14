@@ -172,8 +172,8 @@
                 bgStyle = 'background:url(' + config.image_path + ') center center / cover no-repeat, ' + (config.background_color || '#fff') + ';';
             }
             
-            // Mobile-optimized popup styles
-            var mobileMaxHeight = isMobile ? 'max-height:35vh;' : 'max-height:85vh;';
+            // Mobile-optimized popup styles - auto height up to 80vh for better content fit
+            var mobileMaxHeight = isMobile ? 'max-height:80vh;' : 'max-height:85vh;';
             var mobilePadding = isMobile ? 'padding:4vw;' : 'padding:2rem;';
             
             popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;' + mobilePadding + 'width:92vw;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 4vw 12vw rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;overflow-y:auto;box-sizing:border-box;' + mobileMaxHeight + '-webkit-overflow-scrolling:touch;';
@@ -192,7 +192,7 @@
             if (config.image_path && (!config.image_display_type || config.image_display_type === 'inline')) {
                 var img = document.createElement('img');
                 img.src = config.image_path;
-                var imgMaxHeight = isMobile ? 'max-height:25vh;' : 'max-height:40vh;';
+                var imgMaxHeight = isMobile ? 'max-height:35vh;' : 'max-height:40vh;';
                 img.style.cssText = 'width:100%;max-width:100%;height:auto;' + imgMaxHeight + 'border-radius:2vw;margin-bottom:3vw;object-fit:contain;display:block;';
                 popup.appendChild(img);
             }

@@ -7901,6 +7901,92 @@ def popup_leads():
                           lead_consents=lead_consents)
 
 
+@admin_bp.route('/popups/leads/export')
+@login_required
+def export_popup_leads():
+    """Export all popup leads to Excel file"""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    
+    # Get all leads
+    leads = PopupLead.query.order_by(PopupLead.created_at.desc()).all()
+    popup_names = {p.id: p.name for p in Popup.query.all()}
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "לידים מפופאפים"
+    ws.sheet_view.rightToLeft = True
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1B2951", end_color="1B2951", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Headers
+    headers = ['שם', 'אימייל', 'טלפון', 'מקור (פופאפ)', 'אישור תנאים', 'אישור קידום מכירות', 'ניוזלטר', 'מכשיר', 'תאריך']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    # Data rows
+    for row_num, lead in enumerate(leads, 2):
+        consents = CustomerConsent.query.filter_by(lead_id=lead.id).all()
+        consent_dict = {c.consent_type: c.is_granted for c in consents}
+        
+        popup_name = popup_names.get(lead.popup_id, 'לא ידוע') if lead.popup_id else 'לא ידוע'
+        terms_accepted = 'כן' if consent_dict.get('terms_of_use') else 'לא'
+        marketing_accepted = 'כן' if (consent_dict.get('marketing_email') or consent_dict.get('marketing_sms')) else 'לא'
+        newsletter = 'כן' if lead.is_subscribed else 'לא'
+        device = {'mobile': 'נייד', 'tablet': 'טאבלט', 'desktop': 'מחשב'}.get(lead.device_type, 'מחשב')
+        date_str = lead.created_at.strftime('%d/%m/%Y %H:%M') if lead.created_at else ''
+        
+        row_data = [
+            lead.name or '',
+            lead.email,
+            lead.phone or '',
+            popup_name,
+            terms_accepted,
+            marketing_accepted,
+            newsletter,
+            device,
+            date_str
+        ]
+        
+        for col, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_num, column=col, value=value)
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="right")
+    
+    # Adjust column widths
+    column_widths = [15, 30, 15, 20, 12, 18, 10, 10, 18]
+    for i, width in enumerate(column_widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = width
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    from flask import send_file
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'popup_leads_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    )
+
+
 @admin_bp.route('/popups/create', methods=['GET', 'POST'])
 @login_required
 def create_popup():

@@ -241,6 +241,25 @@
         color: #cbd5e1;
         cursor: not-allowed;
     }
+    
+    .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #10b981;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .btn-export:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
 </style>
 {% endblock %}
 
@@ -271,6 +290,9 @@
     <div class="table-container">
         <div class="table-header">
             <span class="table-title"><i class="fas fa-list"></i> רשימת לידים</span>
+            <a href="{{ url_for('admin.export_popup_leads') }}" class="btn-export">
+                <i class="fas fa-file-excel"></i> ייצוא לאקסל
+            </a>
         </div>
         
         {% if leads.items %}

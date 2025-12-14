@@ -172,8 +172,8 @@
                 bgStyle = 'background:url(' + config.image_path + ') center center / cover no-repeat, ' + (config.background_color || '#fff') + ';';
             }
             
-            // Mobile-optimized popup styles - NO max-height initially, let content determine size
-            var mobilePadding = isMobile ? 'padding:4vw;' : 'padding:2rem;';
+            // Mobile-optimized popup styles - compact padding on mobile
+            var mobilePadding = isMobile ? 'padding:3vw;' : 'padding:2rem;';
             
             popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;' + mobilePadding + 'width:92vw;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 4vw 12vw rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;box-sizing:border-box;';
             
@@ -204,9 +204,11 @@
                 if (config.title_bg_opacity && config.title_bg_opacity > 0) {
                     var titleBgColor = config.title_bg_color || '#000000';
                     var titleOpacity = (config.title_bg_opacity || 0) / 100;
-                    titleBgStyle = 'background:' + self.hexToRgba(titleBgColor, titleOpacity) + ';padding:0.5rem 1rem;border-radius:4px;display:inline-block;';
+                    titleBgStyle = 'background:' + self.hexToRgba(titleBgColor, titleOpacity) + ';padding:0.3rem 0.75rem;border-radius:4px;display:inline-block;';
                 }
-                h2.style.cssText = 'color:' + (config.title_color || '#1B2951') + ';font-size:' + (config.title_font_size || 24) + 'px;margin:0 0 1rem 0;font-weight:700;' + titleBgStyle;
+                var titleFontSize = isMobile ? Math.min(config.title_font_size || 24, 18) : (config.title_font_size || 24);
+                var titleMargin = isMobile ? '0 0 0.5rem 0' : '0 0 1rem 0';
+                h2.style.cssText = 'color:' + (config.title_color || '#1B2951') + ';font-size:' + titleFontSize + 'px;margin:' + titleMargin + ';font-weight:700;' + titleBgStyle;
                 popup.appendChild(h2);
             }
             
@@ -218,9 +220,11 @@
                 if (config.text_bg_opacity && config.text_bg_opacity > 0) {
                     var textBgColor = config.text_bg_color || '#000000';
                     var textOpacity = (config.text_bg_opacity || 0) / 100;
-                    textBgStyle = 'background:' + self.hexToRgba(textBgColor, textOpacity) + ';padding:0.5rem 1rem;border-radius:4px;';
+                    textBgStyle = 'background:' + self.hexToRgba(textBgColor, textOpacity) + ';padding:0.3rem 0.75rem;border-radius:4px;';
                 }
-                p.style.cssText = 'color:' + (config.text_color || '#333') + ';font-size:' + (config.content_font_size || 16) + 'px;margin:0 0 1.5rem 0;line-height:1.6;' + textBgStyle;
+                var contentFontSize = isMobile ? Math.min(config.content_font_size || 16, 13) : (config.content_font_size || 16);
+                var contentMargin = isMobile ? '0 0 0.75rem 0' : '0 0 1.5rem 0';
+                p.style.cssText = 'color:' + (config.text_color || '#333') + ';font-size:' + contentFontSize + 'px;margin:' + contentMargin + ';line-height:1.4;' + textBgStyle;
                 popup.appendChild(p);
             }
             
@@ -322,10 +326,15 @@
         
         createForm: function(config, isHe, overlay) {
             var self = this;
+            var isMobile = window.innerWidth < 768;
             var form = document.createElement('form');
-            form.style.cssText = 'margin-top:1rem;text-align:' + (isHe ? 'right' : 'left') + ';';
+            form.style.cssText = 'margin-top:' + (isMobile ? '0.5rem' : '1rem') + ';text-align:' + (isHe ? 'right' : 'left') + ';';
             
-            var inputStyle = 'width:100%;padding:0.75rem 1rem;margin-bottom:0.75rem;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box;direction:' + (isHe ? 'rtl' : 'ltr') + ';';
+            // Compact sizing for mobile
+            var inputPadding = isMobile ? '0.5rem 0.75rem' : '0.75rem 1rem';
+            var inputMargin = isMobile ? '0.4rem' : '0.75rem';
+            var inputFontSize = isMobile ? '13px' : '14px';
+            var inputStyle = 'width:100%;padding:' + inputPadding + ';margin-bottom:' + inputMargin + ';border:1px solid #ddd;border-radius:6px;font-size:' + inputFontSize + ';box-sizing:border-box;direction:' + (isHe ? 'rtl' : 'ltr') + ';';
             
             // Name field
             if (config.collect_name) {
@@ -360,8 +369,11 @@
                 form.appendChild(phoneInput);
             }
             
-            var checkboxStyle = 'display:flex;align-items:flex-start;margin-bottom:0.5rem;gap:0.5rem;font-size:13px;color:#666;cursor:pointer;';
-            var checkboxInputStyle = 'margin-top:2px;flex-shrink:0;';
+            // Compact checkboxes for mobile
+            var checkboxFontSize = isMobile ? '11px' : '13px';
+            var checkboxMargin = isMobile ? '0.25rem' : '0.5rem';
+            var checkboxStyle = 'display:flex;align-items:flex-start;margin-bottom:' + checkboxMargin + ';gap:0.3rem;font-size:' + checkboxFontSize + ';color:#666;cursor:pointer;line-height:1.3;';
+            var checkboxInputStyle = 'margin-top:1px;flex-shrink:0;width:14px;height:14px;';
             
             // Newsletter consent
             if (config.show_newsletter_consent) {
@@ -411,13 +423,14 @@
                 form.appendChild(marketingLabel);
             }
             
-            // Submit button
+            // Compact submit button for mobile
+            var btnPadding = isMobile ? '0.6rem 1rem' : '0.875rem 2rem';
+            var btnMargin = isMobile ? '0.5rem' : '1rem';
+            var btnFontSize = isMobile ? '14px' : '16px';
             var submitBtn = document.createElement('button');
             submitBtn.type = 'submit';
             submitBtn.textContent = isHe ? config.form_submit_text_he : config.form_submit_text_en;
-            submitBtn.style.cssText = 'width:100%;margin-top:1rem;background:' + (config.button_bg_color || '#C75450') + ';color:' + (config.button_text_color || '#fff') + ';padding:0.875rem 2rem;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:transform 0.2s;';
-            submitBtn.onmouseover = function() { this.style.transform = 'scale(1.02)'; };
-            submitBtn.onmouseout = function() { this.style.transform = 'scale(1)'; };
+            submitBtn.style.cssText = 'width:100%;margin-top:' + btnMargin + ';background:' + (config.button_bg_color || '#C75450') + ';color:' + (config.button_text_color || '#fff') + ';padding:' + btnPadding + ';border:none;border-radius:6px;font-size:' + btnFontSize + ';font-weight:600;cursor:pointer;';
             form.appendChild(submitBtn);
             
             // Form submission handler

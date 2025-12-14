@@ -982,6 +982,62 @@
             </div>
         </div>
         
+        <div class="control-section" data-section="consent">
+            <button type="button" class="section-toggle collapsed" onclick="toggleSection(this)">
+                <i class="fas fa-check-square section-icon"></i>
+                הסכמות ותנאים
+                <i class="fas fa-chevron-down chevron"></i>
+            </button>
+            <div class="section-content collapsed">
+                <label class="checkbox-row">
+                    <input type="checkbox" name="show_terms_consent" id="show_terms_consent" {{ 'checked' if popup and popup.show_terms_consent }}>
+                    <span class="checkbox-label">הצג תיבת סימון לתנאי שימוש</span>
+                </label>
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label class="form-label">טקסט תנאי שימוש (עברית)</label>
+                    <input type="text" name="terms_consent_text_he" class="form-input" value="{{ popup.terms_consent_text_he if popup else 'אני מסכים/ה לתנאי השימוש' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">טקסט תנאי שימוש (אנגלית)</label>
+                    <input type="text" name="terms_consent_text_en" class="form-input" value="{{ popup.terms_consent_text_en if popup else 'I agree to the terms of service' }}">
+                </div>
+                <label class="checkbox-row">
+                    <input type="checkbox" name="terms_consent_required" {{ 'checked' if popup and popup.terms_consent_required }}>
+                    <span class="checkbox-label">הסכמה לתנאים חובה</span>
+                </label>
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label class="form-label">קישור לעמוד תנאים</label>
+                    <input type="text" name="terms_link" class="form-input" value="{{ popup.terms_link if popup else '' }}" placeholder="https://...">
+                </div>
+                
+                <div style="border-top: 1px solid #e2e8f0; margin: 1rem 0; padding-top: 1rem;">
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="show_newsletter_consent" {{ 'checked' if popup and popup.show_newsletter_consent }}>
+                        <span class="checkbox-label">הצג הסכמה לניוזלטר</span>
+                    </label>
+                    <div class="form-group" style="margin-top: 0.75rem;">
+                        <label class="form-label">טקסט ניוזלטר (עברית)</label>
+                        <input type="text" name="newsletter_consent_text_he" class="form-input" value="{{ popup.newsletter_consent_text_he if popup else 'אני מעוניין/ת לקבל עדכונים ומבצעים' }}">
+                    </div>
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="newsletter_default_checked" {{ 'checked' if not popup or popup.newsletter_default_checked }}>
+                        <span class="checkbox-label">מסומן כברירת מחדל</span>
+                    </label>
+                </div>
+                
+                <div style="border-top: 1px solid #e2e8f0; margin: 1rem 0; padding-top: 1rem;">
+                    <label class="checkbox-row">
+                        <input type="checkbox" name="show_marketing_consent" {{ 'checked' if popup and popup.show_marketing_consent }}>
+                        <span class="checkbox-label">הצג הסכמה לשיווק</span>
+                    </label>
+                    <div class="form-group" style="margin-top: 0.75rem;">
+                        <label class="form-label">טקסט שיווק (עברית)</label>
+                        <input type="text" name="marketing_consent_text_he" class="form-input" value="{{ popup.marketing_consent_text_he if popup else 'אני מסכים/ה לקבל הודעות שיווקיות' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="control-section" data-section="animation">
             <button type="button" class="section-toggle collapsed" onclick="toggleSection(this)">
                 <i class="fas fa-magic section-icon"></i>

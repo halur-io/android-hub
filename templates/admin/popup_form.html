@@ -826,11 +826,44 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">רקע טקסט</label>
+                        <div class="color-row">
+                            <input type="color" class="color-picker live-input" id="text_bg_color" name="text_bg_color" value="{{ popup.text_bg_color if popup else '#000000' }}">
+                            <input type="text" class="form-input color-text" value="{{ popup.text_bg_color if popup else '#000000' }}" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">שקיפות רקע טקסט: <span class="range-value" id="text_bg_opacity_val">{{ popup.text_bg_opacity if popup else 0 }}</span>%</label>
+                    <div class="range-row">
+                        <input type="range" class="range-input live-input" name="text_bg_opacity" id="text_bg_opacity" min="0" max="100" value="{{ popup.text_bg_opacity if popup else 0 }}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">רקע כותרת</label>
+                        <div class="color-row">
+                            <input type="color" class="color-picker live-input" id="title_bg_color" name="title_bg_color" value="{{ popup.title_bg_color if popup else '#000000' }}">
+                            <input type="text" class="form-input color-text" value="{{ popup.title_bg_color if popup else '#000000' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">שקיפות רקע כותרת: <span class="range-value" id="title_bg_opacity_val">{{ popup.title_bg_opacity if popup else 0 }}</span>%</label>
+                        <div class="range-row">
+                            <input type="range" class="range-input live-input" name="title_bg_opacity" id="title_bg_opacity" min="0" max="100" value="{{ popup.title_bg_opacity if popup else 0 }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label class="form-label">צבע רקע כפתור</label>
                         <div class="color-row">
                             <input type="color" class="color-picker live-input" id="button_bg_color" name="button_bg_color" value="{{ popup.button_bg_color if popup else '#C75450' }}">
                             <input type="text" class="form-input color-text" value="{{ popup.button_bg_color if popup else '#C75450' }}" readonly>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <!-- Empty for alignment -->
                     </div>
                 </div>
                 <div class="form-row">
@@ -1165,6 +1198,17 @@ function initLivePreview() {
     });
 }
 
+function hexToRgba(hex, opacity) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    var r = parseInt(hex.substring(0, 2), 16);
+    var g = parseInt(hex.substring(2, 4), 16);
+    var b = parseInt(hex.substring(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + opacity + ')';
+}
+
 function updateLivePreview() {
     var popup = document.getElementById('livePopupInner');
     var overlay = document.getElementById('previewOverlay');
@@ -1172,6 +1216,10 @@ function updateLivePreview() {
     var bgColor = document.getElementById('background_color').value;
     var titleColor = document.getElementById('title_color').value;
     var textColor = document.getElementById('text_color').value;
+    var textBgColor = document.getElementById('text_bg_color').value;
+    var textBgOpacity = parseInt(document.getElementById('text_bg_opacity').value) || 0;
+    var titleBgColor = document.getElementById('title_bg_color').value;
+    var titleBgOpacity = parseInt(document.getElementById('title_bg_opacity').value) || 0;
     var btnBgColor = document.getElementById('button_bg_color').value;
     var btnTextColor = document.getElementById('button_text_color').value;
     var overlayColor = document.getElementById('overlay_color').value;
@@ -1223,11 +1271,29 @@ function updateLivePreview() {
     titleEl.style.color = titleColor;
     titleEl.style.fontSize = titleSize + 'px';
     titleEl.textContent = document.getElementById('title_he').value || document.getElementById('title_en').value || 'כותרת הפופאפ';
+    if (titleBgOpacity > 0) {
+        titleEl.style.background = hexToRgba(titleBgColor, titleBgOpacity / 100);
+        titleEl.style.padding = '0.5rem 1rem';
+        titleEl.style.borderRadius = '4px';
+        titleEl.style.display = 'inline-block';
+    } else {
+        titleEl.style.background = 'none';
+        titleEl.style.padding = '0';
+        titleEl.style.display = 'block';
+    }
     
     var contentEl = document.getElementById('previewContent');
     contentEl.style.color = textColor;
     contentEl.style.fontSize = contentSize + 'px';
     contentEl.textContent = document.getElementById('content_he').value || document.getElementById('content_en').value || 'תוכן הפופאפ יופיע כאן...';
+    if (textBgOpacity > 0) {
+        contentEl.style.background = hexToRgba(textBgColor, textBgOpacity / 100);
+        contentEl.style.padding = '0.5rem 1rem';
+        contentEl.style.borderRadius = '4px';
+    } else {
+        contentEl.style.background = 'none';
+        contentEl.style.padding = '0';
+    }
     
     var btnText = document.getElementById('button_text_he').value || document.getElementById('button_text_en').value;
     var btnElement = document.getElementById('buttonElement');
@@ -1301,6 +1367,8 @@ function updateLivePreview() {
     document.getElementById('title_size_val').textContent = titleSize;
     document.getElementById('content_size_val').textContent = contentSize;
     document.getElementById('radius_val').textContent = borderRadius;
+    document.getElementById('text_bg_opacity_val').textContent = textBgOpacity;
+    document.getElementById('title_bg_opacity_val').textContent = titleBgOpacity;
 }
 
 function initDragDrop() {

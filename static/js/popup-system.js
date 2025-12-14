@@ -178,7 +178,13 @@
             if (title) {
                 var h2 = document.createElement('h2');
                 h2.textContent = title;
-                h2.style.cssText = 'color:' + (config.title_color || '#1B2951') + ';font-size:' + (config.title_font_size || 24) + 'px;margin:0 0 1rem 0;font-weight:700;';
+                var titleBgStyle = '';
+                if (config.title_bg_opacity && config.title_bg_opacity > 0) {
+                    var titleBgColor = config.title_bg_color || '#000000';
+                    var titleOpacity = (config.title_bg_opacity || 0) / 100;
+                    titleBgStyle = 'background:' + self.hexToRgba(titleBgColor, titleOpacity) + ';padding:0.5rem 1rem;border-radius:4px;display:inline-block;';
+                }
+                h2.style.cssText = 'color:' + (config.title_color || '#1B2951') + ';font-size:' + (config.title_font_size || 24) + 'px;margin:0 0 1rem 0;font-weight:700;' + titleBgStyle;
                 popup.appendChild(h2);
             }
             
@@ -186,7 +192,13 @@
             if (content) {
                 var p = document.createElement('p');
                 p.textContent = content;
-                p.style.cssText = 'color:' + (config.text_color || '#333') + ';font-size:' + (config.content_font_size || 16) + 'px;margin:0 0 1.5rem 0;line-height:1.6;';
+                var textBgStyle = '';
+                if (config.text_bg_opacity && config.text_bg_opacity > 0) {
+                    var textBgColor = config.text_bg_color || '#000000';
+                    var textOpacity = (config.text_bg_opacity || 0) / 100;
+                    textBgStyle = 'background:' + self.hexToRgba(textBgColor, textOpacity) + ';padding:0.5rem 1rem;border-radius:4px;';
+                }
+                p.style.cssText = 'color:' + (config.text_color || '#333') + ';font-size:' + (config.content_font_size || 16) + 'px;margin:0 0 1.5rem 0;line-height:1.6;' + textBgStyle;
                 popup.appendChild(p);
             }
             
@@ -501,6 +513,17 @@
                 'popup_id': popupId,
                 'popup_title': config ? (lang === 'he' ? config.title_he : config.title_en) : ''
             });
+        },
+        
+        hexToRgba: function(hex, opacity) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            }
+            var r = parseInt(hex.substring(0, 2), 16);
+            var g = parseInt(hex.substring(2, 4), 16);
+            var b = parseInt(hex.substring(4, 6), 16);
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + opacity + ')';
         }
     };
     

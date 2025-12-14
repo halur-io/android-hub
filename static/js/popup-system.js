@@ -127,28 +127,42 @@
             var self = this;
             var lang = document.documentElement.lang || 'he';
             var isHe = lang === 'he';
+            var isMobile = window.innerWidth < 768;
             
             var overlay = document.createElement('div');
             overlay.className = 'site-popup-overlay';
-            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:' + (config.overlay_color || 'rgba(0,0,0,0.5)') + ';z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity ' + (config.animation_duration || 300) + 'ms;';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:' + (config.overlay_color || 'rgba(0,0,0,0.5)') + ';z-index:99999;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity ' + (config.animation_duration || 300) + 'ms;padding:2vh 2vw;box-sizing:border-box;';
             
             var popup = document.createElement('div');
             popup.className = 'site-popup';
             
             var position = config.popup_position || 'center';
             var size = config.popup_size || 'medium';
-            var sizeStyles = {
-                small: 'max-width:350px;',
-                medium: 'max-width:500px;',
-                large: 'max-width:700px;',
-                fullscreen: 'width:100%;height:100%;max-width:none;border-radius:0;'
-            };
+            
+            // Mobile-first responsive sizes using viewport units only
+            var sizeStyles;
+            if (isMobile) {
+                // Mobile: max 92vw width, max 35vh height, no fullscreen
+                sizeStyles = {
+                    small: 'max-width:85vw;',
+                    medium: 'max-width:92vw;',
+                    large: 'max-width:92vw;',
+                    fullscreen: 'max-width:92vw;' // Prevent fullscreen on mobile
+                };
+            } else {
+                sizeStyles = {
+                    small: 'max-width:min(350px, 80vw);',
+                    medium: 'max-width:min(500px, 85vw);',
+                    large: 'max-width:min(700px, 90vw);',
+                    fullscreen: 'max-width:min(700px, 90vw);' // Prevent fullscreen
+                };
+            }
             
             var positionStyles = '';
             if (position !== 'center') {
                 overlay.style.alignItems = position.includes('top') ? 'flex-start' : position.includes('bottom') ? 'flex-end' : 'center';
                 overlay.style.justifyContent = position.includes('left') ? 'flex-start' : position.includes('right') ? 'flex-end' : 'center';
-                positionStyles = 'margin:1rem;';
+                positionStyles = 'margin:2vw;';
             }
             
             var bgStyle = 'background:' + (config.background_color || '#fff') + ';';
@@ -157,20 +171,29 @@
             } else if (config.image_path && config.image_display_type === 'background_cover') {
                 bgStyle = 'background:url(' + config.image_path + ') center center / cover no-repeat, ' + (config.background_color || '#fff') + ';';
             }
-            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;padding:2rem;width:90%;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 20px 60px rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;overflow-y:auto;box-sizing:border-box;max-height:90vh;';
             
+            // Mobile-optimized popup styles
+            var mobileMaxHeight = isMobile ? 'max-height:35vh;' : 'max-height:85vh;';
+            var mobilePadding = isMobile ? 'padding:4vw;' : 'padding:2rem;';
+            
+            popup.style.cssText = bgStyle + 'border-radius:' + (config.border_radius || 12) + 'px;' + mobilePadding + 'width:92vw;' + sizeStyles[size] + positionStyles + (config.has_shadow ? 'box-shadow:0 4vw 12vw rgba(0,0,0,0.3);' : '') + 'position:relative;text-align:center;transform:scale(0.9);opacity:0;transition:all ' + (config.animation_duration || 300) + 'ms;direction:' + (isHe ? 'rtl' : 'ltr') + ';overflow-x:hidden;overflow-y:auto;box-sizing:border-box;' + mobileMaxHeight + '-webkit-overflow-scrolling:touch;';
+            
+            // Close button with minimum 44x44px tap area for accessibility
             if (config.show_close_button) {
                 var closeBtn = document.createElement('button');
                 closeBtn.innerHTML = '&times;';
-                closeBtn.style.cssText = 'position:absolute;top:10px;' + (config.close_button_position === 'top-left' ? 'left' : 'right') + ':10px;background:none;border:none;font-size:28px;cursor:pointer;color:#999;line-height:1;padding:0;width:30px;height:30px;';
+                closeBtn.style.cssText = 'position:absolute;top:2vw;' + (config.close_button_position === 'top-left' ? 'left' : 'right') + ':2vw;background:rgba(0,0,0,0.1);border:none;font-size:max(6vw, 24px);cursor:pointer;color:#666;line-height:1;padding:0;min-width:44px;min-height:44px;width:max(10vw, 44px);height:max(10vw, 44px);border-radius:50%;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;';
+                closeBtn.setAttribute('aria-label', isHe ? 'סגור' : 'Close');
                 closeBtn.onclick = function() { self.closePopup(overlay, config); };
                 popup.appendChild(closeBtn);
             }
             
+            // Image with responsive constraints - never overflow popup
             if (config.image_path && (!config.image_display_type || config.image_display_type === 'inline')) {
                 var img = document.createElement('img');
                 img.src = config.image_path;
-                img.style.cssText = 'width:100%;max-width:100%;height:auto;border-radius:8px;margin-bottom:1rem;object-fit:contain;display:block;';
+                var imgMaxHeight = isMobile ? 'max-height:25vh;' : 'max-height:40vh;';
+                img.style.cssText = 'width:100%;max-width:100%;height:auto;' + imgMaxHeight + 'border-radius:2vw;margin-bottom:3vw;object-fit:contain;display:block;';
                 popup.appendChild(img);
             }
             

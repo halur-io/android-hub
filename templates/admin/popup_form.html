@@ -667,6 +667,20 @@
                                 <input type="text" id="previewFormName" placeholder="שם" style="display: none;">
                                 <input type="email" id="previewFormEmail" placeholder="אימייל">
                                 <input type="tel" id="previewFormPhone" placeholder="טלפון" style="display: none;">
+                                <div id="previewConsentsContainer" style="margin: 0.75rem 0; text-align: right;">
+                                    <label id="previewNewsletterConsent" style="display: none; align-items: flex-start; gap: 0.5rem; font-size: 12px; color: #666; margin-bottom: 0.5rem; cursor: pointer;">
+                                        <input type="checkbox" style="margin-top: 2px; flex-shrink: 0;">
+                                        <span id="previewNewsletterText">אני מאשר/ת קבלת עדכונים</span>
+                                    </label>
+                                    <label id="previewTermsConsent" style="display: none; align-items: flex-start; gap: 0.5rem; font-size: 12px; color: #666; margin-bottom: 0.5rem; cursor: pointer;">
+                                        <input type="checkbox" style="margin-top: 2px; flex-shrink: 0;">
+                                        <span id="previewTermsText">אני מסכים/ה לתנאי השימוש</span>
+                                    </label>
+                                    <label id="previewMarketingConsent" style="display: none; align-items: flex-start; gap: 0.5rem; font-size: 12px; color: #666; margin-bottom: 0.5rem; cursor: pointer;">
+                                        <input type="checkbox" style="margin-top: 2px; flex-shrink: 0;">
+                                        <span id="previewMarketingText">אני מאשר/ת קבלת הצעות שיווקיות</span>
+                                    </label>
+                                </div>
                                 <button type="button" class="popup-button-element" id="previewFormButton">שלח</button>
                             </div>
                         </div>
@@ -936,14 +950,21 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">תדירות הצגה</label>
-                    <select name="display_frequency" class="form-select">
-                        <option value="once_per_session" {{ 'selected' if not popup or popup.display_frequency == 'once_per_session' }}>פעם בסשן</option>
-                        <option value="once_ever" {{ 'selected' if popup and popup.display_frequency == 'once_ever' }}>פעם אחת לתמיד</option>
-                        <option value="every_time" {{ 'selected' if popup and popup.display_frequency == 'every_time' }}>כל פעם</option>
-                        <option value="every_x_days" {{ 'selected' if popup and popup.display_frequency == 'every_x_days' }}>כל X ימים</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">תדירות הצגה</label>
+                        <select name="show_frequency" id="show_frequency" class="form-select" onchange="toggleEveryXDays()">
+                            <option value="once_per_session" {{ 'selected' if not popup or popup.show_frequency == 'once_per_session' }}>פעם בסשן</option>
+                            <option value="once_ever" {{ 'selected' if popup and popup.show_frequency == 'once_ever' }}>פעם אחת לתמיד</option>
+                            <option value="always" {{ 'selected' if popup and popup.show_frequency == 'always' }}>כל פעם</option>
+                            <option value="once_per_day" {{ 'selected' if popup and popup.show_frequency == 'once_per_day' }}>פעם ביום</option>
+                            <option value="every_x_days" {{ 'selected' if popup and popup.show_frequency == 'every_x_days' }}>כל X ימים</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="everyXDaysContainer" style="display: {{ 'block' if popup and popup.show_frequency == 'every_x_days' else 'none' }};">
+                        <label class="form-label">כל כמה ימים?</label>
+                        <input type="number" name="show_every_x_days" class="form-input" value="{{ popup.show_every_x_days if popup else 1 }}" min="1">
+                    </div>
                 </div>
             </div>
         </div>
@@ -990,12 +1011,12 @@
             </button>
             <div class="section-content collapsed">
                 <label class="checkbox-row">
-                    <input type="checkbox" name="show_terms_consent" id="show_terms_consent" {{ 'checked' if popup and popup.show_terms_consent }}>
+                    <input type="checkbox" name="show_terms_consent" id="show_terms_consent" class="live-input" {{ 'checked' if popup and popup.show_terms_consent }}>
                     <span class="checkbox-label">הצג תיבת סימון לתנאי שימוש</span>
                 </label>
                 <div class="form-group" style="margin-top: 0.75rem;">
                     <label class="form-label">טקסט תנאי שימוש (עברית)</label>
-                    <input type="text" name="terms_consent_text_he" class="form-input" value="{{ popup.terms_consent_text_he if popup else 'אני מסכים/ה לתנאי השימוש' }}">
+                    <input type="text" name="terms_consent_text_he" id="terms_consent_text_he" class="form-input live-input" value="{{ popup.terms_consent_text_he if popup else 'אני מסכים/ה לתנאי השימוש' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">טקסט תנאי שימוש (אנגלית)</label>
@@ -1012,12 +1033,12 @@
                 
                 <div style="border-top: 1px solid #e2e8f0; margin: 1rem 0; padding-top: 1rem;">
                     <label class="checkbox-row">
-                        <input type="checkbox" name="show_newsletter_consent" {{ 'checked' if popup and popup.show_newsletter_consent }}>
+                        <input type="checkbox" name="show_newsletter_consent" class="live-input" {{ 'checked' if popup and popup.show_newsletter_consent }}>
                         <span class="checkbox-label">הצג הסכמה לניוזלטר</span>
                     </label>
                     <div class="form-group" style="margin-top: 0.75rem;">
                         <label class="form-label">טקסט ניוזלטר (עברית)</label>
-                        <input type="text" name="newsletter_consent_text_he" class="form-input" value="{{ popup.newsletter_consent_text_he if popup else 'אני מעוניין/ת לקבל עדכונים ומבצעים' }}">
+                        <input type="text" name="newsletter_consent_text_he" id="newsletter_consent_text_he" class="form-input live-input" value="{{ popup.newsletter_consent_text_he if popup else 'אני מעוניין/ת לקבל עדכונים ומבצעים' }}">
                     </div>
                     <label class="checkbox-row">
                         <input type="checkbox" name="newsletter_default_checked" {{ 'checked' if not popup or popup.newsletter_default_checked }}>
@@ -1027,12 +1048,12 @@
                 
                 <div style="border-top: 1px solid #e2e8f0; margin: 1rem 0; padding-top: 1rem;">
                     <label class="checkbox-row">
-                        <input type="checkbox" name="show_marketing_consent" {{ 'checked' if popup and popup.show_marketing_consent }}>
+                        <input type="checkbox" name="show_marketing_consent" class="live-input" {{ 'checked' if popup and popup.show_marketing_consent }}>
                         <span class="checkbox-label">הצג הסכמה לשיווק</span>
                     </label>
                     <div class="form-group" style="margin-top: 0.75rem;">
                         <label class="form-label">טקסט שיווק (עברית)</label>
-                        <input type="text" name="marketing_consent_text_he" class="form-input" value="{{ popup.marketing_consent_text_he if popup else 'אני מסכים/ה לקבל הודעות שיווקיות' }}">
+                        <input type="text" name="marketing_consent_text_he" id="marketing_consent_text_he" class="form-input live-input" value="{{ popup.marketing_consent_text_he if popup else 'אני מסכים/ה לקבל הודעות שיווקיות' }}">
                     </div>
                 </div>
             </div>
@@ -1236,6 +1257,39 @@ function updateLivePreview() {
         document.getElementById('previewFormEmail').style.display = collectEmail ? 'block' : 'none';
         document.getElementById('previewFormPhone').style.display = collectPhone ? 'block' : 'none';
         
+        // Consent checkboxes preview
+        var showNewsletter = document.querySelector('input[name="show_newsletter_consent"]');
+        var showTerms = document.querySelector('input[name="show_terms_consent"]');
+        var showMarketing = document.querySelector('input[name="show_marketing_consent"]');
+        
+        var previewNewsletter = document.getElementById('previewNewsletterConsent');
+        var previewTerms = document.getElementById('previewTermsConsent');
+        var previewMarketing = document.getElementById('previewMarketingConsent');
+        
+        if (showNewsletter && previewNewsletter) {
+            previewNewsletter.style.display = showNewsletter.checked ? 'flex' : 'none';
+            var newsletterText = document.getElementById('newsletter_consent_text_he');
+            if (newsletterText) {
+                document.getElementById('previewNewsletterText').textContent = newsletterText.value || 'אני מאשר/ת קבלת עדכונים';
+            }
+        }
+        
+        if (showTerms && previewTerms) {
+            previewTerms.style.display = showTerms.checked ? 'flex' : 'none';
+            var termsText = document.getElementById('terms_consent_text_he');
+            if (termsText) {
+                document.getElementById('previewTermsText').textContent = termsText.value || 'אני מסכים/ה לתנאי השימוש';
+            }
+        }
+        
+        if (showMarketing && previewMarketing) {
+            previewMarketing.style.display = showMarketing.checked ? 'flex' : 'none';
+            var marketingText = document.getElementById('marketing_consent_text_he');
+            if (marketingText) {
+                document.getElementById('previewMarketingText').textContent = marketingText.value || 'אני מאשר/ת קבלת הצעות שיווקיות';
+            }
+        }
+        
         var formBtn = document.getElementById('previewFormButton');
         formBtn.style.background = btnBgColor;
         formBtn.style.color = btnTextColor;
@@ -1382,6 +1436,14 @@ function toggleSection(btn) {
     var state = JSON.parse(localStorage.getItem('popupDesignerState') || '{}');
     state[sectionName] = !isCollapsed;
     localStorage.setItem('popupDesignerState', JSON.stringify(state));
+}
+
+function toggleEveryXDays() {
+    var freq = document.getElementById('show_frequency');
+    var container = document.getElementById('everyXDaysContainer');
+    if (freq && container) {
+        container.style.display = freq.value === 'every_x_days' ? 'block' : 'none';
+    }
 }
 
 function initSectionState() {

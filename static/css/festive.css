@@ -1,6 +1,94 @@
 /* Festive Holiday Animations - Christmas & Hanukkah */
 /* Auto-disables after January 15, 2026 */
 
+/* Festive Greeting Banner */
+.festive-greeting {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, rgba(0, 100, 0, 0.9), rgba(0, 50, 150, 0.9));
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 30px rgba(255,215,0,0.3);
+    border: 2px solid rgba(255,215,0,0.5);
+    animation: greetingPulse 3s ease-in-out infinite;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.festive-greeting:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(0,0,0,0.4), 0 0 40px rgba(255,215,0,0.5);
+}
+
+.festive-greeting .greeting-line {
+    display: block;
+    line-height: 1.5;
+}
+
+.festive-greeting .greeting-christmas {
+    color: #ff6b6b;
+    text-shadow: 0 0 10px rgba(255,107,107,0.5);
+}
+
+.festive-greeting .greeting-hanukkah {
+    color: #74b9ff;
+    text-shadow: 0 0 10px rgba(116,185,255,0.5);
+}
+
+.festive-greeting .greeting-emoji {
+    font-size: 18px;
+    margin: 0 4px;
+}
+
+.festive-greeting .close-greeting {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    color: #333;
+    border: none;
+    border-radius: 50%;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+
+.festive-greeting .close-greeting:hover {
+    transform: scale(1.1);
+}
+
+@keyframes greetingPulse {
+    0%, 100% { 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 30px rgba(255,215,0,0.3);
+    }
+    50% { 
+        box-shadow: 0 4px 25px rgba(0,0,0,0.4), 0 0 40px rgba(255,215,0,0.5);
+    }
+}
+
+@media (max-width: 768px) {
+    .festive-greeting {
+        bottom: 80px;
+        left: 10px;
+        right: 10px;
+        font-size: 13px;
+        padding: 10px 16px;
+    }
+}
+
 /* Snowflakes */
 .snowflakes {
     position: fixed;

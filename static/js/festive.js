@@ -105,6 +105,41 @@
         return fragment;
     }
     
+    function createFestiveGreeting() {
+        // Check if user dismissed the greeting
+        if (localStorage.getItem('festiveGreetingDismissed') === 'true') {
+            return null;
+        }
+        
+        const greeting = document.createElement('div');
+        greeting.className = 'festive-greeting';
+        greeting.innerHTML = `
+            <button class="close-greeting" onclick="dismissFestiveGreeting(event)" aria-label="Close">×</button>
+            <span class="greeting-line greeting-christmas">
+                <span class="greeting-emoji">🎄</span>Merry Christmas<span class="greeting-emoji">🎅</span>
+            </span>
+            <span class="greeting-line greeting-hanukkah">
+                <span class="greeting-emoji">🕎</span>חג חנוכה שמח<span class="greeting-emoji">✡️</span>
+            </span>
+        `;
+        
+        return greeting;
+    }
+    
+    // Expose function to dismiss greeting
+    window.dismissFestiveGreeting = function(event) {
+        if (event) event.stopPropagation();
+        localStorage.setItem('festiveGreetingDismissed', 'true');
+        const greeting = document.querySelector('.festive-greeting');
+        if (greeting) {
+            greeting.style.animation = 'none';
+            greeting.style.opacity = '0';
+            greeting.style.transform = 'translateY(20px)';
+            greeting.style.transition = 'all 0.3s ease';
+            setTimeout(() => greeting.remove(), 300);
+        }
+    };
+    
     function createFallingGifts() {
         const container = document.createElement('div');
         container.className = 'falling-gifts';
@@ -166,6 +201,12 @@
         body.appendChild(createFallingGifts());
         body.appendChild(createFallingDonuts());
         
+        // Add greeting banner
+        const greeting = createFestiveGreeting();
+        if (greeting) {
+            body.appendChild(greeting);
+        }
+        
         // Add padding to body for lights
         const navbar = document.querySelector('.navbar.fixed-top');
         if (navbar) {
@@ -179,7 +220,7 @@
     window.disableFestive = function() {
         localStorage.setItem('festiveDisabled', 'true');
         // Remove all festive elements
-        document.querySelectorAll('.snowflakes, .festive-lights, .hanukkah-menorah, .star-sparkle, .festive-corner, .falling-gifts, .falling-donuts').forEach(el => el.remove());
+        document.querySelectorAll('.snowflakes, .festive-lights, .hanukkah-menorah, .star-sparkle, .festive-corner, .falling-gifts, .falling-donuts, .festive-greeting').forEach(el => el.remove());
         // Reset navbar position
         const navbar = document.querySelector('.navbar.fixed-top');
         if (navbar) {

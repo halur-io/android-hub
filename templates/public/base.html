@@ -32,19 +32,29 @@
     <meta name="author" content="{{ settings.site_name_he if language == 'he' else settings.site_name_en }}">
     <link rel="canonical" href="{{ request.base_url }}">
     
+    <!-- Hreflang for Hebrew/English -->
+    <link rel="alternate" hreflang="he" href="{{ request.url_root }}?lang=he">
+    <link rel="alternate" hreflang="en" href="{{ request.url_root }}?lang=en">
+    <link rel="alternate" hreflang="x-default" href="{{ request.url_root }}">
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.base_url }}">
     <meta property="og:title" content="{% block og_title %}{{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}{% endblock %}">
-    <meta property="og:image" content="{{ url_for('static', filename='videos/hero.mp4', _external=True) }}">
+    <meta property="og:image" content="{{ url_for('static', filename='images/hero-poster.jpg', _external=True) }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:locale" content="{{ 'he_IL' if language == 'he' else 'en_US' }}">
+    <meta property="og:video" content="{{ url_for('static', filename='videos/hero.mp4', _external=True) }}">
+    <meta property="og:video:type" content="video/mp4">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="{{ request.base_url }}">
     <meta property="twitter:title" content="{% block twitter_title %}{{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}">
     <meta property="twitter:description" content="{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}">
+    <meta property="twitter:image" content="{{ url_for('static', filename='images/hero-poster.jpg', _external=True) }}">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">

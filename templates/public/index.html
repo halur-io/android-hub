@@ -66,6 +66,11 @@
             <a href="{{ url_for('menu_page') }}" class="btn-hero btn-outline-hero">
                 <i class="fas fa-utensils"></i> {{ 'צפה בתפריט' if language == 'he' else 'View Menu' }}
             </a>
+            {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.reservation_system_url %}
+            <a href="{{ reservation_settings.reservation_system_url }}" class="btn-hero btn-outline-hero" target="_blank">
+                <i class="fas fa-calendar-check"></i> {{ 'הזמנת מקום' if language == 'he' else 'Reserve Table' }}
+            </a>
+            {% endif %}
         </div>
     </div>
 </section>

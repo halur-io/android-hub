@@ -8,10 +8,10 @@
         <!-- Parallax Background Image -->
         <div class="hero-image-layer" id="heroImageLayer">
             {% if settings.hero_desktop_image %}
-            <img src="{{ url_for('static', filename='uploads/' + settings.hero_desktop_image) }}" alt="Restaurant Hero" class="hero-bg-image">
+            <img src="{{ url_for('static', filename='uploads/' + settings.hero_desktop_image) }}" alt="Restaurant Hero" class="hero-bg-image" fetchpriority="high" loading="eager">
             {% else %}
             <!-- Default: Use first gallery image or placeholder -->
-            <img src="{{ url_for('static', filename='uploads/gallery_20251030_233453_686688_136.jpg') }}" alt="Restaurant Hero" class="hero-bg-image">
+            <img src="{{ url_for('static', filename='uploads/gallery_20251030_233453_686688_136.jpg') }}" alt="Restaurant Hero" class="hero-bg-image" fetchpriority="high" loading="eager">
             {% endif %}
         </div>
         
@@ -37,20 +37,19 @@
         </div>
     </div>
     
-    <!-- Mobile Hero: Video (only visible on mobile) -->
+    <!-- Mobile Hero: Video deferred for LCP optimization -->
     <video 
         class="hero-video hero-mobile-only" 
-        autoplay 
         loop 
         muted 
         playsinline
         poster="{{ url_for('static', filename='images/hero-poster.jpg') }}"
-        preload="metadata"
+        preload="none"
         data-mobile-src="{{ url_for('static', filename='videos/hero-mobile.mp4') }}"
         {% if hero_video %}
         data-custom-src="{{ url_for('static', filename='uploads/' + hero_video.filename) }}"
         {% endif %}>
-        <!-- Source will be set by JavaScript for mobile only -->
+        <!-- Source will be set by JavaScript after LCP -->
     </video>
     
     <div class="hero-overlay"></div>
@@ -319,7 +318,7 @@
 
 {% block extra_js %}
 <script>
-// Smart Video Loading - Optimize for slow connections
+// Smart Video Loading - Deferred for LCP optimization
 document.addEventListener('DOMContentLoaded', function() {
     const heroVideo = document.querySelector('.hero-video');
     
@@ -336,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
         );
         
         // Select appropriate video source
-        function selectVideoSource() {
+        function loadVideoSource() {
             const isMobile = window.innerWidth <= 768;
             const customSrc = heroVideo.dataset.customSrc;
             const mobileSrc = heroVideo.dataset.mobileSrc;
@@ -351,18 +350,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Only load if not on slow connection
-            if (!slowConnection && !prefersReducedMotion) {
+            if (!slowConnection && !prefersReducedMotion && selectedSrc) {
                 heroVideo.src = selectedSrc;
                 heroVideo.load();
-                console.log('Hero video loaded:', isMobile ? 'mobile' : 'desktop', 'version');
+                heroVideo.play().catch(function() {});
+                console.log('Hero video loaded after LCP:', isMobile ? 'mobile' : 'desktop');
             } else {
-                console.log('Hero video disabled for better performance');
-                heroVideo.removeAttribute('autoplay');
+                console.log('Hero video disabled for performance');
             }
         }
         
-        // Initial load
-        selectVideoSource();
+        // DEFER video loading until after LCP (wait 1.5s for poster to paint first)
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(function() {
+                setTimeout(loadVideoSource, 500);
+            }, { timeout: 2000 });
+        } else {
+            setTimeout(loadVideoSource, 1500);
+        }
         
         // Handle window resize for responsive switching
         let resizeTimer;

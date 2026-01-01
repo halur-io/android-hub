@@ -1242,116 +1242,48 @@ def edit_menu_item(id=None):
         else:
             item.allergens = '[]'
         
-        # Handle image upload with automatic AI processing
+        # Handle image upload - resize only (background removal disabled)
         if 'image' in request.files:
             file = request.files['image']
-            print(f"★★★ IMAGE UPLOAD DETECTED: {file.filename}")  # DEBUG
             if file and file.filename and allowed_file(file.filename):
-                print(f"★★★ STARTING AI PROCESSING for {file.filename}")  # DEBUG
-                from rembg import remove
-                import numpy as np
-                
                 filename = secure_filename(file.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename_base = filename.rsplit('.', 1)[0]
-                final_filename = f"menu_{timestamp}_{filename_base}_processed.png"
+                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
+                final_filename = f"menu_{timestamp}_{filename_base}.{ext}"
                 
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{filename}')
                 final_path = os.path.join(UPLOAD_FOLDER, final_filename)
                 
                 try:
-                    # Save temp file
-                    file.save(temp_path)
-                    print(f"★★★ Temp file saved: {temp_path}")
-                    print(f"Processing menu image: {filename}")
+                    # Save file first
+                    file.save(final_path)
                     
-                    # Step 0: Resize image BEFORE AI processing (to avoid memory issues)
-                    img_original = Image.open(temp_path)
-                    original_size = img_original.size
-                    print(f"★★★ Original image size: {original_size}")
-                    
-                    # Resize to max 1200px (maintains aspect ratio)
+                    # Resize if needed (max 1200px, maintains aspect ratio)
+                    img = Image.open(final_path)
+                    original_size = img.size
                     max_dimension = 1200
+                    
                     if max(original_size) > max_dimension:
                         ratio = max_dimension / max(original_size)
                         new_size = (int(original_size[0] * ratio), int(original_size[1] * ratio))
-                        img_original = img_original.resize(new_size, Image.Resampling.LANCZOS)
-                        img_original.save(temp_path, quality=90)
-                        print(f"★★★ Resized to: {new_size}")
-                    
-                    # Step 1: AI Background Removal
-                    print(f"★★★ Starting AI background removal...")
-                    with open(temp_path, 'rb') as input_file:
-                        input_data = input_file.read()
-                    output_data = remove(input_data)
-                    print(f"★★★ AI background removal complete!")
-                    
-                    # Save background-removed image
-                    with open(final_path, 'wb') as output_file:
-                        output_file.write(output_data)
-                    
-                    # Step 2: Crop to dish only (remove transparent space)
-                    img = Image.open(final_path)
-                    if img.mode == 'RGBA':
-                        # Get alpha channel
-                        alpha = np.array(img.split()[-1])
+                        img = img.resize(new_size, Image.Resampling.LANCZOS)
                         
-                        # Find non-transparent pixels
-                        rows = np.any(alpha > 0, axis=1)
-                        cols = np.any(alpha > 0, axis=0)
+                        # Convert to RGB if needed (for JPEG)
+                        if img.mode in ('RGBA', 'P') and ext in ('jpg', 'jpeg'):
+                            img = img.convert('RGB')
                         
-                        if rows.any() and cols.any():
-                            # Get bounding box
-                            y_min, y_max = np.where(rows)[0][[0, -1]]
-                            x_min, x_max = np.where(cols)[0][[0, -1]]
-                            
-                            # Add small margin (10px)
-                            margin = 10
-                            y_min = max(0, y_min - margin)
-                            y_max = min(img.height, y_max + margin)
-                            x_min = max(0, x_min - margin)
-                            x_max = min(img.width, x_max + margin)
-                            
-                            # Crop to dish
-                            img = img.crop((x_min, y_min, x_max, y_max))
-                            
-                            # Make square with dish centered
-                            width, height = img.size
-                            size = max(width, height)
-                            
-                            # Create square canvas
-                            square_img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-                            
-                            # Paste cropped dish centered
-                            paste_x = (size - width) // 2
-                            paste_y = (size - height) // 2
-                            square_img.paste(img, (paste_x, paste_y), img)
-                            
-                            # Save final processed image
-                            square_img.save(final_path, 'PNG', optimize=True)
-                            
-                            file_size_kb = os.path.getsize(final_path) / 1024
-                            print(f"✓ Menu image processed: {final_filename} ({file_size_kb:.1f}KB)")
-                            print(f"  - Background removed")
-                            print(f"  - Cropped to dish")
-                            print(f"  - Square format: {size}x{size}px")
+                        img.save(final_path, quality=85, optimize=True)
+                        print(f"✓ Menu image resized: {original_size} → {new_size}")
                     
-                    # Clean up temp file
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
+                    file_size_kb = os.path.getsize(final_path) / 1024
+                    print(f"✓ Menu image saved: {final_filename} ({file_size_kb:.1f}KB)")
                     
                     item.image_path = f'/static/uploads/{final_filename}'
                     
                 except Exception as e:
                     print(f"Error processing image: {e}")
-                    # Fallback: save original if processing fails
-                    if os.path.exists(temp_path):
-                        file.seek(0)
-                        file.save(final_path)
-                        item.image_path = f'/static/uploads/{final_filename}'
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
+                    item.image_path = f'/static/uploads/{final_filename}'
         
         if not id:
             db.session.add(item)

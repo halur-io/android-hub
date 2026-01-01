@@ -610,6 +610,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <script>
 let cropper = null;
+let originalImageSrc = null;
 const itemId = {{ item.id if item.id else 'null' }};
 
 function openImageEditor() {
@@ -630,23 +631,25 @@ function initCropper() {
         cropper.destroy();
     }
     
-    // Reset image src to force reload
-    const currentSrc = image.src.split('?')[0];
-    image.src = currentSrc + '?t=' + Date.now();
+    // Store original image source for true reset
+    originalImageSrc = image.src.split('?')[0];
+    image.src = originalImageSrc + '?t=' + Date.now();
     
     cropper = new Cropper(image, {
-        viewMode: 2,
-        dragMode: 'move',
-        aspectRatio: NaN, // Free aspect ratio
-        autoCropArea: 1,
+        viewMode: 1,
+        dragMode: 'crop',
+        aspectRatio: NaN,
+        autoCropArea: 0.8,
         restore: false,
         guides: true,
         center: true,
-        highlight: false,
+        highlight: true,
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: true,
-        responsive: true
+        responsive: true,
+        background: true,
+        modal: true
     });
 }
 
@@ -663,9 +666,12 @@ function zoomImage(ratio) {
 }
 
 function resetCropper() {
+    // Fully reinitialize cropper to reset to original image
     if (cropper) {
-        cropper.reset();
+        cropper.destroy();
+        cropper = null;
     }
+    initCropper();
 }
 
 function saveCroppedImage() {

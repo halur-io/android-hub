@@ -1259,22 +1259,45 @@ def edit_menu_item(id=None):
                     # Save file first
                     file.save(final_path)
                     
-                    # Resize if needed (max 1200px, maintains aspect ratio)
+                    # Open and fix EXIF orientation
                     img = Image.open(final_path)
+                    
+                    # Fix EXIF orientation (prevents rotated images from mobile phones)
+                    try:
+                        from PIL import ExifTags
+                        if hasattr(img, '_getexif') and img._getexif():
+                            exif = img._getexif()
+                            if exif:
+                                for orientation_key in ExifTags.TAGS.keys():
+                                    if ExifTags.TAGS[orientation_key] == 'Orientation':
+                                        break
+                                if orientation_key in exif:
+                                    orientation = exif[orientation_key]
+                                    if orientation == 3:
+                                        img = img.rotate(180, expand=True)
+                                    elif orientation == 6:
+                                        img = img.rotate(270, expand=True)
+                                    elif orientation == 8:
+                                        img = img.rotate(90, expand=True)
+                                    print(f"✓ Fixed EXIF orientation: {orientation}")
+                    except Exception as exif_error:
+                        print(f"EXIF processing skipped: {exif_error}")
+                    
                     original_size = img.size
                     max_dimension = 1200
                     
+                    # Resize if needed (max 1200px, maintains aspect ratio)
                     if max(original_size) > max_dimension:
                         ratio = max_dimension / max(original_size)
                         new_size = (int(original_size[0] * ratio), int(original_size[1] * ratio))
                         img = img.resize(new_size, Image.Resampling.LANCZOS)
-                        
-                        # Convert to RGB if needed (for JPEG)
-                        if img.mode in ('RGBA', 'P') and ext in ('jpg', 'jpeg'):
-                            img = img.convert('RGB')
-                        
-                        img.save(final_path, quality=85, optimize=True)
                         print(f"✓ Menu image resized: {original_size} → {new_size}")
+                    
+                    # Convert to RGB if needed (for JPEG)
+                    if img.mode in ('RGBA', 'P') and ext in ('jpg', 'jpeg'):
+                        img = img.convert('RGB')
+                    
+                    img.save(final_path, quality=85, optimize=True)
                     
                     file_size_kb = os.path.getsize(final_path) / 1024
                     print(f"✓ Menu image saved: {final_filename} ({file_size_kb:.1f}KB)")
@@ -1295,6 +1318,90 @@ def edit_menu_item(id=None):
         return redirect(url_for('admin.edit_menu_item', id=item.id))
     
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties)
+
+# Image Editor - Rotate, Crop, Zoom for menu item images
+@admin_bp.route('/menu/item/<int:item_id>/edit-image', methods=['POST'])
+@login_required
+def edit_menu_item_image(item_id):
+    """Apply image transformations (rotate, crop) to menu item image"""
+    import base64
+    import io
+    
+    item = MenuItem.query.get_or_404(item_id)
+    
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        
+        if not item.image_path:
+            return jsonify({'success': False, 'error': 'No image to edit'}), 400
+        
+        # Get current image path
+        image_path = item.image_path.replace('/static/', 'static/')
+        
+        if not os.path.exists(image_path):
+            return jsonify({'success': False, 'error': 'Image file not found'}), 404
+        
+        img = Image.open(image_path)
+        
+        if action == 'rotate':
+            degrees = data.get('degrees', 90)
+            img = img.rotate(-degrees, expand=True)  # Negative because PIL rotates counter-clockwise
+            
+        elif action == 'crop':
+            # Crop data from Cropper.js
+            crop_data = data.get('cropData', {})
+            x = int(crop_data.get('x', 0))
+            y = int(crop_data.get('y', 0))
+            width = int(crop_data.get('width', img.width))
+            height = int(crop_data.get('height', img.height))
+            
+            # Ensure valid crop bounds
+            x = max(0, min(x, img.width))
+            y = max(0, min(y, img.height))
+            width = min(width, img.width - x)
+            height = min(height, img.height - y)
+            
+            img = img.crop((x, y, x + width, y + height))
+            
+        elif action == 'save_cropped':
+            # Save base64 cropped image from Cropper.js
+            image_data = data.get('imageData', '')
+            image_format = data.get('format', 'jpeg')
+            
+            if image_data.startswith('data:'):
+                image_data = image_data.split(',')[1]
+            
+            img_bytes = base64.b64decode(image_data)
+            img = Image.open(io.BytesIO(img_bytes))
+        
+        # Determine save format based on file extension
+        is_png = image_path.lower().endswith('.png')
+        
+        # Convert to RGB if needed for JPEG (PNG can have alpha)
+        if not is_png and img.mode == 'RGBA':
+            img = img.convert('RGB')
+        
+        # Save the edited image with correct format
+        if is_png:
+            img.save(image_path, 'PNG', optimize=True)
+        else:
+            img.save(image_path, 'JPEG', quality=85, optimize=True)
+        
+        # Return success with new image URL (add timestamp to bust cache)
+        import time
+        new_url = f"{item.image_path}?t={int(time.time())}"
+        
+        return jsonify({
+            'success': True,
+            'message': 'Image updated successfully',
+            'newImageUrl': new_url
+        })
+        
+    except Exception as e:
+        print(f"Error editing image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # Menu Settings Management
 @admin_bp.route('/menu/settings')

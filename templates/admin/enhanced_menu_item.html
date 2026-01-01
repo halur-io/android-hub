@@ -2,6 +2,14 @@
 
 {% block title %}{% if item.id %}עריכת מנה{% else %}הוספת מנה חדשה{% endif %}{% endblock %}
 
+{% block extra_css %}
+<!-- Cropper.js CSS for image editor -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<style>
+.cropper-container { max-height: 400px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -138,8 +146,57 @@
                                     {% if item.image_path %}
                                     <div class="mt-3 p-3 border rounded bg-info bg-opacity-10">
                                         <p class="small fw-bold mb-2"><i class="fas fa-image me-1"></i> תמונה נוכחית:</p>
-                                        <img src="{{ item.image_path }}" alt="Current image" class="img-thumbnail" style="max-width: 100%; max-height: 200px;">
+                                        <img src="{{ item.image_path }}" alt="Current image" class="img-thumbnail" id="currentImage" style="max-width: 100%; max-height: 200px;">
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openImageEditor()">
+                                                <i class="fas fa-edit me-1"></i> עריכת תמונה
+                                            </button>
+                                        </div>
                                         <p class="small text-muted mb-0 mt-2">תמונה חדשה תחליף את התמונה הנוכחית</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Image Editor Modal -->
+                                    {% if item.image_path %}
+                                    <div class="modal fade" id="imageEditorModal" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title"><i class="fas fa-crop-alt me-2"></i>עריכת תמונה</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="text-center mb-3">
+                                                        <div class="btn-group" role="group">
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(-90)" title="סובב שמאלה">
+                                                                <i class="fas fa-undo"></i> סובב שמאלה
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(90)" title="סובב ימינה">
+                                                                <i class="fas fa-redo"></i> סובב ימינה
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="zoomImage(0.1)" title="הגדל">
+                                                                <i class="fas fa-search-plus"></i> הגדל
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="zoomImage(-0.1)" title="הקטן">
+                                                                <i class="fas fa-search-minus"></i> הקטן
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="resetCropper()" title="אפס">
+                                                                <i class="fas fa-sync"></i> אפס
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div style="max-height: 400px; overflow: hidden;">
+                                                        <img id="cropperImage" src="{{ item.image_path }}" style="max-width: 100%;">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                                    <button type="button" class="btn btn-primary" onclick="saveCroppedImage()">
+                                                        <i class="fas fa-save me-1"></i> שמור שינויים
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -542,6 +599,157 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get all dietary properties checkboxes
             const dietaryCheckboxes = form.querySelectorAll('input[name="dietary_properties"]:checked');
             console.log('Dietary properties selected:', Array.from(dietaryCheckboxes).map(cb => cb.value));
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Cropper.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<script>
+let cropper = null;
+const itemId = {{ item.id if item.id else 'null' }};
+
+function openImageEditor() {
+    const modal = new bootstrap.Modal(document.getElementById('imageEditorModal'));
+    modal.show();
+    
+    // Initialize Cropper.js after modal is shown
+    document.getElementById('imageEditorModal').addEventListener('shown.bs.modal', function() {
+        initCropper();
+    }, { once: true });
+}
+
+function initCropper() {
+    const image = document.getElementById('cropperImage');
+    
+    // Destroy existing cropper if any
+    if (cropper) {
+        cropper.destroy();
+    }
+    
+    // Reset image src to force reload
+    const currentSrc = image.src.split('?')[0];
+    image.src = currentSrc + '?t=' + Date.now();
+    
+    cropper = new Cropper(image, {
+        viewMode: 2,
+        dragMode: 'move',
+        aspectRatio: NaN, // Free aspect ratio
+        autoCropArea: 1,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: true,
+        responsive: true
+    });
+}
+
+function rotateImage(degrees) {
+    if (cropper) {
+        cropper.rotate(degrees);
+    }
+}
+
+function zoomImage(ratio) {
+    if (cropper) {
+        cropper.zoom(ratio);
+    }
+}
+
+function resetCropper() {
+    if (cropper) {
+        cropper.reset();
+    }
+}
+
+function saveCroppedImage() {
+    if (!cropper || !itemId) {
+        alert('שגיאה: לא ניתן לשמור את התמונה');
+        return;
+    }
+    
+    // Get cropped canvas
+    const canvas = cropper.getCroppedCanvas({
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+    });
+    
+    // Get original image format from src
+    const cropperImage = document.getElementById('cropperImage');
+    const imageSrc = cropperImage.src.split('?')[0].toLowerCase();
+    const isPng = imageSrc.endsWith('.png');
+    
+    // Convert to base64 (preserve PNG format if original was PNG)
+    const mimeType = isPng ? 'image/png' : 'image/jpeg';
+    const imageData = canvas.toDataURL(mimeType, isPng ? 1.0 : 0.85);
+    
+    // Show saving indicator
+    const saveBtn = document.querySelector('#imageEditorModal .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> שומר...';
+    saveBtn.disabled = true;
+    
+    // Get CSRF token from the form
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    // Send to server
+    fetch(`/admin/menu/item/${itemId}/edit-image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            action: 'save_cropped',
+            imageData: imageData,
+            format: isPng ? 'png' : 'jpeg'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the current image display
+            const currentImg = document.getElementById('currentImage');
+            if (currentImg) {
+                currentImg.src = data.newImageUrl;
+            }
+            
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('imageEditorModal')).hide();
+            
+            // Show success message
+            alert('התמונה נשמרה בהצלחה!');
+        } else {
+            alert('שגיאה בשמירת התמונה: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving image:', error);
+        alert('שגיאה בשמירת התמונה');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+// Clean up cropper when modal is hidden
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('imageEditorModal');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function() {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
         });
     }
 });

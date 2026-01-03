@@ -308,7 +308,7 @@
         <a href="{{ reservation_settings.reservation_system_url if reservation_settings and reservation_settings.enable_reservations else '#' }}" 
            class="mobile-nav-item" 
            target="_blank"
-           data-gtm-event="cta_click"
+           data-gtm-event="event_reservation"
            data-gtm-category="CTA"
            data-gtm-label="reserve_table">
             <i class="fas fa-calendar-check"></i>
@@ -316,7 +316,7 @@
         </a>
         <a href="tel:{{ branches[0].phone if branches else '' }}" 
            class="mobile-nav-item mobile-nav-primary"
-           data-gtm-event="cta_click"
+           data-gtm-event="event_phone"
            data-gtm-category="CTA"
            data-gtm-label="call_restaurant">
             <i class="fas fa-phone"></i>
@@ -325,7 +325,7 @@
         {% if settings.enable_online_ordering %}
         <a href="{{ url_for('order_page') }}" 
            class="mobile-nav-item"
-           data-gtm-event="cta_click"
+           data-gtm-event="event_order"
            data-gtm-category="CTA"
            data-gtm-label="order_online">
             <i class="fas fa-shopping-bag"></i>
@@ -335,7 +335,7 @@
         <a href="https://waze.com/ul/hsvc5ksnm1" 
            class="mobile-nav-item" 
            target="_blank"
-           data-gtm-event="cta_click"
+           data-gtm-event="event_navigate"
            data-gtm-category="CTA"
            data-gtm-label="navigate_waze">
             <i class="fas fa-map-marked-alt"></i>

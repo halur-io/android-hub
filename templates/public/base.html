@@ -308,16 +308,16 @@
         <a href="{{ reservation_settings.reservation_system_url if reservation_settings and reservation_settings.enable_reservations else '#' }}" 
            class="mobile-nav-item" 
            target="_blank"
+           data-gtm-event="cta_click"
            data-gtm-category="CTA"
-           data-gtm-action="click"
            data-gtm-label="reserve_table">
             <i class="fas fa-calendar-check"></i>
             <span>{{ 'הזמנת שולחן' if language == 'he' else 'Reserve' }}</span>
         </a>
         <a href="tel:{{ branches[0].phone if branches else '' }}" 
            class="mobile-nav-item mobile-nav-primary"
+           data-gtm-event="cta_click"
            data-gtm-category="CTA"
-           data-gtm-action="click"
            data-gtm-label="call_restaurant">
             <i class="fas fa-phone"></i>
             <span>{{ 'התקשר' if language == 'he' else 'Call' }}</span>
@@ -325,8 +325,8 @@
         {% if settings.enable_online_ordering %}
         <a href="{{ url_for('order_page') }}" 
            class="mobile-nav-item"
+           data-gtm-event="cta_click"
            data-gtm-category="CTA"
-           data-gtm-action="click"
            data-gtm-label="order_online">
             <i class="fas fa-shopping-bag"></i>
             <span>{{ 'הזמנה' if language == 'he' else 'Order' }}</span>
@@ -335,8 +335,8 @@
         <a href="https://waze.com/ul/hsvc5ksnm1" 
            class="mobile-nav-item" 
            target="_blank"
+           data-gtm-event="cta_click"
            data-gtm-category="CTA"
-           data-gtm-action="click"
            data-gtm-label="navigate_waze">
             <i class="fas fa-map-marked-alt"></i>
             <span>{{ 'ניווט' if language == 'he' else 'Navigate' }}</span>

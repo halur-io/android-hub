@@ -62,6 +62,15 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return get_settings()
         return None
 
+    def _get_language():
+        if 'lang' in request.args:
+            session['language'] = request.args.get('lang')
+        return session.get('language', 'he')
+
+    @bp.context_processor
+    def inject_language():
+        return {'language': _get_language()}
+
     def _check_outside_ordering_hours():
         settings = _settings()
         if not settings or not getattr(settings, 'enforce_ordering_hours', False):

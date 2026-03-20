@@ -720,6 +720,16 @@
                 <i class="fas fa-window-restore me-2"></i> {{ 'פופאפים' if (admin_language or 'he') == 'he' else 'Popups' }}
             </a>
             {% endif %}
+            {% if has_permission('kitchen.view') or has_permission('system.admin') %}
+            <hr class="my-3">
+            <small class="text-muted px-3 text-uppercase" style="font-size:.65rem;letter-spacing:1px;">{{ 'הזמנות אונליין' if (admin_language or 'he') == 'he' else 'Online Orders' }}</small>
+            <a class="nav-link {% if request.endpoint == 'admin.food_orders_list' %}active{% endif %}" href="{{ url_for('admin.food_orders_list') }}">
+                <i class="fas fa-shopping-bag me-2"></i> {{ 'ניהול הזמנות' if (admin_language or 'he') == 'he' else 'Manage Orders' }}
+            </a>
+            <a class="nav-link" href="/order-dashboard/login" target="_blank">
+                <i class="fas fa-tv me-2"></i> {{ 'מסך מטבח (KDS)' if (admin_language or 'he') == 'he' else 'Kitchen Display (KDS)' }}
+            </a>
+            {% endif %}
             {% if has_permission('system.admin') %}
             <hr class="my-3">
             <a class="nav-link {% if request.endpoint == 'admin.microservices_dashboard' %}active{% endif %}" href="{{ url_for('admin.microservices_dashboard') }}">

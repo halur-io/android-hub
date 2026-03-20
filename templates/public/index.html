@@ -59,7 +59,7 @@
         <p class="hero-subtitle animate-fade-in-delay">{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}</p>
         <div class="hero-buttons animate-fade-in-delay-2">
             {% if settings.enable_online_ordering %}
-            <a href="{{ url_for('order_page') }}" class="btn-hero btn-primary-hero">
+            <a href="{{ url_for('legacy_order_redirect') }}" class="btn-hero btn-primary-hero">
                 <i class="fas fa-shopping-bag"></i> {{ 'הזמן עכשיו' if language == 'he' else 'Order Now' }}
             </a>
             {% endif %}
@@ -298,14 +298,14 @@
 <!-- Floating Action Buttons -->
 <div class="floating-actions">
     {% if settings.enable_online_ordering %}
-    <a href="{{ url_for('order_page') }}" 
+    <a href="{{ url_for('legacy_order_redirect') }}" 
        class="fab-button fab-table-order" 
        title="{{ 'הזמנת שולחן' if language == 'he' else 'Table Order' }}">
         <i class="fas fa-utensils"></i>
     </a>
     {% endif %}
     {% if settings.enable_delivery %}
-    <a href="{{ url_for('order_page') }}" 
+    <a href="{{ url_for('legacy_order_redirect') }}" 
        class="fab-button fab-delivery" 
        title="{{ 'משלוח TA' if language == 'he' else 'TA Delivery' }}">
         <i class="fas fa-motorcycle"></i>

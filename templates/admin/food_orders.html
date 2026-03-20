@@ -1,0 +1,135 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'ניהול הזמנות' if (admin_language or 'he') == 'he' else 'Manage Orders' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-shopping-bag me-2"></i>{{ 'ניהול הזמנות אונליין' if (admin_language or 'he') == 'he' else 'Online Order Management' }}</h2>
+        <a href="/order-dashboard/login" target="_blank" class="btn btn-primary">
+            <i class="fas fa-tv me-2"></i>{{ 'פתח מסך מטבח' if (admin_language or 'he') == 'he' else 'Open KDS' }}
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('admin.food_orders_list') }}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+                    {{ 'הכל' if (admin_language or 'he') == 'he' else 'All' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='pending') }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                    {{ 'ממתינות' if (admin_language or 'he') == 'he' else 'Pending' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='confirmed') }}" class="btn btn-sm {% if status_filter == 'confirmed' %}btn-info{% else %}btn-outline-info{% endif %}">
+                    {{ 'אושרו' if (admin_language or 'he') == 'he' else 'Confirmed' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='preparing') }}" class="btn btn-sm {% if status_filter == 'preparing' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    {{ 'בהכנה' if (admin_language or 'he') == 'he' else 'Preparing' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='ready') }}" class="btn btn-sm {% if status_filter == 'ready' %}btn-success{% else %}btn-outline-success{% endif %}">
+                    {{ 'מוכנות' if (admin_language or 'he') == 'he' else 'Ready' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='delivered') }}" class="btn btn-sm {% if status_filter == 'delivered' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                    {{ 'נמסרו' if (admin_language or 'he') == 'he' else 'Delivered' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='cancelled') }}" class="btn btn-sm {% if status_filter == 'cancelled' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                    {{ 'בוטלו' if (admin_language or 'he') == 'he' else 'Cancelled' }}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if orders.items %}
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ 'לקוח' if (admin_language or 'he') == 'he' else 'Customer' }}</th>
+                        <th>{{ 'טלפון' if (admin_language or 'he') == 'he' else 'Phone' }}</th>
+                        <th>{{ 'סוג' if (admin_language or 'he') == 'he' else 'Type' }}</th>
+                        <th>{{ 'סכום' if (admin_language or 'he') == 'he' else 'Total' }}</th>
+                        <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                        <th>{{ 'תשלום' if (admin_language or 'he') == 'he' else 'Payment' }}</th>
+                        <th>{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders.items %}
+                    <tr>
+                        <td><strong>{{ order.id }}</strong></td>
+                        <td>{{ order.customer_name or '-' }}</td>
+                        <td>{{ order.customer_phone or '-' }}</td>
+                        <td>
+                            {% if order.order_type == 'delivery' %}
+                                <span class="badge bg-info">{{ 'משלוח' if (admin_language or 'he') == 'he' else 'Delivery' }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ 'איסוף' if (admin_language or 'he') == 'he' else 'Pickup' }}</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>₪{{ '%.0f' % (order.total_amount or 0) }}</strong></td>
+                        <td>
+                            {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'cancelled': 'danger'} %}
+                            {% set status_labels_he = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'cancelled': 'בוטלה'} %}
+                            <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
+                                {{ status_labels_he.get(order.status, order.status) if (admin_language or 'he') == 'he' else order.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if order.payment_status == 'paid' %}
+                                <span class="badge bg-success">{{ 'שולם' if (admin_language or 'he') == 'he' else 'Paid' }}</span>
+                            {% elif order.payment_status == 'pending' %}
+                                <span class="badge bg-warning">{{ 'ממתין' if (admin_language or 'he') == 'he' else 'Pending' }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ order.payment_status or '-' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ order.created_at.strftime('%d/%m %H:%M') if order.created_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if orders.pages > 1 %}
+    <nav class="mt-3">
+        <ul class="pagination justify-content-center">
+            {% if orders.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin.food_orders_list', page=orders.prev_num, status=status_filter) }}">‹</a>
+            </li>
+            {% endif %}
+            {% for p in orders.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                <li class="page-item {% if p == orders.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('admin.food_orders_list', page=p, status=status_filter) }}">{{ p }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% endfor %}
+            {% if orders.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('admin.food_orders_list', page=orders.next_num, status=status_filter) }}">›</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">{{ 'אין הזמנות עדיין' if (admin_language or 'he') == 'he' else 'No orders yet' }}</h5>
+            <p class="text-muted mb-3">{{ 'הזמנות חדשות יופיעו כאן כאשר לקוחות יבצעו הזמנות דרך האתר.' if (admin_language or 'he') == 'he' else 'New orders will appear here when customers place orders through the website.' }}</p>
+            <a href="/order/" target="_blank" class="btn btn-outline-primary">
+                <i class="fas fa-external-link-alt me-2"></i>{{ 'עמוד הזמנות' if (admin_language or 'he') == 'he' else 'Order Page' }}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

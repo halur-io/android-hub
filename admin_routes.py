@@ -121,6 +121,8 @@ ROUTE_PERMISSIONS = {
     'admin.delete_popup': 'settings.edit',
     'admin.toggle_popup': 'settings.edit',
     'admin.duplicate_popup': 'settings.edit',
+    # Food Orders
+    'admin.food_orders_list': 'kitchen.view',
     # Coupons
     'admin.coupons': 'settings.view',
     'admin.create_coupon': 'settings.edit',
@@ -4849,11 +4851,24 @@ def drivers_management():
 @admin_bp.route('/orders-management')
 @login_required
 def orders_management():
-    """Orders management page"""
+    """Orders management page (legacy)"""
     from services.order.order_service import Order
     
     orders = Order.query.order_by(Order.created_at.desc()).limit(100).all()
     return render_template('admin/system_config.html', orders=orders)
+
+@admin_bp.route('/food-orders')
+@login_required
+def food_orders_list():
+    """Food orders management page (standalone order service)"""
+    from models import FoodOrder
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', '')
+    query = FoodOrder.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    orders = query.order_by(FoodOrder.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    return render_template('admin/food_orders.html', orders=orders, status_filter=status_filter)
 
 @admin_bp.route('/customers-management')
 @login_required

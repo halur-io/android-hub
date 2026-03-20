@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מעקב הזמנה {{ order.order_number }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Heebo',sans-serif;background:#050d1a;color:#e2e8f0;min-height:100vh;
+         display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px;}
+    .logo{font-size:1.5rem;font-weight:900;color:#fff;margin-bottom:6px;letter-spacing:-.5px;}
+    .order-num{font-size:.82rem;color:#4b7099;margin-bottom:28px;}
+
+    /* Status track */
+    .status-track{width:100%;max-width:420px;margin-bottom:24px;}
+    .steps{display:flex;align-items:flex-start;justify-content:space-between;position:relative;margin-bottom:8px;}
+    .steps::before{content:'';position:absolute;top:18px;right:0;left:0;height:3px;background:#1e3a5f;z-index:0;}
+    .progress-line{position:absolute;top:18px;right:0;height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);
+                   z-index:1;transition:width 1.2s ease;}
+    .step{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:2;flex:1;}
+    .step-dot{width:36px;height:36px;border-radius:50%;background:#0f1f35;border:3px solid #1e3a5f;
+              display:flex;align-items:center;justify-content:center;font-size:.9rem;
+              transition:all .4s;color:#4b7099;}
+    .step-dot.done{background:#1e1b4b;border-color:#6366f1;color:#818cf8;}
+    .step-dot.active{background:#6366f1;border-color:#818cf8;color:#fff;
+                     box-shadow:0 0 0 6px rgba(99,102,241,.2);}
+    .step-dot.ready-active{background:#10b981;border-color:#34d399;color:#fff;
+                           box-shadow:0 0 0 6px rgba(16,185,129,.2);}
+    .step-dot.done-step{background:#10b981;border-color:#34d399;color:#fff;}
+    .step-label{font-size:.65rem;font-weight:700;color:#4b7099;text-align:center;white-space:nowrap;}
+    .step-label.active{color:#a5b4fc;}
+    .step-label.ready-active{color:#6ee7b7;}
+    .step-label.done-step{color:#4ade80;}
+
+    /* Status card */
+    .status-card{width:100%;max-width:420px;background:#0c1a2e;border:1px solid #1e3a5f;
+                 border-radius:20px;padding:24px;margin-bottom:20px;text-align:center;}
+    .status-icon-wrap{width:72px;height:72px;border-radius:50%;margin:0 auto 16px;
+                      display:flex;align-items:center;justify-content:center;font-size:2rem;}
+    .status-icon-wrap.pending{background:#1c1008;border:2px solid #854d0e;color:#fbbf24;}
+    .status-icon-wrap.confirmed{background:#0c1a3d;border:2px solid #1d4ed8;color:#93c5fd;}
+    .status-icon-wrap.preparing{background:#1a0e2e;border:2px solid #7c3aed;color:#c4b5fd;
+                                 animation:pulse-prep 2s infinite;}
+    .status-icon-wrap.ready{background:#052e16;border:2px solid #16a34a;color:#4ade80;}
+    .status-icon-wrap.delivered,.status-icon-wrap.pickedup{background:#052e16;border:2px solid #16a34a;color:#4ade80;}
+    .status-icon-wrap.cancelled{background:#450a0a;border:2px solid #7f1d1d;color:#f87171;}
+    @keyframes pulse-prep{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.4);}50%{box-shadow:0 0 0 12px rgba(124,58,237,0);}}
+    .status-title{font-size:1.4rem;font-weight:900;margin-bottom:6px;}
+    .status-sub{font-size:.85rem;color:#4b7099;line-height:1.5;}
+
+    /* Timer */
+    .timer-wrap{margin-top:16px;}
+    .timer-label{font-size:.72rem;color:#6b8cae;margin-bottom:4px;}
+    .timer-display{font-size:2.2rem;font-weight:900;font-variant-numeric:tabular-nums;
+                   background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;
+                   -webkit-text-fill-color:transparent;letter-spacing:2px;}
+    .timer-ready-label{font-size:.78rem;color:#4b7099;margin-top:3px;}
+    .timer-expired{font-size:1rem;font-weight:800;color:#4ade80;}
+
+    /* Items card */
+    .items-card{width:100%;max-width:420px;background:#0c1a2e;border:1px solid #1e3a5f;
+                border-radius:16px;overflow:hidden;margin-bottom:20px;}
+    .items-header{padding:12px 16px;background:#0f2040;border-bottom:1px solid #1e3a5f;
+                  font-size:.8rem;font-weight:800;color:#6b8cae;letter-spacing:.5px;}
+    .item-row{display:flex;justify-content:space-between;align-items:center;
+              padding:10px 16px;border-bottom:1px solid #0f1f35;font-size:.88rem;}
+    .item-row:last-child{border-bottom:none;}
+    .item-name{font-weight:600;color:#cbd5e1;}
+    .item-qty{color:#6b8cae;font-size:.78rem;margin-top:1px;}
+    .item-price{font-weight:700;color:#818cf8;flex-shrink:0;}
+    .total-row{padding:12px 16px;background:#0f2040;border-top:1px solid #1e3a5f;
+               display:flex;justify-content:space-between;font-weight:800;font-size:.95rem;}
+    .total-label{color:#94a3b8;}
+    .total-val{color:#a5b4fc;}
+
+    /* Info chips */
+    .info-chips{width:100%;max-width:420px;display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+    .chip{background:#0c1a2e;border:1px solid #1e3a5f;border-radius:10px;
+          padding:8px 12px;font-size:.78rem;color:#6b8cae;display:flex;align-items:center;gap:6px;flex:1;min-width:140px;}
+    .chip i{color:#4b7099;}
+    .chip span{font-weight:700;color:#94a3b8;}
+
+    /* Auto refresh notice */
+    .refresh-note{font-size:.72rem;color:#2d4a6b;margin-top:12px;display:flex;align-items:center;gap:5px;}
+    .refresh-dot{width:6px;height:6px;border-radius:50%;background:#6366f1;animation:blink 2s infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+  </style>
+</head>
+<body>
+
+<div class="logo">🍽️ מעקב הזמנה</div>
+<div class="order-num">{{ order.order_number }}</div>
+
+<!-- Status progress steps -->
+<div class="status-track">
+  {% set step_index = {'pending':0,'confirmed':1,'preparing':2,'ready':3,'delivered':4,'pickedup':4,'cancelled':0} %}
+  {% set cur = step_index.get(order.status, 0) %}
+  {% set pct = [0, 0, 25, 50, 75, 100][cur] if cur < 6 else 0 %}
+  {% if order.status == 'cancelled' %}{% set pct = 0 %}{% endif %}
+  <div class="steps">
+    <div style="position:absolute;top:18px;right:0;left:0;height:3px;background:#1e3a5f;z-index:0;"></div>
+    <div class="progress-line" id="prog-line" style="width:{{ pct }}%;"></div>
+
+    {% for idx, icon, label in [(0,'fa-clock','ממתין'),(1,'fa-check','אושר'),(2,'fa-fire','בהכנה'),(3,'fa-bell','מוכן'),(4,'fa-flag-checkered','נמסר')] %}
+    {% set is_active = (cur == idx and order.status != 'cancelled') %}
+    {% set is_done = (cur > idx and order.status != 'cancelled') %}
+    {% set is_ready_active = (is_active and order.status == 'ready') %}
+    {% set is_final_done = (is_done and idx == 4) %}
+    <div class="step">
+      <div class="step-dot {% if is_active and not is_ready_active %}active{% elif is_ready_active %}ready-active{% elif is_final_done %}done-step{% elif is_done %}done{% endif %}">
+        <i class="fas {{ icon }}"></i>
+      </div>
+      <div class="step-label {% if is_active and not is_ready_active %}active{% elif is_ready_active %}ready-active{% elif is_done %}done-step{% endif %}">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Main status card -->
+<div class="status-card" id="status-card">
+  {% set icons = {'pending':'fa-hourglass-half','confirmed':'fa-thumbs-up','preparing':'fa-fire-alt','ready':'fa-bell-ring','delivered':'fa-check-double','pickedup':'fa-bag-shopping','cancelled':'fa-times-circle'} %}
+  <div class="status-icon-wrap {{ order.status }}" id="status-icon">
+    <i class="fas {{ icons.get(order.status, 'fa-circle') }}"></i>
+  </div>
+  <div class="status-title" id="status-title">{{ order.status_display_he }}</div>
+  <div class="status-sub" id="status-sub">
+    {% if order.status == 'pending' %}ההזמנה התקבלה ומחכה לאישור הצוות
+    {% elif order.status == 'confirmed' %}ההזמנה אושרה! עוד מעט מתחילים להכין
+    {% elif order.status == 'preparing' %}המטבח עמל על הזמנתך ✨
+    {% elif order.status == 'ready' %}{% if order.order_type == 'delivery' %}ההזמנה מוכנה ויוצאת אליך עכשיו 🛵{% else %}ההזמנה מוכנה לאיסוף! נא לאסוף בקופה 🎉{% endif %}
+    {% elif order.status in ('delivered','pickedup') %}ההזמנה הושלמה. בתיאבון! 😊
+    {% elif order.status == 'cancelled' %}ההזמנה בוטלה. לפרטים נא לפנות למסעדה
+    {% endif %}
+  </div>
+
+  {% if order.status in ('confirmed', 'preparing') and ready_by_time %}
+  <div class="timer-wrap" id="timer-wrap">
+    <div class="timer-label">מוכנה בערך בשעה</div>
+    <div class="timer-display" id="timer-display">{{ ready_by_time }}</div>
+    <div class="timer-ready-label">זמן משוער</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Order items -->
+<div class="items-card">
+  <div class="items-header">פרטי ההזמנה</div>
+  {% for item in items %}
+  <div class="item-row">
+    <div>
+      <div class="item-name">{{ item.name_he or item.get('name','') }}</div>
+      <div class="item-qty">× {{ item.qty or 1 }}</div>
+    </div>
+    <div class="item-price">₪{{ ((item.unit_price or item.get('price',0)) * (item.qty or 1)) | int }}</div>
+  </div>
+  {% endfor %}
+  <div class="total-row">
+    <span class="total-label">סה"כ</span>
+    <span class="total-val">₪{{ order.total_amount | int }}</span>
+  </div>
+</div>
+
+<!-- Info chips -->
+<div class="info-chips">
+  <div class="chip"><i class="fas fa-tag"></i><span>{{ order.order_number }}</span></div>
+  <div class="chip"><i class="fas {% if order.order_type == 'delivery' %}fa-motorcycle{% else %}fa-bag-shopping{% endif %}"></i>
+    <span>{{ 'משלוח' if order.order_type == 'delivery' else 'איסוף עצמי' }}</span>
+  </div>
+  {% if order.order_type == 'delivery' and order.delivery_address %}
+  <div class="chip" style="min-width:100%;"><i class="fas fa-map-marker-alt"></i>
+    <span>{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</span>
+  </div>
+  {% endif %}
+  {% if order.pickup_time %}
+  <div class="chip"><i class="fas fa-clock"></i><span>{{ order.pickup_time }}</span></div>
+  {% endif %}
+</div>
+
+<div class="refresh-note">
+  <div class="refresh-dot"></div>
+  מתרענן אוטומטית כל 15 שניות
+</div>
+
+<script>
+const ORDER_NUMBER = '{{ order.order_number }}';
+const STATUS_POLL_URL = '/order/status/' + ORDER_NUMBER;
+const READY_BY_TIME = '{{ ready_by_time or "" }}';
+
+/* ── Status polling ── */
+const STATUS_LABELS = {
+  pending:'ממתין לאישור',confirmed:'אושר',preparing:'בהכנה',
+  ready:'מוכן',delivered:'נמסר',pickedup:'נאסף',cancelled:'בוטל'
+};
+const STATUS_SUBS = {
+  pending:'ההזמנה התקבלה ומחכה לאישור הצוות',
+  confirmed:'ההזמנה אושרה! עוד מעט מתחילים להכין',
+  preparing:'המטבח עמל על הזמנתך ✨',
+  ready:'ההזמנה מוכנה! 🎉',
+  delivered:'ההזמנה הושלמה. בתיאבון! 😊',
+  pickedup:'ההזמנה הושלמה. בתיאבון! 😊',
+  cancelled:'ההזמנה בוטלה. לפרטים נא לפנות למסעדה'
+};
+const STATUS_ICONS = {
+  pending:'fa-hourglass-half',confirmed:'fa-thumbs-up',preparing:'fa-fire-alt',
+  ready:'fa-bell',delivered:'fa-check-double',pickedup:'fa-check-double',cancelled:'fa-times-circle'
+};
+const PROGRESS_PCTS = { pending:0, confirmed:25, preparing:50, ready:75, delivered:100, pickedup:100, cancelled:0 };
+
+let currentStatus = '{{ order.status }}';
+let terminalStatuses = ['delivered','pickedup','cancelled'];
+
+function pollStatus() {
+  fetch(STATUS_POLL_URL)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== currentStatus) {
+        currentStatus = d.status;
+        // Update status title/sub
+        document.getElementById('status-title').textContent = STATUS_LABELS[d.status] || d.status;
+        document.getElementById('status-sub').textContent = STATUS_SUBS[d.status] || '';
+        // Update icon
+        const iconEl = document.getElementById('status-icon');
+        iconEl.className = 'status-icon-wrap ' + d.status;
+        iconEl.innerHTML = '<i class="fas ' + (STATUS_ICONS[d.status] || 'fa-circle') + '"></i>';
+        // Update progress line
+        const prog = document.getElementById('prog-line');
+        if (prog) prog.style.width = (PROGRESS_PCTS[d.status] || 0) + '%';
+        const timerWrap = document.getElementById('timer-wrap');
+        if ((d.status === 'confirmed' || d.status === 'preparing') && d.ready_by_time) {
+          if (!timerWrap) {
+            const card = document.getElementById('status-card');
+            const tw = document.createElement('div');
+            tw.id = 'timer-wrap';
+            tw.className = 'timer-wrap';
+            tw.innerHTML = '<div class="timer-label">מוכנה בערך בשעה</div><div class="timer-display" id="timer-display">--:--</div><div class="timer-ready-label">זמן משוער</div>';
+            card.appendChild(tw);
+          }
+          document.getElementById('timer-display').textContent = d.ready_by_time;
+        } else if (timerWrap && d.status !== 'confirmed' && d.status !== 'preparing') {
+          timerWrap.style.display = 'none';
+        }
+        // Reload on terminal
+        if (terminalStatuses.includes(d.status)) {
+          setTimeout(() => window.location.reload(), 2000);
+        }
+      }
+    })
+    .catch(() => {});
+}
+
+// Don't poll if already terminal
+if (!terminalStatuses.includes(currentStatus)) {
+  setInterval(pollStatus, 15000);
+}
+</script>
+</body>
+</html>

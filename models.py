@@ -245,6 +245,28 @@ class SiteSettings(db.Model):
     announcement_enabled = db.Column(db.Boolean, default=False)
     announcement_bg_color = db.Column(db.String(20), default='#ffc107')
     
+    # Online Ordering Settings
+    ordering_paused = db.Column(db.Boolean, default=False)
+    ordering_paused_message = db.Column(db.String(500))
+    ordering_closed_message = db.Column(db.String(500))
+    ordering_outside_hours_message = db.Column(db.String(500))
+    enforce_ordering_hours = db.Column(db.Boolean, default=False)
+    contact_phone = db.Column(db.String(20))
+    admin_phone = db.Column(db.String(20))
+    send_order_tracking_link = db.Column(db.Boolean, default=True)
+    
+    # HYP Payment Gateway
+    hyp_enabled = db.Column(db.Boolean, default=False)
+    hyp_sandbox_mode = db.Column(db.Boolean, default=True)
+    hyp_terminal = db.Column(db.String(50))
+    hyp_api_key = db.Column(db.String(200))
+    hyp_passp = db.Column(db.String(200))
+    
+    # Telegram Notifications
+    telegram_bot_token = db.Column(db.String(200))
+    telegram_chat_id = db.Column(db.String(100))
+    telegram_channel_id = db.Column(db.String(100))
+    
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Custom Sections (Dynamic Sections for Homepage)
@@ -465,6 +487,8 @@ class MenuItem(db.Model):
     spice_level = db.Column(db.Integer, default=0)  # 0-5 scale
     allergens = db.Column(db.Text)  # JSON array of allergens
     
+    show_in_order = db.Column(db.Boolean, default=True)
+    
     # Display & Ordering
     display_order = db.Column(db.Integer, default=0)
     featured_until = db.Column(db.DateTime)  # For limited time offers
@@ -480,8 +504,14 @@ class MenuItem(db.Model):
     # Custom Labels/Tags
     custom_tags = db.Column(db.Text)  # JSON array of custom tags
     
+    # Combo & Image Data (for order system)
+    is_combo = db.Column(db.Boolean, default=False)
+    combo_items_json = db.Column(db.Text)
+    image_data = db.Column(db.LargeBinary)
+    
     # Relationships
     price_options = db.relationship('MenuItemPrice', backref='menu_item', lazy=True, cascade='all, delete-orphan')
+    option_groups = db.relationship('MenuItemOptionGroup', backref='menu_item', lazy=True, cascade='all, delete-orphan', order_by='MenuItemOptionGroup.display_order')
     variations = db.relationship('MenuItemVariation', backref='menu_item', lazy=True, cascade='all, delete-orphan')
     dietary_properties = db.relationship('DietaryProperty', secondary=menu_item_dietary_properties, backref='menu_items')
     
@@ -2395,3 +2425,175 @@ class ConsentSettings(db.Model):
     
     def __repr__(self):
         return f'<ConsentSettings {self.consent_type}>'
+
+
+class MenuItemOptionGroup(db.Model):
+    __tablename__ = 'menu_item_option_groups'
+    id = db.Column(db.Integer, primary_key=True)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id', ondelete='CASCADE'), nullable=False)
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    selection_type = db.Column(db.String(20), default='single')
+    is_required = db.Column(db.Boolean, default=False)
+    min_selections = db.Column(db.Integer, default=0)
+    max_selections = db.Column(db.Integer, default=0)
+    display_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    choices = db.relationship('MenuItemOptionChoice', backref='option_group', lazy=True, cascade='all, delete-orphan', order_by='MenuItemOptionChoice.display_order')
+
+
+class MenuItemOptionChoice(db.Model):
+    __tablename__ = 'menu_item_option_choices'
+    id = db.Column(db.Integer, primary_key=True)
+    option_group_id = db.Column(db.Integer, db.ForeignKey('menu_item_option_groups.id', ondelete='CASCADE'), nullable=False)
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    price_modifier = db.Column(db.Float, default=0)
+    is_default = db.Column(db.Boolean, default=False)
+    is_available = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+
+
+class FoodOrder(db.Model):
+    __tablename__ = 'food_orders'
+    __table_args__ = (
+        db.Index('idx_food_order_phone', 'customer_phone'),
+        db.Index('idx_food_order_status', 'status'),
+        db.Index('idx_food_order_created', 'created_at'),
+        db.Index('idx_food_order_number', 'order_number'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(30), unique=True, nullable=False)
+    order_type = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(30), default='pending')
+    customer_name = db.Column(db.String(100), nullable=False)
+    customer_phone = db.Column(db.String(20), nullable=False)
+    customer_email = db.Column(db.String(120))
+    delivery_address = db.Column(db.String(300))
+    delivery_city = db.Column(db.String(100))
+    delivery_notes = db.Column(db.String(300))
+    pickup_time = db.Column(db.String(50))
+    subtotal = db.Column(db.Float, nullable=False, default=0)
+    delivery_fee = db.Column(db.Float, default=0)
+    discount_amount = db.Column(db.Float, default=0)
+    total_amount = db.Column(db.Float, nullable=False, default=0)
+    payment_method = db.Column(db.String(30), default='cash')
+    payment_status = db.Column(db.String(20), default='pending')
+    hyp_transaction_id = db.Column(db.String(100))
+    hyp_order_ref = db.Column(db.String(100))
+    customer_notes = db.Column(db.Text)
+    admin_notes = db.Column(db.Text)
+    confirmation_sms_sent = db.Column(db.Boolean, default=False)
+    ready_sms_sent = db.Column(db.Boolean, default=False)
+    telegram_notified = db.Column(db.Boolean, default=False)
+    tracking_token = db.Column(db.String(50), unique=True, index=True)
+    utm_source = db.Column(db.String(200), nullable=True)
+    utm_medium = db.Column(db.String(200), nullable=True)
+    utm_campaign = db.Column(db.String(200), nullable=True)
+    referrer = db.Column(db.String(500), nullable=True)
+    estimated_ready_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    confirmed_at = db.Column(db.DateTime)
+    preparing_at = db.Column(db.DateTime)
+    ready_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    cancelled_at = db.Column(db.DateTime)
+    customer_account_id = db.Column(db.Integer, nullable=True)
+    items_json = db.Column(db.Text)
+    items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
+
+    def set_order_number(self):
+        import random
+        ts = datetime.now().strftime('%y%m%d')
+        suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+        self.order_number = f"ORD-{ts}-{suffix}"
+
+    @property
+    def status_display_he(self):
+        mapping = {
+            'pending': 'ממתין לאישור',
+            'confirmed': 'אושר',
+            'preparing': 'בהכנה',
+            'ready': 'מוכן',
+            'delivered': 'נמסר',
+            'pickedup': 'נאסף',
+            'cancelled': 'בוטל',
+        }
+        return mapping.get(self.status, self.status)
+
+    @property
+    def status_badge_class(self):
+        mapping = {
+            'pending': 'warning',
+            'confirmed': 'info',
+            'preparing': 'primary',
+            'ready': 'success',
+            'delivered': 'secondary',
+            'pickedup': 'secondary',
+            'cancelled': 'danger',
+        }
+        return mapping.get(self.status, 'secondary')
+
+    @property
+    def order_type_display_he(self):
+        return 'משלוח' if self.order_type == 'delivery' else 'איסוף עצמי'
+
+    def get_items(self):
+        import json as _json
+        if self.items_json:
+            try:
+                items = _json.loads(self.items_json)
+                for item in items:
+                    if isinstance(item, dict):
+                        if 'price' not in item and 'unit_price' in item:
+                            item['price'] = item['unit_price']
+                        if 'qty' not in item and 'quantity' in item:
+                            item['qty'] = item['quantity']
+                        if 'name_he' not in item and 'item_name_he' in item:
+                            item['name_he'] = item['item_name_he']
+                return items
+            except Exception:
+                return []
+        return []
+
+    def __repr__(self):
+        return f'<FoodOrder #{self.order_number} {self.status}>'
+
+
+class FoodOrderItem(db.Model):
+    __tablename__ = 'food_order_items'
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('food_orders.id', ondelete='CASCADE'), nullable=False)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=True)
+    item_name_he = db.Column(db.String(200), nullable=False)
+    item_name_en = db.Column(db.String(200))
+    quantity = db.Column(db.Integer, default=1, nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    total_price = db.Column(db.Float, nullable=False)
+    special_instructions = db.Column(db.String(300))
+    options_json = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<FoodOrderItem {self.item_name_he} x{self.quantity}>'
+
+
+class ManagerPIN(db.Model):
+    __tablename__ = 'manager_pins'
+    id = db.Column(db.Integer, primary_key=True)
+    pin_hash = db.Column(db.String(256), nullable=False)
+    pin_plain = db.Column(db.String(10), nullable=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime)
+
+    def set_pin(self, pin):
+        self.pin_hash = generate_password_hash(pin)
+
+    def check_pin(self, pin):
+        return check_password_hash(self.pin_hash, pin)
+
+    def __repr__(self):
+        return f'<ManagerPIN {self.name}>'

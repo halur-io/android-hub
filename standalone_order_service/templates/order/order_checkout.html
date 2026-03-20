@@ -1,0 +1,924 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'סיום הזמנה' if language == 'he' else 'Checkout' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div>
+
+<section class="section pb-5">
+  <div class="container" style="max-width:540px;">
+
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <a href="{{ url_for('order_page.order_page') }}" class="back-link">
+        <i class="fas fa-arrow-right"></i>
+      </a>
+      <h1 class="mb-0 fw-bold" style="font-size:1.25rem;">{{ 'סיום הזמנה' if language == 'he' else 'Checkout' }}</h1>
+    </div>
+
+    <!-- ═══ ORDER SUMMARY (top) ═══ -->
+    <div class="order-summary-card mb-3">
+      <div class="summary-header" onclick="document.getElementById('summary-items').classList.toggle('collapsed')">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-shopping-bag" style="color:var(--c-primary);"></i>
+          <span class="fw-bold" style="font-size:.9rem;">{{ 'ההזמנה שלך' if language == 'he' else 'Your Order' }}</span>
+          <span class="item-count-pill">{{ cart_items|length }}</span>
+        </div>
+        <span class="fw-bold" style="color:var(--c-primary);font-size:.95rem;">₪{{ subtotal | int }}</span>
+      </div>
+      <div id="summary-items" class="summary-items">
+        {% for item in cart_items %}
+        <div class="summary-item" id="cart-row-{{ loop.index0 }}">
+          <div class="d-flex align-items-center gap-2" style="flex:1;min-width:0;">
+            <div class="qty-ctrl">
+              <button type="button" class="qty-btn" onclick="changeCartQty({{ loop.index0 }}, -1)">−</button>
+              <span class="qty-val" id="cart-qty-{{ loop.index0 }}">{{ item.qty }}</span>
+              <button type="button" class="qty-btn" onclick="changeCartQty({{ loop.index0 }}, 1)">+</button>
+            </div>
+            <div style="min-width:0;">
+              <div class="item-name">{{ item.name_he }}</div>
+              {% if item.options %}
+              <div class="item-opts">{{ item.options | map(attribute='choice_name_he') | join(', ') }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <span class="item-price" id="cart-price-{{ loop.index0 }}">₪{{ (item.price * item.qty) | int }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('order_page.order_checkout') }}" id="checkout-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else '' }}">
+      <input type="hidden" name="cart_json" value="{{ cart_json }}">
+      <input type="hidden" name="order_type" id="order-type-field" value="{{ order_type }}">
+      <input type="hidden" name="order_type_radio" value="{{ order_type }}">
+      <input type="hidden" name="utm_source" id="hidden-utm-source">
+      <input type="hidden" name="utm_medium" id="hidden-utm-medium">
+      <input type="hidden" name="utm_campaign" id="hidden-utm-campaign">
+      <input type="hidden" name="referrer" id="hidden-referrer">
+
+      <!-- Order type toggle -->
+      <div class="d-flex justify-content-center mb-3">
+        <div class="otype-toggle">
+          <button type="button" id="toggle-delivery-btn"
+            class="{{ 'active-delivery' if order_type == 'delivery' else '' }}"
+            onclick="toggleOrderType('delivery')">
+            <i class="fas fa-motorcycle me-1"></i>{{ 'משלוח' if language == 'he' else 'Delivery' }}
+          </button>
+          <button type="button" id="toggle-pickup-btn"
+            class="{{ 'active-pickup' if order_type != 'delivery' else '' }}"
+            onclick="toggleOrderType('pickup')">
+            <i class="fas fa-shopping-bag me-1"></i>{{ 'איסוף עצמי' if language == 'he' else 'Pickup' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ STEP 1: Your Details ═══ -->
+      <div class="checkout-step" id="step-card-1">
+        <div class="step-header" onclick="toggleStep(1)">
+          <div class="d-flex align-items-center gap-2">
+            <span class="step-badge" id="step-badge-1">1</span>
+            <span class="fw-bold" style="font-size:.88rem;">{{ 'הפרטים שלך' if language == 'he' else 'Your Details' }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="step-summary" id="step-summary-1"></span>
+            <i class="fas fa-chevron-down step-chevron" id="step-chevron-1"></i>
+          </div>
+        </div>
+        <div class="step-body" id="step-body-1">
+          <div class="row g-2">
+            <div class="col-6">
+              <input type="text" name="customer_first_name" id="inp-first-name" class="form-control form-control-sm ck-input"
+                placeholder="{{ 'שם פרטי *' if language == 'he' else 'First name *' }}"
+                value="{{ prefill.get('first_name', '') if prefill else '' }}"
+                required autocomplete="given-name">
+            </div>
+            <div class="col-6">
+              <input type="text" name="customer_last_name" id="inp-last-name" class="form-control form-control-sm ck-input"
+                placeholder="{{ 'שם משפחה *' if language == 'he' else 'Last name *' }}"
+                value="{{ prefill.get('last_name', '') if prefill else '' }}"
+                required autocomplete="family-name">
+            </div>
+            <div class="col-7">
+              <input type="tel" name="customer_phone" id="inp-phone" class="form-control form-control-sm ck-input"
+                placeholder="{{ 'טלפון *' if language == 'he' else 'Phone *' }}"
+                value="{{ prefill.get('phone', '') if prefill else '' }}"
+                required autocomplete="tel">
+            </div>
+            <div class="col-5">
+              <input type="email" name="customer_email" id="inp-email" class="form-control form-control-sm ck-input"
+                placeholder="{{ 'אימייל *' if language == 'he' else 'Email *' }}"
+                value="{{ prefill.get('email', '') if prefill else '' }}"
+                required autocomplete="email">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ STEP 2: Address / Pickup ═══ -->
+      <div class="checkout-step" id="step-card-2">
+        <div class="step-header" onclick="toggleStep(2)">
+          <div class="d-flex align-items-center gap-2">
+            <span class="step-badge" id="step-badge-2">2</span>
+            <span class="fw-bold" style="font-size:.88rem;" id="address-card-title">{{ 'כתובת למשלוח' if language == 'he' else 'Delivery Address' }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="step-summary" id="step-summary-2"></span>
+            <i class="fas fa-chevron-down step-chevron" id="step-chevron-2"></i>
+          </div>
+        </div>
+        <div class="step-body" id="step-body-2" style="display:none;">
+          <div id="delivery-section">
+            <input type="hidden" name="delivery_zone_id" id="delivery-zone-id-input">
+            <input type="hidden" name="delivery_address" id="delivery-address-input">
+            <input type="hidden" name="delivery_city" id="delivery-city-input">
+
+            {% if delivery_zones %}
+            <select id="delivery-zone-select" class="form-select form-select-sm ck-input mb-2" onchange="onZoneChange(this)" required>
+              <option value="">{{ '-- בחרו עיר --' if language == 'he' else '-- City --' }}</option>
+              {% for zone in delivery_zones %}
+              <option value="{{ zone.city_name }}"
+                data-zone-id="{{ zone.id }}"
+                data-fee="{{ zone.delivery_fee }}"
+                data-min="{{ zone.minimum_order or 0 }}"
+                data-free="{{ zone.free_delivery_above or 0 }}"
+                {% if selected_city == zone.city_name %}selected{% endif %}>
+                {{ zone.city_name }} — ₪{{ zone.delivery_fee | int }}
+                {% if zone.minimum_order %} (מינ. ₪{{ zone.minimum_order | int }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+            <div id="zone-fee-note" class="mb-2 small" style="color:#6366f1;display:none;"></div>
+            {% else %}
+            <input type="text" id="delivery-city-text" class="form-control form-control-sm ck-input mb-2" placeholder="{{ 'עיר *' if language == 'he' else 'City *' }}" required>
+            {% endif %}
+
+            <div class="position-relative mb-2">
+              <input type="text" id="street-input" class="form-control form-control-sm ck-input"
+                placeholder="{{ 'רחוב *' if language == 'he' else 'Street *' }}"
+                autocomplete="off" required>
+              <div id="streets-loading" class="position-absolute" style="top:50%;right:12px;transform:translateY(-50%);display:none;">
+                <i class="fas fa-spinner fa-spin text-muted" style="font-size:0.7rem;"></i>
+              </div>
+              <div id="street-suggestions" class="position-absolute w-100 bg-white border rounded-3 shadow"
+                style="top:100%;z-index:999;max-height:180px;overflow-y:auto;display:none;margin-top:2px;"></div>
+            </div>
+            <div id="no-zone-hint" class="text-muted mb-2 small" style="font-size:.75rem;{{ 'display:none;' if selected_city else '' }}">
+              {{ 'בחרו עיר תחילה' if language == 'he' else 'Select a city first' }}
+            </div>
+
+            <div class="row g-2 mb-2">
+              <div class="col-4">
+                <input type="text" id="house-number-input" class="form-control form-control-sm ck-input" required
+                  placeholder="{{ 'מס\' בית *' if language == 'he' else 'No. *' }}">
+              </div>
+              <div class="col-8">
+                <input type="text" name="delivery_notes" class="form-control form-control-sm ck-input"
+                  placeholder="{{ 'קומה / כניסה / קוד' if language == 'he' else 'Floor / Entry' }}">
+              </div>
+            </div>
+          </div>
+
+          <div id="pickup-section" style="display:none;"></div>
+
+        </div>
+      </div>
+
+      <!-- ═══ STEP 3: Payment ═══ -->
+      <div class="checkout-step" id="step-card-3">
+        <div class="step-header" onclick="toggleStep(3)">
+          <div class="d-flex align-items-center gap-2">
+            <span class="step-badge" id="step-badge-3">3</span>
+            <span class="fw-bold" style="font-size:.88rem;">{{ 'תשלום' if language == 'he' else 'Payment' }}</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="step-summary" id="step-summary-3"></span>
+            <i class="fas fa-chevron-down step-chevron" id="step-chevron-3"></i>
+          </div>
+        </div>
+        <div class="step-body" id="step-body-3" style="display:none;">
+          {% if hyp_sandbox_mode and card_available %}
+          <div class="sandbox-notice mb-2">
+            <i class="fas fa-flask"></i>
+            <span>{{ 'מצב בדיקה — כרטיסים אמיתיים לא יחויבו' if language == 'he' else 'Test mode — real cards won\'t be charged' }}</span>
+          </div>
+          {% endif %}
+          <div class="row g-2">
+            <div class="{% if card_available %}col-6{% else %}col-12{% endif %}">
+              <label for="pay-cash" class="w-100 mb-0">
+                <input type="radio" name="payment_method" id="pay-cash" value="cash" class="d-none payment-radio" checked>
+                <div class="payment-opt selected">
+                  <i class="fas fa-money-bill-wave"></i>
+                  <span>{{ 'מזומן' if language == 'he' else 'Cash' }}</span>
+                </div>
+              </label>
+            </div>
+            {% if card_available %}
+            <div class="col-6">
+              <label for="pay-card" class="w-100 mb-0">
+                <input type="radio" name="payment_method" id="pay-card" value="card" class="d-none payment-radio">
+                <div class="payment-opt">
+                  <i class="fas fa-credit-card"></i>
+                  <span>{{ 'כרטיס אשראי' if language == 'he' else 'Credit Card' }}</span>
+                </div>
+              </label>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ INLINE: When + Notes (not separate steps) ═══ -->
+      <div class="inline-extras mt-2">
+        <div class="row g-2">
+          <div class="col-5">
+            <label class="inline-label"><i class="fas fa-clock me-1"></i>{{ 'מתי?' if language == 'he' else 'When?' }}</label>
+            <select name="pickup_time" id="pickup-time-select" class="form-select form-select-sm ck-input">
+              <option value="">{{ 'עכשיו' if language == 'he' else 'Now' }}</option>
+            </select>
+          </div>
+          <div class="col-7">
+            <label class="inline-label"><i class="fas fa-pen me-1"></i>{{ 'הערות' if language == 'he' else 'Notes' }} <span class="text-muted fw-normal">({{ 'אופציונלי' if language == 'he' else 'optional' }})</span></label>
+            <input type="text" name="customer_notes" id="inp-notes" class="form-control form-control-sm ck-input"
+              placeholder="{{ 'אלרגיות, בקשות...' if language == 'he' else 'Allergies, requests...' }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TOTALS + SUBMIT ═══ -->
+      <div class="totals-box mt-3">
+        <div class="d-flex justify-content-between mb-1">
+          <span>{{ 'סכום ביניים' if language == 'he' else 'Subtotal' }}</span>
+          <span>₪{{ subtotal | int }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1" id="fee-row-summary">
+          <span>{{ 'דמי משלוח' if language == 'he' else 'Delivery fee' }}</span>
+          <span id="fee-display-summary">₪{{ delivery_fee | int }}</span>
+        </div>
+        <div class="total-line">
+          <span>{{ 'סה"כ' if language == 'he' else 'Total' }}</span>
+          <span>₪<span id="total-display">{{ total | int }}</span></span>
+        </div>
+      </div>
+
+      <button type="submit" id="place-order-btn" class="submit-btn mt-3">
+        <i class="fas fa-paper-plane me-2"></i>
+        {{ 'שלח הזמנה' if language == 'he' else 'Place Order' }}
+        <span class="ms-1">· ₪<span id="btn-total">{{ total | int }}</span></span>
+      </button>
+
+      <div class="text-center mt-2 mb-3">
+        <small class="text-muted" style="font-size:.72rem;">
+          <i class="fas fa-lock me-1"></i>{{ 'תשלום מאובטח' if language == 'he' else 'Secure checkout' }}
+        </small>
+      </div>
+
+    </form>
+
+  </div>
+</section>
+
+<style>
+.mobile-bottom-nav { display: none !important; }
+body { padding-bottom: 0 !important; }
+
+.back-link {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #f3f4f6; color: #374151;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; font-size: .85rem;
+  flex-shrink: 0;
+}
+
+.order-summary-card {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+.summary-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; cursor: pointer; user-select: none;
+  background: #fafaff; border-bottom: 1px solid #f0f0f5;
+}
+.item-count-pill {
+  background: var(--c-primary); color: #fff;
+  font-size: .68rem; font-weight: 700;
+  padding: 1px 7px; border-radius: 10px;
+}
+.summary-items { transition: max-height .3s; overflow: hidden; }
+.summary-items.collapsed { max-height: 0 !important; }
+.summary-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; border-bottom: 1px solid #f5f5f5;
+  font-size: .82rem;
+}
+.summary-item:last-child { border-bottom: none; }
+.qty-circle {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: #ede9fe; color: var(--c-primary);
+  font-size: .7rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.item-name { font-weight: 600; color: #1e1b4b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-opts { font-size: .7rem; color: #9ca3af; }
+.item-price { font-weight: 700; color: #374151; flex-shrink: 0; margin-right: 8px; }
+.qty-ctrl {
+  display: flex; align-items: center;
+  background: #f3f4f6; border-radius: 16px; overflow: hidden;
+  flex-shrink: 0;
+}
+.qty-btn {
+  width: 26px; height: 26px; border: none; background: transparent;
+  font-size: .9rem; font-weight: 700; color: var(--c-primary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation; padding: 0;
+}
+.qty-btn:active { background: #e5e7eb; }
+.qty-val {
+  min-width: 20px; text-align: center;
+  font-size: .78rem; font-weight: 700; color: #1e1b4b;
+}
+
+.otype-toggle {
+  display: inline-flex; border-radius: 22px; overflow: hidden;
+  border: 2px solid #e5e7eb; background: #f9fafb;
+}
+.otype-toggle button {
+  border: none; background: transparent; padding: 7px 16px;
+  font-size: .8rem; font-weight: 700; color: #6b7280; cursor: pointer;
+  transition: all .15s;
+}
+.otype-toggle .active-delivery { background: #ede9fe; color: #4338ca; }
+.otype-toggle .active-pickup { background: #dcfce7; color: #16a34a; }
+
+.checkout-step {
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.05);
+  margin-bottom: 8px; overflow: hidden;
+}
+.step-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; cursor: pointer; user-select: none;
+}
+.step-header:hover { background: #fafafa; }
+.step-badge {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--c-primary); color: #fff;
+  font-size: .7rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .2s;
+}
+.step-badge.done { background: #10b981; }
+.step-summary { font-size: .75rem; color: #9ca3af; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-chevron { color: #9ca3af; font-size: .7rem; transition: transform .2s; }
+.step-chevron.rotated { transform: rotate(180deg); }
+.step-body { padding: 0 14px 12px; }
+
+.ck-input {
+  border-radius: 8px !important; font-size: .85rem !important;
+  padding: 8px 12px !important; border-color: #e5e7eb !important;
+  direction: rtl; text-align: right;
+}
+.ck-input:focus { border-color: var(--c-primary) !important; box-shadow: 0 0 0 2px rgba(99,102,241,.12) !important; }
+.ck-input::placeholder { direction: rtl; text-align: right; }
+
+.pickup-note {
+  padding: 10px 14px; background: #f0fdf4; border-radius: 10px;
+  font-size: .82rem; border: 1px solid #bbf7d0;
+}
+
+.sandbox-notice {
+  padding: 6px 10px; background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 8px; font-size: .75rem; color: #92400e;
+  display: flex; align-items: center; gap: 6px;
+}
+
+.payment-opt {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 8px; border: 2px solid #e5e7eb; border-radius: 10px;
+  cursor: pointer; transition: all .15s; font-size: .85rem; font-weight: 600;
+  color: #374151;
+}
+.payment-opt.selected {
+  border-color: var(--c-primary); background: rgba(99,102,241,.05); color: var(--c-primary);
+}
+.payment-opt i { font-size: 1.1rem; }
+
+.totals-box {
+  background: #f9fafb; border-radius: 12px; padding: 12px 16px;
+  font-size: .85rem; color: #6b7280;
+}
+.total-line {
+  display: flex; justify-content: space-between;
+  font-weight: 800; font-size: 1rem; color: #1e1b4b;
+  border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 4px;
+}
+
+.submit-btn {
+  width: 100%; border: none; border-radius: 14px;
+  background: #16a34a; color: #fff;
+  font-size: 1.05rem; font-weight: 800; padding: 14px;
+  cursor: pointer; box-shadow: 0 4px 14px rgba(22,163,74,.35);
+  transition: background .15s;
+}
+.submit-btn:active { background: #15803d; }
+.submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.inline-extras {
+  background: #f9fafb; border-radius: 12px; padding: 12px 14px;
+}
+.inline-label {
+  font-size: .75rem; font-weight: 600; color: #6b7280;
+  margin-bottom: 4px; display: block;
+}
+
+@media(max-width: 576px) {
+  .container { padding-left: 12px; padding-right: 12px; }
+}
+</style>
+
+<script>
+var SUBTOTAL = {{ subtotal | float }};
+const DEFAULT_FEE = {{ delivery_fee | float }};
+const ZONES = {
+  {% for zone in delivery_zones %}
+  "{{ zone.id }}": { fee: {{ zone.delivery_fee }}, min: {{ zone.minimum_order or 0 }}, freeAbove: {{ zone.free_delivery_above or 0 }}, name: "{{ zone.city_name }}" },
+  {% endfor %}
+};
+
+let selectedZoneId = null;
+let currentOrderType = document.getElementById('order-type-field').value;
+let allStreets = [];
+let currentCity = '{{ selected_city or "" }}';
+
+var checkoutCart = {{ cart_json | safe }};
+
+function changeCartQty(idx, delta) {
+  if (idx < 0 || idx >= checkoutCart.length) return;
+  checkoutCart[idx].qty += delta;
+  if (checkoutCart[idx].qty <= 0) {
+    document.getElementById('cart-row-' + idx).remove();
+    checkoutCart.splice(idx, 1);
+    rebuildCartIds();
+  } else {
+    document.getElementById('cart-qty-' + idx).textContent = checkoutCart[idx].qty;
+    document.getElementById('cart-price-' + idx).textContent = '₪' + Math.round(checkoutCart[idx].price * checkoutCart[idx].qty);
+  }
+  if (checkoutCart.length === 0) {
+    window.location.href = '{{ url_for('order_page.order_page') }}';
+    return;
+  }
+  var newSub = 0;
+  checkoutCart.forEach(function(it) { newSub += it.price * it.qty; });
+  SUBTOTAL = newSub;
+  document.querySelector('.summary-header span:last-child').textContent = '₪' + Math.round(newSub);
+  document.querySelector('.item-count-pill').textContent = checkoutCart.length;
+  document.querySelector('input[name="cart_json"]').value = JSON.stringify(checkoutCart);
+  updateTotal();
+  try { localStorage.setItem('rai_cart', JSON.stringify(checkoutCart)); localStorage.setItem('rai_cart_ts', Date.now().toString()); } catch(e) {}
+}
+
+function rebuildCartIds() {
+  var rows = document.querySelectorAll('#summary-items .summary-item');
+  rows.forEach(function(row, i) {
+    row.id = 'cart-row-' + i;
+    row.querySelector('.qty-val').id = 'cart-qty-' + i;
+    row.querySelector('.item-price').id = 'cart-price-' + i;
+    var btns = row.querySelectorAll('.qty-btn');
+    btns[0].setAttribute('onclick', 'changeCartQty(' + i + ',-1)');
+    btns[1].setAttribute('onclick', 'changeCartQty(' + i + ',1)');
+  });
+}
+
+const TOTAL_STEPS = 3;
+let openStep = 1;
+
+function openStepPanel(n, smooth) {
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const body    = document.getElementById('step-body-' + i);
+    const chevron = document.getElementById('step-chevron-' + i);
+    const card    = document.getElementById('step-card-' + i);
+    if (i === n) {
+      body.style.display = '';
+      chevron.classList.add('rotated');
+      card.classList.add('is-open');
+      if (smooth) body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      body.style.display = 'none';
+      chevron.classList.remove('rotated');
+      card.classList.remove('is-open');
+    }
+  }
+  openStep = n;
+}
+
+function toggleStep(n) {
+  if (openStep === n) {
+    document.getElementById('step-body-' + n).style.display = 'none';
+    document.getElementById('step-chevron-' + n).classList.remove('rotated');
+    document.getElementById('step-card-' + n).classList.remove('is-open');
+    openStep = 0;
+  } else {
+    openStepPanel(n, false);
+  }
+}
+
+function tryAutoAdvance(step) {
+  if (step === 1) {
+    const fn = document.getElementById('inp-first-name').value.trim();
+    const ln = document.getElementById('inp-last-name').value.trim();
+    const ph = document.getElementById('inp-phone').value.trim();
+    const em = document.getElementById('inp-email').value.trim();
+    if (fn && ln && ph && em) nextStep(1);
+  }
+  if (step === 2 && currentOrderType === 'delivery') {
+    const zone = document.getElementById('delivery-zone-select');
+    const street = document.getElementById('street-input')?.value.trim();
+    const num = document.getElementById('house-number-input')?.value.trim();
+    if (zone && zone.value && street && num) nextStep(2);
+  }
+}
+
+function nextStep(current) {
+  if (current === 1) {
+    const fn = document.getElementById('inp-first-name').value.trim();
+    const ln = document.getElementById('inp-last-name').value.trim();
+    const ph = document.getElementById('inp-phone').value.trim();
+    const em = document.getElementById('inp-email').value.trim();
+    if (!fn || !ln || !ph || !em) { highlightMissing(current); return; }
+    document.getElementById('step-summary-1').textContent = fn + ' ' + ln + ' · ' + ph;
+    markDone(1);
+  }
+  if (current === 2) {
+    if (currentOrderType === 'delivery') {
+      const zone = document.getElementById('delivery-zone-select');
+      const street = document.getElementById('street-input')?.value.trim();
+      const num = document.getElementById('house-number-input')?.value.trim();
+      if (zone && !zone.value) { highlightMissing(current); return; }
+      if (!street || !num) { highlightMissing(current); return; }
+      const city = zone ? zone.options[zone.selectedIndex].value : (document.getElementById('delivery-city-text')?.value.trim() || '');
+      document.getElementById('step-summary-2').textContent = city + ', ' + street + ' ' + num;
+    } else {
+      document.getElementById('step-summary-2').textContent = '{{ 'איסוף עצמי' if language == 'he' else 'Self pickup' }}';
+    }
+    markDone(2);
+  }
+  var next = current + 1;
+  if (next === 2 && currentOrderType !== 'delivery') {
+    markDone(2);
+    document.getElementById('step-summary-2').textContent = '{{ 'איסוף עצמי' if language == 'he' else 'Self pickup' }}';
+    next = 3;
+  }
+  if (next <= TOTAL_STEPS) {
+    openStepPanel(next, true);
+  }
+}
+
+function markDone(n) {
+  const badge = document.getElementById('step-badge-' + n);
+  badge.classList.add('done');
+  badge.textContent = '✓';
+}
+
+function highlightMissing(step) {
+  const card = document.getElementById('step-card-' + step);
+  card.style.border = '2px solid #ef4444';
+  card.style.boxShadow = '0 0 0 3px rgba(239,68,68,.12)';
+  setTimeout(() => { card.style.border = ''; card.style.boxShadow = ''; }, 1800);
+}
+
+function buildTimeOptions() {
+  const sel = document.getElementById('pickup-time-select');
+  if (!sel) return;
+  const now = new Date();
+  let startMin = (now.getHours() * 60 + now.getMinutes()) + 30;
+  startMin = Math.ceil(startMin / 15) * 15;
+  if (startMin < 8 * 60) startMin = 8 * 60;
+  for (let m = startMin; m < 24 * 60; m += 15) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    const label = String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0');
+    const opt = document.createElement('option');
+    opt.value = label;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setOrderType(currentOrderType);
+
+  const fn = document.getElementById('inp-first-name').value.trim();
+  const ln = document.getElementById('inp-last-name').value.trim();
+  const ph = document.getElementById('inp-phone').value.trim();
+  const em = document.getElementById('inp-email').value.trim();
+  if (fn && (ln || ph) && em) {
+    document.getElementById('step-summary-1').textContent = [fn, ln].filter(Boolean).join(' ') + (ph ? ' · ' + ph : '');
+    markDone(1);
+    openStepPanel(2, false);
+  } else {
+    openStepPanel(1, false);
+  }
+
+  buildTimeOptions();
+
+  ['inp-first-name','inp-last-name','inp-phone','inp-email'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('blur', () => { if (openStep === 1) tryAutoAdvance(1); });
+  });
+
+  ['delivery-zone-select','street-input','house-number-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('blur', () => { if (openStep === 2) tryAutoAdvance(2); });
+    if (el.tagName === 'SELECT') el.addEventListener('change', () => { if (openStep === 2) setTimeout(() => tryAutoAdvance(2), 300); });
+  });
+
+  document.querySelectorAll('.payment-radio').forEach(r => {
+    r.addEventListener('change', () => {
+      document.querySelectorAll('.payment-opt').forEach(c => c.classList.remove('selected'));
+      r.nextElementSibling.classList.add('selected');
+    });
+  });
+});
+
+{% if selected_city %}
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('delivery-zone-select');
+  if (sel) {
+    for (let opt of sel.options) {
+      if (opt.value === '{{ selected_city }}') {
+        const zoneId = opt.dataset.zoneId;
+        if (zoneId) {
+          selectedZoneId = zoneId;
+          document.getElementById('delivery-zone-id-input').value = zoneId;
+          document.getElementById('delivery-city-input').value = '{{ selected_city }}';
+          fetchStreets('{{ selected_city }}');
+        }
+        break;
+      }
+    }
+  }
+});
+{% endif %}
+
+function toggleOrderType(type) {
+  setOrderType(type);
+  const delivBtn = document.getElementById('toggle-delivery-btn');
+  const pickupBtn = document.getElementById('toggle-pickup-btn');
+  delivBtn.className = type === 'delivery' ? 'active-delivery' : '';
+  pickupBtn.className = type !== 'delivery' ? 'active-pickup' : '';
+}
+
+function setOrderType(type) {
+  currentOrderType = type;
+  document.getElementById('order-type-field').value = type;
+  document.querySelector('input[name="order_type_radio"]').value = type;
+
+  const delivSection = document.getElementById('delivery-section');
+  const pickupSection = document.getElementById('pickup-section');
+  const feeRow = document.getElementById('fee-row-summary');
+  const titleEl = document.getElementById('address-card-title');
+
+  if (type === 'delivery') {
+    document.getElementById('step-card-2').style.display = '';
+    delivSection.style.display = '';
+    pickupSection.style.display = 'none';
+    if (feeRow) feeRow.style.display = '';
+    if (titleEl) titleEl.textContent = '{{ 'כתובת למשלוח' if language == 'he' else 'Delivery Address' }}';
+    document.getElementById('delivery-zone-select') && (document.getElementById('delivery-zone-select').required = true);
+    document.getElementById('street-input').required = true;
+    document.getElementById('house-number-input').required = true;
+  } else {
+    delivSection.style.display = 'none';
+    pickupSection.style.display = 'none';
+    if (feeRow) feeRow.style.display = 'none';
+    document.getElementById('step-card-2').style.display = 'none';
+    const sel = document.getElementById('delivery-zone-select');
+    if (sel) sel.required = false;
+    document.getElementById('street-input').required = false;
+    document.getElementById('house-number-input').required = false;
+  }
+  updateTotal();
+}
+
+function onZoneChange(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const zoneId = opt.dataset.zoneId || null;
+  const cityName = opt.value || '';
+
+  selectedZoneId = zoneId;
+  document.getElementById('delivery-zone-id-input').value = zoneId || '';
+  document.getElementById('delivery-city-input').value = cityName;
+
+  const note = document.getElementById('zone-fee-note');
+  if (zoneId && ZONES[zoneId]) {
+    const z = ZONES[zoneId];
+    let msg = `דמי משלוח ל${z.name}: ₪${z.fee}`;
+    if (z.freeAbove > 0) msg += ` (חינם מ-₪${z.freeAbove})`;
+    if (z.min > 0) msg += ` | מינ. הזמנה ₪${z.min}`;
+    note.textContent = msg;
+    note.style.display = '';
+  } else {
+    note.style.display = 'none';
+  }
+  updateTotal();
+
+  if (cityName && cityName !== currentCity) {
+    currentCity = cityName;
+    allStreets = [];
+    document.getElementById('street-input').value = '';
+    document.getElementById('street-input').placeholder = `מחפש רחובות ב${cityName}...`;
+    document.getElementById('no-zone-hint').style.display = 'none';
+    document.getElementById('streets-loading').style.display = '';
+    fetchStreets(cityName);
+  } else if (!cityName) {
+    currentCity = '';
+    allStreets = [];
+    document.getElementById('street-input').value = '';
+    document.getElementById('no-zone-hint').style.display = '';
+  }
+}
+
+function updateTotal() {
+  let fee = 0;
+  if (currentOrderType === 'delivery') {
+    if (selectedZoneId && ZONES[selectedZoneId]) {
+      const z = ZONES[selectedZoneId];
+      fee = (z.freeAbove > 0 && SUBTOTAL >= z.freeAbove) ? 0 : z.fee;
+    } else {
+      fee = DEFAULT_FEE;
+    }
+  }
+  const total = SUBTOTAL + fee;
+  const feeDisp = document.getElementById('fee-display-summary');
+  if (feeDisp) feeDisp.textContent = '₪' + fee.toFixed(0);
+  document.getElementById('total-display').textContent = total.toFixed(0);
+  document.getElementById('btn-total').textContent = total.toFixed(0);
+}
+
+function fetchStreets(city) {
+  fetch(`/api/streets?city=${encodeURIComponent(city)}`)
+    .then(r => r.json())
+    .then(data => {
+      allStreets = data.streets || [];
+      document.getElementById('streets-loading').style.display = 'none';
+      document.getElementById('street-input').placeholder =
+        allStreets.length > 0 ? `חפשו רחוב ב${city} (${allStreets.length})` : 'הקלידו שם רחוב';
+    })
+    .catch(() => {
+      document.getElementById('streets-loading').style.display = 'none';
+      document.getElementById('street-input').placeholder = 'הקלידו שם רחוב';
+    });
+}
+
+const streetInput = document.getElementById('street-input');
+const streetSugg = document.getElementById('street-suggestions');
+
+streetInput?.addEventListener('input', () => {
+  const q = streetInput.value.trim().toLowerCase();
+  if (!q || !currentCity) { streetSugg.style.display = 'none'; return; }
+  const matches = allStreets.filter(s => s.toLowerCase().includes(q)).slice(0, 50);
+  if (!matches.length) { streetSugg.style.display = 'none'; return; }
+  streetSugg.innerHTML = matches.map(s =>
+    `<div class="street-opt px-3 py-2" style="cursor:pointer;font-size:0.85rem;border-bottom:1px solid #f3f4f6;" onmousedown="pickStreet('${s.replace(/'/g,"\\'")}')">${s}</div>`
+  ).join('');
+  streetSugg.style.display = '';
+});
+
+streetInput?.addEventListener('blur', () => {
+  setTimeout(() => { streetSugg.style.display = 'none'; }, 200);
+  updateAddress();
+});
+
+function pickStreet(name) {
+  streetInput.value = name;
+  streetSugg.style.display = 'none';
+  document.getElementById('house-number-input')?.focus();
+  updateAddress();
+}
+
+document.getElementById('house-number-input')?.addEventListener('input', updateAddress);
+
+function updateAddress() {
+  const street = streetInput?.value.trim() || '';
+  const num = document.getElementById('house-number-input')?.value.trim() || '';
+  const full = street && num ? `${street} ${num}` : (street || num);
+  document.getElementById('delivery-address-input').value = full;
+}
+
+document.addEventListener('mouseover', e => {
+  if (e.target.classList.contains('street-opt')) e.target.style.background = '#f0f4ff';
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.classList.contains('street-opt')) e.target.style.background = '';
+});
+
+document.getElementById('checkout-form').addEventListener('submit', e => {
+  const btn = document.getElementById('place-order-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>{{ 'מעבד...' if language == 'he' else 'Processing...' }}';
+});
+
+/* ─── UTM / Referrer: populate hidden fields from sessionStorage ─── */
+(function() {
+  try {
+    document.getElementById('hidden-utm-source').value = sessionStorage.getItem('rai_utm_source') || '';
+    document.getElementById('hidden-utm-medium').value = sessionStorage.getItem('rai_utm_medium') || '';
+    document.getElementById('hidden-utm-campaign').value = sessionStorage.getItem('rai_utm_campaign') || '';
+    document.getElementById('hidden-referrer').value = sessionStorage.getItem('rai_referrer') || '';
+  } catch(e) {}
+})();
+
+/* ─── GA4 + FB Pixel: Checkout funnel events ─── */
+(function() {
+  function ga4(ev, params) { if (typeof gtag === 'function') gtag('event', ev, params); }
+  function fbp(ev, params) { if (typeof fbq === 'function') fbq('track', ev, params); }
+
+  var ckItems = [];
+  try { ckItems = checkoutCart || []; } catch(e) {}
+  var ga4Items = ckItems.map(function(it, idx) {
+    return {
+      item_id: String(it.id),
+      item_name: it.name_he || it.name_en || '',
+      item_category: it.category || '',
+      price: it.price || 0,
+      quantity: it.qty || 1,
+      index: idx
+    };
+  });
+  var contentIds = ckItems.map(function(it) { return String(it.id); });
+
+  ga4('begin_checkout', {
+    currency: 'ILS',
+    value: SUBTOTAL,
+    items: ga4Items
+  });
+  fbp('InitiateCheckout', {
+    content_type: 'product',
+    content_ids: contentIds,
+    value: SUBTOTAL,
+    currency: 'ILS',
+    num_items: ckItems.length
+  });
+
+  var _shippingFired = false;
+  var _origNextStep = window.nextStep;
+  window.nextStep = function(current) {
+    _origNextStep.apply(this, arguments);
+    if (!_shippingFired && (current === 2 || (current === 1 && currentOrderType !== 'delivery'))) {
+      _shippingFired = true;
+      ga4('add_shipping_info', {
+        currency: 'ILS',
+        value: SUBTOTAL,
+        shipping_tier: currentOrderType === 'delivery' ? 'delivery' : 'pickup',
+        items: ga4Items
+      });
+    }
+  };
+
+  var _paymentFired = false;
+  function firePaymentInfo(method) {
+    if (_paymentFired) return;
+    _paymentFired = true;
+    ga4('add_payment_info', {
+      currency: 'ILS',
+      value: SUBTOTAL,
+      payment_type: method,
+      items: ga4Items
+    });
+    fbp('AddPaymentInfo', {
+      content_type: 'product',
+      content_ids: contentIds,
+      value: SUBTOTAL,
+      currency: 'ILS'
+    });
+  }
+
+  document.querySelectorAll('.payment-radio').forEach(function(r) {
+    r.addEventListener('change', function() {
+      _paymentFired = false;
+      firePaymentInfo(r.value);
+    });
+  });
+
+  var form = document.getElementById('checkout-form');
+  if (form) {
+    form.addEventListener('submit', function() {
+      if (!_shippingFired) {
+        _shippingFired = true;
+        ga4('add_shipping_info', {
+          currency: 'ILS',
+          value: SUBTOTAL,
+          shipping_tier: currentOrderType === 'delivery' ? 'delivery' : 'pickup',
+          items: ga4Items
+        });
+      }
+      var sel = document.querySelector('.payment-radio:checked');
+      firePaymentInfo(sel ? sel.value : 'cash');
+    });
+  }
+})();
+</script>
+{% endblock %}

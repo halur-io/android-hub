@@ -137,16 +137,15 @@ except Exception as e:
 try:
     from services.config.config_service import config_bp
     from services.auth.auth_service import auth_bp
-    from services.order.order_service import order_bp
+    from services.order.order_service import order_bp as microservice_order_bp
     from services.delivery.delivery_service import delivery_bp
     from services.kitchen.kitchen_service import kitchen_bp
     from services.payment.payment_service import payment_bp
     
     app.register_blueprint(config_bp)
-    # Exempt auth blueprint from CSRF (uses JWT token-based auth)
     csrf.exempt(auth_bp)
     app.register_blueprint(auth_bp)
-    app.register_blueprint(order_bp)
+    app.register_blueprint(microservice_order_bp)
     app.register_blueprint(delivery_bp)
     app.register_blueprint(kitchen_bp)
     app.register_blueprint(payment_bp)
@@ -154,6 +153,73 @@ try:
     logging.info("All microservices registered successfully")
 except Exception as e:
     logging.error(f"Error registering microservices: {e}")
+
+# Register standalone order service (public ordering + KDS dashboard)
+try:
+    from models import (
+        Branch, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
+        MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
+        ManagerPIN, SiteSettings
+    )
+    from services.order.order_service import DeliveryZone
+    from database import db as order_db
+
+    order_models = {
+        'Branch': Branch,
+        'WorkingHours': WorkingHours,
+        'MenuCategory': MenuCategory,
+        'MenuItem': MenuItem,
+        'MenuItemPrice': MenuItemPrice,
+        'MenuItemOptionGroup': MenuItemOptionGroup,
+        'MenuItemOptionChoice': MenuItemOptionChoice,
+        'DeliveryZone': DeliveryZone,
+        'FoodOrder': FoodOrder,
+        'FoodOrderItem': FoodOrderItem,
+        'ManagerPIN': ManagerPIN,
+        'SiteSettings': SiteSettings,
+    }
+
+    def get_site_settings():
+        return SiteSettings.query.first()
+
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_sms_fn = create_sender_from_env()
+
+    from standalone_order_service.notifications import OrderNotifier
+    notifier = OrderNotifier(
+        send_sms=send_sms_fn,
+        send_telegram=None,
+    )
+
+    from standalone_order_service.hyp_payment import HYPPayment
+    hyp = HYPPayment()
+
+    from standalone_order_service.order_routes import create_order_blueprint
+    food_order_bp = create_order_blueprint(
+        db=order_db,
+        models=order_models,
+        notifier=notifier,
+        hyp_payment=hyp,
+        get_settings=get_site_settings,
+    )
+    app.register_blueprint(food_order_bp)
+
+    from standalone_order_service.kds_routes import create_kds_blueprint
+    kds_bp = create_kds_blueprint(
+        db=order_db,
+        models=order_models,
+        send_sms=send_sms_fn,
+        get_settings=get_site_settings,
+        clear_cache=None,
+    )
+    app.register_blueprint(kds_bp)
+    csrf.exempt(kds_bp)
+
+    logging.info("Standalone order service registered: /order and /order-dashboard")
+except Exception as e:
+    logging.error(f"Error registering standalone order service: {e}")
+    import traceback
+    traceback.print_exc()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -21,7 +21,11 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ Google Tag Manager integration for tracking
 - ✅ SEO: robots.txt, sitemap.xml, Google verification file
 - ✅ Popup system for announcements and promotions
+- ✅ Online ordering system integrated (standalone_order_service)
+- ✅ KDS (Kitchen Display System) dashboard
 - ⏸️ Email notifications: Not configured yet (optional)
+- ⏸️ SMS notifications: Requires Twilio or SMS4Free credentials
+- ⏸️ HYP payment gateway: Requires terminal/API key configuration
 
 ## Popup System
 The website includes a comprehensive popup system for displaying announcements, promotions, or special messages to visitors.
@@ -59,6 +63,51 @@ Access at Admin → פופאפים (Popups) to:
 - `templates/admin/popups.html` - Popup list page
 - `templates/admin/popup_form.html` - Popup editor
 - `static/js/popup-system.js` - Frontend display logic
+
+## Online Ordering System
+Integrated from standalone_order_service package. Provides public ordering page and kitchen display system.
+
+**Routes:**
+- `/order/` - Public ordering page for customers
+- `/order` - Redirects to `/order/`
+- `/order-dashboard/` - KDS (Kitchen Display System) for kitchen staff
+- `/order-dashboard/login` - Staff PIN login for KDS
+
+**Features:**
+- Menu display with option groups/choices
+- Cart management
+- HYP payment gateway integration (sandbox/production)
+- Order tracking
+- KDS real-time order management
+- SMS notifications (Twilio or SMS4Free)
+- Telegram notifications
+
+**Configuration (Admin → Site Settings):**
+- `enable_online_ordering` - Toggle ordering on/off
+- `ordering_paused` - Temporarily pause orders
+- HYP terminal/API key for payment processing
+- Telegram bot token/chat ID for order notifications
+- SMS credentials via environment variables
+
+**KDS Access:**
+- Staff authenticate via ManagerPIN (hashed PINs)
+- Create PINs via database: `ManagerPIN` model with `set_pin()` method
+
+**Files:**
+- `standalone_order_service/order_routes.py` - Public ordering blueprint
+- `standalone_order_service/kds_routes.py` - KDS dashboard blueprint
+- `standalone_order_service/hyp_payment.py` - HYP payment integration
+- `standalone_order_service/sms_helpers.py` - SMS notification helpers
+- `standalone_order_service/templates/order/` - Order page templates
+- `standalone_order_service/templates/order_dashboard/` - KDS templates
+- `models.py` - FoodOrder, FoodOrderItem, MenuItemOptionGroup, MenuItemOptionChoice, ManagerPIN
+
+**Database Tables:**
+- `food_orders` - Order records
+- `food_order_items` - Order line items
+- `menu_item_option_groups` - Menu item option groups
+- `menu_item_option_choices` - Option choices within groups
+- `manager_pins` - KDS staff authentication
 
 ## Google Tag Manager Setup
 GTM tracks page views and menu dish interactions automatically.

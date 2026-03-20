@@ -136,58 +136,9 @@ def menu_page():
                          menu_images=menu_images)
 
 @app.route('/order')
-def order_page():
-    """Online ordering page - Optimized to prevent N+1 queries"""
-    context = get_context_data()
-    
-    # Check if online ordering OR delivery is disabled
-    ordering_enabled = context['settings'].enable_online_ordering and context['settings'].enable_delivery
-    
-    if not ordering_enabled:
-        # Show disabled page instead of redirecting
-        return render_template('public/order.html',
-                             **context,
-                             ordering_disabled=True,
-                             categories=[])
-    
-    # Get all categories
-    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
-    
-    # Get ALL menu items that allow delivery - Filter by availability
-    # Try to load dietary properties, but handle gracefully if table doesn't exist in production
-    try:
-        from sqlalchemy.orm import selectinload
-        all_items = MenuItem.query.options(selectinload(MenuItem.dietary_properties)).filter_by(
-            is_available=True,
-            allow_delivery=True
-        ).order_by(MenuItem.display_order).all()
-    except Exception as e:
-        logging.warning(f"Could not load dietary properties for orders: {e}")
-        # Fallback: load items without dietary properties
-        all_items = MenuItem.query.filter_by(
-            is_available=True,
-            allow_delivery=True
-        ).order_by(MenuItem.display_order).all()
-    
-    # Group items by category in Python (faster than multiple DB queries)
-    # Skip items with NULL category_id to prevent crashes
-    items_by_category = {}
-    for item in all_items:
-        if item.category_id is None:
-            logging.warning(f"Skipping order item {item.id} ({item.name_en}) - NULL category_id")
-            continue
-        if item.category_id not in items_by_category:
-            items_by_category[item.category_id] = []
-        items_by_category[item.category_id].append(item)
-    
-    # Assign items to their categories
-    for category in categories:
-        category.items = items_by_category.get(category.id, [])
-    
-    return render_template('public/order.html',
-                         **context,
-                         ordering_disabled=False,
-                         categories=categories)
+def legacy_order_redirect():
+    """Redirect to standalone order system"""
+    return redirect('/order/')
 
 @app.route('/gallery')
 def gallery_page():

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>הזמנה {{ order.order_number }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0f172a; --panel:#1e293b; --card:#243044; --card2:#1a2438;
+      --border:#334155; --primary:#6366f1; --success:#10b981;
+      --warning:#f59e0b; --danger:#ef4444; --text:#f8fafc; --muted:#94a3b8;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;min-height:100vh;}
+
+    /* ── Top bar ── */
+    .top-bar {
+      background:var(--panel);border-bottom:1px solid var(--border);
+      padding:10px 16px;position:sticky;top:0;z-index:200;
+      display:flex;align-items:center;gap:10px;
+    }
+    .back-btn {
+      background:var(--card);border:1px solid var(--border);color:var(--muted);
+      border-radius:10px;padding:8px 14px;font-size:.83rem;font-weight:700;
+      text-decoration:none;display:flex;align-items:center;gap:6px;
+      transition:all .15s;font-family:'Heebo',sans-serif;cursor:pointer;flex-shrink:0;
+    }
+    .back-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .top-meta { flex:1;min-width:0; }
+    .top-order-num { font-size:1rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .top-order-time { font-size:.73rem;color:var(--muted); }
+    .top-badges { display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end; }
+    .badge-pill {
+      border-radius:20px;padding:4px 12px;font-size:.74rem;font-weight:800;white-space:nowrap;
+    }
+    .bp-delivery { background:#1e1b4b;color:#818cf8; }
+    .bp-takeaway  { background:#052e16;color:#4ade80; }
+    .bp-cash     { background:#422006;color:#fbbf24; }
+    .bp-card     { background:#0c1a2e;color:#38bdf8; }
+    .bp-pending  { background:#451a03;color:#fb923c; }
+    .bp-confirmed{ background:#083344;color:#22d3ee; }
+    .bp-preparing{ background:#1a0e2e;color:#a78bfa; }
+    .bp-ready    { background:#052e16;color:#4ade80; }
+    .bp-delivered,.bp-pickedup{ background:#052e16;color:#4ade80; }
+    .bp-cancelled{ background:#450a0a;color:#f87171; }
+
+    /* ── Status progress bar ── */
+    .status-track {
+      background:var(--panel);border-bottom:1px solid var(--border);
+      padding:12px 20px;display:flex;align-items:center;gap:0;overflow-x:auto;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    }
+    .status-track::-webkit-scrollbar{display:none;}
+    .st-step {
+      display:flex;flex-direction:column;align-items:center;gap:4px;
+      min-width:64px;position:relative;flex:1;
+    }
+    .st-step:not(:last-child)::after {
+      content:'';position:absolute;top:14px;right:-50%;width:100%;
+      height:2px;background:var(--border);z-index:0;
+    }
+    .st-step.done:not(:last-child)::after { background:var(--success); }
+    .st-step.active:not(:last-child)::after { background:var(--primary); }
+    .st-dot {
+      width:28px;height:28px;border-radius:50%;border:2px solid var(--border);
+      background:var(--bg);display:flex;align-items:center;justify-content:center;
+      font-size:.75rem;z-index:1;position:relative;transition:all .2s;
+    }
+    .st-step.done .st-dot  { background:var(--success);border-color:var(--success);color:#fff; }
+    .st-step.active .st-dot{ background:var(--primary);border-color:var(--primary);color:#fff;
+                               box-shadow:0 0 0 4px rgba(99,102,241,.25); }
+    .st-label { font-size:.68rem;font-weight:700;color:var(--muted);text-align:center;white-space:nowrap; }
+    .st-step.done .st-label  { color:var(--success); }
+    .st-step.active .st-label{ color:var(--primary); }
+
+    /* ── Page layout ── */
+    .page-body {
+      display:grid;
+      grid-template-columns:1fr 360px;
+      gap:16px;
+      padding:16px;
+      align-items:start;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    @media(max-width:900px) {
+      .page-body { grid-template-columns:1fr; }
+      .sidebar-col { order:-1; }
+    }
+
+    /* ── Section card ── */
+    .sec-card {
+      background:var(--panel);border:1px solid var(--border);border-radius:16px;
+      overflow:hidden;margin-bottom:14px;
+    }
+    .sec-head {
+      padding:11px 16px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:8px;font-weight:800;font-size:.88rem;
+    }
+    .sec-head i { color:var(--primary); }
+    .sec-body { padding:14px 16px; }
+
+    /* ── Items ── */
+    .item-card {
+      display:flex;align-items:center;gap:12px;padding:10px 0;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .item-card:last-child{border-bottom:none;}
+    .item-qty-badge {
+      min-width:44px;height:44px;border-radius:12px;
+      background:var(--primary);color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-size:1rem;font-weight:900;flex-shrink:0;
+    }
+    .item-info { flex:1;min-width:0; }
+    .item-name { font-size:.92rem;font-weight:700;
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .item-note { font-size:.73rem;color:#fbbf24;margin-top:2px; }
+    .item-price-col { text-align:left;flex-shrink:0; }
+    .item-total-price { font-size:.95rem;font-weight:800;color:var(--primary); }
+    .item-unit-price  { font-size:.72rem;color:var(--muted);margin-top:1px; }
+
+    /* Price summary */
+    .price-summary { background:var(--card2);border-radius:12px;padding:12px;margin-top:12px; }
+    .price-row { display:flex;justify-content:space-between;padding:4px 0;font-size:.83rem; }
+    .price-row.total {
+      border-top:1px solid var(--border);margin-top:6px;padding-top:10px;
+      font-size:1.05rem;font-weight:900;
+    }
+    .price-row.total .val { color:var(--primary); }
+
+    /* ── Info rows ── */
+    .info-row {
+      display:flex;justify-content:space-between;align-items:flex-start;
+      padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:10px;
+    }
+    .info-row:last-child{border-bottom:none;}
+    .info-lbl{font-size:.8rem;color:var(--muted);flex-shrink:0;}
+    .info-val{font-size:.87rem;font-weight:600;text-align:left;word-break:break-word;}
+
+    /* ── Action buttons (sidebar) ── */
+    .sidebar-col { display:flex;flex-direction:column;gap:14px; }
+    .action-panel {
+      background:var(--panel);border:1px solid var(--border);border-radius:16px;
+      overflow:hidden;
+    }
+    .action-panel-head {
+      padding:11px 16px;border-bottom:1px solid var(--border);
+      font-weight:800;font-size:.88rem;display:flex;align-items:center;gap:8px;
+    }
+    .action-panel-body { padding:14px; }
+
+    /* Next step button */
+    .next-step-btn {
+      width:100%;padding:14px;border:none;border-radius:12px;font-size:.95rem;
+      font-weight:900;font-family:'Heebo',sans-serif;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:opacity .15s, transform .1s;margin-bottom:10px;
+    }
+    .next-step-btn:hover{opacity:.87;}
+    .next-step-btn:active{transform:scale(.98);}
+    .nsb-confirm   { background:#059669;color:#ecfdf5; }
+    .nsb-prepare   { background:var(--primary);color:#e0e7ff; }
+    .nsb-ready     { background:#0891b2;color:#e0f2fe; }
+    .nsb-complete  { background:#374151;color:#d1d5db; }
+
+    /* SMS toggle */
+    .sms-toggle-row {
+      display:flex;align-items:center;gap:8px;padding:8px 10px;
+      background:var(--card2);border-radius:10px;margin-bottom:10px;
+      border:1px solid var(--border);cursor:pointer;
+    }
+    .sms-toggle-row input{ accent-color:var(--primary);width:15px;height:15px; }
+    .sms-toggle-row label{ font-size:.78rem;color:var(--muted);cursor:pointer;line-height:1.3; }
+
+    /* Status grid */
+    .status-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px; }
+    .status-option {
+      border-radius:10px;padding:9px 4px;text-align:center;font-size:.76rem;font-weight:700;
+      cursor:pointer;border:2px solid var(--border);background:var(--card);
+      color:var(--muted);transition:all .15s;font-family:'Heebo',sans-serif;
+    }
+    .status-option:hover { border-color:var(--primary);color:var(--primary); }
+    .status-option.cur  { border-color:var(--primary);background:#1e1b4b;color:#a5b4fc; }
+    .status-option.sp-delivered,.status-option.sp-pickedup
+                        { border-color:var(--success)!important;background:#052e16!important;color:#4ade80!important; }
+    .status-option.sp-cancelled
+                        { border-color:var(--danger)!important;background:#450a0a!important;color:#f87171!important; }
+
+    /* Timeline */
+    .timeline { display:flex;flex-direction:column;gap:0; }
+    .tl-item {
+      display:flex;align-items:flex-start;gap:12px;padding:8px 0;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .tl-item:last-child{border-bottom:none;}
+    .tl-icon {
+      width:32px;height:32px;border-radius:50%;background:var(--success);
+      display:flex;align-items:center;justify-content:center;
+      font-size:.72rem;color:#fff;flex-shrink:0;
+    }
+    .tl-content { flex:1;min-width:0; }
+    .tl-label { font-size:.85rem;font-weight:700; }
+    .tl-time  { font-size:.74rem;color:var(--muted); }
+
+    /* Textarea */
+    .dark-ta {
+      background:var(--card2);border:1px solid var(--border);color:var(--text);
+      border-radius:10px;padding:10px;width:100%;font-family:'Heebo',sans-serif;
+      font-size:.88rem;resize:none;
+    }
+    .dark-ta:focus{outline:none;border-color:var(--primary);}
+
+    /* Small action btn */
+    .sec-btn {
+      width:100%;padding:11px;border:none;border-radius:10px;font-size:.85rem;
+      font-weight:700;font-family:'Heebo',sans-serif;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:7px;
+      transition:opacity .15s;
+    }
+    .sec-btn:hover{opacity:.85;}
+    .sb-primary  { background:var(--primary);color:#fff; }
+    .sb-secondary{ background:var(--card);color:var(--muted);border:1px solid var(--border); }
+    .sb-danger   { background:var(--danger);color:#fff; }
+
+    /* Notes block */
+    .notes-pre {
+      background:var(--card2);border-radius:10px;padding:12px;
+      font-size:.82rem;color:var(--muted);white-space:pre-wrap;
+      border:1px solid var(--border);margin-bottom:10px;
+    }
+
+    /* Estimated ready */
+    .ready-estimate {
+      background:#1a0e2e;border:1px solid #6d28d9;border-radius:12px;
+      padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:10px;
+    }
+    .re-icon { font-size:1.3rem; }
+    .re-label { font-size:.78rem;color:#a78bfa; }
+    .re-time  { font-size:1.05rem;font-weight:900;color:#c4b5fd; }
+
+    /* Phone link */
+    .phone-link-big {
+      display:flex;align-items:center;gap:8px;background:var(--card2);
+      border:1px solid var(--border);border-radius:10px;padding:10px 14px;
+      color:#38bdf8;text-decoration:none;font-weight:700;font-size:.88rem;
+      transition:all .15s;
+    }
+    .phone-link-big:hover { border-color:#38bdf8; }
+
+    /* Cancel section */
+    .danger-card { border-color:#450a0a !important; }
+    .danger-head { color:#f87171 !important; }
+
+    @media(max-width:600px) {
+      .page-body { padding:10px;gap:10px; }
+      .top-bar { padding:8px 12px; }
+      .status-track { padding:10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ──────────────────────────────────────────────────────────── -->
+<div class="top-bar">
+  <a href="{{ url_for('order_dashboard.orders') }}" class="back-btn">
+    <i class="fas fa-arrow-right"></i> חזרה
+  </a>
+  <div class="top-meta">
+    <div class="top-order-num">{{ order.order_number }}</div>
+    <div class="top-order-time">{{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '' }}</div>
+  </div>
+  <div class="top-badges">
+    <span class="badge-pill bp-{{ order.order_type }}">{{ 'משלוח 🛵' if order.order_type == 'delivery' else 'איסוף 🛍' }}</span>
+    <span class="badge-pill bp-{{ order.payment_method }}">{{ 'מזומן' if order.payment_method == 'cash' else 'אשראי' }}</span>
+    <span class="badge-pill bp-{{ order.status }}">
+      {% set st_labels = {'pending':'ממתין','confirmed':'אושר','preparing':'בהכנה','ready':'מוכן','delivered':'נמסר','pickedup':'נאסף','cancelled':'בוטל'} %}
+      {{ st_labels.get(order.status, order.status) }}
+    </span>
+  </div>
+</div>
+
+<!-- ── Status progress track ────────────────────────────────────────────── -->
+{% set steps = [
+  ('pending',   'ממתין',   'fa-inbox'),
+  ('confirmed', 'אושר',    'fa-check'),
+  ('preparing', 'בהכנה',   'fa-fire'),
+  ('ready',     'מוכן',    'fa-bell'),
+  (('delivered' if order.order_type=='delivery' else 'pickedup'),
+   ('נמסר' if order.order_type=='delivery' else 'נאסף'), 'fa-flag'),
+] %}
+{% set step_order = ['pending','confirmed','preparing','ready','delivered','pickedup'] %}
+{% set current_idx = step_order.index(order.status) if order.status in step_order else 0 %}
+<div class="status-track">
+  {% for st_key, st_lbl, st_icon in steps %}
+  {% set st_idx = step_order.index(st_key) if st_key in step_order else 0 %}
+  <div class="st-step {% if st_idx < current_idx or order.status == st_key %}done{% elif st_idx == current_idx %}active{% endif %}">
+    <div class="st-dot">
+      {% if st_idx <= current_idx %}<i class="fas {{ st_icon }}" style="font-size:.65rem;"></i>
+      {% else %}{{ loop.index }}{% endif %}
+    </div>
+    <div class="st-label">{{ st_lbl }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Page body ─────────────────────────────────────────────────────────── -->
+<div class="page-body">
+
+  <!-- ════ LEFT COLUMN: Items + Timeline ════ -->
+  <div class="main-col">
+
+    <!-- Items -->
+    <div class="sec-card">
+      <div class="sec-head"><i class="fas fa-utensils"></i> פריטים שהוזמנו</div>
+      <div class="sec-body">
+        {% for item in items %}
+        <div class="item-card">
+          <div class="item-qty-badge">{{ item.get('qty', 1) }}×</div>
+          <div class="item-info">
+            <div class="item-name">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}</div>
+            {% if item.get('options') %}
+            <div style="font-size:.72rem;color:#9ca3af;margin-top:2px;">{{ item.get('options') | map(attribute='choice_name_he') | join(', ') }}</div>
+            {% endif %}
+            {% if item.get('notes') %}
+            <div class="item-note"><i class="fas fa-exclamation-circle me-1" style="font-size:.65rem;"></i>{{ item.get('notes') }}</div>
+            {% endif %}
+          </div>
+          <div class="item-price-col">
+            <div class="item-total-price">₪{{ (item.get('total') or item.get('qty',1) * item.get('unit_price', item.get('price',0))) | int }}</div>
+            <div class="item-unit-price">{{ item.get('qty',1) }} × ₪{{ item.get('unit_price', item.get('price',0)) | int }}</div>
+          </div>
+        </div>
+        {% endfor %}
+
+        <!-- Price summary -->
+        <div class="price-summary">
+          {% if order.delivery_fee and order.delivery_fee > 0 %}
+          <div class="price-row">
+            <span>סכום פריטים</span><span class="val">₪{{ order.subtotal | int }}</span>
+          </div>
+          <div class="price-row">
+            <span>דמי משלוח</span><span class="val">₪{{ order.delivery_fee | int }}</span>
+          </div>
+          {% endif %}
+          {% if order.discount_amount and order.discount_amount > 0 %}
+          <div class="price-row">
+            <span>הנחה</span><span class="val" style="color:#4ade80;">-₪{{ order.discount_amount | int }}</span>
+          </div>
+          {% endif %}
+          <div class="price-row total">
+            <span>סה"כ לתשלום</span>
+            <span class="val">₪{{ order.total_amount | int }}</span>
+          </div>
+        </div>
+
+        {% if order.customer_notes %}
+        <div style="margin-top:12px;padding:10px 12px;background:#1a0e00;border-radius:10px;
+             border:1px dashed #422006;font-size:.82rem;color:#fbbf24;">
+          <i class="fas fa-comment-dots me-1"></i>{{ order.customer_notes }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="sec-card">
+      <div class="sec-head"><i class="fas fa-history"></i> ציר זמן</div>
+      <div class="sec-body">
+        <div class="timeline">
+          {% set tl_events = [
+            ('נוצרה', order.created_at,   'fa-plus',     '#6366f1'),
+            ('אושרה', order.confirmed_at, 'fa-check',    '#10b981'),
+            ('בהכנה', order.preparing_at, 'fa-fire',     '#8b5cf6'),
+            ('מוכנה', order.ready_at,     'fa-bell',     '#06b6d4'),
+            ('הושלמה',order.completed_at, 'fa-flag',     '#10b981'),
+            ('בוטלה', order.cancelled_at, 'fa-times',    '#ef4444'),
+          ] %}
+          {% for lbl, ts, icon, color in tl_events %}
+          {% if ts %}
+          <div class="tl-item">
+            <div class="tl-icon" style="background:{{ color }};">
+              <i class="fas {{ icon }}" style="font-size:.65rem;"></i>
+            </div>
+            <div class="tl-content">
+              <div class="tl-label">{{ lbl }}</div>
+              <div class="tl-time">{{ ts.strftime('%H:%M · %d/%m/%Y') }}</div>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin notes -->
+    <div class="sec-card">
+      <div class="sec-head"><i class="fas fa-sticky-note"></i> הערות פנימיות</div>
+      <div class="sec-body">
+        {% if order.admin_notes %}
+        <div class="notes-pre">{{ order.admin_notes }}</div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('order_dashboard.add_note', order_id=order.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+          <textarea name="note" class="dark-ta mb-2" rows="2" placeholder="הוסיפו הערה פנימית..."></textarea>
+          <button type="submit" class="sec-btn sb-secondary">
+            <i class="fas fa-plus"></i> הוסף הערה
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ RIGHT SIDEBAR: Actions ════ -->
+  <div class="sidebar-col">
+
+    <!-- Next action panel -->
+    {% if order.status not in ('delivered', 'pickedup', 'cancelled') %}
+    <div class="action-panel">
+      <div class="action-panel-head">
+        <i class="fas fa-bolt" style="color:#fbbf24;"></i> פעולה הבאה
+      </div>
+      <div class="action-panel-body">
+        {% if order.estimated_ready_at %}
+        <div class="ready-estimate">
+          <div class="re-icon">⏱</div>
+          <div>
+            <div class="re-label">מוכן בשעה (משוער)</div>
+            <div class="re-time">{{ order.estimated_ready_at.strftime('%H:%M') }}</div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="sms-toggle-row">
+          <input type="checkbox" id="sms-toggle" checked>
+          <label for="sms-toggle">שלח SMS ללקוח בעת שינוי סטטוס</label>
+        </div>
+
+        {% if order.status == 'pending' %}
+        <button class="next-step-btn nsb-confirm" onclick="setStatus('confirmed', 1)">
+          <i class="fas fa-check-circle"></i> אשר הזמנה
+        </button>
+        {% elif order.status == 'confirmed' %}
+        <button class="next-step-btn nsb-prepare" onclick="setStatus('preparing', 0)">
+          <i class="fas fa-fire"></i> התחל בישול
+        </button>
+        {% elif order.status == 'preparing' %}
+        <button class="next-step-btn nsb-ready" onclick="setStatus('ready', 1)">
+          <i class="fas fa-bell"></i> מוכן למסירה
+        </button>
+        {% elif order.status == 'ready' %}
+        <button class="next-step-btn nsb-complete"
+          onclick="setStatus('{{ 'delivered' if order.order_type=='delivery' else 'pickedup' }}', 0)">
+          <i class="fas fa-flag-checkered"></i>
+          {{ 'נמסר ללקוח ✓' if order.order_type == 'delivery' else 'נאסף ✓' }}
+        </button>
+        {% endif %}
+
+        <!-- All statuses -->
+        <div style="font-size:.76rem;font-weight:700;color:var(--muted);margin-bottom:8px;">שנה סטטוס ידנית:</div>
+        <div class="status-grid">
+          {% for st, label in [('pending','ממתין'),('confirmed','אושר'),('preparing','בהכנה'),('ready','מוכן'),
+            ('delivered' if order.order_type=='delivery' else 'pickedup', 'נמסר' if order.order_type=='delivery' else 'נאסף'),
+            ('cancelled','בוטל')] %}
+          <button type="button"
+            class="status-option sp-{{ st }} {% if order.status == st %}cur{% endif %}"
+            onclick="setStatus('{{ st }}', {% if st in ('ready','confirmed') %}1{% else %}0{% endif %})">
+            {{ label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Customer info -->
+    <div class="action-panel">
+      <div class="action-panel-head"><i class="fas fa-user"></i> פרטי לקוח</div>
+      <div class="action-panel-body">
+        <a href="tel:{{ order.customer_phone }}" class="phone-link-big mb-3 d-block">
+          <i class="fas fa-phone"></i> {{ order.customer_phone }}
+        </a>
+        <div class="info-row">
+          <span class="info-lbl">שם</span>
+          <span class="info-val">{{ order.customer_name }}</span>
+        </div>
+        {% if order.customer_email %}
+        <div class="info-row">
+          <span class="info-lbl">אימייל</span>
+          <span class="info-val" style="font-size:.8rem;">{{ order.customer_email }}</span>
+        </div>
+        {% endif %}
+        {% if order.order_type == 'delivery' %}
+        <div class="info-row">
+          <span class="info-lbl">עיר</span>
+          <span class="info-val">{{ order.delivery_city or '—' }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-lbl">כתובת</span>
+          <span class="info-val" style="font-size:.8rem;">{{ order.delivery_address or '—' }}</span>
+        </div>
+        {% if order.delivery_notes %}
+        <div class="info-row">
+          <span class="info-lbl">הערות</span>
+          <span class="info-val" style="font-size:.8rem;">{{ order.delivery_notes }}</span>
+        </div>
+        {% endif %}
+        {% endif %}
+        {% if order.pickup_time %}
+        <div class="info-row">
+          <span class="info-lbl">מועד איסוף</span>
+          <span class="info-val">{{ order.pickup_time }}</span>
+        </div>
+        {% endif %}
+        {% if order.tracking_token %}
+        <div style="margin-top:10px;">
+          <a href="{{ url_for('order_page.order_track', token=order.tracking_token, _external=True) }}"
+             target="_blank"
+             style="font-size:.74rem;color:#818cf8;text-decoration:none;display:flex;align-items:center;gap:4px;
+                    background:#1e1b4b;padding:7px 10px;border-radius:8px;border:1px solid #312e81;">
+            <i class="fas fa-external-link-alt"></i> קישור מעקב ללקוח
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Send SMS -->
+    <div class="action-panel">
+      <div class="action-panel-head"><i class="fas fa-sms"></i> שלח SMS ללקוח</div>
+      <div class="action-panel-body">
+        <form method="POST" action="{{ url_for('order_dashboard.send_sms_route', order_id=order.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+          <textarea name="message" class="dark-ta mb-2" rows="2"
+            placeholder="כתבו הודעה... למשל: הזמנתך בדרך!"></textarea>
+          <button type="submit" class="sec-btn sb-primary">
+            <i class="fas fa-paper-plane"></i> שלח הודעה
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Cancel -->
+    {% if order.status not in ('cancelled', 'delivered', 'pickedup') %}
+    <div class="action-panel danger-card">
+      <div class="action-panel-head danger-head"><i class="fas fa-ban"></i> ביטול הזמנה</div>
+      <div class="action-panel-body">
+        <form method="POST" action="{{ url_for('order_dashboard.cancel_order', order_id=order.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+          <textarea name="reason" class="dark-ta mb-2" rows="2" placeholder="סיבת ביטול (אופציונלי)"></textarea>
+          <button type="submit" class="sec-btn sb-danger"
+            onclick="return confirm('לבטל את ההזמנה?')">
+            <i class="fas fa-times"></i> בטל הזמנה
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div><!-- /sidebar -->
+</div><!-- /page-body -->
+
+<script>
+function setStatus(status, sendSmsDefault) {
+  const shouldSend = (document.getElementById('sms-toggle')?.checked || sendSmsDefault) ? '1' : '0';
+  const fd = new FormData();
+  fd.append('status', status);
+  fd.append('send_sms', shouldSend);
+  fetch('{{ url_for("order_dashboard.update_status", order_id=order.id) }}', { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); });
+}
+</script>
+</body>
+</html>

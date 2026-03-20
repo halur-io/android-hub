@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>סטטיסטיקה — לוח הזמנות</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#0f172a;--card:#1e293b;--card2:#243044;--border:#334155;--primary:#6366f1;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--text:#f8fafc;--muted:#94a3b8;}
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;min-height:100vh;}
+    .top-bar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;}
+    .back-btn,.nav-btn{background:var(--card2);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:8px 14px;font-size:.85rem;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;font-family:'Heebo',sans-serif;cursor:pointer;}
+    .back-btn:hover,.nav-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .top-nav{display:flex;gap:6px;margin-right:auto;}
+    .content{padding:14px;display:flex;flex-direction:column;gap:14px;padding-bottom:30px;}
+    .section-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+    .sec-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;}
+    .sec-header i{color:var(--primary);}
+    .sec-body{padding:14px 16px;}
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .kpi-card{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:16px 14px;text-align:center;}
+    .kpi-val{font-size:1.8rem;font-weight:800;}
+    .kpi-label{font-size:.75rem;color:var(--muted);margin-top:4px;}
+    .kpi-card.primary .kpi-val{color:var(--primary);}
+    .kpi-card.success .kpi-val{color:var(--success);}
+    .kpi-card.warning .kpi-val{color:var(--warning);}
+    .kpi-card.info .kpi-val{color:#38bdf8;}
+    .chart-wrap{position:relative;height:200px;margin-top:4px;}
+    .item-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1e293b;}
+    .item-row:last-child{border-bottom:none;}
+    .item-rank{width:24px;height:24px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--muted);flex-shrink:0;}
+    .item-rank.gold{background:#422006;color:#fbbf24;}
+    .item-rank.silver{background:#1e293b;color:#94a3b8;}
+    .item-rank.bronze{background:#2d1805;color:#cd7c3f;}
+    .item-name{flex:1;font-size:.88rem;font-weight:600;}
+    .item-count{font-size:.82rem;color:var(--muted);font-weight:700;}
+    .split-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .split-card{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+    .split-val{font-size:1.4rem;font-weight:800;}
+    .split-label{font-size:.75rem;color:var(--muted);margin-top:4px;}
+    .bar-fill{height:8px;border-radius:4px;margin-top:8px;}
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="{{ url_for('order_dashboard.orders') }}" class="back-btn"><i class="fas fa-arrow-right"></i> הזמנות</a>
+  <span style="font-size:1rem;font-weight:800;">סטטיסטיקה</span>
+  <div class="top-nav">
+    <a href="{{ url_for('order_dashboard.settings_page') }}" class="nav-btn"><i class="fas fa-cog"></i></a>
+    <a href="{{ url_for('order_dashboard.logout') }}" class="nav-btn" style="border-color:#ef4444;color:#ef4444;"><i class="fas fa-sign-out-alt"></i></a>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- 30-day KPIs -->
+  <div class="section-card">
+    <div class="sec-header"><i class="fas fa-calendar-alt"></i> 30 יום אחרונים</div>
+    <div class="sec-body">
+      <div class="kpi-grid">
+        <div class="kpi-card success">
+          <div class="kpi-val">₪{{ month_revenue | int }}</div>
+          <div class="kpi-label">הכנסה כוללת</div>
+        </div>
+        <div class="kpi-card primary">
+          <div class="kpi-val">{{ month_count }}</div>
+          <div class="kpi-label">הזמנות שהושלמו</div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-val">₪{{ avg_order | int }}</div>
+          <div class="kpi-label">ממוצע להזמנה</div>
+        </div>
+        <div class="kpi-card info">
+          <div class="kpi-val">{{ (month_revenue / 30) | int }}</div>
+          <div class="kpi-label">ממוצע יומי ₪</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7-day chart -->
+  <div class="section-card">
+    <div class="sec-header"><i class="fas fa-chart-line"></i> הזמנות — 7 ימים אחרונים</div>
+    <div class="sec-body">
+      <div class="chart-wrap">
+        <canvas id="orders-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue chart -->
+  <div class="section-card">
+    <div class="sec-header"><i class="fas fa-shekel-sign"></i> הכנסות — 7 ימים אחרונים</div>
+    <div class="sec-body">
+      <div class="chart-wrap">
+        <canvas id="revenue-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's splits -->
+  <div class="section-card">
+    <div class="sec-header"><i class="fas fa-chart-pie"></i> חלוקה להיום</div>
+    <div class="sec-body">
+      <div style="font-size:.8rem;color:#94a3b8;margin-bottom:10px;">סוג הזמנה</div>
+      <div class="split-grid mb-3">
+        <div class="split-card">
+          <div class="split-val" style="color:#818cf8;">{{ delivery_count }}</div>
+          <div class="split-label"><i class="fas fa-motorcycle me-1"></i>משלוח</div>
+          {% set total_type = delivery_count + pickup_count %}
+          {% if total_type > 0 %}
+          <div class="bar-fill" style="background:linear-gradient(90deg,#6366f1 {{ (delivery_count/total_type*100)|int }}%, #334155 {{ (delivery_count/total_type*100)|int }}%)"></div>
+          {% endif %}
+        </div>
+        <div class="split-card">
+          <div class="split-val" style="color:#4ade80;">{{ pickup_count }}</div>
+          <div class="split-label"><i class="fas fa-shopping-bag me-1"></i>איסוף</div>
+          {% if total_type > 0 %}
+          <div class="bar-fill" style="background:linear-gradient(90deg,#10b981 {{ (pickup_count/total_type*100)|int }}%, #334155 {{ (pickup_count/total_type*100)|int }}%)"></div>
+          {% endif %}
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:#94a3b8;margin-bottom:10px;">אמצעי תשלום</div>
+      <div class="split-grid">
+        <div class="split-card">
+          <div class="split-val" style="color:#fbbf24;">{{ cash_count }}</div>
+          <div class="split-label"><i class="fas fa-money-bill me-1"></i>מזומן</div>
+        </div>
+        <div class="split-card">
+          <div class="split-val" style="color:#38bdf8;">{{ card_count }}</div>
+          <div class="split-label"><i class="fas fa-credit-card me-1"></i>אשראי</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top items -->
+  {% if top_items %}
+  <div class="section-card">
+    <div class="sec-header"><i class="fas fa-fire"></i> פריטים הכי פופולריים (30 יום)</div>
+    <div class="sec-body">
+      {% for name, count in top_items %}
+      <div class="item-row">
+        <div class="item-rank {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
+          {{ loop.index }}
+        </div>
+        <div class="item-name">{{ name }}</div>
+        <div class="item-count">{{ count }} פריטים</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+const days = {{ days_data | tojson }};
+const labels = days.map(d => d.date);
+const counts = days.map(d => d.count);
+const revenues = days.map(d => d.revenue);
+
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = '#334155';
+
+new Chart(document.getElementById('orders-chart'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{
+      label: 'הזמנות',
+      data: counts,
+      backgroundColor: 'rgba(99,102,241,0.7)',
+      borderColor: '#6366f1',
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { stepSize: 1 } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+new Chart(document.getElementById('revenue-chart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: '₪ הכנסות',
+      data: revenues,
+      backgroundColor: 'rgba(16,185,129,0.15)',
+      borderColor: '#10b981',
+      borderWidth: 2,
+      pointBackgroundColor: '#10b981',
+      fill: true,
+      tension: 0.4,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, grid: { color: '#1e293b' } },
+      x: { grid: { display: false } }
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -1256,7 +1256,9 @@ function renderCart() {
   if (deskEmpty) deskEmpty.style.display = ids.length ? 'none' : '';
   if (deskTotals) deskTotals.style.display = ids.length ? '' : 'none';
   if (deskCta) deskCta.style.display = ids.length ? '' : 'none';
-  document.getElementById('cart-count-desk').textContent = count;
+  var el;
+  el = document.getElementById('cart-count-desk');
+  if (el) el.textContent = count;
   if (deskItems) {
     deskItems.innerHTML = ids.map(id => {
       const it = cart[id];
@@ -1275,20 +1277,26 @@ function renderCart() {
         </div></div>`;
     }).join('');
   }
-  document.getElementById('desk-sub').textContent = sub.toFixed(0);
-  document.getElementById('desk-total').textContent = sub.toFixed(0);
-  document.getElementById('desk-btn-total').textContent = sub.toFixed(0);
+  el = document.getElementById('desk-sub');
+  if (el) el.textContent = sub.toFixed(0);
+  el = document.getElementById('desk-total');
+  if (el) el.textContent = sub.toFixed(0);
+  el = document.getElementById('desk-btn-total');
+  if (el) el.textContent = sub.toFixed(0);
   const deskFeeRow = document.getElementById('desk-fee-row');
-  if (deskFeeRow) deskFeeRow.style.display = 'none'; // fee shown only at checkout
+  if (deskFeeRow) deskFeeRow.style.display = 'none';
 
   // Floating cart FAB (mobile) — show count + subtotal
   const fab = document.getElementById('cart-fab');
-  fab.style.display = ids.length ? '' : 'none';
-  document.getElementById('cart-fab-count').textContent = count;
-  document.getElementById('sticky-total').textContent = sub.toFixed(0);
+  if (fab) fab.style.display = ids.length ? '' : 'none';
+  el = document.getElementById('cart-fab-count');
+  if (el) el.textContent = count;
+  el = document.getElementById('sticky-total');
+  if (el) el.textContent = sub.toFixed(0);
 
   // Keep cart JSON in sync for form submission
-  document.getElementById('hidden-cart-json').value = JSON.stringify(Object.values(cart));
+  el = document.getElementById('hidden-cart-json');
+  if (el) el.value = JSON.stringify(Object.values(cart));
 
   // Update add buttons on menu page to reflect cart state
   updateAddBtns();

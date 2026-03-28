@@ -16,53 +16,41 @@ logger = logging.getLogger(__name__)
 
 class MaxPayService:
 
-    def __init__(self):
-        self.api_url = None
-        self.api_key = None
-        self.merchant_id = None
-        self._credentials_source = None
-
-    def _load_credentials(self, branch=None, settings=None):
-        self.api_url = None
-        self.api_key = None
-        self.merchant_id = None
-        self._credentials_source = None
+    @staticmethod
+    def _resolve_credentials(branch=None, settings=None):
+        api_url = None
+        api_key = None
+        merchant_id = None
 
         if branch:
-            self.api_url = getattr(branch, 'max_api_url', None) or None
-            self.api_key = getattr(branch, 'max_api_key', None) or None
-            self.merchant_id = getattr(branch, 'max_merchant_id', None) or None
-            if self.api_key and self.merchant_id:
-                self._credentials_source = 'branch'
-                if not self.api_url:
-                    self.api_url = os.environ.get('MAX_API_URL', 'https://api.maxpay.co.il/v1/payments')
-                return
+            api_url = getattr(branch, 'max_api_url', None) or None
+            api_key = getattr(branch, 'max_api_key', None) or None
+            merchant_id = getattr(branch, 'max_merchant_id', None) or None
+            if api_key and merchant_id:
+                if not api_url:
+                    api_url = os.environ.get('MAX_API_URL', 'https://api.maxpay.co.il/v1/payments')
+                return api_url, api_key, merchant_id
 
         if settings:
-            self.api_url = getattr(settings, 'max_api_url', None) or None
-            self.api_key = getattr(settings, 'max_api_key', None) or None
-            self.merchant_id = getattr(settings, 'max_merchant_id', None) or None
-            if self.api_key and self.merchant_id:
-                self._credentials_source = 'settings'
-                if not self.api_url:
-                    self.api_url = os.environ.get('MAX_API_URL', 'https://api.maxpay.co.il/v1/payments')
-                return
+            api_url = getattr(settings, 'max_api_url', None) or None
+            api_key = getattr(settings, 'max_api_key', None) or None
+            merchant_id = getattr(settings, 'max_merchant_id', None) or None
+            if api_key and merchant_id:
+                if not api_url:
+                    api_url = os.environ.get('MAX_API_URL', 'https://api.maxpay.co.il/v1/payments')
+                return api_url, api_key, merchant_id
 
-        self.api_url = os.environ.get('MAX_API_URL', 'https://api.maxpay.co.il/v1/payments')
-        self.api_key = os.environ.get('MAX_API_KEY', '').strip() or None
-        self.merchant_id = os.environ.get('MAX_MERCHANT_ID', '').strip() or None
-        if self.api_key and self.merchant_id:
-            self._credentials_source = 'env'
+        api_url = os.environ.get('MAX_API_URL', 'https://api.maxpay.co.il/v1/payments')
+        api_key = os.environ.get('MAX_API_KEY', '').strip() or None
+        merchant_id = os.environ.get('MAX_MERCHANT_ID', '').strip() or None
+        return api_url, api_key, merchant_id
+
+    def _load_credentials(self, branch=None, settings=None):
+        self._api_url, self._api_key, self._merchant_id = self._resolve_credentials(branch, settings)
 
     @property
     def is_configured(self) -> bool:
-        return bool(self.api_url and self.api_key and self.merchant_id)
-
-    def _get_headers(self) -> Dict[str, str]:
-        return {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json',
-        }
+        return bool(getattr(self, '_api_url', None) and getattr(self, '_api_key', None) and getattr(self, '_merchant_id', None))
 
     def create_payment(
         self,
@@ -74,8 +62,11 @@ class MaxPayService:
         customer_email: Optional[str] = None,
         customer_phone: Optional[str] = None,
         description: Optional[str] = None,
+        branch=None,
+        settings=None,
     ) -> Dict[str, Any]:
-        if not self.is_configured:
+        api_url, api_key, merchant_id = self._resolve_credentials(branch, settings)
+        if not (api_url and api_key and merchant_id):
             logger.error("MAX Pay not configured - missing credentials")
             return {'error': True, 'message': 'MAX Pay not configured'}
 
@@ -85,8 +76,12 @@ class MaxPayService:
         if not amount or amount <= 0:
             return {'error': True, 'message': 'Invalid amount'}
 
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+        }
         payload = {
-            'merchantId': self.merchant_id,
+            'merchantId': merchant_id,
             'amount': round(float(amount), 2),
             'currency': 'ILS',
             'orderId': order_id,
@@ -105,9 +100,9 @@ class MaxPayService:
         try:
             logger.info(f"MAX Pay: creating payment for order {order_id}, {amount} ILS")
             response = requests.post(
-                self.api_url,
+                api_url,
                 json=payload,
-                headers=self._get_headers(),
+                headers=headers,
                 timeout=30,
             )
 
@@ -143,14 +138,19 @@ class MaxPayService:
             logger.error(f"MAX Pay unexpected error: {e}")
             return {'error': True, 'message': f'Unexpected error: {e}'}
 
-    def verify_payment(self, transaction_id: str) -> Optional[Dict[str, Any]]:
-        if not self.is_configured:
+    def verify_payment(self, transaction_id: str, branch=None, settings=None) -> Optional[Dict[str, Any]]:
+        api_url, api_key, merchant_id = self._resolve_credentials(branch, settings)
+        if not (api_url and api_key):
             return None
         try:
-            verify_url = f"{self.api_url}/{transaction_id}"
+            verify_url = f"{api_url}/{transaction_id}"
+            headers = {
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            }
             response = requests.get(
                 verify_url,
-                headers=self._get_headers(),
+                headers=headers,
                 timeout=30,
             )
             if response.status_code == 200:

@@ -417,21 +417,24 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         branch_provider = getattr(selected_branch, 'payment_provider', 'hyp') if selected_branch else 'hyp'
         if selected_branch and getattr(selected_branch, 'has_payment_config', False):
             if branch_provider == 'max' and max_payment:
-                max_payment._load_credentials(branch=selected_branch, settings=settings)
-                card_available = max_payment.is_configured
+                _u, _k, _m = max_payment._resolve_credentials(branch=selected_branch, settings=settings)
+                card_available = bool(_u and _k and _m)
             elif branch_provider == 'hyp' and hyp_payment:
-                hyp_payment._load_credentials(settings, branch=selected_branch)
-                card_available = hyp_payment.is_configured
+                from standalone_order_service.hyp_payment import HYPPayment
+                _hyp_check = HYPPayment(settings)
+                _hyp_check._load_credentials(settings, branch=selected_branch)
+                card_available = _hyp_check.is_configured
         elif hyp_enabled and hyp_payment:
             try:
-                hyp_payment._load_credentials(settings)
-                card_available = hyp_payment.is_configured
+                from standalone_order_service.hyp_payment import HYPPayment
+                _hyp_check = HYPPayment(settings)
+                card_available = _hyp_check.is_configured
             except Exception:
                 card_available = False
         if not card_available and max_payment:
             try:
-                max_payment._load_credentials(settings=settings)
-                if max_payment.is_configured:
+                _u, _k, _m = max_payment._resolve_credentials(settings=settings)
+                if _u and _k and _m:
                     card_available = True
             except Exception:
                 pass
@@ -942,7 +945,6 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
             if use_max and max_payment:
                 try:
-                    max_payment._load_credentials(branch=selected_branch, settings=settings)
                     result = max_payment.create_payment(
                         order_id=order.order_number,
                         amount=order.total_amount,
@@ -952,6 +954,8 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         customer_email=customer_email,
                         customer_phone=customer_phone,
                         description=f'הזמנה {order.order_number}',
+                        branch=selected_branch,
+                        settings=settings,
                     )
                     if not result.get('error') and result.get('payment_url'):
                         order.hyp_order_ref = order.order_number
@@ -967,7 +971,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
             if hyp_payment:
                 try:
-                    hyp_payment._load_credentials(settings, branch=selected_branch)
+                    from standalone_order_service.hyp_payment import HYPPayment
+                    hyp_local = HYPPayment(settings)
+                    hyp_local._load_credentials(settings, branch=selected_branch)
                     hesh_items = []
                     for oi_item in order.items:
                         name = oi_item.item_name_he or oi_item.item_name_en or 'פריט'
@@ -978,7 +984,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                     if hesh_items:
                         extra_params['heshDesc'] = ''.join(hesh_items)
                         extra_params['Pritim'] = 'True'
-                    payment_url = hyp_payment.create_payment_url(
+                    payment_url = hyp_local.create_payment_url(
                         amount=order.total_amount,
                         order_id=order.order_number,
                         description=f'הזמנה {order.order_number}',
@@ -1116,25 +1122,25 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                     tid = request.args.get('transactionId') or request.args.get('transaction_id') or request.args.get('Id')
                     if tid:
                         branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
-                        max_payment._load_credentials(branch=branch_obj, settings=settings)
-                        verification = max_payment.verify_payment(tid)
+                        verification = max_payment.verify_payment(tid, branch=branch_obj, settings=settings)
                         if verification and verification.get('status') in ('completed', 'approved', 'success', 'paid'):
                             _confirm_paid_order(order, settings, transaction_id=tid)
                             return redirect(url_for('order_page.order_confirmation', order_number=order_number))
-                        elif verification is None:
-                            _confirm_paid_order(order, settings, transaction_id=tid)
-                            return redirect(url_for('order_page.order_confirmation', order_number=order_number))
                         else:
+                            logging.warning(f"MAX Pay verification failed for #{order_number}, tid={tid}, result={verification}")
                             _fail_payment(order)
                             return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
                     else:
+                        logging.warning(f"MAX Pay callback missing transaction ID for #{order_number}")
                         _fail_payment(order)
                         return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
 
                 if hyp_payment:
+                    from standalone_order_service.hyp_payment import HYPPayment
                     branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
-                    hyp_payment._load_credentials(settings, branch=branch_obj)
-                    verification = hyp_payment.verify_payment_response(
+                    hyp_local = HYPPayment(settings)
+                    hyp_local._load_credentials(settings, branch=branch_obj)
+                    verification = hyp_local.verify_payment_response(
                         dict(request.args),
                         expected_order_id=order.hyp_order_ref or order.order_number,
                         expected_amount=order.total_amount,

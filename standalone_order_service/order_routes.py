@@ -109,7 +109,8 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         ).first()
         if override is not None:
             return override.is_available
-        return True
+        item = MenuItem.query.get(item_id)
+        return item.is_available if item else False
 
     @bp.route('/select-branch', methods=['POST'])
     def select_branch():
@@ -242,7 +243,13 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
                 item._order_available = True
                 item._unavailable_reason = None
-                if not item.is_available:
+                branch_override = None
+                if sel_branch_id:
+                    branch_override = BranchMenuItem.query.filter_by(
+                        branch_id=sel_branch_id, menu_item_id=item.id
+                    ).first()
+                effective_available = branch_override.is_available if branch_override else item.is_available
+                if not effective_available:
                     item._order_available = False
                     item._unavailable_reason = 'לא זמין כרגע'
                 elif item.available_days and item.available_days != '1111111' and len(item.available_days) == 7:
@@ -584,9 +591,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             oi.item_name_en = item.get('name_en', '')
             oi.quantity = int(item.get('qty', 1))
             db_item = MenuItem.query.get(int(menu_item_id)) if menu_item_id else None
-            if db_item and not db_item.is_available:
-                continue
-            if db_item and sel_branch_id and not _is_item_available_for_branch(db_item.id, sel_branch_id):
+            if db_item and sel_branch_id:
+                if not _is_item_available_for_branch(db_item.id, sel_branch_id):
+                    continue
+            elif db_item and not db_item.is_available:
                 continue
             if db_item and getattr(db_item, 'available_days', None) and len(db_item.available_days) == 7:
                 today_idx = (datetime.now().weekday() + 1) % 7

@@ -925,6 +925,19 @@ function addUpsellItem(btn) {
     upsell_rule_id: s.rule_id
   });
   SUBTOTAL += s.price;
+  var idx = checkoutCart.length - 1;
+  var summaryItems = document.getElementById('summary-items');
+  var row = document.createElement('div');
+  row.className = 'summary-item';
+  row.id = 'cart-row-' + idx;
+  row.innerHTML = '<div class="item-info"><span class="item-name">' + s.name_he + ' <span class="badge bg-success" style="font-size:0.65rem">אפסל</span></span>' +
+    '<div class="item-controls"><button type="button" class="qty-btn" onclick="changeCartQty(' + idx + ', -1)">−</button>' +
+    '<span id="cart-qty-' + idx + '">1</span>' +
+    '<button type="button" class="qty-btn" onclick="changeCartQty(' + idx + ', 1)">+</button></div></div>' +
+    '<span class="item-price" id="cart-price-' + idx + '">₪' + Math.round(s.price) + '</span>';
+  summaryItems.appendChild(row);
+  document.querySelector('.summary-header span:last-child').textContent = '₪' + Math.round(SUBTOTAL);
+  document.querySelector('.item-count-pill').textContent = checkoutCart.length;
   document.querySelector('#cart_json, [name="cart_json"]').value = JSON.stringify(checkoutCart);
   resetCoupon();
   btn.closest('.upsell-item').remove();

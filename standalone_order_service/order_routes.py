@@ -491,11 +491,16 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         cart_category_ids = set()
         for ci in cart_items:
             ci_id = ci.get('id')
-            if ci_id:
-                cart_item_ids.add(int(ci_id))
-                mi = MenuItem.query.get(int(ci_id))
-                if mi and mi.category_id:
-                    cart_category_ids.add(mi.category_id)
+            if not ci_id or ci.get('is_deal'):
+                continue
+            try:
+                numeric_id = int(ci_id)
+            except (ValueError, TypeError):
+                continue
+            cart_item_ids.add(numeric_id)
+            mi = MenuItem.query.get(numeric_id)
+            if mi and mi.category_id:
+                cart_category_ids.add(mi.category_id)
         rules = UpsellRule.query.filter_by(is_active=True).order_by(UpsellRule.display_order).all()
         suggestions = []
         seen_items = set()
@@ -747,7 +752,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 included_names = []
                 for inc in included:
                     inc_id = inc.get('item_id') or inc.get('id')
-                    inc_qty = inc.get('quantity', 1)
+                    inc_qty = inc.get('qty') or inc.get('quantity') or 1
                     if inc_id:
                         inc_item = MenuItem.query.get(int(inc_id))
                         if inc_item:

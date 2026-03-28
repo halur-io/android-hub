@@ -444,7 +444,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return jsonify({'valid': False, 'error': 'קופונים לא מופעלים'})
         data = request.get_json(silent=True) or {}
         code = (data.get('code') or '').strip().upper()
-        subtotal = float(data.get('subtotal', 0))
+        try:
+            subtotal = float(data.get('subtotal', 0))
+        except (ValueError, TypeError):
+            subtotal = 0.0
         email = (data.get('email') or '').strip().lower()
         if not code:
             return jsonify({'valid': False, 'error': 'נא להזין קוד קופון'})
@@ -618,14 +621,20 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 qty = max(1, min(99, int(ci.get('qty', 1))))
                 ci['qty'] = qty
                 ci['price'] = float(deal_obj.deal_price)
+                ci['deal_id'] = deal_obj.id
+                ci['included_items'] = deal_obj.included_items or []
                 verified_subtotal_cart += deal_obj.deal_price * qty
                 valid_cart.append(ci)
                 continue
             if ci.get('upsell') and UpsellRule:
                 rule_id = ci.get('upsell_rule_id')
                 if rule_id:
-                    rule = UpsellRule.query.get(int(rule_id))
-                    if rule and rule.is_active and rule.discounted_price is not None:
+                    try:
+                        rule = UpsellRule.query.get(int(rule_id))
+                    except (ValueError, TypeError):
+                        rule = None
+                    if (rule and rule.is_active and rule.discounted_price is not None
+                            and rule.suggested_item_id == int(ci_id)):
                         try:
                             db_ci = MenuItem.query.get(int(ci_id))
                         except (ValueError, TypeError):
@@ -734,7 +743,16 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 oi.unit_price = float(item.get('price', 0))
                 oi.total_price = oi.quantity * oi.unit_price
                 oi.special_instructions = item.get('notes', '')
-                oi.options_json = json.dumps({'is_deal': True, 'deal_id': item.get('deal_id')}, ensure_ascii=False)
+                included = item.get('included_items', [])
+                included_names = []
+                for inc in included:
+                    inc_id = inc.get('item_id') or inc.get('id')
+                    inc_qty = inc.get('quantity', 1)
+                    if inc_id:
+                        inc_item = MenuItem.query.get(int(inc_id))
+                        if inc_item:
+                            included_names.append({'id': inc_item.id, 'name_he': inc_item.name_he, 'name_en': inc_item.name_en or '', 'qty': inc_qty})
+                oi.options_json = json.dumps({'is_deal': True, 'deal_id': item.get('deal_id'), 'included_items': included_names}, ensure_ascii=False)
                 verified_subtotal += oi.total_price
                 db.session.add(oi)
                 continue

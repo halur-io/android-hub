@@ -1115,12 +1115,25 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 if getattr(order, 'payment_provider', None) == 'max' and max_payment:
                     tid = request.args.get('transactionId') or request.args.get('transaction_id') or request.args.get('Id')
                     if tid:
-                        _confirm_paid_order(order, settings, transaction_id=tid)
+                        branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
+                        max_payment._load_credentials(branch=branch_obj, settings=settings)
+                        verification = max_payment.verify_payment(tid)
+                        if verification and verification.get('status') in ('completed', 'approved', 'success', 'paid'):
+                            _confirm_paid_order(order, settings, transaction_id=tid)
+                            return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+                        elif verification is None:
+                            _confirm_paid_order(order, settings, transaction_id=tid)
+                            return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+                        else:
+                            _fail_payment(order)
+                            return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
                     else:
-                        _confirm_paid_order(order, settings)
-                    return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+                        _fail_payment(order)
+                        return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
 
                 if hyp_payment:
+                    branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
+                    hyp_payment._load_credentials(settings, branch=branch_obj)
                     verification = hyp_payment.verify_payment_response(
                         dict(request.args),
                         expected_order_id=order.hyp_order_ref or order.order_number,

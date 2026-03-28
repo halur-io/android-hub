@@ -238,6 +238,7 @@
                    data-description-he="{{ (item.description_he or '') | e }}"
                    data-description-en="{{ (item.description_en or '') | e }}"
                    data-ingredients-he="{{ (item.ingredients_he or '') | e }}"
+                   data-ingredients-en="{{ (item.ingredients_en or '') | e }}"
                    data-image="{{ url_for('order_page.menu_image', item_id=item.id) if item.image_data else (item.image_path or '') }}"
                    data-available="{{ '1' if item._order_available else '0' }}"
                    data-is-combo="{{ '1' if item.is_combo else '0' }}"
@@ -992,7 +993,7 @@ function openItemModal(card) {
 
   const name  = IS_HE ? card.dataset.nameHe  : (card.dataset.nameEn  || card.dataset.nameHe);
   const desc  = IS_HE ? card.dataset.descriptionHe : (card.dataset.descriptionEn || card.dataset.descriptionHe);
-  const ingredients = card.dataset.ingredientsHe || '';
+  const ingredients = IS_HE ? (card.dataset.ingredientsHe || '') : (card.dataset.ingredientsEn || card.dataset.ingredientsHe || '');
   const image = card.dataset.image || '';
 
   document.getElementById('item-sheet-name').textContent = name;

@@ -17,6 +17,14 @@ def _run_safe_migrations(db):
     migrations = [
         ("food_orders", "coupon_code", "ALTER TABLE food_orders ADD COLUMN coupon_code VARCHAR(50)"),
         ("food_orders", "coupon_discount", "ALTER TABLE food_orders ADD COLUMN coupon_discount FLOAT DEFAULT 0"),
+        ("food_orders", "payment_provider", "ALTER TABLE food_orders ADD COLUMN payment_provider VARCHAR(20)"),
+        ("branches", "payment_provider", "ALTER TABLE branches ADD COLUMN payment_provider VARCHAR(20) DEFAULT 'hyp'"),
+        ("branches", "hyp_terminal", "ALTER TABLE branches ADD COLUMN hyp_terminal VARCHAR(100)"),
+        ("branches", "hyp_api_key", "ALTER TABLE branches ADD COLUMN hyp_api_key VARCHAR(255)"),
+        ("branches", "hyp_passp", "ALTER TABLE branches ADD COLUMN hyp_passp VARCHAR(255)"),
+        ("branches", "max_api_url", "ALTER TABLE branches ADD COLUMN max_api_url VARCHAR(500)"),
+        ("branches", "max_api_key", "ALTER TABLE branches ADD COLUMN max_api_key VARCHAR(255)"),
+        ("branches", "max_merchant_id", "ALTER TABLE branches ADD COLUMN max_merchant_id VARCHAR(100)"),
     ]
     for table, column, sql in migrations:
         try:

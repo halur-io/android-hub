@@ -88,7 +88,7 @@ Integrated from standalone_order_service package. Provides public ordering page 
 - Order tracking
 - KDS real-time order management with branch filtering
 - Multi-branch support (branch-specific menus, pricing, delivery zones)
-- SMS notifications (Twilio or SMS4Free)
+- SMS notifications (SMS4Free)
 - Telegram notifications
 
 **Configuration (Admin → Site Settings):**

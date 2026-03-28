@@ -1034,8 +1034,18 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         order.payment_status = 'paid'
                         order.hyp_transaction_id = verification.get('transaction_id') or request.args.get('Id')
                         if order.status == 'pending':
+                            old_status = order.status
                             order.status = 'confirmed'
                             order.confirmed_at = datetime.utcnow()
+                            if OrderActivityLog:
+                                log = OrderActivityLog(
+                                    order_id=order.id,
+                                    action='status_change',
+                                    old_value=old_status,
+                                    new_value='confirmed',
+                                    note='תשלום אושר - סטטוס עודכן אוטומטית',
+                                )
+                                db.session.add(log)
                         db.session.commit()
                         if notifier:
                             try:
@@ -1049,6 +1059,13 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         return redirect(url_for('order_page.order_confirmation', order_number=order_number))
                     else:
                         order.payment_status = 'failed'
+                        if OrderActivityLog:
+                            log = OrderActivityLog(
+                                order_id=order.id,
+                                action='payment_failed',
+                                note='תשלום נכשל',
+                            )
+                            db.session.add(log)
                         db.session.commit()
                         return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
         return redirect(url_for('order_page.order_page'))

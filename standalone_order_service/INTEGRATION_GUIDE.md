@@ -30,7 +30,6 @@ pytz==2025.1
 
 ```
 Flask-WTF==1.2.2        # CSRF protection (recommended)
-twilio==9.6.1           # For Twilio SMS
 gunicorn==23.0.0        # Production WSGI server
 psycopg2-binary==2.9.10 # PostgreSQL driver
 ```
@@ -141,88 +140,36 @@ with app.app_context():
 
 ### 3. Set Up SMS (Using Built-in Helpers)
 
-The package includes ready-to-use SMS sender factories for Twilio and SMS4Free:
+The package uses SMS4Free as the SMS provider:
 
 ```python
 from standalone_order_service.sms_helpers import (
-    create_twilio_sender,
     create_sms4free_sender,
-    create_failover_sender,
-    create_sender_from_env,  # auto-detect from env vars
+    create_sender_from_env,
 )
 
 # Option A: Auto-detect from environment variables
 send_sms = create_sender_from_env()
 
-# Option B: Explicit Twilio setup
-send_sms = create_twilio_sender(
-    account_sid='ACxxxxxxxxx',
-    auth_token='xxxxxxxxx',
-    from_number='+972500000000',
-)
-
-# Option C: SMS4Free
+# Option B: Explicit SMS4Free setup
 send_sms = create_sms4free_sender(
     api_key='xxxx',
     user='xxxx',
     password='xxxx',
     sender_name='Restaurant',
 )
-
-# Option D: Twilio primary, SMS4Free failover
-twilio_fn = create_twilio_sender(...)
-sms4free_fn = create_sms4free_sender(...)
-send_sms = create_failover_sender(twilio_fn, sms4free_fn)
 ```
 
-### SMS Routing Configuration
+**Environment variables for SMS4Free:**
 
-The package includes a standalone SMS routing module that replaces the parent project's database-backed `sms_encryption` routing:
+| Variable | Description |
+|---|---|
+| `SMS4FREE_KEY` | API key |
+| `SMS4FREE_USER` | Username |
+| `SMS4FREE_PASS` | Password |
+| `SMS4FREE_SENDER` | Sender name (default: Restaurant) |
 
-```python
-from standalone_order_service.sms_routing import SmsRoutingConfig
-from standalone_order_service.sms_helpers import (
-    create_twilio_sender_from_env,
-    create_sms4free_sender_from_env,
-)
-
-# Load routing config from environment
-routing = SmsRoutingConfig.from_env()
-
-# Build a routed sender with automatic failover
-twilio_fn = create_twilio_sender_from_env()
-sms4free_fn = create_sms4free_sender_from_env()
-send_sms = routing.build_sender(twilio_fn, sms4free_fn)
-
-# Or configure routing explicitly
-routing = SmsRoutingConfig(
-    primary='twilio',
-    failover='sms4free',
-    failover_enabled=True,
-)
-```
-
-**Routing environment variables:**
-
-| Variable | Default | Description |
-|---|---|---|
-| `SMS_PRIMARY_PROVIDER` | `twilio` | Primary SMS provider (`twilio` or `sms4free`) |
-| `SMS_FAILOVER_PROVIDER` | `sms4free` | Failover provider |
-| `SMS_FAILOVER_ENABLED` | `true` | Enable automatic failover |
-| `SMS_MAX_RETRIES` | `2` | Max retry count |
-
-**Environment variables for SMS provider credentials:**
-
-| Variable | Provider | Description |
-|---|---|---|
-| `TWILIO_ACCOUNT_SID` | Twilio | Account SID |
-| `TWILIO_AUTH_TOKEN` | Twilio | Auth token |
-| `TWILIO_PHONE_NUMBER` | Twilio | Sending phone number (E.164) |
-| `SMS_SENDER_ID` | Twilio | Alphanumeric sender ID (optional) |
-| `SMS4FREE_KEY` | SMS4Free | API key |
-| `SMS4FREE_USER` | SMS4Free | Username |
-| `SMS4FREE_PASS` | SMS4Free | Password |
-| `SMS4FREE_SENDER` | SMS4Free | Sender name (default: Restaurant) |
+**Default test number:** `0526647778`
 
 ### 4. Register Blueprints
 
@@ -508,8 +455,7 @@ standalone_order_service/
 ├── kds_routes.py                # KDS dashboard blueprint (20+ endpoints)
 ├── hyp_payment.py               # HYP (Yaad Pay) payment class
 ├── notifications.py             # OrderNotifier — SMS & Telegram
-├── sms_helpers.py               # Twilio/SMS4Free senders with failover
-├── sms_routing.py               # SMS provider routing configuration
+├── sms_helpers.py               # SMS4Free sender helpers
 ├── templates/
 │   ├── order/                   # 7 public-facing templates
 │   │   ├── base.html

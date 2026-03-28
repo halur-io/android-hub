@@ -20,6 +20,8 @@ from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
+SMS_TEST_NUMBER = '0526647778'
+
 
 def clean_phone_number(phone: str) -> str:
     """

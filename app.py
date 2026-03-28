@@ -27,6 +27,10 @@ csrf = CSRFProtect(app)
 # Exempt admin API endpoints from CSRF
 csrf.exempt('admin.toggle_dietary_property')
 csrf.exempt('admin.delete_dietary_property')
+csrf.exempt('admin.toggle_deal')
+csrf.exempt('admin.delete_deal')
+csrf.exempt('admin.toggle_upsell_rule')
+csrf.exempt('admin.delete_upsell_rule')
 
 # Exempt menu parsing routes from CSRF
 csrf.exempt('admin.parse_word_menu')
@@ -159,7 +163,7 @@ try:
     from models import (
         Branch, BranchMenuItem, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
         MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
-        ManagerPIN, SiteSettings
+        ManagerPIN, SiteSettings, Coupon, CouponUsage, Deal, UpsellRule
     )
     from services.order.order_service import DeliveryZone
     from database import db as order_db
@@ -178,6 +182,10 @@ try:
         'FoodOrderItem': FoodOrderItem,
         'ManagerPIN': ManagerPIN,
         'SiteSettings': SiteSettings,
+        'Coupon': Coupon,
+        'CouponUsage': CouponUsage,
+        'Deal': Deal,
+        'UpsellRule': UpsellRule,
     }
 
     def get_site_settings():
@@ -204,6 +212,9 @@ try:
         get_settings=get_site_settings,
     )
     app.register_blueprint(food_order_bp)
+    with app.app_context():
+        csrf.exempt(app.view_functions.get('order_page.validate_coupon', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.upsell_suggestions', lambda: None))
 
     from standalone_order_service.kds_routes import create_kds_blueprint
     kds_bp = create_kds_blueprint(

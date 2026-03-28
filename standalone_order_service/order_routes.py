@@ -20,7 +20,7 @@ from functools import wraps
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, jsonify, session, abort,
+    flash, jsonify, session, abort, current_app,
 )
 
 
@@ -57,6 +57,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
     DeliveryZone = models['DeliveryZone']
     WorkingHours = models['WorkingHours']
     Branch = models['Branch']
+    Coupon = models.get('Coupon')
+    CouponUsage = models.get('CouponUsage')
+    Deal = models.get('Deal')
+    UpsellRule = models.get('UpsellRule')
 
     def _settings():
         if get_settings:
@@ -289,6 +293,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             )
         delivery_zones = dz_query.order_by(DeliveryZone.display_order).all()
 
+        active_deals = []
+        if Deal:
+            active_deals = [d for d in Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all() if d.is_valid()]
+
         return render_template('order_page.html',
                                ordering_disabled=False,
                                ordering_paused=ordering_paused,
@@ -305,6 +313,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                selected_branch=selected_branch,
                                multi_branch=multi_branch,
                                need_branch_selection=need_branch_selection,
+                               deals=active_deals,
                                settings=settings)
 
     # ── Start checkout ────────────────────────────────────────────────
@@ -427,6 +436,105 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                enable_pickup=getattr(settings, 'enable_pickup', True),
                                settings=settings)
 
+    # ── Coupon validation API ──────────────────────────────────────────
+
+    @bp.route('/validate-coupon', methods=['POST'])
+    def validate_coupon():
+        if not Coupon:
+            return jsonify({'valid': False, 'error': 'קופונים לא מופעלים'})
+        data = request.get_json(silent=True) or {}
+        code = (data.get('code') or '').strip().upper()
+        subtotal = float(data.get('subtotal', 0))
+        email = (data.get('email') or '').strip().lower()
+        if not code:
+            return jsonify({'valid': False, 'error': 'נא להזין קוד קופון'})
+        coupon = Coupon.query.filter(db.func.upper(Coupon.code) == code).first()
+        if not coupon:
+            return jsonify({'valid': False, 'error': 'קוד קופון לא נמצא'})
+        if not coupon.is_valid():
+            return jsonify({'valid': False, 'error': 'הקופון פג תוקף או אינו פעיל'})
+        if email and not coupon.can_be_used_by_email(email):
+            return jsonify({'valid': False, 'error': 'הקופון כבר נוצל עבור אימייל זה'})
+        if coupon.minimum_order_amount and subtotal < coupon.minimum_order_amount:
+            return jsonify({'valid': False, 'error': f'הזמנה מינימלית ₪{int(coupon.minimum_order_amount)} נדרשת'})
+        if coupon.discount_type == 'percentage':
+            discount = subtotal * (coupon.discount_value / 100.0)
+            if coupon.maximum_discount_amount:
+                discount = min(discount, coupon.maximum_discount_amount)
+            desc = f'{int(coupon.discount_value)}% הנחה'
+        elif coupon.discount_type == 'fixed_amount':
+            discount = min(coupon.discount_value, subtotal)
+            desc = f'₪{int(coupon.discount_value)} הנחה'
+        else:
+            discount = 0
+            desc = 'הנחה'
+        return jsonify({
+            'valid': True,
+            'discount': round(discount, 2),
+            'description': desc,
+            'coupon_id': coupon.id,
+            'code': coupon.code,
+        })
+
+    # ── Upsell suggestions API ────────────────────────────────────────
+
+    @bp.route('/upsell-suggestions', methods=['POST'])
+    def upsell_suggestions():
+        if not UpsellRule:
+            return jsonify({'suggestions': []})
+        data = request.get_json(silent=True) or {}
+        cart_items = data.get('cart', [])
+        cart_item_ids = set()
+        cart_category_ids = set()
+        for ci in cart_items:
+            ci_id = ci.get('id')
+            if ci_id:
+                cart_item_ids.add(int(ci_id))
+                mi = MenuItem.query.get(int(ci_id))
+                if mi and mi.category_id:
+                    cart_category_ids.add(mi.category_id)
+        rules = UpsellRule.query.filter_by(is_active=True).order_by(UpsellRule.display_order).all()
+        suggestions = []
+        seen_items = set()
+        sel_branch_id = None
+        selected_branch = _get_selected_branch()
+        if selected_branch:
+            sel_branch_id = selected_branch.id
+        for rule in rules:
+            if rule.suggested_item_id in cart_item_ids:
+                continue
+            if rule.suggested_item_id in seen_items:
+                continue
+            matched = False
+            if rule.trigger_type == 'item' and rule.trigger_id in cart_item_ids:
+                matched = True
+            elif rule.trigger_type == 'category' and rule.trigger_id in cart_category_ids:
+                matched = True
+            if not matched:
+                continue
+            item = rule.suggested_item
+            if not item or not item.is_available:
+                continue
+            if sel_branch_id and not _is_item_available_for_branch(item.id, sel_branch_id):
+                continue
+            price = rule.discounted_price if rule.discounted_price else _get_branch_price(item, sel_branch_id)
+            original = _get_branch_price(item, sel_branch_id)
+            suggestions.append({
+                'rule_id': rule.id,
+                'item_id': item.id,
+                'name_he': item.name_he,
+                'name_en': item.name_en or '',
+                'image': item.image_path or '',
+                'price': float(price),
+                'original_price': float(original) if rule.discounted_price else None,
+                'message_he': rule.message_he or '',
+                'message_en': rule.message_en or '',
+            })
+            seen_items.add(rule.suggested_item_id)
+            if len(suggestions) >= 3:
+                break
+        return jsonify({'suggestions': suggestions})
+
     # ── Place order ───────────────────────────────────────────────────
 
     @bp.route('/place', methods=['POST'])
@@ -499,6 +607,38 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             ci_id = ci.get('id')
             if not ci_id:
                 continue
+            if ci.get('is_deal') and Deal:
+                deal_id_str = str(ci_id).replace('deal_', '')
+                try:
+                    deal_obj = Deal.query.get(int(deal_id_str))
+                except (ValueError, TypeError):
+                    continue
+                if not deal_obj or not deal_obj.is_valid():
+                    continue
+                qty = max(1, min(99, int(ci.get('qty', 1))))
+                ci['qty'] = qty
+                ci['price'] = float(deal_obj.deal_price)
+                verified_subtotal_cart += deal_obj.deal_price * qty
+                valid_cart.append(ci)
+                continue
+            if ci.get('upsell') and UpsellRule:
+                rule_id = ci.get('upsell_rule_id')
+                if rule_id:
+                    rule = UpsellRule.query.get(int(rule_id))
+                    if rule and rule.is_active and rule.discounted_price is not None:
+                        try:
+                            db_ci = MenuItem.query.get(int(ci_id))
+                        except (ValueError, TypeError):
+                            continue
+                        if db_ci and db_ci.is_available:
+                            if sel_branch_id and not _is_item_available_for_branch(db_ci.id, sel_branch_id):
+                                continue
+                            qty = max(1, min(99, int(ci.get('qty', 1))))
+                            ci['qty'] = qty
+                            ci['price'] = float(rule.discounted_price)
+                            verified_subtotal_cart += rule.discounted_price * qty
+                            valid_cart.append(ci)
+                            continue
             try:
                 db_ci = MenuItem.query.get(int(ci_id))
             except (ValueError, TypeError):
@@ -586,6 +726,18 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             oi = FoodOrderItem()
             oi.order_id = order.id
             menu_item_id = item.get('id')
+            if item.get('is_deal'):
+                oi.menu_item_id = None
+                oi.item_name_he = item.get('name_he', item.get('name', ''))
+                oi.item_name_en = item.get('name_en', '')
+                oi.quantity = int(item.get('qty', 1))
+                oi.unit_price = float(item.get('price', 0))
+                oi.total_price = oi.quantity * oi.unit_price
+                oi.special_instructions = item.get('notes', '')
+                oi.options_json = json.dumps({'is_deal': True, 'deal_id': item.get('deal_id')}, ensure_ascii=False)
+                verified_subtotal += oi.total_price
+                db.session.add(oi)
+                continue
             oi.menu_item_id = menu_item_id
             oi.item_name_he = item.get('name_he', item.get('name', ''))
             oi.item_name_en = item.get('name_en', '')
@@ -687,7 +839,37 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return redirect(url_for('order_page.order_page'))
 
         order.subtotal = verified_subtotal
-        order.total_amount = verified_subtotal + delivery_fee
+        coupon_discount = 0.0
+        coupon_code = request.form.get('coupon_code', '').strip()
+        coupon_obj = None
+        if coupon_code and Coupon:
+            coupon_obj = Coupon.query.filter(db.func.upper(Coupon.code) == coupon_code.upper()).first()
+            if coupon_obj and coupon_obj.is_valid():
+                usage_identity = (customer_email or customer_phone or '').strip().lower()
+                if usage_identity and not coupon_obj.can_be_used_by_email(usage_identity):
+                    coupon_obj = None
+                elif coupon_obj.minimum_order_amount and verified_subtotal < coupon_obj.minimum_order_amount:
+                    coupon_obj = None
+                else:
+                    if coupon_obj.discount_type == 'percentage':
+                        coupon_discount = verified_subtotal * (coupon_obj.discount_value / 100.0)
+                        if coupon_obj.maximum_discount_amount:
+                            coupon_discount = min(coupon_discount, coupon_obj.maximum_discount_amount)
+                    elif coupon_obj.discount_type == 'fixed_amount':
+                        coupon_discount = min(coupon_obj.discount_value, verified_subtotal)
+                    coupon_discount = round(coupon_discount, 2)
+            else:
+                coupon_obj = None
+        order.total_amount = verified_subtotal + delivery_fee - coupon_discount
+        if coupon_discount > 0 and coupon_obj:
+            order.coupon_code = coupon_obj.code
+            order.coupon_discount = coupon_discount
+            usage_identity = (customer_email or customer_phone or '').strip().lower()
+            coupon_obj.record_usage(usage_identity)
+            usage = CouponUsage.query.filter_by(coupon_id=coupon_obj.id).order_by(CouponUsage.id.desc()).first()
+            if usage:
+                usage.order_amount = verified_subtotal
+                usage.discount_applied = coupon_discount
         db.session.commit()
 
         if payment_method == 'card' and hyp_payment:

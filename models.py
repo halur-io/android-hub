@@ -2520,6 +2520,8 @@ class FoodOrder(db.Model):
     ready_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     cancelled_at = db.Column(db.DateTime)
+    coupon_code = db.Column(db.String(50), nullable=True)
+    coupon_discount = db.Column(db.Float, default=0)
     customer_account_id = db.Column(db.Integer, nullable=True)
     items_json = db.Column(db.Text)
     items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
@@ -2618,3 +2620,64 @@ class ManagerPIN(db.Model):
 
     def __repr__(self):
         return f'<ManagerPIN {self.name}>'
+
+
+class Deal(db.Model):
+    __tablename__ = 'deals'
+    id = db.Column(db.Integer, primary_key=True)
+
+    name_he = db.Column(db.String(200), nullable=False)
+    name_en = db.Column(db.String(200))
+    description_he = db.Column(db.Text)
+    description_en = db.Column(db.Text)
+
+    included_items = db.Column(db.JSON, default=list)
+    deal_price = db.Column(db.Float, nullable=False)
+    original_price = db.Column(db.Float)
+
+    image_path = db.Column(db.String(500))
+
+    start_date = db.Column(db.DateTime)
+    end_date = db.Column(db.DateTime)
+
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def is_valid(self):
+        if not self.is_active:
+            return False
+        now = datetime.utcnow()
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+        return True
+
+    def __repr__(self):
+        return f'<Deal {self.name_he}>'
+
+
+class UpsellRule(db.Model):
+    __tablename__ = 'upsell_rules'
+    id = db.Column(db.Integer, primary_key=True)
+
+    trigger_type = db.Column(db.String(20), nullable=False, default='category')
+    trigger_id = db.Column(db.Integer, nullable=False)
+
+    suggested_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=False)
+    message_he = db.Column(db.String(300))
+    message_en = db.Column(db.String(300))
+    discounted_price = db.Column(db.Float)
+
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    suggested_item = db.relationship('MenuItem', foreign_keys=[suggested_item_id])
+
+    def __repr__(self):
+        return f'<UpsellRule {self.id} -> item {self.suggested_item_id}>'

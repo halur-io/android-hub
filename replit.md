@@ -24,6 +24,9 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ Online ordering system integrated (standalone_order_service)
 - ✅ Multi-branch ordering with branch-specific menus, prices, and delivery zones
 - ✅ KDS (Kitchen Display System) dashboard with branch filtering
+- ✅ Deals system (bundled menu items at special prices)
+- ✅ Coupon codes at checkout with server-side validation
+- ✅ Upsell suggestions at checkout (triggered by cart items/categories)
 - ⏸️ Email notifications: Not configured yet (optional)
 - ⏸️ SMS notifications: Requires Twilio or SMS4Free credentials
 - ⏸️ HYP payment gateway: Requires terminal/API key configuration
@@ -90,6 +93,23 @@ Integrated from standalone_order_service package. Provides public ordering page 
 - HYP terminal/API key for payment processing
 - Telegram bot token/chat ID for order notifications
 - SMS credentials via environment variables
+
+**Deals, Coupons & Upsells:**
+- Deals: Bundled menu items at a special price, shown on order page
+  - Admin: /admin/deals (CRUD, toggle active, image upload)
+  - Model: `Deal` with `included_items` JSON, `deal_price`, `original_price`, date range
+  - Deals validate via `is_valid()` (active + within date range)
+- Coupons: Discount codes applied at checkout
+  - Admin: /admin/coupons (existing)
+  - Model: `Coupon` with percentage/fixed_amount discount types
+  - API: `/order/validate-coupon` (POST JSON) - validates code, returns discount
+  - Server-side enforcement at order placement with per-email usage limits
+  - `FoodOrder.coupon_code` and `coupon_discount` track applied coupon
+- Upsells: Suggested items shown at checkout based on cart contents
+  - Admin: /admin/upsell-rules (CRUD)
+  - Model: `UpsellRule` with trigger_type (category/item), suggested_item, discounted_price
+  - API: `/order/upsell-suggestions` (POST JSON) - returns matching suggestions
+  - Discounted prices validated server-side via rule_id
 
 **KDS Access:**
 - Staff authenticate via ManagerPIN (hashed PINs)

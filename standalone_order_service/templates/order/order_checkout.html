@@ -245,15 +245,51 @@
         </div>
       </div>
 
+      <!-- ═══ UPSELL SUGGESTIONS ═══ -->
+      <div id="upsell-section" class="mb-3" style="display:none;">
+        <div class="upsell-card">
+          <div class="upsell-title">
+            <i class="fas fa-star me-1" style="color:#f59e0b;"></i>
+            {{ 'אולי תרצה להוסיף?' if language == 'he' else 'You might also like' }}
+          </div>
+          <div id="upsell-items"></div>
+        </div>
+      </div>
+
+      <!-- ═══ COUPON CODE ═══ -->
+      <div class="coupon-section mb-3">
+        <div class="coupon-toggle" onclick="document.getElementById('coupon-body').classList.toggle('d-none')">
+          <i class="fas fa-ticket-alt me-1" style="color:var(--c-primary);"></i>
+          <span>{{ 'יש לי קוד קופון' if language == 'he' else 'I have a coupon code' }}</span>
+          <i class="fas fa-chevron-down ms-auto" style="font-size:.7rem;"></i>
+        </div>
+        <div id="coupon-body" class="coupon-body d-none">
+          <div class="d-flex gap-2">
+            <input type="text" id="coupon-input" class="form-control form-control-sm" 
+                   placeholder="{{ 'הזינו קוד קופון' if language == 'he' else 'Enter coupon code' }}" 
+                   style="flex:1;text-transform:uppercase;">
+            <button type="button" id="apply-coupon-btn" class="btn btn-sm btn-outline-primary" onclick="applyCoupon()">
+              {{ 'החל' if language == 'he' else 'Apply' }}
+            </button>
+          </div>
+          <div id="coupon-msg" class="mt-1" style="font-size:.8rem;"></div>
+        </div>
+        <input type="hidden" name="coupon_code" id="coupon-code-field" value="">
+      </div>
+
       <!-- ═══ TOTALS + SUBMIT ═══ -->
       <div class="totals-box mt-3">
         <div class="d-flex justify-content-between mb-1">
           <span>{{ 'סכום ביניים' if language == 'he' else 'Subtotal' }}</span>
-          <span>₪{{ subtotal | int }}</span>
+          <span id="subtotal-display">₪{{ subtotal | int }}</span>
         </div>
         <div class="d-flex justify-content-between mb-1" id="fee-row-summary">
           <span>{{ 'דמי משלוח' if language == 'he' else 'Delivery fee' }}</span>
           <span id="fee-display-summary">₪{{ delivery_fee | int }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-1 text-success" id="coupon-row-summary" style="display:none!important;">
+          <span><i class="fas fa-tag me-1"></i><span id="coupon-desc"></span></span>
+          <span>-₪<span id="coupon-discount-display">0</span></span>
         </div>
         <div class="total-line">
           <span>{{ 'סה"כ' if language == 'he' else 'Total' }}</span>
@@ -404,6 +440,40 @@ body { padding-bottom: 0 !important; }
   border-color: var(--c-primary); background: rgba(99,102,241,.05); color: var(--c-primary);
 }
 .payment-opt i { font-size: 1.1rem; }
+
+.coupon-section {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;
+}
+.coupon-toggle {
+  display: flex; align-items: center; gap: 6px; padding: 10px 14px;
+  cursor: pointer; font-size: .85rem; font-weight: 600; color: #374151;
+}
+.coupon-toggle:hover { background: #f9fafb; }
+.coupon-body { padding: 0 14px 12px; }
+.coupon-applied { color: #16a34a; font-weight: 600; }
+.coupon-error { color: #dc2626; }
+
+.upsell-card {
+  background: linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%);
+  border: 1px solid #fbbf24; border-radius: 12px; padding: 12px 14px;
+}
+.upsell-title { font-weight: 700; font-size: .9rem; color: #92400e; margin-bottom: 8px; }
+.upsell-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid rgba(251,191,36,.2);
+}
+.upsell-item:last-child { border-bottom: none; }
+.upsell-item img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; }
+.upsell-item-info { flex: 1; min-width: 0; }
+.upsell-item-name { font-weight: 600; font-size: .85rem; color: #1e1b4b; }
+.upsell-item-msg { font-size: .75rem; color: #92400e; }
+.upsell-add-btn {
+  border: none; border-radius: 8px; background: #f59e0b; color: #fff;
+  font-size: .8rem; font-weight: 700; padding: 6px 12px; cursor: pointer;
+  white-space: nowrap;
+}
+.upsell-add-btn:hover { background: #d97706; }
+.upsell-price-old { text-decoration: line-through; font-size: .75rem; color: #9ca3af; margin-left: 4px; }
 
 .totals-box {
   background: #f9fafb; border-radius: 12px; padding: 12px 16px;
@@ -741,6 +811,9 @@ function onZoneChange(sel) {
   }
 }
 
+var couponDiscount = 0;
+var appliedCouponCode = '';
+
 function updateTotal() {
   let fee = 0;
   if (currentOrderType === 'delivery') {
@@ -751,12 +824,103 @@ function updateTotal() {
       fee = DEFAULT_FEE;
     }
   }
-  const total = SUBTOTAL + fee;
+  const total = SUBTOTAL + fee - couponDiscount;
   const feeDisp = document.getElementById('fee-display-summary');
   if (feeDisp) feeDisp.textContent = '₪' + fee.toFixed(0);
-  document.getElementById('total-display').textContent = total.toFixed(0);
-  document.getElementById('btn-total').textContent = total.toFixed(0);
+  var subDisp = document.getElementById('subtotal-display');
+  if (subDisp) subDisp.textContent = '₪' + Math.round(SUBTOTAL);
+  document.getElementById('total-display').textContent = Math.max(0, total).toFixed(0);
+  document.getElementById('btn-total').textContent = Math.max(0, total).toFixed(0);
 }
+
+function applyCoupon() {
+  var code = document.getElementById('coupon-input').value.trim();
+  var msg = document.getElementById('coupon-msg');
+  if (!code) { msg.innerHTML = '<span class="coupon-error">נא להזין קוד</span>'; return; }
+  var email = (document.getElementById('inp-email') || {}).value || '';
+  msg.innerHTML = '<span class="text-muted">בודק...</span>';
+  fetch('{{ url_for("order_page.validate_coupon") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({code: code, subtotal: SUBTOTAL, email: email})
+  }).then(r => r.json()).then(d => {
+    if (d.valid) {
+      couponDiscount = d.discount;
+      appliedCouponCode = d.code;
+      document.getElementById('coupon-code-field').value = d.code;
+      document.getElementById('coupon-row-summary').style.display = 'flex';
+      document.getElementById('coupon-row-summary').style.cssText = 'display:flex!important;';
+      document.getElementById('coupon-desc').textContent = d.description;
+      document.getElementById('coupon-discount-display').textContent = Math.round(d.discount);
+      msg.innerHTML = '<span class="coupon-applied"><i class="fas fa-check-circle me-1"></i>' + d.description + '</span>';
+      document.getElementById('coupon-input').disabled = true;
+      document.getElementById('apply-coupon-btn').disabled = true;
+      updateTotal();
+    } else {
+      couponDiscount = 0;
+      appliedCouponCode = '';
+      document.getElementById('coupon-code-field').value = '';
+      document.getElementById('coupon-row-summary').style.cssText = 'display:none!important;';
+      msg.innerHTML = '<span class="coupon-error"><i class="fas fa-times-circle me-1"></i>' + d.error + '</span>';
+      updateTotal();
+    }
+  }).catch(function() {
+    msg.innerHTML = '<span class="coupon-error">שגיאה, נסו שוב</span>';
+  });
+}
+
+function fetchUpsells() {
+  fetch('{{ url_for("order_page.upsell_suggestions") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({cart: checkoutCart})
+  }).then(r => r.json()).then(d => {
+    var section = document.getElementById('upsell-section');
+    var container = document.getElementById('upsell-items');
+    if (!d.suggestions || d.suggestions.length === 0) { section.style.display = 'none'; return; }
+    container.innerHTML = '';
+    d.suggestions.forEach(function(s) {
+      var div = document.createElement('div');
+      div.className = 'upsell-item';
+      var imgHtml = s.image ? '<img src="' + s.image + '" alt="">' : '';
+      var priceHtml = '₪' + Math.round(s.price);
+      if (s.original_price && s.original_price > s.price) {
+        priceHtml += '<span class="upsell-price-old">₪' + Math.round(s.original_price) + '</span>';
+      }
+      div.innerHTML = imgHtml +
+        '<div class="upsell-item-info"><div class="upsell-item-name">' + s.name_he + '</div>' +
+        (s.message_he ? '<div class="upsell-item-msg">' + s.message_he + '</div>' : '') + '</div>' +
+        '<button type="button" class="upsell-add-btn" data-item=\'' + JSON.stringify(s).replace(/'/g, '&#39;') + '\' onclick="addUpsellItem(this)">' +
+        priceHtml + ' <i class="fas fa-plus ms-1"></i></button>';
+      container.appendChild(div);
+    });
+    section.style.display = '';
+  }).catch(function() {});
+}
+
+function addUpsellItem(btn) {
+  var s = JSON.parse(btn.getAttribute('data-item'));
+  checkoutCart.push({
+    id: s.item_id,
+    name: s.name_he,
+    name_he: s.name_he,
+    name_en: s.name_en,
+    price: s.price,
+    qty: 1,
+    options: [],
+    upsell: true,
+    upsell_rule_id: s.rule_id
+  });
+  SUBTOTAL += s.price;
+  document.querySelector('#cart_json, [name="cart_json"]').value = JSON.stringify(checkoutCart);
+  btn.closest('.upsell-item').remove();
+  if (!document.querySelector('#upsell-items .upsell-item')) {
+    document.getElementById('upsell-section').style.display = 'none';
+  }
+  updateTotal();
+}
+
+setTimeout(fetchUpsells, 500);
 
 function fetchStreets(city) {
   fetch(`/api/streets?city=${encodeURIComponent(city)}`)

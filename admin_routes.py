@@ -133,6 +133,18 @@ ROUTE_PERMISSIONS = {
     'admin.duplicate_coupon': 'settings.edit',
     'admin.generate_coupon_qr': 'settings.edit',
     'admin.regenerate_coupon_qr': 'settings.edit',
+    # Deals
+    'admin.deals': 'menu.view',
+    'admin.create_deal': 'menu.edit',
+    'admin.edit_deal': 'menu.edit',
+    'admin.delete_deal': 'menu.edit',
+    'admin.toggle_deal': 'menu.edit',
+    # Upsell Rules
+    'admin.upsell_rules': 'menu.view',
+    'admin.create_upsell_rule': 'menu.edit',
+    'admin.edit_upsell_rule': 'menu.edit',
+    'admin.delete_upsell_rule': 'menu.edit',
+    'admin.toggle_upsell_rule': 'menu.edit',
 }
 
 @admin_bp.before_request
@@ -8776,3 +8788,193 @@ def regenerate_coupon_qr(coupon_id):
         flash(f'שגיאה ביצירת קוד QR: {str(e)}', 'error')
     
     return redirect(url_for('admin.edit_coupon', coupon_id=coupon_id))
+
+
+@admin_bp.route('/deals')
+@login_required
+def deals():
+    all_deals = Deal.query.order_by(Deal.display_order, Deal.created_at.desc()).all()
+    return render_template('admin/deals.html', deals=all_deals)
+
+
+@admin_bp.route('/deals/create', methods=['GET', 'POST'])
+@login_required
+def create_deal():
+    if request.method == 'POST':
+        deal = Deal(
+            name_he=request.form.get('name_he', '').strip(),
+            name_en=request.form.get('name_en', '').strip(),
+            description_he=request.form.get('description_he', '').strip(),
+            description_en=request.form.get('description_en', '').strip(),
+            deal_price=float(request.form.get('deal_price', 0)),
+            original_price=float(request.form.get('original_price', 0)) if request.form.get('original_price') else None,
+            is_active=request.form.get('is_active') == 'on',
+            display_order=int(request.form.get('display_order', 0)),
+        )
+        start = request.form.get('start_date', '').strip()
+        end = request.form.get('end_date', '').strip()
+        if start:
+            try:
+                deal.start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        if end:
+            try:
+                deal.end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        item_ids = request.form.getlist('item_ids')
+        item_qtys = request.form.getlist('item_qtys')
+        included = []
+        for i, iid in enumerate(item_ids):
+            if iid:
+                qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
+                included.append({'item_id': int(iid), 'qty': qty})
+        deal.included_items = included
+
+        img = request.files.get('image')
+        if img and img.filename and allowed_image_file(img.filename):
+            fname = secure_filename(f"deal_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{img.filename}")
+            img.save(os.path.join(UPLOAD_FOLDER, fname))
+            deal.image_path = f'/static/uploads/{fname}'
+
+        db.session.add(deal)
+        db.session.commit()
+        flash('המבצע נוצר בהצלחה!', 'success')
+        return redirect(url_for('admin.deals'))
+
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    return render_template('admin/deal_form.html', deal=None, categories=categories, menu_items=menu_items)
+
+
+@admin_bp.route('/deals/edit/<int:deal_id>', methods=['GET', 'POST'])
+@login_required
+def edit_deal(deal_id):
+    deal = Deal.query.get_or_404(deal_id)
+    if request.method == 'POST':
+        deal.name_he = request.form.get('name_he', '').strip()
+        deal.name_en = request.form.get('name_en', '').strip()
+        deal.description_he = request.form.get('description_he', '').strip()
+        deal.description_en = request.form.get('description_en', '').strip()
+        deal.deal_price = float(request.form.get('deal_price', 0))
+        deal.original_price = float(request.form.get('original_price', 0)) if request.form.get('original_price') else None
+        deal.is_active = request.form.get('is_active') == 'on'
+        deal.display_order = int(request.form.get('display_order', 0))
+
+        start = request.form.get('start_date', '').strip()
+        end = request.form.get('end_date', '').strip()
+        deal.start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M') if start else None
+        deal.end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M') if end else None
+
+        item_ids = request.form.getlist('item_ids')
+        item_qtys = request.form.getlist('item_qtys')
+        included = []
+        for i, iid in enumerate(item_ids):
+            if iid:
+                qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
+                included.append({'item_id': int(iid), 'qty': qty})
+        deal.included_items = included
+
+        img = request.files.get('image')
+        if img and img.filename and allowed_image_file(img.filename):
+            fname = secure_filename(f"deal_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{img.filename}")
+            img.save(os.path.join(UPLOAD_FOLDER, fname))
+            deal.image_path = f'/static/uploads/{fname}'
+        if request.form.get('remove_image') == '1':
+            deal.image_path = None
+
+        db.session.commit()
+        flash('המבצע עודכן בהצלחה!', 'success')
+        return redirect(url_for('admin.deals'))
+
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items)
+
+
+@admin_bp.route('/deals/delete/<int:deal_id>', methods=['POST'])
+@login_required
+def delete_deal(deal_id):
+    deal = Deal.query.get_or_404(deal_id)
+    db.session.delete(deal)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'המבצע נמחק'})
+
+
+@admin_bp.route('/deals/toggle/<int:deal_id>', methods=['POST'])
+@login_required
+def toggle_deal(deal_id):
+    deal = Deal.query.get_or_404(deal_id)
+    deal.is_active = not deal.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': deal.is_active})
+
+
+@admin_bp.route('/upsell-rules')
+@login_required
+def upsell_rules():
+    rules = UpsellRule.query.order_by(UpsellRule.display_order).all()
+    return render_template('admin/upsell_rules.html', rules=rules)
+
+
+@admin_bp.route('/upsell-rules/create', methods=['GET', 'POST'])
+@login_required
+def create_upsell_rule():
+    if request.method == 'POST':
+        rule = UpsellRule(
+            trigger_type=request.form.get('trigger_type', 'category'),
+            trigger_id=int(request.form.get('trigger_id', 0)),
+            suggested_item_id=int(request.form.get('suggested_item_id', 0)),
+            message_he=request.form.get('message_he', '').strip(),
+            message_en=request.form.get('message_en', '').strip(),
+            discounted_price=float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None,
+            is_active=request.form.get('is_active') == 'on',
+            display_order=int(request.form.get('display_order', 0)),
+        )
+        db.session.add(rule)
+        db.session.commit()
+        flash('כלל אפסל נוצר בהצלחה!', 'success')
+        return redirect(url_for('admin.upsell_rules'))
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    return render_template('admin/upsell_rule_form.html', rule=None, categories=categories, menu_items=menu_items)
+
+
+@admin_bp.route('/upsell-rules/edit/<int:rule_id>', methods=['GET', 'POST'])
+@login_required
+def edit_upsell_rule(rule_id):
+    rule = UpsellRule.query.get_or_404(rule_id)
+    if request.method == 'POST':
+        rule.trigger_type = request.form.get('trigger_type', 'category')
+        rule.trigger_id = int(request.form.get('trigger_id', 0))
+        rule.suggested_item_id = int(request.form.get('suggested_item_id', 0))
+        rule.message_he = request.form.get('message_he', '').strip()
+        rule.message_en = request.form.get('message_en', '').strip()
+        rule.discounted_price = float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None
+        rule.is_active = request.form.get('is_active') == 'on'
+        rule.display_order = int(request.form.get('display_order', 0))
+        db.session.commit()
+        flash('כלל אפסל עודכן בהצלחה!', 'success')
+        return redirect(url_for('admin.upsell_rules'))
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    return render_template('admin/upsell_rule_form.html', rule=rule, categories=categories, menu_items=menu_items)
+
+
+@admin_bp.route('/upsell-rules/delete/<int:rule_id>', methods=['POST'])
+@login_required
+def delete_upsell_rule(rule_id):
+    rule = UpsellRule.query.get_or_404(rule_id)
+    db.session.delete(rule)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'כלל האפסל נמחק'})
+
+
+@admin_bp.route('/upsell-rules/toggle/<int:rule_id>', methods=['POST'])
+@login_required
+def toggle_upsell_rule(rule_id):
+    rule = UpsellRule.query.get_or_404(rule_id)
+    rule.is_active = not rule.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': rule.is_active})

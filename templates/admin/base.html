@@ -702,6 +702,12 @@
             <a class="nav-link {% if request.endpoint == 'admin.menu' %}active{% endif %}" href="{{ url_for('admin.menu') }}">
                 <i class="fas fa-utensils me-2"></i> {{ 'תפריט' if (admin_language or 'he') == 'he' else 'Menu' }}
             </a>
+            <a class="nav-link {% if request.endpoint in ['admin.deals', 'admin.create_deal', 'admin.edit_deal'] %}active{% endif %}" href="{{ url_for('admin.deals') }}">
+                <i class="fas fa-tags me-2"></i> {{ 'מבצעים' if (admin_language or 'he') == 'he' else 'Deals' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.upsell_rules', 'admin.create_upsell_rule', 'admin.edit_upsell_rule'] %}active{% endif %}" href="{{ url_for('admin.upsell_rules') }}">
+                <i class="fas fa-chart-line me-2"></i> {{ 'אפסל' if (admin_language or 'he') == 'he' else 'Upsell' }}
+            </a>
             {% endif %}
             {% if has_permission('settings.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.gallery' %}active{% endif %}" href="{{ url_for('admin.gallery') }}">

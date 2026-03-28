@@ -1,8 +1,10 @@
 import os
+import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 class Base(DeclarativeBase):
@@ -10,6 +12,24 @@ class Base(DeclarativeBase):
 
 db = SQLAlchemy(model_class=Base)
 login_manager = LoginManager()
+
+def _run_safe_migrations(db):
+    migrations = [
+        ("food_orders", "coupon_code", "ALTER TABLE food_orders ADD COLUMN coupon_code VARCHAR(50)"),
+        ("food_orders", "coupon_discount", "ALTER TABLE food_orders ADD COLUMN coupon_discount FLOAT DEFAULT 0"),
+    ]
+    for table, column, sql in migrations:
+        try:
+            result = db.session.execute(text(
+                "SELECT column_name FROM information_schema.columns WHERE table_name=:t AND column_name=:c"
+            ), {"t": table, "c": column})
+            if result.fetchone() is None:
+                db.session.execute(text(sql))
+                db.session.commit()
+                logging.info(f"Migration: added {column} to {table}")
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f"Migration skipped for {table}.{column}: {e}")
 
 def init_db(app):
     """Initialize database with the Flask app"""
@@ -38,8 +58,9 @@ def init_db(app):
         from services.kitchen.kitchen_service import KitchenStation, KitchenQueue, PrinterConfig
         from services.payment.payment_service import PaymentTransaction, PaymentConfig
         
-        # Create all tables (fast - no data creation)
         db.create_all()
+
+        _run_safe_migrations(db)
 
 def create_default_roles_and_permissions():
     """Create default roles and permissions for the system"""

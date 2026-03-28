@@ -229,8 +229,16 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
                 if sel_branch_id:
                     item._branch_price = _get_branch_price(item, sel_branch_id)
+                    if BranchMenuItem:
+                        bmi = BranchMenuItem.query.filter_by(
+                            branch_id=sel_branch_id, menu_item_id=item.id
+                        ).first()
+                        item._branch_display_order = bmi.display_order if bmi and bmi.display_order is not None else item.display_order
+                    else:
+                        item._branch_display_order = item.display_order
                 else:
                     item._branch_price = item.base_price
+                    item._branch_display_order = item.display_order
 
                 item._order_available = True
                 item._unavailable_reason = None
@@ -261,11 +269,14 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 filtered_items.append(item)
 
             if filtered_items:
+                filtered_items.sort(key=lambda x: x._branch_display_order or 0)
                 cat._order_items = filtered_items
                 available_categories.append(cat)
 
         dz_query = DeliveryZone.query.filter_by(is_active=True)
-        if sel_branch_id:
+        if sel_branch_id and multi_branch:
+            dz_query = dz_query.filter(DeliveryZone.branch_id == sel_branch_id)
+        elif sel_branch_id:
             dz_query = dz_query.filter(
                 db.or_(DeliveryZone.branch_id == sel_branch_id, DeliveryZone.branch_id.is_(None))
             )
@@ -334,13 +345,19 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return redirect(url_for('order_page.order_page'))
 
         selected_branch = _get_selected_branch()
+        multi_branch = len(_get_branches()) > 1
+        if multi_branch and not selected_branch:
+            flash('נא לבחור סניף לפני ביצוע הזמנה.', 'warning')
+            return redirect(url_for('order_page.order_page'))
         if _check_outside_ordering_hours(branch=selected_branch):
             flash('ההזמנות פתוחות בשעות הפעילות בלבד.', 'warning')
             return redirect(url_for('order_page.order_page'))
 
         sel_branch_id = selected_branch.id if selected_branch else None
         dz_query = DeliveryZone.query.filter_by(is_active=True)
-        if sel_branch_id:
+        if sel_branch_id and multi_branch:
+            dz_query = dz_query.filter(DeliveryZone.branch_id == sel_branch_id)
+        elif sel_branch_id:
             dz_query = dz_query.filter(
                 db.or_(DeliveryZone.branch_id == sel_branch_id, DeliveryZone.branch_id.is_(None))
             )
@@ -416,6 +433,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return redirect(url_for('order_page.order_page'))
         selected_branch = _get_selected_branch()
         sel_branch_id = selected_branch.id if selected_branch else None
+        multi_branch = len(_get_branches()) > 1
+        if multi_branch and not selected_branch:
+            flash('נא לבחור סניף לפני ביצוע הזמנה.', 'warning')
+            return redirect(url_for('order_page.order_page'))
 
         if _check_outside_ordering_hours(branch=selected_branch):
             flash('ההזמנות פתוחות בשעות הפעילות בלבד.', 'warning')
@@ -496,7 +517,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             if delivery_zone_id:
                 try:
                     dz_q = DeliveryZone.query.filter_by(id=int(delivery_zone_id), is_active=True)
-                    if sel_branch_id:
+                    if sel_branch_id and multi_branch:
+                        dz_q = dz_q.filter(DeliveryZone.branch_id == sel_branch_id)
+                    elif sel_branch_id:
                         dz_q = dz_q.filter(
                             db.or_(DeliveryZone.branch_id == sel_branch_id, DeliveryZone.branch_id.is_(None))
                         )

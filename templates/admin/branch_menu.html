@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="mb-1"><i class="fas fa-store me-2"></i>תפריט סניף: {{ branch.name_he }}</h1>
-        <p class="text-muted mb-0">הגדרת זמינות ומחירים מיוחדים לסניף זה. פריטים ללא שינוי ישתמשו בהגדרות הגלובליות.</p>
+        <p class="text-muted mb-0">הגדרת זמינות, מחירים מיוחדים וסדר תצוגה לסניף זה. פריטים ללא שינוי ישתמשו בהגדרות הגלובליות.</p>
     </div>
     <a href="{{ url_for('admin.branches') }}" class="btn btn-outline-secondary">
         <i class="fas fa-arrow-right me-1"></i>חזרה לסניפים
@@ -29,10 +29,11 @@
             <table class="table table-hover mb-0" style="table-layout:fixed;">
                 <thead>
                     <tr>
-                        <th style="width:40%;">פריט</th>
-                        <th style="width:20%;">מחיר גלובלי</th>
-                        <th style="width:20%;">מחיר סניף</th>
-                        <th style="width:20%;" class="text-center">זמין</th>
+                        <th style="width:30%;">פריט</th>
+                        <th style="width:15%;">מחיר גלובלי</th>
+                        <th style="width:18%;">מחיר סניף</th>
+                        <th style="width:18%;">סדר תצוגה</th>
+                        <th style="width:19%;" class="text-center">זמין</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,7 +49,14 @@
                                    name="price_{{ entry.item.id }}"
                                    value="{{ entry.custom_price if entry.custom_price is not none else '' }}"
                                    placeholder="כמו הגלובלי"
-                                   style="max-width:120px;">
+                                   style="max-width:110px;">
+                        </td>
+                        <td>
+                            <input type="number" step="1" min="0" class="form-control form-control-sm"
+                                   name="order_{{ entry.item.id }}"
+                                   value="{{ entry.display_order if entry.display_order is not none else '' }}"
+                                   placeholder="{{ entry.item.display_order }}"
+                                   style="max-width:80px;">
                         </td>
                         <td class="text-center">
                             <div class="form-check form-switch d-inline-block">

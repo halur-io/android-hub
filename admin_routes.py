@@ -1081,15 +1081,23 @@ def branch_menu(branch_id):
             for item in items:
                 avail_key = f'avail_{item.id}'
                 price_key = f'price_{item.id}'
+                order_key = f'order_{item.id}'
                 is_available = request.form.get(avail_key) == 'on'
                 custom_price_str = request.form.get(price_key, '').strip()
+                display_order_str = request.form.get(order_key, '').strip()
                 custom_price = None
+                display_order = None
                 if custom_price_str:
                     try:
                         custom_price = float(custom_price_str)
                     except ValueError:
                         pass
-                has_override = not is_available or custom_price is not None
+                if display_order_str:
+                    try:
+                        display_order = int(display_order_str)
+                    except ValueError:
+                        pass
+                has_override = not is_available or custom_price is not None or display_order is not None
                 existing = BranchMenuItem.query.filter_by(
                     branch_id=branch.id, menu_item_id=item.id
                 ).first()
@@ -1099,6 +1107,7 @@ def branch_menu(branch_id):
                         db.session.add(existing)
                     existing.is_available = is_available
                     existing.custom_price = custom_price
+                    existing.display_order = display_order
                 elif existing:
                     db.session.delete(existing)
         db.session.commit()
@@ -1119,6 +1128,7 @@ def branch_menu(branch_id):
                 'override': override,
                 'is_available': override.is_available if override else True,
                 'custom_price': override.custom_price if override else None,
+                'display_order': override.display_order if override else None,
             })
         if items_with_overrides:
             cat_items.append({'category': cat, 'menu_items': items_with_overrides})

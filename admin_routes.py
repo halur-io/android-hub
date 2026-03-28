@@ -1048,6 +1048,13 @@ def edit_branch(id=None):
         branch.google_maps_link = request.form.get('google_maps_link')
         branch.is_active = request.form.get('is_active') == 'on'
         branch.display_order = int(request.form.get('display_order', 0))
+        branch.payment_provider = request.form.get('payment_provider', 'hyp').strip() or 'hyp'
+        branch.hyp_terminal = request.form.get('hyp_terminal', '').strip() or None
+        branch.hyp_api_key = request.form.get('hyp_api_key', '').strip() or None
+        branch.hyp_passp = request.form.get('hyp_passp', '').strip() or None
+        branch.max_api_url = request.form.get('max_api_url', '').strip() or None
+        branch.max_api_key = request.form.get('max_api_key', '').strip() or None
+        branch.max_merchant_id = request.form.get('max_merchant_id', '').strip() or None
         
         if not id:
             db.session.add(branch)

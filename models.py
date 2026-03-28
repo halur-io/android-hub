@@ -411,9 +411,22 @@ class Branch(db.Model):
     google_maps_link = db.Column(db.String(500))
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
+    payment_provider = db.Column(db.String(20), default='hyp')
+    hyp_terminal = db.Column(db.String(100))
+    hyp_api_key = db.Column(db.String(255))
+    hyp_passp = db.Column(db.String(255))
+    max_api_url = db.Column(db.String(500))
+    max_api_key = db.Column(db.String(255))
+    max_merchant_id = db.Column(db.String(100))
     working_hours = db.relationship('WorkingHours', backref='branch', lazy=True, cascade='all, delete-orphan')
     branch_menu_items = db.relationship('BranchMenuItem', backref='branch', lazy=True, cascade='all, delete-orphan')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def has_payment_config(self):
+        if self.payment_provider == 'max':
+            return bool(self.max_api_key and self.max_merchant_id)
+        return bool(self.hyp_terminal and self.hyp_api_key and self.hyp_passp)
 
 
 class BranchMenuItem(db.Model):
@@ -2501,6 +2514,7 @@ class FoodOrder(db.Model):
     total_amount = db.Column(db.Float, nullable=False, default=0)
     payment_method = db.Column(db.String(30), default='cash')
     payment_status = db.Column(db.String(20), default='pending')
+    payment_provider = db.Column(db.String(20))
     hyp_transaction_id = db.Column(db.String(100))
     hyp_order_ref = db.Column(db.String(100))
     customer_notes = db.Column(db.Text)

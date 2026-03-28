@@ -237,6 +237,7 @@
                    data-price="{{ item._branch_price if item._branch_price is defined else item.base_price }}"
                    data-description-he="{{ (item.description_he or '') | e }}"
                    data-description-en="{{ (item.description_en or '') | e }}"
+                   data-ingredients-he="{{ (item.ingredients_he or '') | e }}"
                    data-image="{{ url_for('order_page.menu_image', item_id=item.id) if item.image_data else (item.image_path or '') }}"
                    data-available="{{ '1' if item._order_available else '0' }}"
                    data-is-combo="{{ '1' if item.is_combo else '0' }}"
@@ -368,6 +369,7 @@
         <div class="item-sheet-meta">
           <div id="item-sheet-name"></div>
           <div id="item-sheet-desc"></div>
+          <div id="item-sheet-ingredients" style="display:none;font-size:.78rem;color:#9ca3af;margin-top:4px;line-height:1.4;"></div>
         </div>
         <div id="item-sheet-qty-ctrl">
           <button class="sheet-qty-btn" onclick="modalChangeQty(1)">+</button>
@@ -990,10 +992,21 @@ function openItemModal(card) {
 
   const name  = IS_HE ? card.dataset.nameHe  : (card.dataset.nameEn  || card.dataset.nameHe);
   const desc  = IS_HE ? card.dataset.descriptionHe : (card.dataset.descriptionEn || card.dataset.descriptionHe);
+  const ingredients = card.dataset.ingredientsHe || '';
   const image = card.dataset.image || '';
 
   document.getElementById('item-sheet-name').textContent = name;
   document.getElementById('item-sheet-desc').textContent = desc || '';
+  var ingEl = document.getElementById('item-sheet-ingredients');
+  if (ingEl) {
+    if (ingredients) {
+      ingEl.textContent = ingredients;
+      ingEl.style.display = '';
+    } else {
+      ingEl.textContent = '';
+      ingEl.style.display = 'none';
+    }
+  }
   var heroEl = document.getElementById('item-sheet-hero');
   var img = document.getElementById('item-sheet-img');
   delete img.dataset.tried;

@@ -24,7 +24,7 @@ from flask import (
 )
 
 
-def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_settings=None):
+def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_settings=None, max_payment=None):
     """
     Factory that returns a configured Blueprint.
 
@@ -37,6 +37,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
     hyp_payment : HYPPayment, optional
     get_settings : callable, optional
         Returns a settings object with ordering-related fields.
+    max_payment : MaxPayService, optional
     """
     bp = Blueprint(
         'order_page',
@@ -413,12 +414,27 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         hyp_enabled = getattr(settings, 'hyp_enabled', False)
         hyp_sandbox_mode = getattr(settings, 'hyp_sandbox_mode', True)
         card_available = False
-        if hyp_enabled and hyp_payment:
+        branch_provider = getattr(selected_branch, 'payment_provider', 'hyp') if selected_branch else 'hyp'
+        if selected_branch and getattr(selected_branch, 'has_payment_config', False):
+            if branch_provider == 'max' and max_payment:
+                max_payment._load_credentials(branch=selected_branch, settings=settings)
+                card_available = max_payment.is_configured
+            elif branch_provider == 'hyp' and hyp_payment:
+                hyp_payment._load_credentials(settings, branch=selected_branch)
+                card_available = hyp_payment.is_configured
+        elif hyp_enabled and hyp_payment:
             try:
                 hyp_payment._load_credentials(settings)
                 card_available = hyp_payment.is_configured
             except Exception:
                 card_available = False
+        if not card_available and max_payment:
+            try:
+                max_payment._load_credentials(settings=settings)
+                if max_payment.is_configured:
+                    card_available = True
+            except Exception:
+                pass
 
         return render_template('order_checkout.html',
                                cart_items=cart,
@@ -916,38 +932,69 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 db.session.rollback()
                 logging.warning(f"Failed to log order creation for #{order.order_number}: {e}")
 
-        if payment_method == 'card' and hyp_payment:
-            try:
-                hyp_payment._load_credentials(settings)
-                success_url = url_for('order_page.payment_success', _external=True) + f'?order={order.order_number}'
-                failure_url = url_for('order_page.payment_failure', _external=True) + f'?order={order.order_number}'
-                hesh_items = []
-                for oi_item in order.items:
-                    name = oi_item.item_name_he or oi_item.item_name_en or 'פריט'
-                    hesh_items.append(f'[0~{name}~{oi_item.quantity}~{oi_item.unit_price}]')
-                if order.delivery_fee and order.delivery_fee > 0:
-                    hesh_items.append(f'[0~משלוח~1~{order.delivery_fee}]')
-                extra_params = {}
-                if hesh_items:
-                    extra_params['heshDesc'] = ''.join(hesh_items)
-                    extra_params['Pritim'] = 'True'
-                payment_url = hyp_payment.create_payment_url(
-                    amount=order.total_amount,
-                    order_id=order.order_number,
-                    description=f'הזמנה {order.order_number}',
-                    success_url=success_url,
-                    failure_url=failure_url,
-                    customer_name=customer_name,
-                    customer_email=customer_email,
-                    customer_phone=customer_phone,
-                    additional_params=extra_params if extra_params else None
-                )
-                if payment_url:
-                    order.hyp_order_ref = order.order_number
-                    db.session.commit()
-                    return render_template('hyp_redirect.html', payment_url=payment_url, order=order)
-            except Exception as e:
-                logging.error(f"HYP payment failed for #{order.order_number}: {e}")
+        if payment_method == 'card':
+            success_url = url_for('order_page.payment_success', _external=True) + f'?order={order.order_number}'
+            failure_url = url_for('order_page.payment_failure', _external=True) + f'?order={order.order_number}'
+            branch_prov = getattr(selected_branch, 'payment_provider', 'hyp') if selected_branch else 'hyp'
+            use_max = False
+            if selected_branch and getattr(selected_branch, 'has_payment_config', False) and branch_prov == 'max':
+                use_max = True
+
+            if use_max and max_payment:
+                try:
+                    max_payment._load_credentials(branch=selected_branch, settings=settings)
+                    result = max_payment.create_payment(
+                        order_id=order.order_number,
+                        amount=order.total_amount,
+                        success_url=success_url,
+                        failure_url=failure_url,
+                        customer_name=customer_name,
+                        customer_email=customer_email,
+                        customer_phone=customer_phone,
+                        description=f'הזמנה {order.order_number}',
+                    )
+                    if not result.get('error') and result.get('payment_url'):
+                        order.hyp_order_ref = order.order_number
+                        order.payment_provider = 'max'
+                        if result.get('transaction_id'):
+                            order.hyp_transaction_id = result['transaction_id']
+                        db.session.commit()
+                        return render_template('hyp_redirect.html', payment_url=result['payment_url'], order=order)
+                    else:
+                        logging.error(f"MAX Pay failed for #{order.order_number}: {result.get('message')}")
+                except Exception as e:
+                    logging.error(f"MAX Pay error for #{order.order_number}: {e}")
+
+            if hyp_payment:
+                try:
+                    hyp_payment._load_credentials(settings, branch=selected_branch)
+                    hesh_items = []
+                    for oi_item in order.items:
+                        name = oi_item.item_name_he or oi_item.item_name_en or 'פריט'
+                        hesh_items.append(f'[0~{name}~{oi_item.quantity}~{oi_item.unit_price}]')
+                    if order.delivery_fee and order.delivery_fee > 0:
+                        hesh_items.append(f'[0~משלוח~1~{order.delivery_fee}]')
+                    extra_params = {}
+                    if hesh_items:
+                        extra_params['heshDesc'] = ''.join(hesh_items)
+                        extra_params['Pritim'] = 'True'
+                    payment_url = hyp_payment.create_payment_url(
+                        amount=order.total_amount,
+                        order_id=order.order_number,
+                        description=f'הזמנה {order.order_number}',
+                        success_url=success_url,
+                        failure_url=failure_url,
+                        customer_name=customer_name,
+                        customer_email=customer_email,
+                        customer_phone=customer_phone,
+                        additional_params=extra_params if extra_params else None
+                    )
+                    if payment_url:
+                        order.hyp_order_ref = order.order_number
+                        db.session.commit()
+                        return render_template('hyp_redirect.html', payment_url=payment_url, order=order)
+                except Exception as e:
+                    logging.error(f"HYP payment failed for #{order.order_number}: {e}")
 
         if notifier:
             try:
@@ -1016,6 +1063,45 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
     # ── Payment callbacks ─────────────────────────────────────────────
 
+    def _confirm_paid_order(order, settings, transaction_id=None):
+        order.payment_status = 'paid'
+        if transaction_id:
+            order.hyp_transaction_id = transaction_id
+        if order.status == 'pending':
+            old_status = order.status
+            order.status = 'confirmed'
+            order.confirmed_at = datetime.utcnow()
+            if OrderActivityLog:
+                log = OrderActivityLog(
+                    order_id=order.id,
+                    action='status_change',
+                    old_value=old_status,
+                    new_value='confirmed',
+                    note='תשלום אושר - סטטוס עודכן אוטומטית',
+                )
+                db.session.add(log)
+        db.session.commit()
+        if notifier:
+            try:
+                notifier.notify_new_order(order, settings)
+            except Exception:
+                pass
+            try:
+                notifier.send_customer_confirmation(order, settings)
+            except Exception:
+                pass
+
+    def _fail_payment(order):
+        order.payment_status = 'failed'
+        if OrderActivityLog:
+            log = OrderActivityLog(
+                order_id=order.id,
+                action='payment_failed',
+                note='תשלום נכשל',
+            )
+            db.session.add(log)
+        db.session.commit()
+
     @bp.route('/payment-success')
     def payment_success():
         order_number = request.args.get('Order') or request.args.get('order') or ''
@@ -1025,6 +1111,15 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             if order:
                 if order.payment_status == 'paid':
                     return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+
+                if getattr(order, 'payment_provider', None) == 'max' and max_payment:
+                    tid = request.args.get('transactionId') or request.args.get('transaction_id') or request.args.get('Id')
+                    if tid:
+                        _confirm_paid_order(order, settings, transaction_id=tid)
+                    else:
+                        _confirm_paid_order(order, settings)
+                    return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+
                 if hyp_payment:
                     verification = hyp_payment.verify_payment_response(
                         dict(request.args),
@@ -1032,42 +1127,11 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         expected_amount=order.total_amount,
                     )
                     if verification.get('verified') and verification.get('success'):
-                        order.payment_status = 'paid'
-                        order.hyp_transaction_id = verification.get('transaction_id') or request.args.get('Id')
-                        if order.status == 'pending':
-                            old_status = order.status
-                            order.status = 'confirmed'
-                            order.confirmed_at = datetime.utcnow()
-                            if OrderActivityLog:
-                                log = OrderActivityLog(
-                                    order_id=order.id,
-                                    action='status_change',
-                                    old_value=old_status,
-                                    new_value='confirmed',
-                                    note='תשלום אושר - סטטוס עודכן אוטומטית',
-                                )
-                                db.session.add(log)
-                        db.session.commit()
-                        if notifier:
-                            try:
-                                notifier.notify_new_order(order, settings)
-                            except Exception:
-                                pass
-                            try:
-                                notifier.send_customer_confirmation(order, settings)
-                            except Exception:
-                                pass
+                        tid = verification.get('transaction_id') or request.args.get('Id')
+                        _confirm_paid_order(order, settings, transaction_id=tid)
                         return redirect(url_for('order_page.order_confirmation', order_number=order_number))
                     else:
-                        order.payment_status = 'failed'
-                        if OrderActivityLog:
-                            log = OrderActivityLog(
-                                order_id=order.id,
-                                action='payment_failed',
-                                note='תשלום נכשל',
-                            )
-                            db.session.add(log)
-                        db.session.commit()
+                        _fail_payment(order)
                         return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
         return redirect(url_for('order_page.order_page'))
 

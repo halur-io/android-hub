@@ -34,9 +34,21 @@ class HYPPayment:
         self._credentials_source = None
         self._load_credentials()
 
-    def _load_credentials(self, settings=None):
+    def _load_credentials(self, settings=None, branch=None):
         if settings:
             self._settings = settings
+
+        if branch:
+            bt = getattr(branch, 'hyp_terminal', None)
+            bk = getattr(branch, 'hyp_api_key', None)
+            bp = getattr(branch, 'hyp_passp', None)
+            if bt and bk and bp:
+                self.terminal = bt
+                self.api_key = bk
+                self.passp = bp
+                self._credentials_source = 'branch'
+                return
+
         self.terminal = os.environ.get('HYP_TERMINAL', '').strip()
         self.api_key = os.environ.get('HYP_API_KEY', '').strip()
         self.passp = os.environ.get('HYP_PASSP', '').strip()
@@ -116,7 +128,8 @@ class HYPPayment:
         installments: int = 1,
         additional_params: Optional[Dict[str, str]] = None,
     ) -> Optional[str]:
-        self._load_credentials()
+        if self._credentials_source != 'branch':
+            self._load_credentials()
         self._sandbox_mode = None
 
         if not self.is_configured:

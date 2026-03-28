@@ -1,11 +1,12 @@
 # Restaurant Website Project
 
 ## Version
-**Current Version: 1.0.3**
+**Current Version: 1.0.4**
 
 See `VERSION` file for the current deployment version.
 
 ### Version History
+- **1.0.4** - Branch-specific payment gateways (HYP + MAX per branch), ingredients display in order modal
 - **1.0.3** - View state persistence, 3-dot action menus, RBAC improvements
 - **1.0.2** - Previous deployment
 - **1.0.1** - Previous deployment
@@ -33,6 +34,8 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ SMS provider simplified to SMS4Free-only (Twilio removed)
 - ⏸️ Email notifications: Not configured yet (optional)
 - ⏸️ SMS notifications: Requires SMS4Free credentials (SMS4FREE_KEY, SMS4FREE_USER, SMS4FREE_PASS)
+- ✅ Branch-specific payment gateways (HYP + MAX per branch)
+- ✅ Ingredients display in order item modal
 - ⏸️ HYP payment gateway: Requires terminal/API key configuration
 
 ## Popup System
@@ -114,6 +117,15 @@ Integrated from standalone_order_service package. Provides public ordering page 
   - Model: `UpsellRule` with trigger_type (category/item), suggested_item, discounted_price
   - API: `/order/upsell-suggestions` (POST JSON) - returns matching suggestions
   - Discounted prices validated server-side via rule_id
+
+**Branch-Specific Payment Gateways:**
+- Each branch can have its own HYP or MAX payment credentials
+- Configure via Admin → Branches → Edit → Payment Settings section
+- If branch has no payment config, falls back to global SiteSettings
+- Priority: branch credentials → global SiteSettings → environment variables
+- Branch model fields: `payment_provider`, `hyp_terminal`, `hyp_api_key`, `hyp_passp`, `max_api_url`, `max_api_key`, `max_merchant_id`
+- FoodOrder tracks which provider was used via `payment_provider` column
+- `services/maxpay.py` - MAX Pay integration (standalone, no Config dependency)
 
 **KDS Access:**
 - Staff authenticate via ManagerPIN (hashed PINs)

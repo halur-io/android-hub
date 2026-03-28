@@ -83,6 +83,95 @@
             </div>
         </div>
     </div>
+
+    <div class="card mt-4">
+        <div class="card-header" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#paymentSettingsBody">
+            <i class="fas fa-credit-card me-2"></i> הגדרות תשלום
+            <i class="fas fa-chevron-down float-end mt-1"></i>
+        </div>
+        <div class="collapse {% if branch.id and (branch.hyp_terminal or branch.max_api_key) %}show{% endif %}" id="paymentSettingsBody">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">ספק תשלום מועדף</label>
+                    <select class="form-select" name="payment_provider" id="payment_provider" onchange="togglePaymentSections()">
+                        <option value="hyp" {% if not branch.payment_provider or branch.payment_provider == 'hyp' %}selected{% endif %}>HYP (Yaad Pay)</option>
+                        <option value="max" {% if branch.payment_provider == 'max' %}selected{% endif %}>MAX Pay</option>
+                    </select>
+                    <small class="text-muted">אם לא מוגדר, המערכת תשתמש בהגדרות הגלובליות</small>
+                </div>
+
+                <div id="hyp-section" class="border rounded p-3 mb-3" style="background:#f8f9fa;">
+                    <h6 class="mb-3"><i class="fas fa-shield-alt me-1 text-primary"></i> HYP (Yaad Pay) Credentials</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Terminal (Masof)</label>
+                                <input type="text" class="form-control" name="hyp_terminal" value="{{ branch.hyp_terminal or '' }}" placeholder="מספר מסוף">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">API Key</label>
+                                <input type="text" class="form-control" name="hyp_api_key" value="{{ branch.hyp_api_key or '' }}" placeholder="מפתח API">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">PassP (Password)</label>
+                                <input type="password" class="form-control" name="hyp_passp" value="{{ branch.hyp_passp or '' }}" placeholder="סיסמה">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="max-section" class="border rounded p-3 mb-3" style="background:#f8f9fa;">
+                    <h6 class="mb-3"><i class="fas fa-credit-card me-1 text-success"></i> MAX Pay Credentials</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">API URL</label>
+                                <input type="url" class="form-control" name="max_api_url" value="{{ branch.max_api_url or '' }}" placeholder="https://api.maxpay.example.com/v1/payments">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">API Key</label>
+                                <input type="text" class="form-control" name="max_api_key" value="{{ branch.max_api_key or '' }}" placeholder="מפתח API">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Merchant ID</label>
+                                <input type="text" class="form-control" name="max_merchant_id" value="{{ branch.max_merchant_id or '' }}" placeholder="מזהה סוחר">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mb-0" style="font-size:.85rem;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    אם השדות ריקים, המערכת תשתמש בהגדרות הגלובליות מדף הגדרות האתר.
+                    <br>כל סניף יכול לעבוד עם חשבון תשלום שונה.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function togglePaymentSections() {
+        var provider = document.getElementById('payment_provider').value;
+        var hypSection = document.getElementById('hyp-section');
+        var maxSection = document.getElementById('max-section');
+        if (provider === 'max') {
+            maxSection.style.border = '2px solid #198754';
+            hypSection.style.border = '';
+        } else {
+            hypSection.style.border = '2px solid #0d6efd';
+            maxSection.style.border = '';
+        }
+    }
+    document.addEventListener('DOMContentLoaded', togglePaymentSections);
+    </script>
     
     <div class="card mt-4">
         <div class="card-header">

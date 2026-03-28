@@ -204,6 +204,9 @@ try:
     from standalone_order_service.hyp_payment import HYPPayment
     hyp = HYPPayment()
 
+    from services.maxpay import MaxPayService
+    max_pay = MaxPayService()
+
     from standalone_order_service.order_routes import create_order_blueprint
     food_order_bp = create_order_blueprint(
         db=order_db,
@@ -211,6 +214,7 @@ try:
         notifier=notifier,
         hyp_payment=hyp,
         get_settings=get_site_settings,
+        max_payment=max_pay,
     )
     app.register_blueprint(food_order_bp)
     with app.app_context():

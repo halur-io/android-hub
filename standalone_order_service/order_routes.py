@@ -912,8 +912,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 )
                 db.session.add(log)
                 db.session.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                db.session.rollback()
+                logging.warning(f"Failed to log order creation for #{order.order_number}: {e}")
 
         if payment_method == 'card' and hyp_payment:
             try:

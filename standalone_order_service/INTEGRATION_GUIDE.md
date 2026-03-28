@@ -7,7 +7,7 @@ A complete, self-contained food ordering system for Israeli restaurants. Include
 - **Public ordering page** — Mobile-first menu browsing, cart, checkout, delivery zones
 - **KDS dashboard** — iPad-optimized kitchen display with real-time order management
 - **HYP (Yaad Pay) payments** — Credit card processing with APISign flow
-- **SMS & Telegram notifications** — Multi-provider SMS (Twilio/SMS4Free) with failover
+- **SMS & Telegram notifications** — SMS4Free provider with logging
 - **Combo meals & dish options** — Full customization support
 - **Availability scheduling** — Per-dish day/time restrictions
 - **UTM & referrer tracking** — Built-in conversion attribution

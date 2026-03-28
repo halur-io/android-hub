@@ -61,6 +61,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
     CouponUsage = models.get('CouponUsage')
     Deal = models.get('Deal')
     UpsellRule = models.get('UpsellRule')
+    OrderActivityLog = models.get('OrderActivityLog')
 
     def _settings():
         if get_settings:
@@ -900,6 +901,19 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 usage.order_amount = verified_subtotal
                 usage.discount_applied = coupon_discount
         db.session.commit()
+
+        if OrderActivityLog:
+            try:
+                log = OrderActivityLog(
+                    order_id=order.id,
+                    action='order_created',
+                    new_value='pending',
+                    note=f'הזמנה חדשה #{order.order_number}',
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception:
+                pass
 
         if payment_method == 'card' and hyp_payment:
             try:

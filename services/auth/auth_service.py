@@ -115,7 +115,7 @@ def send_otp():
         db.session.add(verification)
         db.session.commit()
         
-        # TODO: Send SMS via Twilio/other provider
+        # TODO: Send SMS via SMS4Free or other provider
         # For now, return code in development mode
         if os.environ.get('ENVIRONMENT') == 'development':
             return jsonify({

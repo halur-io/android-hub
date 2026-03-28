@@ -69,7 +69,7 @@ DEFAULT_CONFIG = {
     },
     'notification': {
         'sms_enabled': {'value': 'true', 'type': 'boolean', 'description': 'Enable SMS notifications'},
-        'sms_provider': {'value': 'twilio', 'type': 'string', 'description': 'SMS service provider'},
+        'sms_provider': {'value': 'sms4free', 'type': 'string', 'description': 'SMS service provider'},
         'whatsapp_enabled': {'value': 'true', 'type': 'boolean', 'description': 'Enable WhatsApp notifications'},
         'email_enabled': {'value': 'true', 'type': 'boolean', 'description': 'Enable email notifications'},
         'real_time_updates': {'value': 'true', 'type': 'boolean', 'description': 'Enable WebSocket updates'},

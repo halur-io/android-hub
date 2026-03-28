@@ -57,7 +57,7 @@
                 </thead>
                 <tbody>
                     {% for order in orders.items %}
-                    <tr>
+                    <tr style="cursor:pointer" onclick="window.location='{{ url_for('admin.food_order_detail', order_id=order.id) }}'">
                         <td><strong>{{ order.id }}</strong></td>
                         <td>{{ order.customer_name or '-' }}</td>
                         <td>{{ order.customer_phone or '-' }}</td>

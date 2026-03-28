@@ -27,8 +27,12 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ Deals system (bundled menu items at special prices)
 - ✅ Coupon codes at checkout with server-side validation
 - ✅ Upsell suggestions at checkout (triggered by cart items/categories)
+- ✅ Order activity logging (OrderActivityLog) for status changes, cancellations, creation
+- ✅ SMS logging (SMSLog) for all SMS sends with status tracking
+- ✅ Admin order detail page with activity timeline and SMS log
+- ✅ SMS provider simplified to SMS4Free-only (Twilio removed)
 - ⏸️ Email notifications: Not configured yet (optional)
-- ⏸️ SMS notifications: Requires Twilio or SMS4Free credentials
+- ⏸️ SMS notifications: Requires SMS4Free credentials (SMS4FREE_KEY, SMS4FREE_USER, SMS4FREE_PASS)
 - ⏸️ HYP payment gateway: Requires terminal/API key configuration
 
 ## Popup System
@@ -131,6 +135,8 @@ Integrated from standalone_order_service package. Provides public ordering page 
 - `menu_item_option_choices` - Option choices within groups
 - `manager_pins` - KDS staff authentication
 - `branch_menu_items` - Branch-specific menu item overrides (custom prices, availability)
+- `order_activity_logs` - Order activity timeline (status changes, creation, cancellation)
+- `sms_logs` - SMS send history with status, provider, and error tracking
 
 ## Google Tag Manager Setup
 GTM tracks page views and menu dish interactions automatically.

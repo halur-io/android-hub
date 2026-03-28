@@ -124,6 +124,7 @@ ROUTE_PERMISSIONS = {
     'admin.duplicate_popup': 'settings.edit',
     # Food Orders
     'admin.food_orders_list': 'kitchen.view',
+    'admin.food_order_detail': 'kitchen.view',
     # Coupons
     'admin.coupons': 'settings.view',
     'admin.create_coupon': 'settings.edit',
@@ -4946,6 +4947,17 @@ def food_orders_list():
         query = query.filter_by(status=status_filter)
     orders = query.order_by(FoodOrder.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
     return render_template('admin/food_orders.html', orders=orders, status_filter=status_filter)
+
+@admin_bp.route('/food-orders/<int:order_id>')
+@login_required
+def food_order_detail(order_id):
+    """Food order detail page with activity log and SMS log"""
+    from models import FoodOrder, OrderActivityLog, SMSLog
+    order = FoodOrder.query.get_or_404(order_id)
+    activity_logs = OrderActivityLog.query.filter_by(order_id=order_id).order_by(OrderActivityLog.created_at.desc()).all()
+    sms_logs = SMSLog.query.filter_by(order_id=order_id).order_by(SMSLog.created_at.desc()).all()
+    items = order.get_items()
+    return render_template('admin/food_order_detail.html', order=order, items=items, activity_logs=activity_logs, sms_logs=sms_logs)
 
 @admin_bp.route('/customers-management')
 @login_required

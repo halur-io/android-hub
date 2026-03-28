@@ -2681,3 +2681,49 @@ class UpsellRule(db.Model):
 
     def __repr__(self):
         return f'<UpsellRule {self.id} -> item {self.suggested_item_id}>'
+
+
+class OrderActivityLog(db.Model):
+    __tablename__ = 'order_activity_logs'
+    __table_args__ = (
+        db.Index('idx_oal_order_id', 'order_id'),
+        db.Index('idx_oal_created', 'created_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('food_orders.id', ondelete='CASCADE'), nullable=False)
+    action = db.Column(db.String(50), nullable=False)
+    old_value = db.Column(db.String(100))
+    new_value = db.Column(db.String(100))
+    staff_name = db.Column(db.String(100))
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship('FoodOrder', backref=db.backref('activity_logs', lazy='dynamic', order_by='OrderActivityLog.created_at.desc()'))
+
+    def __repr__(self):
+        return f'<OrderActivityLog order={self.order_id} action={self.action}>'
+
+
+class SMSLog(db.Model):
+    __tablename__ = 'sms_logs'
+    __table_args__ = (
+        db.Index('idx_sms_log_order', 'order_id'),
+        db.Index('idx_sms_log_created', 'created_at'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('food_orders.id', ondelete='SET NULL'), nullable=True)
+    recipient_phone = db.Column(db.String(30), nullable=False)
+    message_type = db.Column(db.String(50), nullable=False)
+    message_text = db.Column(db.Text, nullable=False)
+    provider = db.Column(db.String(30), default='sms4free')
+    status = db.Column(db.String(20), default='sent')
+    error_message = db.Column(db.Text)
+    staff_name = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship('FoodOrder', backref=db.backref('sms_logs', lazy='dynamic', order_by='SMSLog.created_at.desc()'))
+
+    def __repr__(self):
+        return f'<SMSLog {self.message_type} to {self.recipient_phone}>'

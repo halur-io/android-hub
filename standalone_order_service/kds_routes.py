@@ -70,6 +70,8 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     MenuItemPrice = models['MenuItemPrice']
     WorkingHours = models['WorkingHours']
     Branch = models['Branch']
+    OrderActivityLog = models.get('OrderActivityLog')
+    SMSLog = models.get('SMSLog')
 
     def _settings():
         if get_settings:
@@ -229,6 +231,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         valid = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'pickedup', 'cancelled']
         if new_status not in valid:
             return jsonify({'success': False, 'error': 'Invalid status'})
+        old_status = order.status
         order.status = new_status
         now = datetime.utcnow()
         prep_minutes = 0
@@ -255,6 +258,16 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             ts = _get_israel_now().strftime('%d/%m %H:%M')
             staff = session.get('order_dashboard_staff_name', 'צוות')
             order.admin_notes = f"{existing}\n[{ts} - {staff}]: {admin_note}".strip()
+        if OrderActivityLog:
+            log = OrderActivityLog(
+                order_id=order.id,
+                action='status_change',
+                old_value=old_status,
+                new_value=new_status,
+                staff_name=session.get('order_dashboard_staff_name', 'צוות'),
+                note=admin_note or None,
+            )
+            db.session.add(log)
         db.session.commit()
         return jsonify({'success': True, 'new_status': new_status, 'status_label': STATUS_LABELS.get(new_status, new_status)})
 
@@ -283,17 +296,45 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         if not message:
             flash('נא להזין הודעה.', 'warning')
             return redirect(url_for('order_dashboard.order_detail', order_id=order_id))
+        staff_name = session.get('order_dashboard_staff_name', 'צוות')
         if send_sms:
             try:
-                send_sms(order.customer_phone, message)
+                result = send_sms(order.customer_phone, message)
                 ts = _get_israel_now().strftime('%d/%m %H:%M')
-                staff = session.get('order_dashboard_staff_name', 'צוות')
-                existing = order.admin_notes or ''
-                order.admin_notes = f"{existing}\n[{ts} - {staff}] SMS נשלח: {message}".strip()
-                db.session.commit()
-                flash('SMS נשלח ללקוח.', 'success')
+                if SMSLog:
+                    sms_log = SMSLog(
+                        order_id=order.id,
+                        recipient_phone=order.customer_phone,
+                        message_type='custom_kds',
+                        message_text=message,
+                        provider='sms4free',
+                        status='sent' if result else 'failed',
+                        staff_name=staff_name,
+                    )
+                    db.session.add(sms_log)
+                if result:
+                    existing = order.admin_notes or ''
+                    order.admin_notes = f"{existing}\n[{ts} - {staff_name}] SMS נשלח: {message}".strip()
+                    db.session.commit()
+                    flash('SMS נשלח ללקוח.', 'success')
+                else:
+                    db.session.commit()
+                    flash('שליחת SMS נכשלה.', 'danger')
             except Exception as e:
                 logging.error(f"KDS send_sms error: {e}")
+                if SMSLog:
+                    sms_log = SMSLog(
+                        order_id=order.id,
+                        recipient_phone=order.customer_phone,
+                        message_type='custom_kds',
+                        message_text=message,
+                        provider='sms4free',
+                        status='failed',
+                        error_message=str(e)[:500],
+                        staff_name=staff_name,
+                    )
+                    db.session.add(sms_log)
+                    db.session.commit()
                 flash('שגיאה בשליחת SMS.', 'danger')
         else:
             flash('SMS לא מוגדר.', 'warning')
@@ -306,13 +347,24 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     def cancel_order(order_id):
         order = FoodOrder.query.get_or_404(order_id)
         reason = request.form.get('reason', '').strip()[:500]
+        old_status = order.status
         order.status = 'cancelled'
         order.cancelled_at = datetime.utcnow()
+        staff_name = session.get('order_dashboard_staff_name', 'צוות')
         if reason:
             ts = _get_israel_now().strftime('%d/%m %H:%M')
-            staff = session.get('order_dashboard_staff_name', 'צוות')
             existing = order.admin_notes or ''
-            order.admin_notes = f"{existing}\n[{ts} - {staff}] בוטל: {reason}".strip()
+            order.admin_notes = f"{existing}\n[{ts} - {staff_name}] בוטל: {reason}".strip()
+        if OrderActivityLog:
+            log = OrderActivityLog(
+                order_id=order.id,
+                action='cancelled',
+                old_value=old_status,
+                new_value='cancelled',
+                staff_name=staff_name,
+                note=reason or None,
+            )
+            db.session.add(log)
         db.session.commit()
         flash(f'הזמנה #{order.order_number} בוטלה.', 'info')
         return redirect(url_for('order_dashboard.orders'))

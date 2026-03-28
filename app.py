@@ -159,7 +159,8 @@ try:
     from models import (
         Branch, BranchMenuItem, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
         MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
-        ManagerPIN, SiteSettings, Coupon, CouponUsage, Deal, UpsellRule
+        ManagerPIN, SiteSettings, Coupon, CouponUsage, Deal, UpsellRule,
+        OrderActivityLog, SMSLog
     )
     from services.order.order_service import DeliveryZone
     from database import db as order_db
@@ -182,6 +183,8 @@ try:
         'CouponUsage': CouponUsage,
         'Deal': Deal,
         'UpsellRule': UpsellRule,
+        'OrderActivityLog': OrderActivityLog,
+        'SMSLog': SMSLog,
     }
 
     def get_site_settings():
@@ -194,6 +197,8 @@ try:
     notifier = OrderNotifier(
         send_sms=send_sms_fn,
         send_telegram=None,
+        db=order_db,
+        SMSLog=SMSLog,
     )
 
     from standalone_order_service.hyp_payment import HYPPayment

@@ -27,9 +27,31 @@ class OrderNotifier:
         self,
         send_sms: Optional[Callable] = None,
         send_telegram: Optional[Callable] = None,
+        db=None,
+        SMSLog=None,
     ):
         self._send_sms = send_sms
         self._send_telegram = send_telegram
+        self._db = db
+        self._SMSLog = SMSLog
+
+    def _log_sms(self, order_id, phone, msg_type, message, success, error=None):
+        if not self._SMSLog or not self._db:
+            return
+        try:
+            sms_log = self._SMSLog(
+                order_id=order_id,
+                recipient_phone=phone,
+                message_type=msg_type,
+                message_text=message[:2000] if message else '',
+                provider='sms4free',
+                status='sent' if success else 'failed',
+                error_message=str(error)[:500] if error else None,
+            )
+            self._db.session.add(sms_log)
+            self._db.session.commit()
+        except Exception as e:
+            logger.warning(f"[SMS-LOG] Failed to log SMS: {e}")
 
     def notify_new_order(self, order, settings=None):
         try:
@@ -70,9 +92,12 @@ class OrderNotifier:
                     except Exception:
                         pass
             msg += "תודה שהזמנת אצלנו! 🍽️"
-            return self._send_sms(order.customer_phone, msg)
+            result = self._send_sms(order.customer_phone, msg)
+            self._log_sms(order.id, order.customer_phone, 'customer_confirmation', msg, bool(result))
+            return result
         except Exception as e:
             logger.error(f"[ORDER-SMS-CUSTOMER] {e}")
+            self._log_sms(getattr(order, 'id', None), getattr(order, 'customer_phone', ''), 'customer_confirmation', '', False, e)
             return None
 
     def _send_admin_sms(self, order, settings):
@@ -102,7 +127,12 @@ class OrderNotifier:
         msg += f'סה"כ: ₪{order.total_amount:.0f} ({("כרטיס" if order.payment_method == "card" else "מזומן")})'
         if order.customer_notes:
             msg += f"\nהערות: {order.customer_notes}"
-        self._send_sms(admin_phone, msg)
+        try:
+            result = self._send_sms(admin_phone, msg)
+            self._log_sms(order.id, admin_phone, 'admin_notification', msg, bool(result))
+        except Exception as e:
+            self._log_sms(order.id, admin_phone, 'admin_notification', msg, False, e)
+            raise
 
     def _send_order_telegram(self, order, settings):
         if not self._send_telegram or not settings:

@@ -456,8 +456,11 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return jsonify({'valid': False, 'error': 'קוד קופון לא נמצא'})
         if not coupon.is_valid():
             return jsonify({'valid': False, 'error': 'הקופון פג תוקף או אינו פעיל'})
-        if email and not coupon.can_be_used_by_email(email):
-            return jsonify({'valid': False, 'error': 'הקופון כבר נוצל עבור אימייל זה'})
+        if coupon.max_uses_per_email is not None:
+            if not email:
+                return jsonify({'valid': False, 'error': 'נדרש אימייל כדי להשתמש בקופון זה'})
+            if not coupon.can_be_used_by_email(email):
+                return jsonify({'valid': False, 'error': 'הקופון כבר נוצל עבור אימייל זה'})
         if coupon.minimum_order_amount and subtotal < coupon.minimum_order_amount:
             return jsonify({'valid': False, 'error': f'הזמנה מינימלית ₪{int(coupon.minimum_order_amount)} נדרשת'})
         if coupon.discount_type == 'percentage':
@@ -869,11 +872,14 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             coupon_obj = Coupon.query.filter(db.func.upper(Coupon.code) == coupon_code.upper()).first()
             if coupon_obj and coupon_obj.is_valid():
                 usage_identity = (customer_email or '').strip().lower()
-                if usage_identity and not coupon_obj.can_be_used_by_email(usage_identity):
+                if coupon_obj.max_uses_per_email is not None:
+                    if not usage_identity:
+                        coupon_obj = None
+                    elif not coupon_obj.can_be_used_by_email(usage_identity):
+                        coupon_obj = None
+                if coupon_obj and coupon_obj.minimum_order_amount and verified_subtotal < coupon_obj.minimum_order_amount:
                     coupon_obj = None
-                elif coupon_obj.minimum_order_amount and verified_subtotal < coupon_obj.minimum_order_amount:
-                    coupon_obj = None
-                else:
+                if coupon_obj:
                     if coupon_obj.discount_type == 'percentage':
                         coupon_discount = verified_subtotal * (coupon_obj.discount_value / 100.0)
                         if coupon_obj.maximum_discount_amount:

@@ -45,6 +45,20 @@ def register_models(db):
         working_hours = db.relationship('WorkingHours', backref='branch', lazy=True, cascade='all, delete-orphan')
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    class BranchMenuItem(db.Model):
+        __tablename__ = 'branch_menu_items'
+        __table_args__ = (
+            db.UniqueConstraint('branch_id', 'menu_item_id', name='uq_branch_menu_item'),
+        )
+        id = db.Column(db.Integer, primary_key=True)
+        branch_id = db.Column(db.Integer, db.ForeignKey('branches.id', ondelete='CASCADE'), nullable=False)
+        menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id', ondelete='CASCADE'), nullable=False)
+        custom_price = db.Column(db.Float, nullable=True)
+        is_available = db.Column(db.Boolean, default=True)
+        display_order = db.Column(db.Integer, default=0)
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     class WorkingHours(db.Model):
         __tablename__ = 'working_hours'
         id = db.Column(db.Integer, primary_key=True)
@@ -202,6 +216,8 @@ def register_models(db):
 
         id = db.Column(db.Integer, primary_key=True)
         order_number = db.Column(db.String(30), unique=True, nullable=False)
+        branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
+        branch_name = db.Column(db.String(100), nullable=True)
         order_type = db.Column(db.String(20), nullable=False)
         status = db.Column(db.String(30), default='pending')
         customer_name = db.Column(db.String(100), nullable=False)
@@ -370,6 +386,7 @@ def register_models(db):
 
     return {
         'Branch': Branch,
+        'BranchMenuItem': BranchMenuItem,
         'WorkingHours': WorkingHours,
         'MenuCategory': MenuCategory,
         'MenuItem': MenuItem,

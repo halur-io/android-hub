@@ -154,6 +154,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         settings = _settings()
         status_filter = request.args.get('status', 'active')
         date_str = request.args.get('date', '')
+        branch_filter = request.args.get('branch_id', '')
         now = _get_israel_now()
         today = now.date()
         if date_str:
@@ -167,6 +168,11 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             FoodOrder.created_at >= datetime.combine(selected_date, datetime.min.time()),
             FoodOrder.created_at < datetime.combine(selected_date + timedelta(days=1), datetime.min.time())
         )
+        if branch_filter:
+            try:
+                q = q.filter(FoodOrder.branch_id == int(branch_filter))
+            except (ValueError, TypeError):
+                pass
         all_today = q.order_by(FoodOrder.created_at.desc()).all()
         if status_filter == 'active':
             orders_list = [o for o in all_today if o.status not in ('delivered', 'pickedup', 'cancelled')]
@@ -175,6 +181,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         else:
             orders_list = [o for o in all_today if o.status == status_filter]
 
+        all_branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
         return render_template('orders.html',
                                orders=orders_list,
                                all_today=all_today,
@@ -194,7 +201,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
                                revenue_today=sum(o.total_amount for o in all_today if o.status != 'cancelled'),
                                settings=settings,
                                ordering_paused=getattr(settings, 'ordering_paused', False) if settings else False,
-                               staff_name=session.get('order_dashboard_staff_name', ''))
+                               staff_name=session.get('order_dashboard_staff_name', ''),
+                               branches=all_branches,
+                               branch_filter=branch_filter)
 
     # ── Order detail ──────────────────────────────────────────────────
 

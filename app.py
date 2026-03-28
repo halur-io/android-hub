@@ -157,7 +157,7 @@ except Exception as e:
 # Register standalone order service (public ordering + KDS dashboard)
 try:
     from models import (
-        Branch, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
+        Branch, BranchMenuItem, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
         MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
         ManagerPIN, SiteSettings
     )
@@ -166,6 +166,7 @@ try:
 
     order_models = {
         'Branch': Branch,
+        'BranchMenuItem': BranchMenuItem,
         'WorkingHours': WorkingHours,
         'MenuCategory': MenuCategory,
         'MenuItem': MenuItem,

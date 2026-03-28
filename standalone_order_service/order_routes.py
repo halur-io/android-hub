@@ -51,6 +51,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
     MenuItemOptionGroup = models['MenuItemOptionGroup']
     MenuItemOptionChoice = models['MenuItemOptionChoice']
     MenuItemPrice = models['MenuItemPrice']
+    BranchMenuItem = models.get('BranchMenuItem')
     FoodOrder = models['FoodOrder']
     FoodOrderItem = models['FoodOrderItem']
     DeliveryZone = models['DeliveryZone']
@@ -71,7 +72,64 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
     def inject_language():
         return {'language': _get_language()}
 
-    def _check_outside_ordering_hours():
+    def _get_branches():
+        return Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+
+    def _get_selected_branch():
+        branch_id = request.args.get('branch_id') or session.get('order_branch_id')
+        if branch_id:
+            try:
+                branch = Branch.query.filter_by(id=int(branch_id), is_active=True).first()
+                if branch:
+                    session['order_branch_id'] = branch.id
+                    return branch
+            except (ValueError, TypeError):
+                pass
+        branches = _get_branches()
+        if len(branches) == 1:
+            session['order_branch_id'] = branches[0].id
+            return branches[0]
+        return None
+
+    def _get_branch_price(item, branch_id):
+        if not BranchMenuItem or not branch_id:
+            return item.base_price
+        override = BranchMenuItem.query.filter_by(
+            branch_id=branch_id, menu_item_id=item.id
+        ).first()
+        if override and override.custom_price is not None:
+            return override.custom_price
+        return item.base_price
+
+    def _is_item_available_for_branch(item_id, branch_id):
+        if not BranchMenuItem or not branch_id:
+            return True
+        override = BranchMenuItem.query.filter_by(
+            branch_id=branch_id, menu_item_id=item_id
+        ).first()
+        if override is not None:
+            return override.is_available
+        return True
+
+    @bp.route('/select-branch', methods=['POST'])
+    def select_branch():
+        branch_id = request.form.get('branch_id', '').strip()
+        if branch_id:
+            try:
+                branch = Branch.query.filter_by(id=int(branch_id), is_active=True).first()
+                if branch:
+                    session['order_branch_id'] = branch.id
+            except (ValueError, TypeError):
+                pass
+        return redirect(url_for('order_page.order_page'))
+
+    @bp.route('/clear-branch')
+    def clear_branch():
+        session.pop('order_branch_id', None)
+        session.pop('order_cart', None)
+        return redirect(url_for('order_page.order_page'))
+
+    def _check_outside_ordering_hours(branch=None):
         settings = _settings()
         if not settings or not getattr(settings, 'enforce_ordering_hours', False):
             return False
@@ -81,8 +139,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         except Exception:
             now = datetime.now()
         db_dow = (now.weekday() + 1) % 7
-        branches = Branch.query.filter_by(is_active=True).all()
-        branch_id = branches[0].id if branches else None
+        branch_id = branch.id if branch else None
+        if not branch_id:
+            branches = Branch.query.filter_by(is_active=True).all()
+            branch_id = branches[0].id if branches else None
         wh_q = WorkingHours.query.filter_by(day_of_week=db_dow, is_closed=False)
         if branch_id:
             wh_q = wh_q.filter_by(branch_id=branch_id)
@@ -124,14 +184,20 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if not settings or not getattr(settings, 'enable_online_ordering', False):
             closed_msg = getattr(settings, 'ordering_closed_message', None) or 'מערכת ההזמנות אינה פעילה כרגע.'
             return render_template('order_page.html', ordering_disabled=True, categories=[],
-                                   ordering_status_message=closed_msg, settings=settings)
+                                   ordering_status_message=closed_msg, settings=settings,
+                                   branches=[], selected_branch=None)
+
+        branches = _get_branches()
+        selected_branch = _get_selected_branch()
+        multi_branch = len(branches) > 1
+        need_branch_selection = multi_branch and not selected_branch
 
         ordering_paused = getattr(settings, 'ordering_paused', False)
         paused_message = getattr(settings, 'ordering_paused_message', None) or 'עסוקים כרגע — ניקח הזמנות בעוד כמה דקות'
         ordering_outside_hours = False
         outside_hours_message = getattr(settings, 'ordering_outside_hours_message', None) or 'ההזמנות פתוחות בשעות הפעילות בלבד.'
         if getattr(settings, 'enforce_ordering_hours', False):
-            ordering_outside_hours = _check_outside_ordering_hours()
+            ordering_outside_hours = _check_outside_ordering_hours(branch=selected_branch)
 
         from sqlalchemy.orm import joinedload
         categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
@@ -144,6 +210,8 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         current_dow = (now_il.weekday() + 1) % 7
         current_time_str = now_il.strftime('%H:%M')
 
+        sel_branch_id = selected_branch.id if selected_branch else None
+
         available_categories = []
         for cat in categories:
             items = MenuItem.query.filter(
@@ -154,7 +222,16 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 joinedload(MenuItem.price_options)
             ).order_by(MenuItem.display_order).all()
 
+            filtered_items = []
             for item in items:
+                if sel_branch_id and not _is_item_available_for_branch(item.id, sel_branch_id):
+                    continue
+
+                if sel_branch_id:
+                    item._branch_price = _get_branch_price(item, sel_branch_id)
+                else:
+                    item._branch_price = item.base_price
+
                 item._order_available = True
                 item._unavailable_reason = None
                 if not item.is_available:
@@ -181,11 +258,18 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         if current_time_str > to_t:
                             item._order_available = False
                             item._unavailable_reason = f"זמין עד השעה {to_t}"
-            if items:
-                cat._order_items = items
+                filtered_items.append(item)
+
+            if filtered_items:
+                cat._order_items = filtered_items
                 available_categories.append(cat)
 
-        delivery_zones = DeliveryZone.query.filter_by(is_active=True).order_by(DeliveryZone.display_order).all()
+        dz_query = DeliveryZone.query.filter_by(is_active=True)
+        if sel_branch_id:
+            dz_query = dz_query.filter(
+                db.or_(DeliveryZone.branch_id == sel_branch_id, DeliveryZone.branch_id.is_(None))
+            )
+        delivery_zones = dz_query.order_by(DeliveryZone.display_order).all()
 
         return render_template('order_page.html',
                                ordering_disabled=False,
@@ -199,6 +283,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                estimated_delivery_time=getattr(settings, 'estimated_delivery_time', '45-60'),
                                enable_delivery=getattr(settings, 'enable_delivery', True),
                                enable_pickup=getattr(settings, 'enable_pickup', True),
+                               branches=branches,
+                               selected_branch=selected_branch,
+                               multi_branch=multi_branch,
+                               need_branch_selection=need_branch_selection,
                                settings=settings)
 
     # ── Start checkout ────────────────────────────────────────────────
@@ -220,6 +308,12 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         session['order_utm_medium'] = request.form.get('utm_medium', '').strip()[:200]
         session['order_utm_campaign'] = request.form.get('utm_campaign', '').strip()[:200]
         session['order_referrer'] = request.form.get('referrer', '').strip()[:500]
+        branch_id = request.form.get('branch_id') or session.get('order_branch_id')
+        if branch_id:
+            try:
+                session['order_branch_id'] = int(branch_id)
+            except (ValueError, TypeError):
+                pass
         return redirect(url_for('order_page.order_checkout_page'))
 
     # ── Checkout page ─────────────────────────────────────────────────
@@ -238,11 +332,19 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if getattr(settings, 'ordering_paused', False):
             flash(getattr(settings, 'ordering_paused_message', None) or 'עסוקים כרגע', 'warning')
             return redirect(url_for('order_page.order_page'))
-        if _check_outside_ordering_hours():
+
+        selected_branch = _get_selected_branch()
+        if _check_outside_ordering_hours(branch=selected_branch):
             flash('ההזמנות פתוחות בשעות הפעילות בלבד.', 'warning')
             return redirect(url_for('order_page.order_page'))
 
-        delivery_zones = DeliveryZone.query.filter_by(is_active=True).order_by(DeliveryZone.display_order).all()
+        sel_branch_id = selected_branch.id if selected_branch else None
+        dz_query = DeliveryZone.query.filter_by(is_active=True)
+        if sel_branch_id:
+            dz_query = dz_query.filter(
+                db.or_(DeliveryZone.branch_id == sel_branch_id, DeliveryZone.branch_id.is_(None))
+            )
+        delivery_zones = dz_query.order_by(DeliveryZone.display_order).all()
         subtotal = sum(item.get('qty', 1) * item.get('price', 0) for item in cart)
         delivery_fee = getattr(settings, 'delivery_fee', 15.0)
         total = subtotal + (delivery_fee if order_type == 'delivery' else 0)
@@ -251,8 +353,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         try:
             now = datetime.now()
             db_dow = (now.weekday() + 1) % 7
-            branches = Branch.query.filter_by(is_active=True).all()
-            branch_id = branches[0].id if branches else None
+            branch_id = sel_branch_id
+            if not branch_id:
+                branches = Branch.query.filter_by(is_active=True).all()
+                branch_id = branches[0].id if branches else None
             wh_q = WorkingHours.query.filter_by(day_of_week=db_dow, is_closed=False)
             if branch_id:
                 wh_q = wh_q.filter_by(branch_id=branch_id)
@@ -310,7 +414,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if getattr(settings, 'ordering_paused', False):
             flash('עסוקים כרגע', 'warning')
             return redirect(url_for('order_page.order_page'))
-        if _check_outside_ordering_hours():
+        selected_branch = _get_selected_branch()
+        sel_branch_id = selected_branch.id if selected_branch else None
+
+        if _check_outside_ordering_hours(branch=selected_branch):
             flash('ההזמנות פתוחות בשעות הפעילות בלבד.', 'warning')
             return redirect(url_for('order_page.order_page'))
 
@@ -370,9 +477,13 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 continue
             if not db_ci:
                 continue
+            if sel_branch_id and not _is_item_available_for_branch(db_ci.id, sel_branch_id):
+                continue
             qty = max(1, min(99, int(ci.get('qty', 1))))
             ci['qty'] = qty
-            verified_subtotal_cart += db_ci.base_price * qty
+            item_price = _get_branch_price(db_ci, sel_branch_id)
+            ci['price'] = float(item_price)
+            verified_subtotal_cart += item_price * qty
             valid_cart.append(ci)
         cart = valid_cart
         if not cart:
@@ -384,7 +495,12 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if order_type == 'delivery':
             if delivery_zone_id:
                 try:
-                    delivery_zone = DeliveryZone.query.filter_by(id=int(delivery_zone_id), is_active=True).first()
+                    dz_q = DeliveryZone.query.filter_by(id=int(delivery_zone_id), is_active=True)
+                    if sel_branch_id:
+                        dz_q = dz_q.filter(
+                            db.or_(DeliveryZone.branch_id == sel_branch_id, DeliveryZone.branch_id.is_(None))
+                        )
+                    delivery_zone = dz_q.first()
                 except (ValueError, TypeError):
                     delivery_zone = None
             if delivery_zone:
@@ -403,6 +519,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         order = FoodOrder()
         order.set_order_number()
         order.tracking_token = secrets.token_urlsafe(24)
+        if selected_branch:
+            order.branch_id = selected_branch.id
+            order.branch_name = selected_branch.name_he
         order.order_type = order_type
         order.customer_name = customer_name
         order.customer_phone = customer_phone
@@ -444,11 +563,13 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             db_item = MenuItem.query.get(int(menu_item_id)) if menu_item_id else None
             if db_item and not db_item.is_available:
                 continue
+            if db_item and sel_branch_id and not _is_item_available_for_branch(db_item.id, sel_branch_id):
+                continue
             if db_item and getattr(db_item, 'available_days', None) and len(db_item.available_days) == 7:
                 today_idx = (datetime.now().weekday() + 1) % 7
                 if db_item.available_days[today_idx] == '0':
                     continue
-            base_price = db_item.base_price if db_item else float(item.get('base_price', item.get('price', 0)))
+            base_price = _get_branch_price(db_item, sel_branch_id) if db_item else float(item.get('base_price', item.get('price', 0)))
             options_extra = 0.0
             item_options = item.get('options')
             combo_selections = item.get('combo_selections')

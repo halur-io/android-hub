@@ -23,6 +23,70 @@
   </div>
 </section>
 
+{% elif need_branch_selection is defined and need_branch_selection %}
+<section class="section">
+  <div class="container" style="max-width:600px;">
+    <div class="text-center py-4">
+      <i class="fas fa-map-marker-alt fa-3x mb-3" style="color:#4338ca;"></i>
+      <h2 class="mb-2 fw-bold">{{ 'בחרו סניף' if language == 'he' else 'Select Branch' }}</h2>
+      <p class="text-muted mb-4">{{ 'מאיזה סניף תרצו להזמין?' if language == 'he' else 'Which branch would you like to order from?' }}</p>
+    </div>
+    <div class="row g-3 justify-content-center">
+      {% for branch in branches %}
+      <div class="col-12">
+        <form method="POST" action="{{ url_for('order_page.select_branch') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else '' }}">
+          <input type="hidden" name="branch_id" value="{{ branch.id }}">
+          <button type="submit" class="branch-select-card w-100">
+            <div class="d-flex align-items-center gap-3">
+              <div class="branch-icon-wrap">
+                <i class="fas fa-store"></i>
+              </div>
+              <div class="text-start flex-grow-1">
+                <div class="branch-card-name">{{ branch.name_he if language == 'he' else branch.name_en }}</div>
+                {% if branch.address_he or branch.address_en %}
+                <div class="branch-card-addr">
+                  <i class="fas fa-map-pin me-1"></i>{{ branch.address_he if language == 'he' else branch.address_en }}
+                </div>
+                {% endif %}
+                {% if branch.phone %}
+                <div class="branch-card-phone">
+                  <i class="fas fa-phone me-1"></i>{{ branch.phone }}
+                </div>
+                {% endif %}
+              </div>
+              <i class="fas fa-chevron-left" style="color:#4338ca;font-size:.9rem;"></i>
+            </div>
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<style>
+.branch-select-card {
+  background: #fff; border: 2px solid #e5e7eb; border-radius: 14px;
+  padding: 16px 20px; cursor: pointer; transition: all .2s;
+  text-align: right; display: block; width: 100%;
+  font-family: inherit; font-size: inherit; color: inherit;
+}
+.branch-select-card:hover {
+  border-color: #4338ca; box-shadow: 0 4px 16px rgba(67,56,202,.12);
+  transform: translateY(-2px);
+}
+.branch-icon-wrap {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: #ede9fe; color: #4338ca;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; flex-shrink: 0;
+}
+.branch-card-name { font-weight: 700; font-size: 1rem; color: #1e1b4b; }
+.branch-card-addr { font-size: .8rem; color: #6b7280; margin-top: 2px; }
+.branch-card-phone { font-size: .78rem; color: #9ca3af; margin-top: 1px; }
+</style>
+
 {% else %}
 
 {% set _ordering_blocked = ordering_paused or ordering_outside_hours %}
@@ -70,7 +134,16 @@
           {% endif %}
         </div>
       </div>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 align-items-center">
+        {% if multi_branch is defined and multi_branch and selected_branch %}
+        <a href="{{ url_for('order_page.clear_branch') }}" class="branch-switch-btn"
+           onclick="sessionStorage.removeItem('rai_cart');sessionStorage.removeItem('rai_cart_ts');"
+           title="{{ 'החלף סניף' if language == 'he' else 'Switch branch' }}">
+          <i class="fas fa-store me-1"></i>
+          <span>{{ selected_branch.name_he if language == 'he' else selected_branch.name_en }}</span>
+          <i class="fas fa-exchange-alt ms-1" style="font-size:.7rem;opacity:.7;"></i>
+        </a>
+        {% endif %}
         {% if enable_delivery %}
         <button type="button" class="otype-btn active" data-type="delivery" onclick="setOrderType('delivery')">
           <i class="fas fa-motorcycle me-1"></i>{{ 'משלוח' if language == 'he' else 'Delivery' }}
@@ -123,7 +196,7 @@
                    data-item-id="{{ item.id }}"
                    data-name-he="{{ item.name_he | e }}"
                    data-name-en="{{ item.name_en | e }}"
-                   data-price="{{ item.base_price }}"
+                   data-price="{{ item._branch_price if item._branch_price is defined else item.base_price }}"
                    data-description-he="{{ (item.description_he or '') | e }}"
                    data-description-en="{{ (item.description_en or '') | e }}"
                    data-image="{{ url_for('order_page.menu_image', item_id=item.id) if item.image_data else (item.image_path or '') }}"
@@ -145,7 +218,7 @@
                   {% if item.description_he or item.description_en %}
                   <div class="dish-desc">{{ (item.description_he if language == 'he' else item.description_en) | truncate(55) }}</div>
                   {% endif %}
-                  <div class="dish-price">₪{{ item.base_price | int }}</div>
+                  <div class="dish-price">₪{{ (item._branch_price if item._branch_price is defined else item.base_price) | int }}</div>
                 </div>
                 <div class="dish-qty-badge" id="dish-qty-{{ item.id }}" style="display:none;"></div>
                 {% if item.is_combo %}
@@ -235,6 +308,9 @@
   <input type="hidden" name="utm_medium" id="hidden-utm-medium">
   <input type="hidden" name="utm_campaign" id="hidden-utm-campaign">
   <input type="hidden" name="referrer" id="hidden-referrer">
+  {% if selected_branch is defined and selected_branch %}
+  <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+  {% endif %}
 </form>
 
 {% endif %}
@@ -370,6 +446,19 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
   background: #fff; color: var(--c-primary); border-color: #fff;
   box-shadow: 0 4px 16px rgba(0,0,0,.25);
   text-shadow: none;
+}
+.branch-switch-btn {
+  display: inline-flex; align-items: center;
+  min-height: 44px; padding: 0 14px; border-radius: 22px;
+  border: 1.5px solid rgba(255,255,255,.5);
+  background: rgba(255,255,255,.15); color: #fff;
+  font-weight: 600; font-size: .82rem; cursor: pointer;
+  transition: all .2s; text-decoration: none;
+  backdrop-filter: blur(8px);
+}
+.branch-switch-btn:hover {
+  background: rgba(255,255,255,.3); color: #fff;
+  text-decoration: none;
 }
 
 /* ─── Info banner ─── */
@@ -797,7 +886,7 @@ const COMBO_DATA = {
 const MENU_ITEM_NAMES = {
 {% for cat in categories %}
   {% for item in cat._order_items %}
-  {{ item.id }}: {he:'{{ item.name_he | e }}', en:'{{ item.name_en | e }}', price:{{ item.base_price or 0 }}},
+  {{ item.id }}: {he:'{{ item.name_he | e }}', en:'{{ item.name_en | e }}', price:{{ item._branch_price if item._branch_price is defined else (item.base_price or 0) }}},
   {% endfor %}
 {% endfor %}
 };

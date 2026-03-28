@@ -22,7 +22,8 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ✅ SEO: robots.txt, sitemap.xml, Google verification file
 - ✅ Popup system for announcements and promotions
 - ✅ Online ordering system integrated (standalone_order_service)
-- ✅ KDS (Kitchen Display System) dashboard
+- ✅ Multi-branch ordering with branch-specific menus, prices, and delivery zones
+- ✅ KDS (Kitchen Display System) dashboard with branch filtering
 - ⏸️ Email notifications: Not configured yet (optional)
 - ⏸️ SMS notifications: Requires Twilio or SMS4Free credentials
 - ⏸️ HYP payment gateway: Requires terminal/API key configuration
@@ -78,7 +79,8 @@ Integrated from standalone_order_service package. Provides public ordering page 
 - Cart management
 - HYP payment gateway integration (sandbox/production)
 - Order tracking
-- KDS real-time order management
+- KDS real-time order management with branch filtering
+- Multi-branch support (branch-specific menus, pricing, delivery zones)
 - SMS notifications (Twilio or SMS4Free)
 - Telegram notifications
 
@@ -108,6 +110,7 @@ Integrated from standalone_order_service package. Provides public ordering page 
 - `menu_item_option_groups` - Menu item option groups
 - `menu_item_option_choices` - Option choices within groups
 - `manager_pins` - KDS staff authentication
+- `branch_menu_items` - Branch-specific menu item overrides (custom prices, availability)
 
 ## Google Tag Manager Setup
 GTM tracks page views and menu dish interactions automatically.

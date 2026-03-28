@@ -74,6 +74,7 @@ ROUTE_PERMISSIONS = {
     'admin.branches': 'branches.view',
     'admin.edit_branch': 'branches.edit',
     'admin.delete_branch': 'branches.edit',
+    'admin.branch_menu': 'branches.edit',
     # Messages/Contacts
     'admin.messages': 'settings.view',
     'admin.mark_message_read': 'settings.edit',
@@ -1068,6 +1069,60 @@ def delete_branch(id):
     db.session.delete(branch)
     db.session.commit()
     return jsonify({'success': True})
+
+@admin_bp.route('/branches/<int:branch_id>/menu', methods=['GET', 'POST'])
+@login_required
+def branch_menu(branch_id):
+    branch = Branch.query.get_or_404(branch_id)
+    if request.method == 'POST':
+        categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+        for cat in categories:
+            items = MenuItem.query.filter_by(category_id=cat.id).all()
+            for item in items:
+                avail_key = f'avail_{item.id}'
+                price_key = f'price_{item.id}'
+                is_available = request.form.get(avail_key) == 'on'
+                custom_price_str = request.form.get(price_key, '').strip()
+                custom_price = None
+                if custom_price_str:
+                    try:
+                        custom_price = float(custom_price_str)
+                    except ValueError:
+                        pass
+                has_override = not is_available or custom_price is not None
+                existing = BranchMenuItem.query.filter_by(
+                    branch_id=branch.id, menu_item_id=item.id
+                ).first()
+                if has_override:
+                    if not existing:
+                        existing = BranchMenuItem(branch_id=branch.id, menu_item_id=item.id)
+                        db.session.add(existing)
+                    existing.is_available = is_available
+                    existing.custom_price = custom_price
+                elif existing:
+                    db.session.delete(existing)
+        db.session.commit()
+        flash('תפריט הסניף עודכן בהצלחה!', 'success')
+        return redirect(url_for('admin.branch_menu', branch_id=branch.id))
+
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    cat_items = []
+    for cat in categories:
+        items = MenuItem.query.filter_by(category_id=cat.id).order_by(MenuItem.display_order).all()
+        items_with_overrides = []
+        for item in items:
+            override = BranchMenuItem.query.filter_by(
+                branch_id=branch.id, menu_item_id=item.id
+            ).first()
+            items_with_overrides.append({
+                'item': item,
+                'override': override,
+                'is_available': override.is_available if override else True,
+                'custom_price': override.custom_price if override else None,
+            })
+        if items_with_overrides:
+            cat_items.append({'category': cat, 'menu_items': items_with_overrides})
+    return render_template('admin/branch_menu.html', branch=branch, cat_items=cat_items)
 
 # Menu Management
 @admin_bp.route('/menu')

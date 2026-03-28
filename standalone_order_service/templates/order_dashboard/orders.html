@@ -425,6 +425,17 @@
     <button class="vtab" id="btn-list" onclick="setView('list')"><i class="fas fa-list me-1"></i>רשימה</button>
   </div>
 
+  {% if branches is defined and branches | length > 1 %}
+  <div class="nav-sep" style="margin:0 4px;"></div>
+  <select class="branch-filter-select" onchange="var p=new URLSearchParams(window.location.search);if(this.value){p.set('branch_id',this.value)}else{p.delete('branch_id')};window.location.search=p.toString();"
+    style="flex-shrink:0;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:16px;padding:4px 12px;font-size:.74rem;font-weight:700;">
+    <option value="">כל הסניפים</option>
+    {% for b in branches %}
+    <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+
   <div class="ctrl-sep"></div>
 
   <!-- Filter tabs — each is flex-shrink:0 so they don't compress, parent scrolls -->
@@ -500,6 +511,7 @@
           </span>
           <span class="tbadge {% if order.payment_method=='cash' %}tb-cash{% else %}tb-card{% endif %}">{{ 'מזומן' if order.payment_method=='cash' else 'אשראי' }}</span>
           {% if order.pickup_time %}<span class="tbadge tb-time"><i class="fas fa-clock me-1"></i>{{ order.pickup_time }}</span>{% endif %}
+          {% if order.branch_name %}<span class="tbadge" style="background:#ede9fe;color:#4338ca;"><i class="fas fa-store me-1"></i>{{ order.branch_name }}</span>{% endif %}
         </div>
         <div class="card-items">
           {% for item in items %}

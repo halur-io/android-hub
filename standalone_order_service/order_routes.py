@@ -1144,8 +1144,24 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
                         verification = max_payment.verify_payment(tid, branch=branch_obj, settings=settings)
                         if verification and verification.get('status') in ('completed', 'approved', 'success', 'paid'):
-                            _confirm_paid_order(order, settings, transaction_id=tid)
-                            return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+                            v_amount = verification.get('amount') or verification.get('total') or verification.get('sum')
+                            v_order = verification.get('order_id') or verification.get('orderId') or verification.get('reference')
+                            amount_ok = True
+                            order_ok = True
+                            if v_amount is not None:
+                                try:
+                                    amount_ok = abs(float(v_amount) - float(order.total_amount)) < 0.01
+                                except (ValueError, TypeError):
+                                    amount_ok = False
+                            if v_order is not None:
+                                order_ok = str(v_order) == str(order.order_number)
+                            if amount_ok and order_ok:
+                                _confirm_paid_order(order, settings, transaction_id=tid)
+                                return redirect(url_for('order_page.order_confirmation', order_number=order_number))
+                            else:
+                                logging.error(f"MAX Pay binding mismatch for #{order_number}: expected amount={order.total_amount} got={v_amount}, expected order={order.order_number} got={v_order}")
+                                _fail_payment(order)
+                                return redirect(url_for('order_page.payment_failure') + f'?order={order_number}')
                         else:
                             logging.warning(f"MAX Pay verification failed for #{order_number}, tid={tid}, result={verification}")
                             _fail_payment(order)

@@ -415,29 +415,30 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         hyp_sandbox_mode = getattr(settings, 'hyp_sandbox_mode', True)
         card_available = False
         branch_provider = getattr(selected_branch, 'payment_provider', 'hyp') if selected_branch else 'hyp'
-        if selected_branch and getattr(selected_branch, 'has_payment_config', False):
-            if branch_provider == 'max' and max_payment:
-                _u, _k, _m = max_payment._resolve_credentials(branch=selected_branch, settings=settings)
-                card_available = bool(_u and _k and _m)
-            elif branch_provider == 'hyp' and hyp_payment:
+
+        def _check_max_available():
+            if not max_payment:
+                return False
+            _u, _k, _m = max_payment._resolve_credentials(branch=selected_branch, settings=settings)
+            return bool(_u and _k and _m)
+
+        def _check_hyp_available():
+            if not hyp_payment:
+                return False
+            try:
                 from standalone_order_service.hyp_payment import HYPPayment
                 _hyp_check = HYPPayment(settings)
                 _hyp_check._load_credentials(settings, branch=selected_branch)
-                card_available = _hyp_check.is_configured
-        elif hyp_enabled and hyp_payment:
-            try:
-                from standalone_order_service.hyp_payment import HYPPayment
-                _hyp_check = HYPPayment(settings)
-                card_available = _hyp_check.is_configured
+                return _hyp_check.is_configured
             except Exception:
-                card_available = False
-        if not card_available and max_payment:
-            try:
-                _u, _k, _m = max_payment._resolve_credentials(settings=settings)
-                if _u and _k and _m:
-                    card_available = True
-            except Exception:
-                pass
+                return False
+
+        if branch_provider == 'max':
+            card_available = _check_max_available() or _check_hyp_available()
+        elif hyp_enabled:
+            card_available = _check_hyp_available() or _check_max_available()
+        else:
+            card_available = _check_hyp_available() or _check_max_available()
 
         return render_template('order_checkout.html',
                                cart_items=cart,
@@ -939,11 +940,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             success_url = url_for('order_page.payment_success', _external=True) + f'?order={order.order_number}'
             failure_url = url_for('order_page.payment_failure', _external=True) + f'?order={order.order_number}'
             branch_prov = getattr(selected_branch, 'payment_provider', 'hyp') if selected_branch else 'hyp'
-            use_max = False
-            if selected_branch and getattr(selected_branch, 'has_payment_config', False) and branch_prov == 'max':
-                use_max = True
 
-            if use_max and max_payment:
+            def _try_max():
+                if not max_payment:
+                    return False
                 try:
                     result = max_payment.create_payment(
                         order_id=order.order_number,
@@ -963,17 +963,22 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         if result.get('transaction_id'):
                             order.hyp_transaction_id = result['transaction_id']
                         db.session.commit()
-                        return render_template('hyp_redirect.html', payment_url=result['payment_url'], order=order)
+                        return result['payment_url']
                     else:
                         logging.error(f"MAX Pay failed for #{order.order_number}: {result.get('message')}")
                 except Exception as e:
                     logging.error(f"MAX Pay error for #{order.order_number}: {e}")
+                return False
 
-            if hyp_payment:
+            def _try_hyp():
+                if not hyp_payment:
+                    return False
                 try:
                     from standalone_order_service.hyp_payment import HYPPayment
                     hyp_local = HYPPayment(settings)
                     hyp_local._load_credentials(settings, branch=selected_branch)
+                    if not hyp_local.is_configured:
+                        return False
                     hesh_items = []
                     for oi_item in order.items:
                         name = oi_item.item_name_he or oi_item.item_name_en or 'פריט'
@@ -997,10 +1002,25 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                     )
                     if payment_url:
                         order.hyp_order_ref = order.order_number
+                        order.payment_provider = 'hyp'
                         db.session.commit()
-                        return render_template('hyp_redirect.html', payment_url=payment_url, order=order)
+                        return payment_url
                 except Exception as e:
                     logging.error(f"HYP payment failed for #{order.order_number}: {e}")
+                return False
+
+            payment_url = False
+            if branch_prov == 'max':
+                payment_url = _try_max()
+                if not payment_url:
+                    payment_url = _try_hyp()
+            else:
+                payment_url = _try_hyp()
+                if not payment_url:
+                    payment_url = _try_max()
+
+            if payment_url:
+                return render_template('hyp_redirect.html', payment_url=payment_url, order=order)
 
         if notifier:
             try:

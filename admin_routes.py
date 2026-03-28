@@ -8801,15 +8801,27 @@ def deals():
 @login_required
 def create_deal():
     if request.method == 'POST':
+        try:
+            deal_price = float(request.form.get('deal_price', 0))
+        except (ValueError, TypeError):
+            deal_price = 0.0
+        try:
+            original_price = float(request.form.get('original_price', 0)) if request.form.get('original_price') else None
+        except (ValueError, TypeError):
+            original_price = None
+        try:
+            display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            display_order = 0
         deal = Deal(
             name_he=request.form.get('name_he', '').strip(),
             name_en=request.form.get('name_en', '').strip(),
             description_he=request.form.get('description_he', '').strip(),
             description_en=request.form.get('description_en', '').strip(),
-            deal_price=float(request.form.get('deal_price', 0)),
-            original_price=float(request.form.get('original_price', 0)) if request.form.get('original_price') else None,
+            deal_price=deal_price,
+            original_price=original_price,
             is_active=request.form.get('is_active') == 'on',
-            display_order=int(request.form.get('display_order', 0)),
+            display_order=display_order,
         )
         start = request.form.get('start_date', '').strip()
         end = request.form.get('end_date', '').strip()
@@ -8857,10 +8869,19 @@ def edit_deal(deal_id):
         deal.name_en = request.form.get('name_en', '').strip()
         deal.description_he = request.form.get('description_he', '').strip()
         deal.description_en = request.form.get('description_en', '').strip()
-        deal.deal_price = float(request.form.get('deal_price', 0))
-        deal.original_price = float(request.form.get('original_price', 0)) if request.form.get('original_price') else None
+        try:
+            deal.deal_price = float(request.form.get('deal_price', 0))
+        except (ValueError, TypeError):
+            deal.deal_price = 0.0
+        try:
+            deal.original_price = float(request.form.get('original_price', 0)) if request.form.get('original_price') else None
+        except (ValueError, TypeError):
+            deal.original_price = None
         deal.is_active = request.form.get('is_active') == 'on'
-        deal.display_order = int(request.form.get('display_order', 0))
+        try:
+            deal.display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            deal.display_order = 0
 
         start = request.form.get('start_date', '').strip()
         end = request.form.get('end_date', '').strip()
@@ -8922,15 +8943,31 @@ def upsell_rules():
 @login_required
 def create_upsell_rule():
     if request.method == 'POST':
+        try:
+            trigger_id = int(request.form.get('trigger_id', 0))
+        except (ValueError, TypeError):
+            trigger_id = 0
+        try:
+            suggested_item_id = int(request.form.get('suggested_item_id', 0))
+        except (ValueError, TypeError):
+            suggested_item_id = 0
+        try:
+            discounted_price = float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None
+        except (ValueError, TypeError):
+            discounted_price = None
+        try:
+            display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            display_order = 0
         rule = UpsellRule(
             trigger_type=request.form.get('trigger_type', 'category'),
-            trigger_id=int(request.form.get('trigger_id', 0)),
-            suggested_item_id=int(request.form.get('suggested_item_id', 0)),
+            trigger_id=trigger_id,
+            suggested_item_id=suggested_item_id,
             message_he=request.form.get('message_he', '').strip(),
             message_en=request.form.get('message_en', '').strip(),
-            discounted_price=float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None,
+            discounted_price=discounted_price,
             is_active=request.form.get('is_active') == 'on',
-            display_order=int(request.form.get('display_order', 0)),
+            display_order=display_order,
         )
         db.session.add(rule)
         db.session.commit()
@@ -8947,13 +8984,25 @@ def edit_upsell_rule(rule_id):
     rule = UpsellRule.query.get_or_404(rule_id)
     if request.method == 'POST':
         rule.trigger_type = request.form.get('trigger_type', 'category')
-        rule.trigger_id = int(request.form.get('trigger_id', 0))
-        rule.suggested_item_id = int(request.form.get('suggested_item_id', 0))
+        try:
+            rule.trigger_id = int(request.form.get('trigger_id', 0))
+        except (ValueError, TypeError):
+            rule.trigger_id = 0
+        try:
+            rule.suggested_item_id = int(request.form.get('suggested_item_id', 0))
+        except (ValueError, TypeError):
+            rule.suggested_item_id = 0
         rule.message_he = request.form.get('message_he', '').strip()
         rule.message_en = request.form.get('message_en', '').strip()
-        rule.discounted_price = float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None
+        try:
+            rule.discounted_price = float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None
+        except (ValueError, TypeError):
+            rule.discounted_price = None
         rule.is_active = request.form.get('is_active') == 'on'
-        rule.display_order = int(request.form.get('display_order', 0))
+        try:
+            rule.display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            rule.display_order = 0
         db.session.commit()
         flash('כלל אפסל עודכן בהצלחה!', 'success')
         return redirect(url_for('admin.upsell_rules'))

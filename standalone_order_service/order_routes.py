@@ -868,7 +868,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if coupon_code and Coupon:
             coupon_obj = Coupon.query.filter(db.func.upper(Coupon.code) == coupon_code.upper()).first()
             if coupon_obj and coupon_obj.is_valid():
-                usage_identity = (customer_email or customer_phone or '').strip().lower()
+                usage_identity = (customer_email or '').strip().lower()
                 if usage_identity and not coupon_obj.can_be_used_by_email(usage_identity):
                     coupon_obj = None
                 elif coupon_obj.minimum_order_amount and verified_subtotal < coupon_obj.minimum_order_amount:
@@ -887,7 +887,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if coupon_discount > 0 and coupon_obj:
             order.coupon_code = coupon_obj.code
             order.coupon_discount = coupon_discount
-            usage_identity = (customer_email or customer_phone or '').strip().lower()
+            usage_identity = (customer_email or '').strip().lower()
             coupon_obj.record_usage(usage_identity)
             usage = CouponUsage.query.filter_by(coupon_id=coupon_obj.id).order_by(CouponUsage.id.desc()).first()
             if usage:

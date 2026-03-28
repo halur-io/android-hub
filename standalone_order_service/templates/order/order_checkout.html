@@ -545,6 +545,7 @@ function changeCartQty(idx, delta) {
   document.querySelector('.summary-header span:last-child').textContent = '₪' + Math.round(newSub);
   document.querySelector('.item-count-pill').textContent = checkoutCart.length;
   document.querySelector('input[name="cart_json"]').value = JSON.stringify(checkoutCart);
+  resetCoupon();
   updateTotal();
   try { localStorage.setItem('rai_cart', JSON.stringify(checkoutCart)); localStorage.setItem('rai_cart_ts', Date.now().toString()); } catch(e) {}
 }
@@ -833,6 +834,18 @@ function updateTotal() {
   document.getElementById('btn-total').textContent = Math.max(0, total).toFixed(0);
 }
 
+function resetCoupon() {
+  if (!appliedCouponCode) return;
+  couponDiscount = 0;
+  appliedCouponCode = '';
+  document.getElementById('coupon-code-field').value = '';
+  document.getElementById('coupon-row-summary').style.cssText = 'display:none!important;';
+  document.getElementById('coupon-msg').innerHTML = '<span class="coupon-error"><i class="fas fa-info-circle me-1"></i>העגלה השתנתה, נא להחיל קופון מחדש</span>';
+  document.getElementById('coupon-input').disabled = false;
+  document.getElementById('apply-coupon-btn').disabled = false;
+  updateTotal();
+}
+
 function applyCoupon() {
   var code = document.getElementById('coupon-input').value.trim();
   var msg = document.getElementById('coupon-msg');
@@ -913,6 +926,7 @@ function addUpsellItem(btn) {
   });
   SUBTOTAL += s.price;
   document.querySelector('#cart_json, [name="cart_json"]').value = JSON.stringify(checkoutCart);
+  resetCoupon();
   btn.closest('.upsell-item').remove();
   if (!document.querySelector('#upsell-items .upsell-item')) {
     document.getElementById('upsell-section').style.display = 'none';

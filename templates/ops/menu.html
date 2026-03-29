@@ -1,0 +1,83 @@
+{% extends "ops/base.html" %}
+{% block header_title %}תפריט{% endblock %}
+{% block title %}תפריט - לוח בקרה{% endblock %}
+
+{% block content %}
+<div class="ops-search-bar">
+    <form method="GET" action="{{ url_for('ops.menu') }}" style="display:flex; gap:12px; flex:1;">
+        {% if selected_category %}
+        <input type="hidden" name="category" value="{{ selected_category }}">
+        {% endif %}
+        <input type="text" name="q" class="ops-input" placeholder="חיפוש פריט..." value="{{ search }}">
+        <button type="submit" class="ops-btn ops-btn-secondary"><i class="fas fa-search"></i></button>
+        {% if search %}
+        <a href="{{ url_for('ops.menu', category=selected_category) }}" class="ops-btn ops-btn-secondary"><i class="fas fa-times"></i></a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="ops-filter-bar">
+    <a href="{{ url_for('ops.menu', q=search) }}" class="ops-filter-btn {% if not selected_category %}active{% endif %}">הכל</a>
+    {% for cat in categories %}
+    <a href="{{ url_for('ops.menu', category=cat.id, q=search) }}"
+       class="ops-filter-btn {% if selected_category == cat.id %}active{% endif %}">
+        {{ cat.name_he }}
+        <span style="opacity:0.6; margin-right:4px;">({{ cat.menu_items|length }})</span>
+    </a>
+    {% endfor %}
+</div>
+
+{% if items %}
+<div id="menuItems">
+{% for item in items %}
+    <div class="ops-item-row" id="item-{{ item.id }}">
+        <div class="ops-item-info">
+            <div class="ops-item-name">{{ item.name_he }}</div>
+            <div class="ops-item-sub">
+                {{ item.category.name_he if item.category else '' }}
+                {% if not item.is_available %}
+                <span class="ops-badge ops-badge-red" style="margin-right:6px;">לא זמין</span>
+                {% endif %}
+            </div>
+        </div>
+        <input type="number" class="ops-price-edit" value="{{ item.base_price or 0 }}"
+               onchange="updatePrice({{ item.id }}, this.value)"
+               step="0.5" min="0" inputmode="decimal">
+        <label class="ops-switch">
+            <input type="checkbox" {% if item.is_available %}checked{% endif %}
+                   onchange="toggleItem({{ item.id }})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+{% endfor %}
+</div>
+{% else %}
+<div class="ops-empty">
+    <i class="fas fa-utensils"></i>
+    <div>לא נמצאו פריטים</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleItem(itemId) {
+    opsPost('{{ url_for('ops.menu_toggle') }}', {item_id: itemId}, function(d) {
+        var row = document.getElementById('item-' + itemId);
+        var badge = row.querySelector('.ops-badge');
+        if (!d.available) {
+            if (!badge) {
+                var sub = row.querySelector('.ops-item-sub');
+                sub.insertAdjacentHTML('beforeend', '<span class="ops-badge ops-badge-red" style="margin-right:6px;">לא זמין</span>');
+            }
+        } else {
+            if (badge) badge.remove();
+        }
+    });
+}
+
+function updatePrice(itemId, price) {
+    opsPost('{{ url_for('ops.menu_price') }}', {item_id: itemId, price: price});
+}
+</script>
+{% endblock %}

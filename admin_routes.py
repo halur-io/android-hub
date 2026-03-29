@@ -146,6 +146,15 @@ ROUTE_PERMISSIONS = {
     'admin.edit_upsell_rule': 'menu.edit',
     'admin.delete_upsell_rule': 'menu.edit',
     'admin.toggle_upsell_rule': 'menu.edit',
+    # Enrolled Devices & Manager PINs
+    'admin.enrolled_devices': 'system.admin',
+    'admin.create_enrolled_device': 'system.admin',
+    'admin.revoke_enrolled_device': 'system.admin',
+    'admin.activate_enrolled_device': 'system.admin',
+    'admin.delete_enrolled_device': 'system.admin',
+    'admin.create_manager_pin': 'system.admin',
+    'admin.edit_manager_pin': 'system.admin',
+    'admin.delete_manager_pin': 'system.admin',
 }
 
 @admin_bp.before_request
@@ -9046,3 +9055,107 @@ def toggle_upsell_rule(rule_id):
     rule.is_active = not rule.is_active
     db.session.commit()
     return jsonify({'success': True, 'is_active': rule.is_active})
+
+
+@admin_bp.route('/enrolled-devices')
+@login_required
+def enrolled_devices():
+    devices = EnrolledDevice.query.order_by(EnrolledDevice.created_at.desc()).all()
+    pins = ManagerPIN.query.order_by(ManagerPIN.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    return render_template('admin/enrolled_devices.html', devices=devices, pins=pins, branches=branches)
+
+
+@admin_bp.route('/enrolled-devices/create', methods=['POST'])
+@login_required
+def create_enrolled_device():
+    import secrets
+    device_name = request.form.get('device_name', 'iPad').strip()
+    branch_id = request.form.get('branch_id')
+    device = EnrolledDevice(
+        device_name=device_name,
+        device_token=secrets.token_urlsafe(64),
+        enrollment_code=secrets.token_urlsafe(16),
+        branch_id=int(branch_id) if branch_id else None,
+        enrolled_by=current_user.id,
+    )
+    db.session.add(device)
+    db.session.commit()
+    flash(f'מכשיר "{device_name}" נוצר. קוד הרשמה: {device.enrollment_code}', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/revoke/<int:device_id>', methods=['POST'])
+@login_required
+def revoke_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    device.is_active = False
+    db.session.commit()
+    flash(f'מכשיר "{device.device_name}" הושבת', 'warning')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/activate/<int:device_id>', methods=['POST'])
+@login_required
+def activate_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    device.is_active = True
+    db.session.commit()
+    flash(f'מכשיר "{device.device_name}" הופעל', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/delete/<int:device_id>', methods=['POST'])
+@login_required
+def delete_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    db.session.delete(device)
+    db.session.commit()
+    flash('המכשיר נמחק', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/manager-pins/create', methods=['POST'])
+@login_required
+def create_manager_pin():
+    name = request.form.get('name', '').strip()
+    pin = request.form.get('pin', '').strip()
+    description = request.form.get('description', '').strip()
+    is_ops_superadmin = request.form.get('is_ops_superadmin') == 'on'
+    ops_permissions = request.form.getlist('ops_permissions')
+    if not name or not pin or len(pin) < 4:
+        flash('שם וקוד PIN (לפחות 4 ספרות) נדרשים', 'error')
+        return redirect(url_for('admin.enrolled_devices'))
+    mp = ManagerPIN(name=name, description=description, is_ops_superadmin=is_ops_superadmin, ops_permissions=ops_permissions)
+    mp.set_pin(pin)
+    db.session.add(mp)
+    db.session.commit()
+    flash(f'PIN עבור "{name}" נוצר', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/manager-pins/edit/<int:pin_id>', methods=['POST'])
+@login_required
+def edit_manager_pin(pin_id):
+    mp = ManagerPIN.query.get_or_404(pin_id)
+    mp.name = request.form.get('name', mp.name).strip()
+    mp.description = request.form.get('description', '').strip()
+    mp.is_ops_superadmin = request.form.get('is_ops_superadmin') == 'on'
+    mp.ops_permissions = request.form.getlist('ops_permissions')
+    new_pin = request.form.get('pin', '').strip()
+    if new_pin and len(new_pin) >= 4:
+        mp.set_pin(new_pin)
+    mp.is_active = request.form.get('is_active') == 'on'
+    db.session.commit()
+    flash(f'PIN עבור "{mp.name}" עודכן', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/manager-pins/delete/<int:pin_id>', methods=['POST'])
+@login_required
+def delete_manager_pin(pin_id):
+    mp = ManagerPIN.query.get_or_404(pin_id)
+    db.session.delete(mp)
+    db.session.commit()
+    flash('ה-PIN נמחק', 'success')
+    return redirect(url_for('admin.enrolled_devices'))

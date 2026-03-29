@@ -1,0 +1,135 @@
+{% extends "ops/base.html" %}
+{% block header_title %}מבצעים וקופונים{% endblock %}
+{% block title %}מבצעים - לוח בקרה{% endblock %}
+
+{% block content %}
+<div class="ops-filter-bar">
+    <button class="ops-filter-btn active" id="tabDeals" onclick="showTab('deals')">מבצעים ({{ deals|length }})</button>
+    <button class="ops-filter-btn" id="tabCoupons" onclick="showTab('coupons')">קופונים ({{ coupons|length }})</button>
+</div>
+
+<div id="dealsSection">
+    <div class="ops-section-title" style="justify-content:space-between;">
+        <span><i class="fas fa-percentage"></i> מבצעים</span>
+    </div>
+    {% if deals %}
+    {% for deal in deals %}
+    <div class="ops-item-row">
+        <div class="ops-item-info">
+            <div class="ops-item-name">{{ deal.name_he }}</div>
+            <div class="ops-item-sub">
+                ₪{{ deal.deal_price }}
+                {% if deal.original_price %}<s style="opacity:0.5;">₪{{ deal.original_price }}</s>{% endif %}
+                {% if deal.start_date %} · מ-{{ deal.start_date.strftime('%d/%m') }}{% endif %}
+                {% if deal.end_date %} עד {{ deal.end_date.strftime('%d/%m') }}{% endif %}
+            </div>
+        </div>
+        {% if not deal.is_active %}
+        <span class="ops-badge ops-badge-red">לא פעיל</span>
+        {% endif %}
+        <label class="ops-switch">
+            <input type="checkbox" {% if deal.is_active %}checked{% endif %}
+                   onchange="opsPost('{{ url_for('ops.deal_toggle') }}', {deal_id: {{ deal.id }}})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="ops-empty">
+        <i class="fas fa-tags"></i>
+        <div>אין מבצעים</div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="couponsSection" style="display:none;">
+    <div class="ops-section-title" style="justify-content:space-between;">
+        <span><i class="fas fa-ticket-alt"></i> קופונים</span>
+        <button class="ops-btn ops-btn-primary ops-btn-sm" onclick="document.getElementById('addCouponModal').classList.add('show')">
+            <i class="fas fa-plus"></i> קופון חדש
+        </button>
+    </div>
+    {% if coupons %}
+    {% for coupon in coupons %}
+    <div class="ops-item-row">
+        <div class="ops-item-info">
+            <div class="ops-item-name">{{ coupon.name }}</div>
+            <div class="ops-item-sub">
+                <span style="font-family:monospace; background:var(--ops-bg); padding:2px 8px; border-radius:4px; direction:ltr; display:inline-block;">{{ coupon.code }}</span>
+                ·
+                {% if coupon.discount_type == 'percentage' %}{{ coupon.discount_value|round }}%{% else %}₪{{ coupon.discount_value }}{% endif %}
+                · שימושים: {{ coupon.current_uses or 0 }}{% if coupon.max_total_uses %}/{{ coupon.max_total_uses }}{% endif %}
+            </div>
+        </div>
+        {% if not coupon.is_active %}
+        <span class="ops-badge ops-badge-red">לא פעיל</span>
+        {% elif not coupon.is_valid() %}
+        <span class="ops-badge ops-badge-orange">לא תקף</span>
+        {% endif %}
+        <label class="ops-switch">
+            <input type="checkbox" {% if coupon.is_active %}checked{% endif %}
+                   onchange="opsPost('{{ url_for('ops.coupon_toggle') }}', {coupon_id: {{ coupon.id }}})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="ops-empty">
+        <i class="fas fa-ticket-alt"></i>
+        <div>אין קופונים</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="ops-modal-overlay" id="addCouponModal">
+    <div class="ops-modal">
+        <div class="ops-modal-title">קופון חדש</div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">שם</label>
+            <input type="text" class="ops-input" id="cpnName" placeholder="שם הקופון">
+        </div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">קוד</label>
+            <input type="text" class="ops-input" id="cpnCode" placeholder="SAVE10" style="direction:ltr; text-align:left; text-transform:uppercase;">
+        </div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">סוג הנחה</label>
+            <select class="ops-select" id="cpnType">
+                <option value="percentage">אחוז</option>
+                <option value="fixed_amount">סכום קבוע</option>
+            </select>
+        </div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">ערך</label>
+            <input type="number" class="ops-input" id="cpnValue" value="10" min="0" step="1" inputmode="decimal">
+        </div>
+        <div class="ops-form-actions">
+            <button class="ops-btn ops-btn-primary" onclick="createCoupon()">צור קופון</button>
+            <button class="ops-btn ops-btn-secondary" onclick="document.getElementById('addCouponModal').classList.remove('show')">ביטול</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(tab) {
+    document.getElementById('dealsSection').style.display = tab === 'deals' ? '' : 'none';
+    document.getElementById('couponsSection').style.display = tab === 'coupons' ? '' : 'none';
+    document.getElementById('tabDeals').classList.toggle('active', tab === 'deals');
+    document.getElementById('tabCoupons').classList.toggle('active', tab === 'coupons');
+}
+
+function createCoupon() {
+    opsPost('{{ url_for('ops.coupon_create') }}', {
+        name: document.getElementById('cpnName').value,
+        code: document.getElementById('cpnCode').value,
+        discount_type: document.getElementById('cpnType').value,
+        discount_value: parseFloat(document.getElementById('cpnValue').value)
+    }, function() {
+        document.getElementById('addCouponModal').classList.remove('show');
+        setTimeout(function() { location.reload(); }, 500);
+    });
+}
+</script>
+{% endblock %}

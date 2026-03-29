@@ -1,0 +1,99 @@
+{% extends "ops/base.html" %}
+{% block header_title %}בית{% endblock %}
+{% block title %}בית - לוח בקרה{% endblock %}
+
+{% block content %}
+<div class="ops-section-title"><i class="fas fa-chart-line"></i> סיכום יומי</div>
+<div class="ops-grid ops-grid-4">
+    <div class="ops-card ops-stat-card">
+        <div class="ops-stat-icon green"><i class="fas fa-shekel-sign"></i></div>
+        <div class="ops-stat-value" style="color: var(--ops-green);">₪{{ "%.0f"|format(total_revenue) }}</div>
+        <div class="ops-stat-label">הכנסות היום</div>
+    </div>
+    <div class="ops-card ops-stat-card">
+        <div class="ops-stat-icon blue"><i class="fas fa-receipt"></i></div>
+        <div class="ops-stat-value" style="color: var(--ops-blue);">{{ total_orders }}</div>
+        <div class="ops-stat-label">הזמנות היום</div>
+    </div>
+    <div class="ops-card ops-stat-card">
+        <div class="ops-stat-icon accent"><i class="fas fa-fire"></i></div>
+        <div class="ops-stat-value" style="color: var(--ops-accent);">{{ active_orders }}</div>
+        <div class="ops-stat-label">הזמנות פעילות</div>
+    </div>
+    <div class="ops-card ops-stat-card">
+        <div class="ops-stat-icon {% if low_stock_count > 0 %}red{% else %}green{% endif %}">
+            <i class="fas fa-box-open"></i>
+        </div>
+        <div class="ops-stat-value" style="color: {% if low_stock_count > 0 %}var(--ops-red){% else %}var(--ops-green){% endif %};">{{ low_stock_count }}</div>
+        <div class="ops-stat-label">התראות מלאי</div>
+    </div>
+</div>
+
+<div class="ops-section-title"><i class="fas fa-sliders-h"></i> בקרה מהירה</div>
+<div class="ops-card">
+    <div class="ops-toggle-row">
+        <div>
+            <div class="ops-toggle-label">הזמנות אונליין</div>
+            <div class="ops-toggle-sublabel">הפעלה/השבתה של מערכת ההזמנות</div>
+        </div>
+        <label class="ops-switch">
+            <input type="checkbox" {% if settings and settings.enable_online_ordering %}checked{% endif %}
+                   onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_online_ordering', value:this.checked})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    <div class="ops-toggle-row">
+        <div>
+            <div class="ops-toggle-label">
+                השהיית הזמנות
+                {% if settings and settings.ordering_paused %}
+                <span class="ops-badge ops-badge-red" style="margin-right: 8px;">מושהה</span>
+                {% endif %}
+            </div>
+            <div class="ops-toggle-sublabel">השהיה זמנית של קבלת הזמנות חדשות</div>
+        </div>
+        <label class="ops-switch">
+            <input type="checkbox" {% if settings and settings.ordering_paused %}checked{% endif %}
+                   onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'ordering_paused', value:this.checked})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    <div class="ops-toggle-row">
+        <div>
+            <div class="ops-toggle-label">משלוחים</div>
+            <div class="ops-toggle-sublabel">אפשר/השבת משלוחים</div>
+        </div>
+        <label class="ops-switch">
+            <input type="checkbox" {% if settings and settings.enable_delivery %}checked{% endif %}
+                   onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_delivery', value:this.checked})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    <div class="ops-toggle-row">
+        <div>
+            <div class="ops-toggle-label">איסוף עצמי</div>
+            <div class="ops-toggle-sublabel">אפשר/השבת איסוף עצמי</div>
+        </div>
+        <label class="ops-switch">
+            <input type="checkbox" {% if settings and settings.enable_pickup %}checked{% endif %}
+                   onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_pickup', value:this.checked})">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    <div class="ops-toggle-row" style="border-bottom: none;">
+        <div>
+            <div class="ops-toggle-label">זמן משלוח משוער</div>
+            <div class="ops-toggle-sublabel">דקות (לדוגמה: 30-45)</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <input type="text" class="ops-input" style="width:100px; min-height:38px; text-align:center; direction:ltr;"
+                   id="deliveryTimeInput"
+                   value="{{ settings.estimated_delivery_time if settings else '45-60' }}">
+            <button class="ops-btn ops-btn-secondary ops-btn-sm"
+                    onclick="opsPost('{{ url_for('ops.update_delivery_time') }}', {value:document.getElementById('deliveryTimeInput').value})">
+                <i class="fas fa-check"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

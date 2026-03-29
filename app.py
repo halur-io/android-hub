@@ -238,5 +238,14 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+try:
+    from ops_routes import ops_bp
+    app.register_blueprint(ops_bp)
+    logging.info("Ops dashboard registered: /ops")
+except Exception as e:
+    logging.error(f"Error registering ops blueprint: {e}")
+    import traceback
+    traceback.print_exc()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

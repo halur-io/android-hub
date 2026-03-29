@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>מכשיר לא רשום</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ops.css') }}?v={{ cache_version }}">
+</head>
+<body>
+    <div class="ops-login-wrapper">
+        <div class="ops-not-enrolled">
+            <i class="fas fa-shield-halved"></i>
+            <h2>מכשיר לא רשום</h2>
+            <p>מכשיר זה אינו מורשה לגשת ללוח הבקרה. פנה למנהל המערכת כדי לרשום את המכשיר.</p>
+            {% if enrollment_code %}
+            <div style="margin-top: 24px; padding: 20px; background: var(--ops-card); border-radius: var(--ops-radius-sm); border: 1px solid var(--ops-border);">
+                <div style="font-size: 13px; color: var(--ops-text-dim); margin-bottom: 8px;">קוד הרשמה:</div>
+                <div style="font-size: 32px; font-weight: 800; letter-spacing: 4px; direction: ltr;">{{ enrollment_code }}</div>
+                <div style="font-size: 12px; color: var(--ops-text-dim); margin-top: 8px;">מסור קוד זה למנהל</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

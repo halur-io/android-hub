@@ -1,0 +1,361 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'מכשירים ו-PIN' if (admin_language or 'he') == 'he' else 'Devices & PINs' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ 'מכשירים רשומים ו-PIN' if (admin_language or 'he') == 'he' else 'Enrolled Devices & PINs' }}</h2>
+    </div>
+
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#devicesTab">
+                <i class="fas fa-tablet-alt me-1"></i> {{ 'מכשירים' if (admin_language or 'he') == 'he' else 'Devices' }}
+                <span class="badge bg-primary ms-1">{{ devices|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pinsTab">
+                <i class="fas fa-key me-1"></i> {{ 'קודי PIN' if (admin_language or 'he') == 'he' else 'PIN Codes' }}
+                <span class="badge bg-primary ms-1">{{ pins|length }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="devicesTab">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ 'הוסף מכשיר חדש' if (admin_language or 'he') == 'he' else 'Add New Device' }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.create_enrolled_device') }}" class="row g-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="col-md-4">
+                            <label class="form-label">{{ 'שם המכשיר' if (admin_language or 'he') == 'he' else 'Device Name' }}</label>
+                            <input type="text" class="form-control" name="device_name" placeholder="iPad מטבח" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</label>
+                            <select class="form-select" name="branch_id">
+                                <option value="">{{ 'כל הסניפים' if (admin_language or 'he') == 'he' else 'All Branches' }}</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> {{ 'צור מכשיר' if (admin_language or 'he') == 'he' else 'Create Device' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
+                                    <th>{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</th>
+                                    <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                                    <th>{{ 'קוד הרשמה' if (admin_language or 'he') == 'he' else 'Enrollment Code' }}</th>
+                                    <th>{{ 'נוצר' if (admin_language or 'he') == 'he' else 'Created' }}</th>
+                                    <th>{{ 'נראה לאחרונה' if (admin_language or 'he') == 'he' else 'Last Seen' }}</th>
+                                    <th>{{ 'פעולות' if (admin_language or 'he') == 'he' else 'Actions' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device in devices %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-tablet-alt me-1 text-muted"></i>
+                                        {{ device.device_name }}
+                                    </td>
+                                    <td>{{ device.branch.name_he if device.branch else '—' }}</td>
+                                    <td>
+                                        {% if device.is_active %}
+                                            {% if device.enrollment_code %}
+                                            <span class="badge bg-warning">{{ 'ממתין להרשמה' if (admin_language or 'he') == 'he' else 'Pending' }}</span>
+                                            {% else %}
+                                            <span class="badge bg-success">{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ 'מושבת' if (admin_language or 'he') == 'he' else 'Revoked' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if device.enrollment_code %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            <code class="bg-light p-1 rounded" style="font-size:0.8rem;">{{ request.host_url }}ops/enroll/{{ device.enrollment_code }}</code>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyText('{{ request.host_url }}ops/enroll/{{ device.enrollment_code }}')" title="Copy">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ device.created_at.strftime('%d/%m/%Y %H:%M') if device.created_at else '—' }}</td>
+                                    <td>{{ device.last_seen.strftime('%d/%m/%Y %H:%M') if device.last_seen else '—' }}</td>
+                                    <td>
+                                        <div class="action-menu">
+                                            <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <div class="action-dropdown">
+                                                {% if device.is_active %}
+                                                <form method="POST" action="{{ url_for('admin.revoke_enrolled_device', device_id=device.id) }}" style="display:inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item text-warning">
+                                                        <i class="fas fa-ban me-1"></i> {{ 'השבת' if (admin_language or 'he') == 'he' else 'Revoke' }}
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <form method="POST" action="{{ url_for('admin.activate_enrolled_device', device_id=device.id) }}" style="display:inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item text-success">
+                                                        <i class="fas fa-check me-1"></i> {{ 'הפעל' if (admin_language or 'he') == 'he' else 'Activate' }}
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                                <form method="POST" action="{{ url_for('admin.delete_enrolled_device', device_id=device.id) }}" style="display:inline;" onsubmit="return confirm('{{ 'למחוק מכשיר?' if (admin_language or 'he') == 'he' else 'Delete device?' }}')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="fas fa-trash me-1"></i> {{ 'מחק' if (admin_language or 'he') == 'he' else 'Delete' }}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not devices %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="fas fa-tablet-alt fa-2x mb-2 d-block"></i>
+                                        {{ 'אין מכשירים רשומים' if (admin_language or 'he') == 'he' else 'No enrolled devices' }}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="pinsTab">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ 'צור קוד PIN חדש' if (admin_language or 'he') == 'he' else 'Create New PIN' }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.create_manager_pin') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</label>
+                                <input type="text" class="form-control" name="name" placeholder="ראש צוות" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">{{ 'קוד PIN' if (admin_language or 'he') == 'he' else 'PIN Code' }}</label>
+                                <input type="text" class="form-control" name="pin" placeholder="1234" pattern="\d{4,}" maxlength="8" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</label>
+                                <input type="text" class="form-control" name="description" placeholder="אופציונלי">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ 'הרשאות מודולים' if (admin_language or 'he') == 'he' else 'Module Permissions' }}</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="ops_permissions" value="home" id="perm_home" checked>
+                                        <label class="form-check-label" for="perm_home">{{ 'בית' if (admin_language or 'he') == 'he' else 'Home' }}</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="ops_permissions" value="menu" id="perm_menu">
+                                        <label class="form-check-label" for="perm_menu">{{ 'תפריט' if (admin_language or 'he') == 'he' else 'Menu' }}</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="ops_permissions" value="stock" id="perm_stock">
+                                        <label class="form-check-label" for="perm_stock">{{ 'מלאי' if (admin_language or 'he') == 'he' else 'Stock' }}</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="ops_permissions" value="deals" id="perm_deals">
+                                        <label class="form-check-label" for="perm_deals">{{ 'מבצעים' if (admin_language or 'he') == 'he' else 'Deals' }}</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="ops_permissions" value="branches" id="perm_branches">
+                                        <label class="form-check-label" for="perm_branches">{{ 'סניפים' if (admin_language or 'he') == 'he' else 'Branches' }}</label>
+                                    </div>
+                                </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="is_ops_superadmin" id="new_superadmin">
+                                    <label class="form-check-label fw-bold" for="new_superadmin">
+                                        <i class="fas fa-star text-warning me-1"></i>
+                                        {{ 'סופר אדמין (כל ההרשאות)' if (admin_language or 'he') == 'he' else 'Super Admin (all permissions)' }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> {{ 'צור PIN' if (admin_language or 'he') == 'he' else 'Create PIN' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
+                                    <th>{{ 'PIN' if (admin_language or 'he') == 'he' else 'PIN' }}</th>
+                                    <th>{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</th>
+                                    <th>{{ 'הרשאות' if (admin_language or 'he') == 'he' else 'Permissions' }}</th>
+                                    <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                                    <th>{{ 'שימוש אחרון' if (admin_language or 'he') == 'he' else 'Last Used' }}</th>
+                                    <th>{{ 'פעולות' if (admin_language or 'he') == 'he' else 'Actions' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pin in pins %}
+                                <tr>
+                                    <td>{{ pin.name }}</td>
+                                    <td><code>****</code></td>
+                                    <td>{{ pin.description or '—' }}</td>
+                                    <td>
+                                        {% if pin.is_ops_superadmin %}
+                                        <span class="badge bg-warning"><i class="fas fa-star me-1"></i>{{ 'סופר אדמין' if (admin_language or 'he') == 'he' else 'Super Admin' }}</span>
+                                        {% else %}
+                                            {% for perm in (pin.ops_permissions or []) %}
+                                            <span class="badge bg-secondary me-1">{{ perm }}</span>
+                                            {% endfor %}
+                                            {% if not (pin.ops_permissions or []) %}
+                                            <span class="text-muted">{{ 'ללא הרשאות' if (admin_language or 'he') == 'he' else 'No permissions' }}</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pin.is_active %}
+                                        <span class="badge bg-success">{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ 'מושבת' if (admin_language or 'he') == 'he' else 'Inactive' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ pin.last_used_at.strftime('%d/%m/%Y %H:%M') if pin.last_used_at else '—' }}</td>
+                                    <td>
+                                        <div class="action-menu">
+                                            <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <div class="action-dropdown">
+                                                <a href="#" class="dropdown-item" onclick="editPin({{ pin.id }}, '{{ pin.name }}', '{{ pin.description or '' }}', {{ pin.is_ops_superadmin|lower }}, {{ (pin.ops_permissions or [])|tojson }}, {{ pin.is_active|lower }}); return false;">
+                                                    <i class="fas fa-edit me-1"></i> {{ 'עריכה' if (admin_language or 'he') == 'he' else 'Edit' }}
+                                                </a>
+                                                <form method="POST" action="{{ url_for('admin.delete_manager_pin', pin_id=pin.id) }}" style="display:inline;" onsubmit="return confirm('{{ 'למחוק PIN?' if (admin_language or 'he') == 'he' else 'Delete PIN?' }}')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="fas fa-trash me-1"></i> {{ 'מחק' if (admin_language or 'he') == 'he' else 'Delete' }}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% if not pins %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="fas fa-key fa-2x mb-2 d-block"></i>
+                                        {{ 'אין קודי PIN' if (admin_language or 'he') == 'he' else 'No PIN codes' }}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editPinModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editPinForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ 'עריכת PIN' if (admin_language or 'he') == 'he' else 'Edit PIN' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</label>
+                        <input type="text" class="form-control" name="name" id="editPinName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'PIN חדש (השאר ריק לשמור הקיים)' if (admin_language or 'he') == 'he' else 'New PIN (leave empty to keep current)' }}</label>
+                        <input type="text" class="form-control" name="pin" pattern="\d{4,}" maxlength="8">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</label>
+                        <input type="text" class="form-control" name="description" id="editPinDesc">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'הרשאות מודולים' if (admin_language or 'he') == 'he' else 'Module Permissions' }}</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="form-check"><input class="form-check-input edit-perm" type="checkbox" name="ops_permissions" value="home" id="edit_perm_home"><label class="form-check-label" for="edit_perm_home">Home</label></div>
+                            <div class="form-check"><input class="form-check-input edit-perm" type="checkbox" name="ops_permissions" value="menu" id="edit_perm_menu"><label class="form-check-label" for="edit_perm_menu">Menu</label></div>
+                            <div class="form-check"><input class="form-check-input edit-perm" type="checkbox" name="ops_permissions" value="stock" id="edit_perm_stock"><label class="form-check-label" for="edit_perm_stock">Stock</label></div>
+                            <div class="form-check"><input class="form-check-input edit-perm" type="checkbox" name="ops_permissions" value="deals" id="edit_perm_deals"><label class="form-check-label" for="edit_perm_deals">Deals</label></div>
+                            <div class="form-check"><input class="form-check-input edit-perm" type="checkbox" name="ops_permissions" value="branches" id="edit_perm_branches"><label class="form-check-label" for="edit_perm_branches">Branches</label></div>
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_ops_superadmin" id="editSuperadmin">
+                        <label class="form-check-label fw-bold" for="editSuperadmin"><i class="fas fa-star text-warning me-1"></i>{{ 'סופר אדמין' if (admin_language or 'he') == 'he' else 'Super Admin' }}</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="editActive">
+                        <label class="form-check-label" for="editActive">{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                    <button type="submit" class="btn btn-primary">{{ 'שמור' if (admin_language or 'he') == 'he' else 'Save' }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        alert('{{ 'הקישור הועתק!' if (admin_language or 'he') == 'he' else 'Link copied!' }}');
+    });
+}
+
+function editPin(id, name, desc, isSuperadmin, perms, isActive) {
+    document.getElementById('editPinForm').action = '/admin/manager-pins/edit/' + id;
+    document.getElementById('editPinName').value = name;
+    document.getElementById('editPinDesc').value = desc;
+    document.getElementById('editSuperadmin').checked = isSuperadmin;
+    document.getElementById('editActive').checked = isActive;
+    document.querySelectorAll('.edit-perm').forEach(function(cb) {
+        cb.checked = perms.indexOf(cb.value) !== -1;
+    });
+    new bootstrap.Modal(document.getElementById('editPinModal')).show();
+}
+</script>
+{% endblock %}

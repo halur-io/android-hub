@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{% block title %}לוח בקרה{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ops.css') }}?v={{ cache_version }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="ops-wrapper">
+        <header class="ops-header">
+            <div class="ops-header-title">
+                <i class="fas fa-tablet-alt" style="color: var(--ops-accent);"></i>
+                {% block header_title %}לוח בקרה{% endblock %}
+            </div>
+            <div class="ops-header-right">
+                <span class="ops-header-user">
+                    <i class="fas fa-user-circle"></i>
+                    {{ session.get('ops_user_name', '') }}
+                </span>
+                <a href="{{ url_for('ops.logout') }}" class="ops-header-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </header>
+
+        <main class="ops-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <nav class="ops-tab-bar">
+            {% set tabs = [] %}
+            {% if 'home' in ops_modules %}
+                {% set _ = tabs.append(('home', 'בית', 'fas fa-home', url_for('ops.home'))) %}
+            {% endif %}
+            {% if 'menu' in ops_modules %}
+                {% set _ = tabs.append(('menu', 'תפריט', 'fas fa-utensils', url_for('ops.menu'))) %}
+            {% endif %}
+            {% if 'stock' in ops_modules %}
+                {% set _ = tabs.append(('stock', 'מלאי', 'fas fa-boxes-stacked', url_for('ops.stock'))) %}
+            {% endif %}
+            {% if 'deals' in ops_modules %}
+                {% set _ = tabs.append(('deals', 'מבצעים', 'fas fa-tags', url_for('ops.deals'))) %}
+            {% endif %}
+            {% if 'branches' in ops_modules %}
+                {% set _ = tabs.append(('branches', 'סניפים', 'fas fa-store', url_for('ops.branches'))) %}
+            {% endif %}
+            {% for key, label, icon, url in tabs %}
+            <a href="{{ url }}" class="ops-tab {% if active_tab == key %}active{% endif %}">
+                <i class="{{ icon }}"></i>
+                <span>{{ label }}</span>
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+
+    <div id="ops-toast" class="ops-toast"></div>
+
+    <script>
+    function showToast(message, isError) {
+        var t = document.getElementById('ops-toast');
+        t.textContent = message;
+        t.className = 'ops-toast' + (isError ? ' error' : '') + ' show';
+        setTimeout(function() { t.className = 'ops-toast'; }, 2500);
+    }
+
+    function opsPost(url, data, onSuccess) {
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+            body: JSON.stringify(data || {})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok || d.success) {
+                showToast(d.message || 'עודכן בהצלחה');
+                if (onSuccess) onSuccess(d);
+            } else {
+                showToast(d.message || d.error || 'שגיאה', true);
+            }
+        })
+        .catch(function() { showToast('שגיאת תקשורת', true); });
+    }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

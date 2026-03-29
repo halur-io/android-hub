@@ -2625,6 +2625,10 @@ class ManagerPIN(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_used_at = db.Column(db.DateTime)
+    ops_permissions = db.Column(db.JSON, default=list)
+    is_ops_superadmin = db.Column(db.Boolean, default=False)
+
+    OPS_MODULES = ['home', 'menu', 'stock', 'deals', 'branches']
 
     def set_pin(self, pin):
         self.pin_hash = generate_password_hash(pin)
@@ -2632,8 +2636,40 @@ class ManagerPIN(db.Model):
     def check_pin(self, pin):
         return check_password_hash(self.pin_hash, pin)
 
+    def has_ops_permission(self, module):
+        if self.is_ops_superadmin:
+            return True
+        perms = self.ops_permissions or []
+        return module in perms
+
+    def get_ops_modules(self):
+        if self.is_ops_superadmin:
+            return self.OPS_MODULES[:]
+        return [m for m in self.OPS_MODULES if m in (self.ops_permissions or [])]
+
     def __repr__(self):
         return f'<ManagerPIN {self.name}>'
+
+
+class EnrolledDevice(db.Model):
+    __tablename__ = 'enrolled_devices'
+    id = db.Column(db.Integer, primary_key=True)
+    device_name = db.Column(db.String(100), nullable=False)
+    device_token = db.Column(db.String(128), unique=True, nullable=False)
+    enrollment_code = db.Column(db.String(32), unique=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    enrolled_at = db.Column(db.DateTime)
+    enrolled_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
+    last_seen = db.Column(db.DateTime)
+    user_agent = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    branch = db.relationship('Branch', backref='enrolled_devices')
+    enrolled_by_user = db.relationship('AdminUser', backref='enrolled_devices')
+
+    def __repr__(self):
+        return f'<EnrolledDevice {self.device_name}>'
 
 
 class Deal(db.Model):

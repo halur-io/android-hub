@@ -25,6 +25,8 @@ def _run_safe_migrations(db):
         ("branches", "max_api_url", "ALTER TABLE branches ADD COLUMN max_api_url VARCHAR(500)"),
         ("branches", "max_api_key", "ALTER TABLE branches ADD COLUMN max_api_key VARCHAR(255)"),
         ("branches", "max_merchant_id", "ALTER TABLE branches ADD COLUMN max_merchant_id VARCHAR(100)"),
+        ("manager_pins", "ops_permissions", "ALTER TABLE manager_pins ADD COLUMN ops_permissions JSON"),
+        ("manager_pins", "is_ops_superadmin", "ALTER TABLE manager_pins ADD COLUMN is_ops_superadmin BOOLEAN DEFAULT FALSE"),
     ]
     for table, column, sql in migrations:
         try:

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>כניסה - לוח בקרה</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ops.css') }}?v={{ cache_version }}">
+</head>
+<body>
+    <div class="ops-login-wrapper">
+        <div class="ops-login-box">
+            <div style="font-size: 48px; color: var(--ops-accent); margin-bottom: 16px;">
+                <i class="fas fa-tablet-alt"></i>
+            </div>
+            <div class="ops-login-title">לוח בקרה</div>
+            <div class="ops-login-subtitle">הזן קוד PIN לכניסה</div>
+
+            {% if error %}
+            <div class="ops-login-error">{{ error }}</div>
+            {% endif %}
+
+            <div class="ops-pin-display" id="pinDisplay">
+                <div class="ops-pin-dot" id="dot0"></div>
+                <div class="ops-pin-dot" id="dot1"></div>
+                <div class="ops-pin-dot" id="dot2"></div>
+                <div class="ops-pin-dot" id="dot3"></div>
+            </div>
+
+            <form id="pinForm" method="POST" action="{{ url_for('ops.login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="pin" id="pinInput" value="">
+            </form>
+
+            <div class="ops-numpad">
+                <button class="ops-numpad-btn" onclick="addDigit('1')">1</button>
+                <button class="ops-numpad-btn" onclick="addDigit('2')">2</button>
+                <button class="ops-numpad-btn" onclick="addDigit('3')">3</button>
+                <button class="ops-numpad-btn" onclick="addDigit('4')">4</button>
+                <button class="ops-numpad-btn" onclick="addDigit('5')">5</button>
+                <button class="ops-numpad-btn" onclick="addDigit('6')">6</button>
+                <button class="ops-numpad-btn" onclick="addDigit('7')">7</button>
+                <button class="ops-numpad-btn" onclick="addDigit('8')">8</button>
+                <button class="ops-numpad-btn" onclick="addDigit('9')">9</button>
+                <button class="ops-numpad-btn empty"></button>
+                <button class="ops-numpad-btn" onclick="addDigit('0')">0</button>
+                <button class="ops-numpad-btn delete" onclick="deleteDigit()"><i class="fas fa-backspace"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    var pin = '';
+    var maxLen = 4;
+
+    function updateDots() {
+        for (var i = 0; i < maxLen; i++) {
+            var dot = document.getElementById('dot' + i);
+            if (i < pin.length) {
+                dot.classList.add('filled');
+            } else {
+                dot.classList.remove('filled');
+            }
+        }
+    }
+
+    function addDigit(d) {
+        if (pin.length < maxLen) {
+            pin += d;
+            updateDots();
+            if (pin.length === maxLen) {
+                document.getElementById('pinInput').value = pin;
+                setTimeout(function() {
+                    document.getElementById('pinForm').submit();
+                }, 200);
+            }
+        }
+    }
+
+    function deleteDigit() {
+        if (pin.length > 0) {
+            pin = pin.slice(0, -1);
+            updateDots();
+        }
+    }
+    </script>
+</body>
+</html>

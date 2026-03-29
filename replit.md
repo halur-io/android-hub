@@ -1,11 +1,12 @@
 # Restaurant Website Project
 
 ## Version
-**Current Version: 1.0.4**
+**Current Version: 1.0.5**
 
 See `VERSION` file for the current deployment version.
 
 ### Version History
+- **1.0.5** - iPad Operations Dashboard (Tabit-style) at `/ops/` with device enrollment, PIN auth, 5 modules
 - **1.0.4** - Branch-specific payment gateways (HYP + MAX per branch), ingredients display in order modal
 - **1.0.3** - View state persistence, 3-dot action menus, RBAC improvements
 - **1.0.2** - Previous deployment
@@ -36,6 +37,7 @@ A fully functional restaurant website with contact forms, menu display, and admi
 - ⏸️ SMS notifications: Requires SMS4Free credentials (SMS4FREE_KEY, SMS4FREE_USER, SMS4FREE_PASS)
 - ✅ Branch-specific payment gateways (HYP + MAX per branch)
 - ✅ Ingredients display in order item modal
+- ✅ iPad Operations Dashboard at `/ops/` (Tabit-style, dark theme, touch-optimized)
 - ⏸️ HYP payment gateway: Requires terminal/API key configuration
 
 ## Popup System
@@ -251,3 +253,50 @@ The admin panel uses a comprehensive RBAC system:
 **View State Persistence:**
 - Use localStorage to save user's view preferences (cards vs list view)
 - Restore preference on page load
+
+## iPad Operations Dashboard (Ops)
+Tabit-style dark-themed touch-optimized dashboard for restaurant staff on iPad/tablets.
+
+**Routes:**
+- `/ops/` - Dashboard index (redirects based on device enrollment + PIN auth)
+- `/ops/login` - PIN numpad login
+- `/ops/enroll/<code>` - Device enrollment link
+- `/ops/home` - Home tab with KPIs and quick controls
+- `/ops/menu` - Menu management (toggle availability, edit prices)
+- `/ops/stock` - Stock levels, alerts, record transactions
+- `/ops/deals` - Deals & coupons management
+- `/ops/branches` - Branch settings and working hours
+
+**Device Enrollment Flow:**
+1. Admin creates device in Admin → Devices & PINs
+2. System generates enrollment URL with one-time code
+3. Staff opens URL on iPad → device gets `ops_device_token` cookie (365 days)
+4. Staff authenticates via 4+ digit PIN numpad
+
+**PIN-Based Auth:**
+- ManagerPIN model with hashed PINs and ops_permissions JSON
+- `is_ops_superadmin` flag bypasses per-module checks
+- Session stored as `ops_pin_id` (no Flask-Login dependency)
+- RBAC controls which tabs are visible per PIN user
+
+**Admin Management:**
+- Admin → Devices & PINs page for creating/revoking devices and managing PINs
+- Assign per-module permissions (home, menu, stock, deals, branches)
+- Requires `system.admin` permission
+
+**Files:**
+- `ops_routes.py` - Ops blueprint with all routes and API endpoints
+- `static/css/ops.css` - Dark theme CSS with touch-optimized components
+- `templates/ops/base.html` - Base layout with bottom tab navigation
+- `templates/ops/login.html` - PIN numpad login
+- `templates/ops/not_enrolled.html` - Device not enrolled page
+- `templates/ops/home.html` - Home tab with KPIs
+- `templates/ops/menu.html` - Menu management
+- `templates/ops/stock.html` - Stock management
+- `templates/ops/deals.html` - Deals & coupons
+- `templates/ops/branches.html` - Branch settings
+- `templates/admin/enrolled_devices.html` - Admin device/PIN management
+
+**Database Tables:**
+- `enrolled_devices` - Device enrollment records with tokens
+- `manager_pins` - PIN auth with ops_permissions JSON and is_ops_superadmin flag

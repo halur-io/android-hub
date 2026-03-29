@@ -1,0 +1,73 @@
+{% extends "ops/base.html" %}
+{% block header_title %}סניפים{% endblock %}
+{% block title %}סניפים - לוח בקרה{% endblock %}
+
+{% block content %}
+{% for branch in branches %}
+<div class="ops-card" style="margin-bottom: 16px;">
+    <div class="ops-branch-card">
+        <div class="ops-branch-info">
+            <div class="ops-branch-name">
+                {{ branch.name_he }}
+                {% if branch.is_active %}
+                <span class="ops-badge ops-badge-green">פעיל</span>
+                {% else %}
+                <span class="ops-badge ops-badge-red">לא פעיל</span>
+                {% endif %}
+            </div>
+            <div class="ops-branch-address">
+                {{ branch.address_he or '' }}
+                {% if branch.phone %} · {{ branch.phone }}{% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% set branch_hours = hours.get(branch.id, []) %}
+    {% if branch_hours %}
+    <div class="ops-hours-grid">
+        {% for h in branch_hours|sort(attribute='day_of_week') %}
+        <div class="ops-hour-row">
+            <span class="ops-hour-day">{{ h.day_name_he }}</span>
+            {% if h.is_closed %}
+            <span style="color: var(--ops-red);">סגור</span>
+            {% else %}
+            <div style="display:flex; align-items:center; gap:6px;">
+                <input type="time" value="{{ h.open_time or '' }}" style="background:transparent; border:none; color:var(--ops-text); font-size:14px; direction:ltr;"
+                       onchange="updateHours({{ h.id }}, 'open_time', this.value)">
+                <span>-</span>
+                <input type="time" value="{{ h.close_time or '' }}" style="background:transparent; border:none; color:var(--ops-text); font-size:14px; direction:ltr;"
+                       onchange="updateHours({{ h.id }}, 'close_time', this.value)">
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if branch.has_payment_config %}
+    <div style="margin-top: 12px; font-size: 12px; color: var(--ops-text-dim);">
+        <i class="fas fa-credit-card"></i>
+        סליקה: {{ 'MAX' if branch.payment_provider == 'max' else 'HYP' }}
+        <span class="ops-badge ops-badge-green" style="margin-right: 6px;">מוגדר</span>
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if not branches %}
+<div class="ops-empty">
+    <i class="fas fa-store"></i>
+    <div>אין סניפים</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateHours(hourId, field, value) {
+    var data = {hour_id: hourId};
+    data[field] = value;
+    opsPost('{{ url_for('ops.branch_hours') }}', data);
+}
+</script>
+{% endblock %}

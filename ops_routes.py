@@ -499,13 +499,16 @@ def branch_toggle():
     field = data.get('field')
     branch_id = data.get('branch_id')
     value = data.get('value')
-    allowed = ['is_active']
-    if field not in allowed:
+    allowed_branch = ['is_active', 'enable_delivery', 'enable_pickup']
+    allowed_global = ['enable_delivery', 'enable_pickup']
+    if field in allowed_global and not branch_id:
         settings = _settings()
-        if settings and field in ('enable_delivery', 'enable_pickup'):
+        if settings:
             setattr(settings, field, bool(value))
             db.session.commit()
             return jsonify({'ok': True, 'message': 'עודכן'})
+        return jsonify({'ok': False, 'error': 'הגדרות לא נמצאו'})
+    if field not in allowed_branch:
         return jsonify({'ok': False, 'error': 'שדה לא מורשה'})
     branch = Branch.query.get(branch_id)
     if not branch:

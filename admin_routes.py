@@ -9112,9 +9112,11 @@ def regenerate_enrollment(device_id):
     import secrets
     device = EnrolledDevice.query.get_or_404(device_id)
     device.enrollment_code = secrets.token_urlsafe(16)
+    device.device_token = secrets.token_urlsafe(64)
+    device.enrolled_at = None
     device.is_active = True
     db.session.commit()
-    flash(f'קוד הרשמה חדש נוצר עבור "{device.device_name}"', 'success')
+    flash(f'קוד הרשמה חדש נוצר עבור "{device.device_name}". הטוקן הישן בוטל.', 'success')
     return redirect(url_for('admin.enrolled_devices'))
 
 

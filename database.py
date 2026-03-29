@@ -27,6 +27,8 @@ def _run_safe_migrations(db):
         ("branches", "max_merchant_id", "ALTER TABLE branches ADD COLUMN max_merchant_id VARCHAR(100)"),
         ("manager_pins", "ops_permissions", "ALTER TABLE manager_pins ADD COLUMN ops_permissions JSON"),
         ("manager_pins", "is_ops_superadmin", "ALTER TABLE manager_pins ADD COLUMN is_ops_superadmin BOOLEAN DEFAULT FALSE"),
+        ("branches", "enable_delivery", "ALTER TABLE branches ADD COLUMN enable_delivery BOOLEAN DEFAULT TRUE"),
+        ("branches", "enable_pickup", "ALTER TABLE branches ADD COLUMN enable_pickup BOOLEAN DEFAULT TRUE"),
     ]
     for table, column, sql in migrations:
         try:

@@ -410,6 +410,8 @@ class Branch(db.Model):
     waze_link = db.Column(db.String(500))
     google_maps_link = db.Column(db.String(500))
     is_active = db.Column(db.Boolean, default=True)
+    enable_delivery = db.Column(db.Boolean, default=True)
+    enable_pickup = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
     payment_provider = db.Column(db.String(20), default='hyp')
     hyp_terminal = db.Column(db.String(100))

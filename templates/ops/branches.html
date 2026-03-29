@@ -7,8 +7,8 @@
     <div class="ops-section-title"><i class="fas fa-sliders-h"></i> הגדרות כלליות</div>
     <div class="ops-item-row">
         <div class="ops-item-info">
-            <div class="ops-item-name">משלוחים</div>
-            <div class="ops-item-sub">הפעלת/השבתת משלוחים לכל הסניפים</div>
+            <div class="ops-item-name">משלוחים (כלל מערכתי)</div>
+            <div class="ops-item-sub">הפעלת/השבתת משלוחים גלובלית</div>
         </div>
         <label class="ops-switch">
             <input type="checkbox" {% if settings and settings.enable_delivery %}checked{% endif %}
@@ -18,8 +18,8 @@
     </div>
     <div class="ops-item-row">
         <div class="ops-item-info">
-            <div class="ops-item-name">איסוף עצמי</div>
-            <div class="ops-item-sub">הפעלת/השבתת איסוף עצמי לכל הסניפים</div>
+            <div class="ops-item-name">איסוף עצמי (כלל מערכתי)</div>
+            <div class="ops-item-sub">הפעלת/השבתת איסוף עצמי גלובלית</div>
         </div>
         <label class="ops-switch">
             <input type="checkbox" {% if settings and settings.enable_pickup %}checked{% endif %}
@@ -49,6 +49,27 @@
         <label class="ops-switch">
             <input type="checkbox" {% if branch.is_active %}checked{% endif %}
                    onchange="toggleBranch({{ branch.id }}, 'is_active', this.checked)">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+
+    <div class="ops-item-row" style="padding-top:8px;">
+        <div class="ops-item-info">
+            <div class="ops-item-name" style="font-size:14px;">משלוחים</div>
+        </div>
+        <label class="ops-switch">
+            <input type="checkbox" {% if branch.enable_delivery %}checked{% endif %}
+                   onchange="toggleBranch({{ branch.id }}, 'enable_delivery', this.checked)">
+            <span class="ops-switch-slider"></span>
+        </label>
+    </div>
+    <div class="ops-item-row">
+        <div class="ops-item-info">
+            <div class="ops-item-name" style="font-size:14px;">איסוף עצמי</div>
+        </div>
+        <label class="ops-switch">
+            <input type="checkbox" {% if branch.enable_pickup %}checked{% endif %}
+                   onchange="toggleBranch({{ branch.id }}, 'enable_pickup', this.checked)">
             <span class="ops-switch-slider"></span>
         </label>
     </div>

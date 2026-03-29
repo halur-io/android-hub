@@ -438,6 +438,44 @@ def coupon_create():
         return jsonify({'ok': False, 'error': str(e)})
 
 
+@ops_bp.route('/api/deals/edit', methods=['POST'])
+@require_ops_module('deals')
+def deal_edit():
+    data = request.get_json(force=True)
+    deal_id = data.get('deal_id')
+    deal = Deal.query.get(deal_id)
+    if not deal:
+        return jsonify({'ok': False, 'error': 'מבצע לא נמצא'})
+    if 'name_he' in data:
+        deal.name_he = data['name_he']
+    if 'deal_price' in data:
+        deal.deal_price = float(data['deal_price'])
+    if 'original_price' in data:
+        deal.original_price = float(data['original_price']) if data['original_price'] else None
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'מבצע עודכן'})
+
+
+@ops_bp.route('/api/coupons/edit', methods=['POST'])
+@require_ops_module('deals')
+def coupon_edit():
+    data = request.get_json(force=True)
+    coupon_id = data.get('coupon_id')
+    coupon = Coupon.query.get(coupon_id)
+    if not coupon:
+        return jsonify({'ok': False, 'error': 'קופון לא נמצא'})
+    if 'name' in data:
+        coupon.name = data['name']
+    if 'discount_type' in data:
+        coupon.discount_type = data['discount_type']
+    if 'discount_value' in data:
+        coupon.discount_value = float(data['discount_value'])
+    if 'max_total_uses' in data:
+        coupon.max_total_uses = int(data['max_total_uses']) if data['max_total_uses'] else None
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'קופון עודכן'})
+
+
 @ops_bp.route('/branches')
 @require_ops_module('branches')
 def branches():

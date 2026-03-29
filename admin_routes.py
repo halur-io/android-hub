@@ -152,6 +152,7 @@ ROUTE_PERMISSIONS = {
     'admin.revoke_enrolled_device': 'system.admin',
     'admin.activate_enrolled_device': 'system.admin',
     'admin.delete_enrolled_device': 'system.admin',
+    'admin.regenerate_enrollment': 'system.admin',
     'admin.create_manager_pin': 'system.admin',
     'admin.edit_manager_pin': 'system.admin',
     'admin.delete_manager_pin': 'system.admin',
@@ -9102,6 +9103,18 @@ def activate_enrolled_device(device_id):
     device.is_active = True
     db.session.commit()
     flash(f'מכשיר "{device.device_name}" הופעל', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/regenerate/<int:device_id>', methods=['POST'])
+@login_required
+def regenerate_enrollment(device_id):
+    import secrets
+    device = EnrolledDevice.query.get_or_404(device_id)
+    device.enrollment_code = secrets.token_urlsafe(16)
+    device.is_active = True
+    db.session.commit()
+    flash(f'קוד הרשמה חדש נוצר עבור "{device.device_name}"', 'success')
     return redirect(url_for('admin.enrolled_devices'))
 
 

@@ -24,6 +24,64 @@
 
     <div class="tab-content">
         <div class="tab-pane fade show active" id="devicesTab">
+
+            {% if pending_devices %}
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-warning">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ 'בקשות ממתינות לאישור' if (admin_language or 'he') == 'he' else 'Pending Enrollment Requests' }}
+                        <span class="badge bg-warning text-dark ms-1">{{ pending_devices|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
+                                    <th>{{ 'קוד בקשה' if (admin_language or 'he') == 'he' else 'Request Code' }}</th>
+                                    <th>{{ 'סוכן משתמש' if (admin_language or 'he') == 'he' else 'User Agent' }}</th>
+                                    <th>{{ 'נוצר' if (admin_language or 'he') == 'he' else 'Created' }}</th>
+                                    <th>{{ 'סניף + אישור' if (admin_language or 'he') == 'he' else 'Branch + Approve' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for device in pending_devices %}
+                                <tr>
+                                    <td><i class="fas fa-tablet-alt me-1 text-warning"></i> {{ device.device_name }}</td>
+                                    <td><code style="font-size:0.75rem;">{{ device.pending_request_token[:16] }}...</code></td>
+                                    <td style="font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis;">{{ device.user_agent[:80] if device.user_agent else '—' }}</td>
+                                    <td>{{ device.created_at.strftime('%d/%m/%Y %H:%M') if device.created_at else '—' }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('admin.approve_enrolled_device', device_id=device.id) }}" class="d-flex gap-2 align-items-center">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <select name="branch_id" class="form-select form-select-sm" style="width:auto;">
+                                                <option value="">{{ 'כל הסניפים' if (admin_language or 'he') == 'he' else 'All' }}</option>
+                                                {% for branch in branches %}
+                                                <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check me-1"></i> {{ 'אשר' if (admin_language or 'he') == 'he' else 'Approve' }}
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin.delete_enrolled_device', device_id=device.id) }}" style="display:inline;" onsubmit="return confirm('{{ 'לדחות בקשה?' if (admin_language or 'he') == 'he' else 'Reject request?' }}')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger mt-1">
+                                                <i class="fas fa-times me-1"></i> {{ 'דחה' if (admin_language or 'he') == 'he' else 'Reject' }}
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{{ 'הוסף מכשיר חדש' if (admin_language or 'he') == 'he' else 'Add New Device' }}</h5>

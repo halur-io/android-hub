@@ -29,6 +29,7 @@ def _run_safe_migrations(db):
         ("manager_pins", "is_ops_superadmin", "ALTER TABLE manager_pins ADD COLUMN is_ops_superadmin BOOLEAN DEFAULT FALSE"),
         ("branches", "enable_delivery", "ALTER TABLE branches ADD COLUMN enable_delivery BOOLEAN DEFAULT TRUE"),
         ("branches", "enable_pickup", "ALTER TABLE branches ADD COLUMN enable_pickup BOOLEAN DEFAULT TRUE"),
+        ("enrolled_devices", "pending_request_token", "ALTER TABLE enrolled_devices ADD COLUMN pending_request_token VARCHAR(64) UNIQUE"),
     ]
     for table, column, sql in migrations:
         try:

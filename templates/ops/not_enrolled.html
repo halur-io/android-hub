@@ -11,25 +11,46 @@
     <div class="ops-login-wrapper">
         <div class="ops-not-enrolled">
             <i class="fas fa-shield-halved"></i>
-            <h2>מכשיר לא רשום</h2>
-            <p>מכשיר זה אינו מורשה לגשת ללוח הבקרה.</p>
-            <p style="font-size: 13px; color: var(--ops-text-dim); margin-top: 16px;">
-                לרישום מכשיר זה, בקש מהמנהל ליצור קישור הרשמה בדף
-                <strong>Admin → מכשירים ו-PIN</strong>
-                ולפתוח את הקישור בדפדפן של מכשיר זה.
-            </p>
-            {% if enrollment_code %}
+
+            {% if enrollment_code and pending_device %}
+            <h2>בקשת הרשמה נשלחה</h2>
+            <p>מכשיר זה ממתין לאישור מנהל.</p>
             <div style="margin-top: 24px; padding: 20px; background: var(--ops-card); border-radius: var(--ops-radius-sm); border: 1px solid var(--ops-border);">
-                <div style="font-size: 13px; color: var(--ops-text-dim); margin-bottom: 8px;">קוד הרשמה:</div>
-                <div style="font-size: 32px; font-weight: 800; letter-spacing: 4px; direction: ltr;">{{ enrollment_code }}</div>
-                <div style="font-size: 12px; color: var(--ops-text-dim); margin-top: 8px;">מסור קוד זה למנהל</div>
+                <div style="font-size: 13px; color: var(--ops-text-dim); margin-bottom: 8px;">קוד בקשה:</div>
+                <div style="font-size: 24px; font-weight: 800; letter-spacing: 2px; direction: ltr; word-break: break-all;">{{ enrollment_code }}</div>
+                <div style="font-size: 12px; color: var(--ops-text-dim); margin-top: 8px;">
+                    מסור קוד זה למנהל כדי שיאשר את המכשיר<br>
+                    <strong>Admin → מכשירים ו-PIN → בקשות ממתינות</strong>
+                </div>
             </div>
-            {% endif %}
-            <div style="margin-top: 32px;">
-                <a href="{{ url_for('ops.not_enrolled') }}" class="ops-btn ops-btn-secondary" style="text-decoration:none;">
-                    <i class="fas fa-sync-alt"></i> נסה שוב
+            <div style="margin-top: 24px;">
+                <a href="{{ url_for('ops.check_enrollment') }}" class="ops-btn ops-btn-primary" style="text-decoration:none;">
+                    <i class="fas fa-sync-alt"></i> בדוק אם אושר
                 </a>
             </div>
+
+            {% else %}
+            <h2>מכשיר לא רשום</h2>
+            <p>מכשיר זה אינו מורשה לגשת ללוח הבקרה.</p>
+
+            <div style="margin-top: 24px; padding: 20px; background: var(--ops-card); border-radius: var(--ops-radius-sm); border: 1px solid var(--ops-border);">
+                <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">בקש הרשמה</div>
+                <form method="POST" action="{{ url_for('ops.request_enrollment') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="ops-form-group">
+                        <label class="ops-form-label">שם המכשיר</label>
+                        <input type="text" class="ops-input" name="device_name" placeholder="iPad מטבח" value="iPad" required>
+                    </div>
+                    <button type="submit" class="ops-btn ops-btn-primary" style="width:100%; margin-top:12px;">
+                        <i class="fas fa-paper-plane"></i> שלח בקשת הרשמה
+                    </button>
+                </form>
+            </div>
+
+            <p style="font-size: 12px; color: var(--ops-text-dim); margin-top: 16px;">
+                לחלופין, המנהל יכול ליצור קישור הרשמה ישיר ב-Admin → מכשירים ו-PIN
+            </p>
+            {% endif %}
         </div>
     </div>
 </body>

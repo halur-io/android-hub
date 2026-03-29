@@ -2659,6 +2659,7 @@ class EnrolledDevice(db.Model):
     device_name = db.Column(db.String(100), nullable=False)
     device_token = db.Column(db.String(128), unique=True, nullable=False)
     enrollment_code = db.Column(db.String(32), unique=True)
+    pending_request_token = db.Column(db.String(64), unique=True)
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     enrolled_at = db.Column(db.DateTime)

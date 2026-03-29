@@ -122,7 +122,47 @@ def index():
 
 @ops_bp.route('/not-enrolled')
 def not_enrolled():
-    return render_template('ops/not_enrolled.html', enrollment_code=None)
+    return render_template('ops/not_enrolled.html', enrollment_code=None, pending_device=None)
+
+
+@ops_bp.route('/request-enrollment', methods=['POST'])
+def request_enrollment():
+    device_name = request.form.get('device_name', 'iPad').strip()[:100] or 'iPad'
+    user_agent = request.headers.get('User-Agent', '')[:500]
+    request_token = secrets.token_urlsafe(32)
+    device = EnrolledDevice(
+        device_name=device_name,
+        device_token=secrets.token_urlsafe(64),
+        pending_request_token=request_token,
+        is_active=False,
+        user_agent=user_agent,
+    )
+    db.session.add(device)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return render_template('ops/not_enrolled.html', enrollment_code=None, pending_device=None)
+    resp = make_response(render_template('ops/not_enrolled.html', enrollment_code=request_token, pending_device=device))
+    resp.set_cookie('ops_pending_request', request_token, max_age=24*3600, httponly=True, samesite='Lax', secure=request.is_secure)
+    return resp
+
+
+@ops_bp.route('/check-enrollment')
+def check_enrollment():
+    pending_token = request.cookies.get('ops_pending_request')
+    if pending_token:
+        device = EnrolledDevice.query.filter_by(pending_request_token=pending_token).first()
+        if device and device.is_active and device.enrolled_at:
+            device.pending_request_token = None
+            device.last_seen = datetime.utcnow()
+            db.session.commit()
+            resp = make_response(redirect(url_for('ops.login')))
+            resp.set_cookie('ops_device_token', device.device_token, max_age=365*24*3600, httponly=True, samesite='Lax', secure=request.is_secure)
+            resp.delete_cookie('ops_pending_request')
+            return resp
+        return render_template('ops/not_enrolled.html', enrollment_code=pending_token if device else None, pending_device=device)
+    return redirect(url_for('ops.not_enrolled'))
 
 
 @ops_bp.route('/enroll/<code>')
@@ -337,8 +377,12 @@ def stock_transaction():
     except (ValueError, TypeError):
         return jsonify({'ok': False, 'error': 'כמות לא תקינה'})
 
-    branches = Branch.query.filter_by(is_active=True).all()
-    branch_id = branches[0].id if branches else None
+    device = _check_device()
+    if device and device.branch_id:
+        branch_id = device.branch_id
+    else:
+        first_branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = first_branch.id if first_branch else None
     if not branch_id:
         return jsonify({'ok': False, 'error': 'לא נמצא סניף'})
 

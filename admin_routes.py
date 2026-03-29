@@ -153,6 +153,7 @@ ROUTE_PERMISSIONS = {
     'admin.activate_enrolled_device': 'system.admin',
     'admin.delete_enrolled_device': 'system.admin',
     'admin.regenerate_enrollment': 'system.admin',
+    'admin.approve_enrolled_device': 'system.admin',
     'admin.create_manager_pin': 'system.admin',
     'admin.edit_manager_pin': 'system.admin',
     'admin.delete_manager_pin': 'system.admin',
@@ -9062,9 +9063,11 @@ def toggle_upsell_rule(rule_id):
 @login_required
 def enrolled_devices():
     devices = EnrolledDevice.query.order_by(EnrolledDevice.created_at.desc()).all()
+    pending = [d for d in devices if d.pending_request_token and not d.enrolled_at and not d.is_active]
+    enrolled = [d for d in devices if d not in pending]
     pins = ManagerPIN.query.order_by(ManagerPIN.created_at.desc()).all()
     branches = Branch.query.filter_by(is_active=True).all()
-    return render_template('admin/enrolled_devices.html', devices=devices, pins=pins, branches=branches)
+    return render_template('admin/enrolled_devices.html', devices=enrolled, pending_devices=pending, pins=pins, branches=branches)
 
 
 @admin_bp.route('/enrolled-devices/create', methods=['POST'])
@@ -9103,6 +9106,21 @@ def activate_enrolled_device(device_id):
     device.is_active = True
     db.session.commit()
     flash(f'מכשיר "{device.device_name}" הופעל', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/approve/<int:device_id>', methods=['POST'])
+@login_required
+def approve_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    branch_id = request.form.get('branch_id')
+    device.is_active = True
+    device.enrolled_at = datetime.utcnow()
+    device.enrolled_by = current_user.id
+    if branch_id:
+        device.branch_id = int(branch_id)
+    db.session.commit()
+    flash(f'מכשיר "{device.device_name}" אושר בהצלחה', 'success')
     return redirect(url_for('admin.enrolled_devices'))
 
 

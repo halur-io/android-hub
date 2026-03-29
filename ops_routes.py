@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
@@ -9,6 +10,10 @@ from flask import (
     url_for, jsonify, make_response, flash,
 )
 from database import db
+
+
+def _is_secure():
+    return request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https' or os.environ.get('REPL_SLUG')
 from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
     MenuCategory, MenuItem, StockItem, StockLevel, StockTransaction,
@@ -144,7 +149,7 @@ def request_enrollment():
         db.session.rollback()
         return render_template('ops/not_enrolled.html', enrollment_code=None, pending_device=None)
     resp = make_response(render_template('ops/not_enrolled.html', enrollment_code=request_token, pending_device=device))
-    resp.set_cookie('ops_pending_request', request_token, max_age=24*3600, httponly=True, samesite='Lax', secure=request.is_secure)
+    resp.set_cookie('ops_pending_request', request_token, max_age=24*3600, httponly=True, samesite='Lax', secure=_is_secure())
     return resp
 
 
@@ -158,7 +163,7 @@ def check_enrollment():
             device.last_seen = datetime.utcnow()
             db.session.commit()
             resp = make_response(redirect(url_for('ops.login')))
-            resp.set_cookie('ops_device_token', device.device_token, max_age=365*24*3600, httponly=True, samesite='Lax', secure=request.is_secure)
+            resp.set_cookie('ops_device_token', device.device_token, max_age=365*24*3600, httponly=True, samesite='Lax', secure=_is_secure())
             resp.delete_cookie('ops_pending_request')
             return resp
         return render_template('ops/not_enrolled.html', enrollment_code=pending_token if device else None, pending_device=device)
@@ -184,7 +189,7 @@ def enroll_device(code):
         max_age=365 * 24 * 3600,
         httponly=True,
         samesite='Lax',
-        secure=request.is_secure,
+        secure=_is_secure(),
     )
     return resp
 
@@ -336,12 +341,21 @@ def menu_price():
 @ops_bp.route('/stock')
 @require_ops_module('stock')
 def stock():
+    device = _check_device()
+    device_branch_id = device.branch_id if device else None
+
     items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
     levels = {}
-    for lvl in StockLevel.query.all():
+    level_query = StockLevel.query
+    if device_branch_id:
+        level_query = level_query.filter_by(branch_id=device_branch_id)
+    for lvl in level_query.all():
         levels[lvl.item_id] = lvl
 
-    recent_txns = StockTransaction.query.order_by(
+    txn_query = StockTransaction.query
+    if device_branch_id:
+        txn_query = txn_query.filter_by(branch_id=device_branch_id)
+    recent_txns = txn_query.order_by(
         StockTransaction.transaction_date.desc()
     ).limit(20).all()
 

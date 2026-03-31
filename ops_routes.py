@@ -264,6 +264,157 @@ def home():
     )
 
 
+ORDER_STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'pickedup', 'cancelled']
+ORDER_STATUS_LABELS = {
+    'pending': 'ממתין',
+    'confirmed': 'אושר',
+    'preparing': 'בהכנה',
+    'ready': 'מוכן',
+    'delivered': 'נמסר',
+    'pickedup': 'נאסף',
+    'cancelled': 'בוטל',
+}
+ORDER_STATUS_COLORS = {
+    'pending': 'warning',
+    'confirmed': 'info',
+    'preparing': 'accent',
+    'ready': 'green',
+    'delivered': 'dim',
+    'pickedup': 'dim',
+    'cancelled': 'red',
+}
+
+
+@ops_bp.route('/orders')
+@require_ops_module('orders')
+def orders():
+    device = _check_device()
+    device_branch_id = device.branch_id if device else None
+    status_filter = request.args.get('status', 'active')
+
+    query = FoodOrder.query
+    if device_branch_id:
+        query = query.filter_by(branch_id=device_branch_id)
+
+    if status_filter == 'active':
+        query = query.filter(FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']))
+    elif status_filter in ORDER_STATUS_FLOW:
+        query = query.filter_by(status=status_filter)
+
+    order_list = query.order_by(FoodOrder.created_at.desc()).limit(100).all()
+
+    now = _get_israel_now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
+    if device_branch_id:
+        today_q = today_q.filter_by(branch_id=device_branch_id)
+    today_orders = today_q.all()
+    counts = {}
+    for s in ORDER_STATUS_FLOW:
+        counts[s] = sum(1 for o in today_orders if o.status == s)
+    counts['active'] = counts.get('pending', 0) + counts.get('confirmed', 0) + counts.get('preparing', 0) + counts.get('ready', 0)
+
+    return render_template('ops/orders.html',
+        active_tab='orders',
+        orders=order_list,
+        status_filter=status_filter,
+        counts=counts,
+        status_labels=ORDER_STATUS_LABELS,
+        status_colors=ORDER_STATUS_COLORS,
+        status_flow=ORDER_STATUS_FLOW,
+    )
+
+
+@ops_bp.route('/api/orders/<int:order_id>/status', methods=['POST'])
+@require_ops_module('orders')
+def update_order_status(order_id):
+    data = request.get_json(force=True)
+    new_status = data.get('status')
+    if new_status not in ORDER_STATUS_FLOW:
+        return jsonify({'ok': False, 'error': 'סטטוס לא תקין'})
+
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+
+    device = _check_device()
+    if device and device.branch_id and order.branch_id != device.branch_id:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
+
+    old_status = order.status
+    order.status = new_status
+    now = datetime.utcnow()
+    if new_status == 'confirmed' and not order.confirmed_at:
+        order.confirmed_at = now
+    elif new_status == 'preparing' and not order.preparing_at:
+        order.preparing_at = now
+    elif new_status == 'ready' and not order.ready_at:
+        order.ready_at = now
+    elif new_status in ('delivered', 'pickedup') and not order.completed_at:
+        order.completed_at = now
+    elif new_status == 'cancelled' and not order.cancelled_at:
+        order.cancelled_at = now
+
+    try:
+        from models import OrderActivityLog
+        user = _get_ops_user()
+        log = OrderActivityLog(
+            order_id=order.id,
+            action='status_change',
+            old_value=old_status,
+            new_value=new_status,
+            staff_name=user.name if user else 'Ops',
+        )
+        db.session.add(log)
+    except Exception:
+        pass
+
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'message': f'הזמנה #{order.order_number} → {ORDER_STATUS_LABELS.get(new_status, new_status)}',
+        'new_status': new_status,
+        'label': ORDER_STATUS_LABELS.get(new_status, new_status),
+    })
+
+
+@ops_bp.route('/api/orders/<int:order_id>')
+@require_ops_module('orders')
+def get_order_detail(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    items = order.get_items()
+    return jsonify({
+        'ok': True,
+        'order': {
+            'id': order.id,
+            'order_number': order.order_number,
+            'status': order.status,
+            'status_label': ORDER_STATUS_LABELS.get(order.status, order.status),
+            'customer_name': order.customer_name,
+            'customer_phone': order.customer_phone,
+            'order_type': order.order_type,
+            'order_type_label': order.order_type_display_he,
+            'delivery_address': order.delivery_address or '',
+            'delivery_city': order.delivery_city or '',
+            'delivery_notes': order.delivery_notes or '',
+            'pickup_time': order.pickup_time or '',
+            'customer_notes': order.customer_notes or '',
+            'subtotal': order.subtotal,
+            'delivery_fee': order.delivery_fee or 0,
+            'discount_amount': order.discount_amount or 0,
+            'coupon_code': order.coupon_code or '',
+            'total_amount': order.total_amount,
+            'payment_method': order.payment_method or '',
+            'payment_status': order.payment_status or '',
+            'created_at': order.created_at.strftime('%H:%M') if order.created_at else '',
+            'items': items,
+            'branch_name': order.branch_name or '',
+        }
+    })
+
+
 @ops_bp.route('/api/toggle-setting', methods=['POST'])
 @require_ops_module('home')
 def toggle_setting():

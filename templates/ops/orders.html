@@ -1,0 +1,424 @@
+{% extends "ops/base.html" %}
+{% block header_title %}הזמנות{% endblock %}
+{% block title %}הזמנות - לוח בקרה{% endblock %}
+
+{% block head %}
+<style>
+.ops-filter-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 12px 0;
+    -webkit-overflow-scrolling: touch;
+}
+.ops-filter-btn {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--ops-border);
+    background: var(--ops-card);
+    color: var(--ops-text-dim);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+.ops-filter-btn.active {
+    background: var(--ops-accent);
+    color: #fff;
+    border-color: var(--ops-accent);
+}
+.ops-filter-btn .count {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+    margin-right: 4px;
+}
+.ops-filter-btn.active .count {
+    background: rgba(255,255,255,0.3);
+}
+
+.ops-order-card {
+    background: var(--ops-card);
+    border: 1px solid var(--ops-border);
+    border-radius: var(--ops-radius-sm);
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    position: relative;
+}
+.ops-order-card:active {
+    border-color: var(--ops-accent);
+}
+.ops-order-card.status-pending { border-right: 4px solid var(--ops-warning); }
+.ops-order-card.status-confirmed { border-right: 4px solid var(--ops-blue); }
+.ops-order-card.status-preparing { border-right: 4px solid var(--ops-accent); }
+.ops-order-card.status-ready { border-right: 4px solid var(--ops-green); }
+.ops-order-card.status-cancelled { border-right: 4px solid var(--ops-red); opacity: 0.7; }
+.ops-order-card.status-delivered,
+.ops-order-card.status-pickedup { border-right: 4px solid var(--ops-text-dim); opacity: 0.7; }
+
+.ops-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.ops-order-number {
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--ops-text);
+}
+.ops-order-time {
+    font-size: 12px;
+    color: var(--ops-text-dim);
+}
+.ops-order-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.ops-order-badge.warning { background: rgba(255,193,7,0.2); color: #ffc107; }
+.ops-order-badge.info { background: rgba(0,188,212,0.2); color: #00bcd4; }
+.ops-order-badge.accent { background: rgba(255,87,34,0.2); color: #ff5722; }
+.ops-order-badge.green { background: rgba(76,175,80,0.2); color: #4caf50; }
+.ops-order-badge.red { background: rgba(244,67,54,0.2); color: #f44336; }
+.ops-order-badge.dim { background: rgba(150,150,150,0.2); color: #999; }
+
+.ops-order-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--ops-text-dim);
+}
+.ops-order-customer {
+    font-weight: 600;
+    color: var(--ops-text);
+}
+.ops-order-total {
+    font-weight: 800;
+    color: var(--ops-green);
+    font-size: 15px;
+}
+.ops-order-type-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    margin-top: 4px;
+}
+
+.ops-modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: flex-end;
+}
+.ops-modal-backdrop.show { display: flex; }
+.ops-modal-sheet {
+    background: var(--ops-bg);
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
+    animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+.ops-modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--ops-border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+}
+
+.ops-detail-section {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--ops-border);
+}
+.ops-detail-section:last-child { border-bottom: none; }
+.ops-detail-label {
+    font-size: 11px;
+    color: var(--ops-text-dim);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+.ops-detail-value {
+    font-size: 14px;
+    color: var(--ops-text);
+    font-weight: 600;
+}
+.ops-detail-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.ops-detail-items li {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+}
+.ops-detail-items li:last-child { border-bottom: none; }
+
+.ops-status-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+}
+.ops-status-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 8px;
+    border-radius: var(--ops-radius-sm);
+    border: 1px solid var(--ops-border);
+    background: var(--ops-card);
+    color: var(--ops-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+.ops-status-btn:active { transform: scale(0.96); }
+.ops-status-btn.confirm { background: rgba(0,188,212,0.15); color: #00bcd4; border-color: #00bcd4; }
+.ops-status-btn.prepare { background: rgba(255,87,34,0.15); color: #ff5722; border-color: #ff5722; }
+.ops-status-btn.ready-btn { background: rgba(76,175,80,0.15); color: #4caf50; border-color: #4caf50; }
+.ops-status-btn.complete { background: rgba(150,150,150,0.15); color: #bbb; border-color: #888; }
+.ops-status-btn.cancel { background: rgba(244,67,54,0.1); color: #f44336; border-color: #f44336; }
+
+.ops-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ops-text-dim);
+}
+.ops-empty i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ops-filter-bar">
+    <a href="{{ url_for('ops.orders', status='active') }}" class="ops-filter-btn {% if status_filter == 'active' %}active{% endif %}">
+        פעילות <span class="count">{{ counts.get('active', 0) }}</span>
+    </a>
+    <a href="{{ url_for('ops.orders', status='pending') }}" class="ops-filter-btn {% if status_filter == 'pending' %}active{% endif %}">
+        ממתין <span class="count">{{ counts.get('pending', 0) }}</span>
+    </a>
+    <a href="{{ url_for('ops.orders', status='confirmed') }}" class="ops-filter-btn {% if status_filter == 'confirmed' %}active{% endif %}">
+        אושר <span class="count">{{ counts.get('confirmed', 0) }}</span>
+    </a>
+    <a href="{{ url_for('ops.orders', status='preparing') }}" class="ops-filter-btn {% if status_filter == 'preparing' %}active{% endif %}">
+        בהכנה <span class="count">{{ counts.get('preparing', 0) }}</span>
+    </a>
+    <a href="{{ url_for('ops.orders', status='ready') }}" class="ops-filter-btn {% if status_filter == 'ready' %}active{% endif %}">
+        מוכן <span class="count">{{ counts.get('ready', 0) }}</span>
+    </a>
+    <a href="{{ url_for('ops.orders', status='delivered') }}" class="ops-filter-btn {% if status_filter == 'delivered' %}active{% endif %}">
+        נמסר <span class="count">{{ counts.get('delivered', 0) }}</span>
+    </a>
+    <a href="{{ url_for('ops.orders', status='cancelled') }}" class="ops-filter-btn {% if status_filter == 'cancelled' %}active{% endif %}">
+        בוטל <span class="count">{{ counts.get('cancelled', 0) }}</span>
+    </a>
+</div>
+
+{% if orders %}
+<div id="ordersList">
+    {% for order in orders %}
+    <div class="ops-order-card status-{{ order.status }}" onclick="openOrder({{ order.id }})">
+        <div class="ops-order-header">
+            <div>
+                <span class="ops-order-number">#{{ order.order_number }}</span>
+                <span class="ops-order-time">
+                    <i class="fas fa-clock"></i>
+                    {{ order.created_at.strftime('%H:%M') if order.created_at else '' }}
+                </span>
+            </div>
+            <span class="ops-order-badge {{ status_colors.get(order.status, 'dim') }}">{{ status_labels.get(order.status, order.status) }}</span>
+        </div>
+        <div class="ops-order-info">
+            <div>
+                <span class="ops-order-customer">{{ order.customer_name }}</span>
+                <span class="ops-order-type-tag">
+                    <i class="fas fa-{{ 'motorcycle' if order.order_type == 'delivery' else 'shopping-bag' }}"></i>
+                    {{ order.order_type_display_he }}
+                </span>
+            </div>
+            <span class="ops-order-total">₪{{ "%.0f"|format(order.total_amount) }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="ops-empty">
+    <i class="fas fa-inbox"></i>
+    <div>אין הזמנות</div>
+</div>
+{% endif %}
+
+<div class="ops-modal-backdrop" id="orderModal" onclick="if(event.target===this)closeModal()">
+    <div class="ops-modal-sheet">
+        <div class="ops-modal-handle"></div>
+        <div id="orderDetail"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var currentOrderId = null;
+
+function openOrder(id) {
+    currentOrderId = id;
+    fetch('{{ url_for("ops.get_order_detail", order_id=0) }}'.replace('/0', '/' + id), {credentials: 'same-origin'})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (!d.ok) { showToast(d.error, true); return; }
+        renderOrderDetail(d.order);
+        document.getElementById('orderModal').classList.add('show');
+    })
+    .catch(function() { showToast('שגיאת תקשורת', true); });
+}
+
+function closeModal() {
+    document.getElementById('orderModal').classList.remove('show');
+    currentOrderId = null;
+}
+
+function renderOrderDetail(o) {
+    var itemsHtml = '';
+    if (o.items && o.items.length) {
+        itemsHtml = '<ul class="ops-detail-items">';
+        o.items.forEach(function(item) {
+            var name = item.name_he || item.item_name_he || item.name || '';
+            var qty = item.qty || item.quantity || 1;
+            var price = item.price || item.unit_price || 0;
+            var options = '';
+            if (item.options && item.options.length) {
+                options = '<div style="font-size:11px;color:var(--ops-text-dim);padding-right:12px;">';
+                item.options.forEach(function(opt) {
+                    options += '• ' + (opt.choice_name_he || opt.name || opt) + '<br>';
+                });
+                options += '</div>';
+            }
+            itemsHtml += '<li><div>' + qty + '× ' + name + options + '</div><div>₪' + (qty * price).toFixed(0) + '</div></li>';
+        });
+        itemsHtml += '</ul>';
+    }
+
+    var addrHtml = '';
+    if (o.order_type === 'delivery' && o.delivery_address) {
+        addrHtml = '<div class="ops-detail-section">' +
+            '<div class="ops-detail-label">כתובת משלוח</div>' +
+            '<div class="ops-detail-value">' + o.delivery_address + (o.delivery_city ? ', ' + o.delivery_city : '') + '</div>' +
+            (o.delivery_notes ? '<div style="font-size:12px;color:var(--ops-text-dim);margin-top:4px;">' + o.delivery_notes + '</div>' : '') +
+            '</div>';
+    }
+    if (o.order_type === 'pickup' && o.pickup_time) {
+        addrHtml = '<div class="ops-detail-section">' +
+            '<div class="ops-detail-label">זמן איסוף</div>' +
+            '<div class="ops-detail-value">' + o.pickup_time + '</div>' +
+            '</div>';
+    }
+
+    var notesHtml = '';
+    if (o.customer_notes) {
+        notesHtml = '<div class="ops-detail-section">' +
+            '<div class="ops-detail-label">הערות לקוח</div>' +
+            '<div class="ops-detail-value">' + o.customer_notes + '</div>' +
+            '</div>';
+    }
+
+    var totalsHtml = '<div class="ops-detail-section">' +
+        '<div class="ops-detail-label">סיכום</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;"><span>סה"כ פריטים</span><span>₪' + o.subtotal.toFixed(0) + '</span></div>';
+    if (o.delivery_fee > 0) {
+        totalsHtml += '<div style="display:flex;justify-content:space-between;font-size:13px;"><span>דמי משלוח</span><span>₪' + o.delivery_fee.toFixed(0) + '</span></div>';
+    }
+    if (o.discount_amount > 0) {
+        totalsHtml += '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ops-green);"><span>הנחה' + (o.coupon_code ? ' (' + o.coupon_code + ')' : '') + '</span><span>-₪' + o.discount_amount.toFixed(0) + '</span></div>';
+    }
+    totalsHtml += '<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin-top:8px;"><span>סה"כ</span><span style="color:var(--ops-green);">₪' + o.total_amount.toFixed(0) + '</span></div></div>';
+
+    var actionsHtml = '<div class="ops-status-actions">';
+    var s = o.status;
+    if (s === 'pending') {
+        actionsHtml += '<button class="ops-status-btn confirm" onclick="setStatus(' + o.id + ',\'confirmed\')"><i class="fas fa-check"></i> אשר</button>';
+        actionsHtml += '<button class="ops-status-btn cancel" onclick="setStatus(' + o.id + ',\'cancelled\')"><i class="fas fa-times"></i> בטל</button>';
+    } else if (s === 'confirmed') {
+        actionsHtml += '<button class="ops-status-btn prepare" onclick="setStatus(' + o.id + ',\'preparing\')"><i class="fas fa-fire"></i> התחל הכנה</button>';
+        actionsHtml += '<button class="ops-status-btn cancel" onclick="setStatus(' + o.id + ',\'cancelled\')"><i class="fas fa-times"></i> בטל</button>';
+    } else if (s === 'preparing') {
+        actionsHtml += '<button class="ops-status-btn ready-btn" onclick="setStatus(' + o.id + ',\'ready\')"><i class="fas fa-bell"></i> מוכן!</button>';
+    } else if (s === 'ready') {
+        if (o.order_type === 'delivery') {
+            actionsHtml += '<button class="ops-status-btn complete" onclick="setStatus(' + o.id + ',\'delivered\')"><i class="fas fa-motorcycle"></i> נמסר</button>';
+        } else {
+            actionsHtml += '<button class="ops-status-btn complete" onclick="setStatus(' + o.id + ',\'pickedup\')"><i class="fas fa-shopping-bag"></i> נאסף</button>';
+        }
+    }
+    actionsHtml += '</div>';
+
+    document.getElementById('orderDetail').innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<div style="font-size:20px;font-weight:800;">#' + o.order_number + '</div>' +
+            '<span class="ops-order-badge ' + statusColor(o.status) + '">' + o.status_label + '</span>' +
+        '</div>' +
+        '<div class="ops-detail-section">' +
+            '<div class="ops-detail-label">לקוח</div>' +
+            '<div class="ops-detail-value">' + o.customer_name + '</div>' +
+            '<a href="tel:' + o.customer_phone + '" style="color:var(--ops-accent);font-size:13px;text-decoration:none;">' +
+                '<i class="fas fa-phone"></i> ' + o.customer_phone +
+            '</a>' +
+            '<div style="margin-top:4px;"><span class="ops-order-type-tag"><i class="fas fa-' + (o.order_type === 'delivery' ? 'motorcycle' : 'shopping-bag') + '"></i> ' + o.order_type_label + '</span></div>' +
+        '</div>' +
+        addrHtml +
+        '<div class="ops-detail-section">' +
+            '<div class="ops-detail-label">פריטים</div>' +
+            itemsHtml +
+        '</div>' +
+        notesHtml +
+        totalsHtml +
+        actionsHtml;
+}
+
+function statusColor(s) {
+    var m = {{ status_colors|tojson }};
+    return m[s] || 'dim';
+}
+
+function setStatus(orderId, newStatus) {
+    opsPost('{{ url_for("ops.update_order_status", order_id=0) }}'.replace('/0/', '/' + orderId + '/'), {status: newStatus}, function() {
+        closeModal();
+        setTimeout(function() { location.reload(); }, 300);
+    });
+}
+
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

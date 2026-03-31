@@ -2630,7 +2630,7 @@ class ManagerPIN(db.Model):
     ops_permissions = db.Column(db.JSON, default=list)
     is_ops_superadmin = db.Column(db.Boolean, default=False)
 
-    OPS_MODULES = ['home', 'menu', 'stock', 'deals', 'branches']
+    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches']
 
     def set_pin(self, pin):
         self.pin_hash = generate_password_hash(pin)

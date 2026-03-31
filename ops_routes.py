@@ -127,6 +127,19 @@ def index():
 
 @ops_bp.route('/not-enrolled')
 def not_enrolled():
+    pending_token = request.cookies.get('ops_pending_request')
+    if pending_token:
+        device = EnrolledDevice.query.filter_by(pending_request_token=pending_token).first()
+        if device and device.is_active and device.enrolled_at:
+            device.pending_request_token = None
+            device.last_seen = datetime.utcnow()
+            db.session.commit()
+            resp = make_response(redirect(url_for('ops.login')))
+            resp.set_cookie('ops_device_token', device.device_token, max_age=365*24*3600, httponly=True, samesite='Lax', secure=_is_secure())
+            resp.delete_cookie('ops_pending_request')
+            return resp
+        if device:
+            return render_template('ops/not_enrolled.html', enrollment_code=pending_token, pending_device=device)
     return render_template('ops/not_enrolled.html', enrollment_code=None, pending_device=None)
 
 

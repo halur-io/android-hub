@@ -382,10 +382,22 @@
                                             <input type="number" class="form-control" id="calories" name="calories" value="{{ item.calories or '' }}">
                                         </div>
                                     </div>
-                                    <div class="col-md-12">
+                                    <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="prep_time_minutes" class="form-label">זמן הכנה (דקות)</label>
                                             <input type="number" class="form-control" id="prep_time_minutes" name="prep_time_minutes" value="{{ item.prep_time_minutes or '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="print_station" class="form-label"><i class="fas fa-print me-1"></i>עמדת הדפסה (בון)</label>
+                                            <select class="form-select" id="print_station" name="print_station">
+                                                <option value="">-- ללא --</option>
+                                                {% for station in print_stations %}
+                                                <option value="{{ station }}" {% if item.print_station == station %}selected{% endif %}>{{ station }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">לאיזה מדפסת/עמדה הבון של מנה זו יודפס</div>
                                         </div>
                                     </div>
                                 </div>

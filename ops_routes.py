@@ -305,15 +305,11 @@ def orders():
     if status_filter == 'active':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']))
     elif status_filter == 'done':
-        query = query.filter(FoodOrder.status.in_(['delivered']))
-    elif status_filter == 'picked':
-        query = query.filter(FoodOrder.status.in_(['pickedup']))
+        query = query.filter(FoodOrder.status.in_(['delivered', 'pickedup']))
     elif status_filter == 'cancelled':
         query = query.filter_by(status='cancelled')
     elif status_filter == 'new':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed']))
-    elif status_filter == 'waiting':
-        query = query.filter(FoodOrder.status.in_(['confirmed']))
     elif status_filter == 'preparing':
         query = query.filter_by(status='preparing')
     elif status_filter == 'ready':
@@ -333,11 +329,9 @@ def orders():
     today_orders = today_q.all()
     counts = {
         'new': sum(1 for o in today_orders if o.status in ('pending', 'confirmed')),
-        'waiting': sum(1 for o in today_orders if o.status == 'confirmed'),
         'preparing': sum(1 for o in today_orders if o.status == 'preparing'),
         'ready': sum(1 for o in today_orders if o.status == 'ready'),
-        'done': sum(1 for o in today_orders if o.status == 'delivered'),
-        'picked': sum(1 for o in today_orders if o.status == 'pickedup'),
+        'done': sum(1 for o in today_orders if o.status in ('delivered', 'pickedup')),
         'cancelled': sum(1 for o in today_orders if o.status == 'cancelled'),
     }
     counts['active'] = counts['new'] + counts['preparing'] + counts['ready']
@@ -440,12 +434,26 @@ def get_order_detail(order_id):
                     item['category_name'] = mi.category.name_he
                     item['category_id'] = mi.category_id
 
+    for item in items:
+        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi and mi.print_station:
+                item['print_station'] = mi.print_station
+
     by_category = {}
     for item in items:
         cat = item.get('category_name', 'כללי')
         if cat not in by_category:
             by_category[cat] = []
         by_category[cat].append(item)
+
+    by_station = {}
+    for item in items:
+        station = item.get('print_station', 'כללי')
+        if station not in by_station:
+            by_station[station] = []
+        by_station[station].append(item)
 
     return jsonify({
         'ok': True,
@@ -473,6 +481,7 @@ def get_order_detail(order_id):
             'created_at': order.created_at.strftime('%H:%M') if order.created_at else '',
             'items': items,
             'items_by_category': by_category,
+            'items_by_station': by_station,
             'branch_name': order.branch_name or '',
             'estimated_ready_at': order.estimated_ready_at.strftime('%H:%M') if order.estimated_ready_at else '',
         }

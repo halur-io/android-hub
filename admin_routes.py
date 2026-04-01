@@ -1304,6 +1304,7 @@ def edit_menu_item(id=None):
         item.allow_delivery = request.form.get('allow_delivery') == 'on'
         item.allow_takeaway = request.form.get('allow_takeaway') == 'on'
         item.prep_time_minutes = int(request.form.get('prep_time_minutes', 0)) if request.form.get('prep_time_minutes') else None
+        item.print_station = request.form.get('print_station', '').strip() or None
         item.calories = int(request.form.get('calories', 0)) if request.form.get('calories') else None
         item.spice_level = int(request.form.get('spice_level', 0))
         
@@ -1415,7 +1416,12 @@ def edit_menu_item(id=None):
         # Redirect back to edit page to show uploaded image
         return redirect(url_for('admin.edit_menu_item', id=item.id))
     
-    return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties)
+    existing_stations = db.session.query(MenuItem.print_station).filter(MenuItem.print_station.isnot(None), MenuItem.print_station != '').distinct().all()
+    print_stations = sorted(set(s[0] for s in existing_stations))
+    if not print_stations:
+        print_stations = ['מטבח', 'בר', 'סושי', 'פיצה', 'גריל']
+
+    return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=print_stations)
 
 # Image Editor - Rotate, Crop, Zoom for menu item images
 @admin_bp.route('/menu/item/<int:item_id>/edit-image', methods=['POST'])

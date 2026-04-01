@@ -517,6 +517,7 @@ class MenuItem(db.Model):
     allow_takeaway = db.Column(db.Boolean, default=True)  # Can be ordered for takeaway
     allow_delivery = db.Column(db.Boolean, default=True)  # Can be ordered for delivery
     prep_time_minutes = db.Column(db.Integer)  # Preparation time
+    print_station = db.Column(db.String(50))  # Print station/route for bon printing (e.g. kitchen, bar, sushi)
     calories = db.Column(db.Integer)  # Nutritional info
     spice_level = db.Column(db.Integer, default=0)  # 0-5 scale
     allergens = db.Column(db.Text)  # JSON array of allergens

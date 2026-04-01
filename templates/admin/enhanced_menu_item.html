@@ -43,6 +43,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="options-tab" data-bs-toggle="tab" data-bs-target="#options" type="button" role="tab">
+                            <i class="fas fa-list-check me-2"></i>אפשרויות ותוספות
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">
                             <i class="fas fa-cogs me-2"></i>הגדרות מתקדמות
                         </button>
@@ -476,6 +481,36 @@
                         </div>
                     </div>
                     
+                    <!-- Options & Extras Tab -->
+                    <div class="tab-pane fade" id="options" role="tabpanel">
+                        {% if not item.id %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            שמור את המנה קודם כדי להוסיף אפשרויות ותוספות
+                        </div>
+                        {% else %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="fas fa-list-check me-2"></i>קבוצות אפשרויות</h5>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="showAddGroupModal()">
+                                <i class="fas fa-plus me-1"></i>קבוצה חדשה
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <strong>אפשרות (חובה):</strong> בחירה יחידה שהלקוח חייב לבחור (כמו: ני/מבושל)&nbsp;&nbsp;|&nbsp;&nbsp;
+                                <strong>תוספות בתשלום:</strong> תוספות עם מחיר נוסף&nbsp;&nbsp;|&nbsp;&nbsp;
+                                <strong>תוספות חינם:</strong> הגדר כמה תוספות חינם הלקוח יכול לבחור
+                            </small>
+                        </div>
+                        <div id="optionGroupsList">
+                            <div class="text-center text-muted py-4" id="noGroupsMsg">
+                                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                אין אפשרויות עדיין. לחץ "קבוצה חדשה" להוסיף
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
                     <!-- Advanced Settings Tab -->
                     <div class="tab-pane fade" id="advanced" role="tabpanel">
                         <div class="mb-3">
@@ -770,6 +805,336 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    if (itemId) loadOptionGroups();
 });
+
+const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+function optFetch(url, method, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken } };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(url, opts).then(r => r.json());
+}
+
+function loadOptionGroups() {
+    if (!itemId) return;
+    optFetch(`/admin/api/menu-item/${itemId}/option-groups`, 'GET')
+        .then(data => {
+            if (!data.ok) return;
+            renderGroups(data.groups);
+        });
+}
+
+function renderGroups(groups) {
+    const container = document.getElementById('optionGroupsList');
+    const noMsg = document.getElementById('noGroupsMsg');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!groups.length) {
+        container.innerHTML = '<div class="text-center text-muted py-4" id="noGroupsMsg"><i class="fas fa-inbox fa-2x mb-2 d-block"></i>אין אפשרויות עדיין. לחץ "קבוצה חדשה" להוסיף</div>';
+        return;
+    }
+    groups.forEach(g => {
+        let typeBadge = '';
+        let typeDesc = '';
+        if (g.selection_type === 'single' && g.is_required) {
+            typeBadge = '<span class="badge bg-danger ms-2">חובה</span>';
+            typeDesc = 'בחירה יחידה (חובה)';
+        } else if (g.selection_type === 'multiple') {
+            const hasPaid = g.choices.some(c => c.price_modifier > 0);
+            const allFree = g.choices.every(c => c.price_modifier === 0);
+            if (allFree && g.max_selections > 0) {
+                typeBadge = '<span class="badge bg-success ms-2">חינם</span>';
+                typeDesc = `עד ${g.max_selections} בחירות חינם`;
+            } else {
+                typeBadge = '<span class="badge bg-info ms-2">תוספות</span>';
+                typeDesc = g.max_selections > 0 ? `עד ${g.max_selections} בחירות` : 'ללא הגבלה';
+            }
+        } else {
+            typeBadge = '<span class="badge bg-secondary ms-2">בחירה</span>';
+            typeDesc = g.is_required ? 'בחירה יחידה (חובה)' : 'בחירה יחידה (אופציונלי)';
+        }
+
+        let choicesHtml = '';
+        g.choices.forEach(c => {
+            const priceStr = c.price_modifier > 0 ? `<span class="text-success fw-bold">+₪${c.price_modifier}</span>` : (c.price_modifier < 0 ? `<span class="text-danger">-₪${Math.abs(c.price_modifier)}</span>` : '<span class="text-muted">חינם</span>');
+            const availBadge = c.is_available ? '' : '<span class="badge bg-warning text-dark ms-1">לא זמין</span>';
+            const defBadge = c.is_default ? '<span class="badge bg-primary ms-1">ברירת מחדל</span>' : '';
+            choicesHtml += `
+                <div class="d-flex align-items-center justify-content-between py-1 px-2 border-bottom" style="font-size: 0.9rem;">
+                    <div>
+                        <span>${c.name_he}</span>
+                        <small class="text-muted ms-1">(${c.name_en})</small>
+                        ${defBadge}${availBadge}
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        ${priceStr}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="editChoice(${g.id}, ${c.id}); return false;"><i class="fas fa-edit me-2"></i>ערוך</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleChoiceAvail(${g.id}, ${c.id}, ${c.is_available ? 'false' : 'true'}); return false;"><i class="fas fa-${c.is_available ? 'eye-slash' : 'eye'} me-2"></i>${c.is_available ? 'השבת' : 'הפעל'}</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteChoice(${g.id}, ${c.id}); return false;"><i class="fas fa-trash me-2"></i>מחק</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>`;
+        });
+
+        const activeClass = g.is_active ? '' : 'opacity-50';
+        container.innerHTML += `
+            <div class="card mb-3 ${activeClass}" id="group-${g.id}">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <div>
+                        <strong>${g.name_he}</strong>
+                        <small class="text-muted ms-1">(${g.name_en})</small>
+                        ${typeBadge}
+                        <small class="text-muted ms-2">${typeDesc}</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="showAddChoiceModal(${g.id})">
+                            <i class="fas fa-plus me-1"></i>הוסף בחירה
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="editGroup(${g.id}); return false;"><i class="fas fa-edit me-2"></i>ערוך קבוצה</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleGroup(${g.id}, ${g.is_active ? 'false' : 'true'}); return false;"><i class="fas fa-${g.is_active ? 'eye-slash' : 'eye'} me-2"></i>${g.is_active ? 'השבת' : 'הפעל'}</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteGroup(${g.id}); return false;"><i class="fas fa-trash me-2"></i>מחק קבוצה</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    ${choicesHtml || '<div class="text-center text-muted py-3"><small>אין בחירות עדיין</small></div>'}
+                </div>
+            </div>`;
+    });
+}
+
+let _editingGroupId = null;
+let _editingChoiceGroupId = null;
+let _editingChoiceId = null;
+
+function showAddGroupModal() {
+    _editingGroupId = null;
+    document.getElementById('groupModalTitle').textContent = 'קבוצה חדשה';
+    document.getElementById('gNameHe').value = '';
+    document.getElementById('gNameEn').value = '';
+    document.getElementById('gType').value = 'required_single';
+    document.getElementById('gMaxSelections').value = '0';
+    updateGroupTypeUI();
+    new bootstrap.Modal(document.getElementById('groupModal')).show();
+}
+
+function editGroup(gid) {
+    _editingGroupId = gid;
+    optFetch(`/admin/api/menu-item/${itemId}/option-groups`, 'GET').then(data => {
+        const g = data.groups.find(x => x.id === gid);
+        if (!g) return;
+        document.getElementById('groupModalTitle').textContent = 'ערוך קבוצה';
+        document.getElementById('gNameHe').value = g.name_he;
+        document.getElementById('gNameEn').value = g.name_en;
+        let gType = 'paid_extras';
+        if (g.selection_type === 'single' && g.is_required) gType = 'required_single';
+        else if (g.selection_type === 'single' && !g.is_required) gType = 'optional_single';
+        else if (g.selection_type === 'multiple') {
+            const allFree = g.choices.every(c => c.price_modifier === 0);
+            gType = (allFree && g.max_selections > 0) ? 'free_extras' : 'paid_extras';
+        }
+        document.getElementById('gType').value = gType;
+        document.getElementById('gMaxSelections').value = g.max_selections || 0;
+        updateGroupTypeUI();
+        new bootstrap.Modal(document.getElementById('groupModal')).show();
+    });
+}
+
+function updateGroupTypeUI() {
+    const t = document.getElementById('gType').value;
+    const maxRow = document.getElementById('gMaxRow');
+    if (t === 'free_extras' || t === 'paid_extras') {
+        maxRow.style.display = '';
+    } else {
+        maxRow.style.display = 'none';
+    }
+}
+
+function saveGroup() {
+    const nameHe = document.getElementById('gNameHe').value.trim();
+    const nameEn = document.getElementById('gNameEn').value.trim();
+    const gType = document.getElementById('gType').value;
+    const maxSel = parseInt(document.getElementById('gMaxSelections').value) || 0;
+    if (!nameHe) { alert('שם בעברית הוא שדה חובה'); return; }
+
+    let selectionType = 'single', isRequired = false, minSel = 0, maxSelFinal = 0;
+    if (gType === 'required_single') { selectionType = 'single'; isRequired = true; }
+    else if (gType === 'optional_single') { selectionType = 'single'; isRequired = false; }
+    else if (gType === 'free_extras') { selectionType = 'multiple'; isRequired = false; maxSelFinal = maxSel; }
+    else if (gType === 'paid_extras') { selectionType = 'multiple'; isRequired = false; maxSelFinal = maxSel; }
+
+    const body = { name_he: nameHe, name_en: nameEn || nameHe, selection_type: selectionType, is_required: isRequired, min_selections: minSel, max_selections: maxSelFinal };
+
+    if (_editingGroupId) {
+        optFetch(`/admin/api/option-group/${_editingGroupId}`, 'PUT', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+            loadOptionGroups();
+        });
+    } else {
+        optFetch(`/admin/api/menu-item/${itemId}/option-groups`, 'POST', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+            loadOptionGroups();
+        });
+    }
+}
+
+function deleteGroup(gid) {
+    if (!confirm('למחוק את הקבוצה וכל הבחירות שלה?')) return;
+    optFetch(`/admin/api/option-group/${gid}`, 'DELETE').then(() => loadOptionGroups());
+}
+
+function toggleGroup(gid, active) {
+    optFetch(`/admin/api/option-group/${gid}`, 'PUT', { is_active: active === 'true' || active === true }).then(() => loadOptionGroups());
+}
+
+function showAddChoiceModal(gid) {
+    _editingChoiceGroupId = gid;
+    _editingChoiceId = null;
+    document.getElementById('choiceModalTitle').textContent = 'הוסף בחירה';
+    document.getElementById('cNameHe').value = '';
+    document.getElementById('cNameEn').value = '';
+    document.getElementById('cPrice').value = '0';
+    document.getElementById('cDefault').checked = false;
+    document.getElementById('cAvailable').checked = true;
+    new bootstrap.Modal(document.getElementById('choiceModal')).show();
+}
+
+function editChoice(gid, cid) {
+    _editingChoiceGroupId = gid;
+    _editingChoiceId = cid;
+    optFetch(`/admin/api/option-group/${gid}`, 'GET').then(data => {
+        const c = data.group.choices.find(x => x.id === cid);
+        if (!c) return;
+        document.getElementById('choiceModalTitle').textContent = 'ערוך בחירה';
+        document.getElementById('cNameHe').value = c.name_he;
+        document.getElementById('cNameEn').value = c.name_en;
+        document.getElementById('cPrice').value = c.price_modifier;
+        document.getElementById('cDefault').checked = c.is_default;
+        document.getElementById('cAvailable').checked = c.is_available;
+        new bootstrap.Modal(document.getElementById('choiceModal')).show();
+    });
+}
+
+function saveChoice() {
+    const nameHe = document.getElementById('cNameHe').value.trim();
+    const nameEn = document.getElementById('cNameEn').value.trim();
+    const price = parseFloat(document.getElementById('cPrice').value) || 0;
+    const isDef = document.getElementById('cDefault').checked;
+    const isAvail = document.getElementById('cAvailable').checked;
+    if (!nameHe) { alert('שם בעברית הוא שדה חובה'); return; }
+
+    const body = { name_he: nameHe, name_en: nameEn || nameHe, price_modifier: price, is_default: isDef, is_available: isAvail };
+
+    if (_editingChoiceId) {
+        optFetch(`/admin/api/option-choice/${_editingChoiceId}`, 'PUT', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('choiceModal')).hide();
+            loadOptionGroups();
+        });
+    } else {
+        optFetch(`/admin/api/option-group/${_editingChoiceGroupId}/choices`, 'POST', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('choiceModal')).hide();
+            loadOptionGroups();
+        });
+    }
+}
+
+function deleteChoice(gid, cid) {
+    if (!confirm('למחוק בחירה זו?')) return;
+    optFetch(`/admin/api/option-choice/${cid}`, 'DELETE').then(() => loadOptionGroups());
+}
+
+function toggleChoiceAvail(gid, cid, avail) {
+    optFetch(`/admin/api/option-choice/${cid}`, 'PUT', { is_available: avail === 'true' || avail === true }).then(() => loadOptionGroups());
+}
 </script>
+
+<!-- Group Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="groupModalTitle">קבוצה חדשה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">שם בעברית <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="gNameHe" placeholder="לדוגמה: סגנון הכנה">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">שם באנגלית</label>
+                    <input type="text" class="form-control" id="gNameEn" placeholder="e.g. Cooking style">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">סוג</label>
+                    <select class="form-select" id="gType" onchange="updateGroupTypeUI()">
+                        <option value="required_single">אפשרות חובה (בחירה יחידה) — לדוג׳ ני/מבושל</option>
+                        <option value="optional_single">אפשרות אופציונלית (בחירה יחידה)</option>
+                        <option value="paid_extras">תוספות בתשלום (בחירה מרובה)</option>
+                        <option value="free_extras">תוספות חינם (בחירה מרובה עם הגבלה)</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="gMaxRow">
+                    <label class="form-label">מקסימום בחירות</label>
+                    <input type="number" class="form-control" id="gMaxSelections" value="0" min="0">
+                    <small class="form-text text-muted">0 = ללא הגבלה. לתוספות חינם, הגדר כמה פריטים הלקוח יכול לבחור</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="saveGroup()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Choice Modal -->
+<div class="modal fade" id="choiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="choiceModalTitle">הוסף בחירה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">שם בעברית <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="cNameHe" placeholder="לדוגמה: סויה">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">שם באנגלית</label>
+                    <input type="text" class="form-control" id="cNameEn" placeholder="e.g. Soy sauce">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">מחיר נוסף (₪)</label>
+                    <input type="number" step="0.5" class="form-control" id="cPrice" value="0">
+                    <small class="form-text text-muted">0 = חינם. הזן מחיר חיובי לתוספת בתשלום</small>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="cDefault">
+                    <label class="form-check-label" for="cDefault">ברירת מחדל (מסומן מראש)</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="cAvailable" checked>
+                    <label class="form-check-label" for="cAvailable">זמין להזמנה</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="saveChoice()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

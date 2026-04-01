@@ -51,6 +51,10 @@ ROUTE_PERMISSIONS = {
     'admin.edit_dietary_property': 'menu.edit',
     'admin.toggle_dietary_property': 'menu.edit',
     'admin.delete_dietary_property': 'menu.edit',
+    'admin.api_option_groups': 'menu.edit',
+    'admin.api_option_group': 'menu.edit',
+    'admin.api_add_choice': 'menu.edit',
+    'admin.api_option_choice': 'menu.edit',
     'admin.reorder_dietary_properties': 'menu.edit',
     'admin.menu_reorder': 'menu.edit',
     'admin.reorder_items': 'menu.edit',
@@ -1505,6 +1509,174 @@ def edit_menu_item_image(item_id):
     except Exception as e:
         print(f"Error editing image: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/option-groups', methods=['GET', 'POST'])
+@login_required
+def api_option_groups(item_id):
+    from models import MenuItemOptionGroup, MenuItemOptionChoice
+    item = MenuItem.query.get_or_404(item_id)
+
+    if request.method == 'GET':
+        groups = MenuItemOptionGroup.query.filter_by(menu_item_id=item_id).order_by(MenuItemOptionGroup.display_order).all()
+        result = []
+        for g in groups:
+            choices = MenuItemOptionChoice.query.filter_by(option_group_id=g.id).order_by(MenuItemOptionChoice.display_order).all()
+            result.append({
+                'id': g.id, 'name_he': g.name_he, 'name_en': g.name_en,
+                'selection_type': g.selection_type, 'is_required': g.is_required,
+                'min_selections': g.min_selections, 'max_selections': g.max_selections,
+                'display_order': g.display_order, 'is_active': g.is_active,
+                'choices': [{
+                    'id': c.id, 'name_he': c.name_he, 'name_en': c.name_en,
+                    'price_modifier': c.price_modifier, 'is_default': c.is_default,
+                    'is_available': c.is_available, 'display_order': c.display_order
+                } for c in choices]
+            })
+        return jsonify({'ok': True, 'groups': result})
+
+    try:
+        data = request.get_json(force=True)
+        name_he = (data.get('name_he') or '').strip()
+        if not name_he:
+            return jsonify({'ok': False, 'error': 'name_he is required'}), 400
+        sel_type = data.get('selection_type', 'single')
+        if sel_type not in ('single', 'multiple'):
+            return jsonify({'ok': False, 'error': 'Invalid selection_type'}), 400
+        min_sel = max(0, int(data.get('min_selections', 0)))
+        max_sel = max(0, int(data.get('max_selections', 0)))
+        max_order = db.session.query(db.func.max(MenuItemOptionGroup.display_order)).filter_by(menu_item_id=item_id).scalar() or 0
+        g = MenuItemOptionGroup(
+            menu_item_id=item_id,
+            name_he=name_he,
+            name_en=(data.get('name_en') or name_he).strip(),
+            selection_type=sel_type,
+            is_required=bool(data.get('is_required', False)),
+            min_selections=min_sel,
+            max_selections=max_sel,
+            display_order=max_order + 1,
+            is_active=True
+        )
+        db.session.add(g)
+        db.session.commit()
+        return jsonify({'ok': True, 'id': g.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/option-group/<int:group_id>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
+def api_option_group(group_id):
+    from models import MenuItemOptionGroup, MenuItemOptionChoice
+    g = MenuItemOptionGroup.query.get_or_404(group_id)
+
+    if request.method == 'GET':
+        choices = MenuItemOptionChoice.query.filter_by(option_group_id=g.id).order_by(MenuItemOptionChoice.display_order).all()
+        return jsonify({'ok': True, 'group': {
+            'id': g.id, 'name_he': g.name_he, 'name_en': g.name_en,
+            'selection_type': g.selection_type, 'is_required': g.is_required,
+            'min_selections': g.min_selections, 'max_selections': g.max_selections,
+            'display_order': g.display_order, 'is_active': g.is_active,
+            'choices': [{
+                'id': c.id, 'name_he': c.name_he, 'name_en': c.name_en,
+                'price_modifier': c.price_modifier, 'is_default': c.is_default,
+                'is_available': c.is_available, 'display_order': c.display_order
+            } for c in choices]
+        }})
+
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(g)
+            db.session.commit()
+            return jsonify({'ok': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    try:
+        data = request.get_json(force=True)
+        if 'name_he' in data: g.name_he = (data['name_he'] or '').strip()
+        if 'name_en' in data: g.name_en = (data['name_en'] or '').strip()
+        if 'selection_type' in data:
+            if data['selection_type'] not in ('single', 'multiple'):
+                return jsonify({'ok': False, 'error': 'Invalid selection_type'}), 400
+            g.selection_type = data['selection_type']
+        if 'is_required' in data: g.is_required = bool(data['is_required'])
+        if 'min_selections' in data: g.min_selections = max(0, int(data['min_selections']))
+        if 'max_selections' in data: g.max_selections = max(0, int(data['max_selections']))
+        if 'display_order' in data: g.display_order = int(data['display_order'])
+        if 'is_active' in data: g.is_active = bool(data['is_active'])
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/option-group/<int:group_id>/choices', methods=['POST'])
+@login_required
+def api_add_choice(group_id):
+    from models import MenuItemOptionGroup, MenuItemOptionChoice
+    g = MenuItemOptionGroup.query.get_or_404(group_id)
+    try:
+        data = request.get_json(force=True)
+        name_he = (data.get('name_he') or '').strip()
+        if not name_he:
+            return jsonify({'ok': False, 'error': 'name_he is required'}), 400
+        price = float(data.get('price_modifier', 0))
+        if price < 0:
+            return jsonify({'ok': False, 'error': 'price_modifier cannot be negative'}), 400
+        max_order = db.session.query(db.func.max(MenuItemOptionChoice.display_order)).filter_by(option_group_id=group_id).scalar() or 0
+        c = MenuItemOptionChoice(
+            option_group_id=group_id,
+            name_he=name_he,
+            name_en=(data.get('name_en') or name_he).strip(),
+            price_modifier=price,
+            is_default=bool(data.get('is_default', False)),
+            is_available=bool(data.get('is_available', True)),
+            display_order=max_order + 1
+        )
+        db.session.add(c)
+        db.session.commit()
+        return jsonify({'ok': True, 'id': c.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/option-choice/<int:choice_id>', methods=['PUT', 'DELETE'])
+@login_required
+def api_option_choice(choice_id):
+    from models import MenuItemOptionChoice
+    c = MenuItemOptionChoice.query.get_or_404(choice_id)
+
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(c)
+            db.session.commit()
+            return jsonify({'ok': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    try:
+        data = request.get_json(force=True)
+        if 'name_he' in data: c.name_he = (data['name_he'] or '').strip()
+        if 'name_en' in data: c.name_en = (data['name_en'] or '').strip()
+        if 'price_modifier' in data:
+            price = float(data['price_modifier'])
+            if price < 0:
+                return jsonify({'ok': False, 'error': 'price_modifier cannot be negative'}), 400
+            c.price_modifier = price
+        if 'is_default' in data: c.is_default = bool(data['is_default'])
+        if 'is_available' in data: c.is_available = bool(data['is_available'])
+        if 'display_order' in data: c.display_order = int(data['display_order'])
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # Menu Settings Management

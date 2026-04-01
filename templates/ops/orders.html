@@ -744,7 +744,7 @@ function savePrintSettings() {
 }
 
 var BON_PRINT_CSS = '\
-@page{margin:6mm;size:80mm auto}\
+@page{margin:6mm}\
 *{box-sizing:border-box;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}\
 html,body{margin:0;padding:0;width:100%}\
 body{direction:rtl;text-align:right;font-family:"Courier New",Courier,monospace;font-size:10pt;font-weight:700;line-height:1.4;color:#000}\
@@ -764,6 +764,8 @@ body{direction:rtl;text-align:right;font-family:"Courier New",Courier,monospace;
 .pbon-total-lbl{font-size:11pt;font-weight:700}\
 .pbon-total-val{font-size:18pt;font-weight:900}\
 .pbon-footer{text-align:center;font-size:9pt;font-weight:700;margin-top:10px;border-top:2px dashed #000;padding-top:7px}\
+.bon-page{page-break-after:always;break-after:page}\
+.bon-page:last-child{page-break-after:avoid;break-after:avoid}\
 ';
 
 function renderItems(items, showPrice) {
@@ -922,9 +924,20 @@ function showPreview() {
 
 function doPrintAll() {
     closeBonPreview();
+    var combined = '';
     pendingPrintBons.forEach(function(bon) {
-        queuePrint(bon.html);
+        combined += '<div class="bon-page">' + bon.html + '</div>';
     });
+    var frame = getPrintFrame();
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    var fullHtml = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + combined + '</body></html>';
+    doc.open();
+    doc.write(fullHtml);
+    doc.close();
+    setTimeout(function() {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+    }, 250);
 }
 
 function closeBonPreview() {

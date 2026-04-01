@@ -4,39 +4,107 @@
 
 {% block head %}
 <style>
-.ops-filter-bar {
+.type-tabs {
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 8px 0 12px;
-    -webkit-overflow-scrolling: touch;
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    margin: -16px -20px 0;
+    padding: 0;
 }
-.ops-filter-btn {
-    flex-shrink: 0;
-    padding: 8px 14px;
-    border-radius: 20px;
-    border: 1px solid var(--ops-border);
-    background: var(--ops-card);
+.type-tab {
+    flex: 1;
+    text-align: center;
+    padding: 12px 8px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--ops-text-dim);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
     text-decoration: none;
+    border-bottom: 3px solid transparent;
     transition: all 0.2s;
 }
-.ops-filter-btn.active { background: var(--ops-accent); color: #fff; border-color: var(--ops-accent); }
-.ops-filter-btn .cnt { font-size: 11px; background: rgba(255,255,255,0.15); border-radius: 10px; padding: 1px 7px; margin-right: 4px; }
-.ops-filter-btn.active .cnt { background: rgba(255,255,255,0.25); }
-.ops-filter-btn.has-new { animation: pulse-badge 1.5s infinite; }
-@keyframes pulse-badge { 0%,100%{box-shadow:none;} 50%{box-shadow:0 0 12px var(--ops-orange);} }
+.type-tab.active {
+    color: var(--ops-accent);
+    border-bottom-color: var(--ops-accent);
+}
 
-.order-card-wrap {
+.sub-tabs {
+    display: flex;
+    gap: 0;
+    margin: 12px -20px 0;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--ops-border);
+    background: var(--ops-surface);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.sub-tab {
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--ops-text-dim);
+    text-decoration: none;
+    white-space: nowrap;
+    min-width: 55px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+.sub-tab.active {
+    color: var(--ops-accent);
+    border-bottom-color: var(--ops-accent);
+}
+.sub-tab .tab-label {
+    display: block;
+    font-size: 11px;
+    margin-bottom: 2px;
+}
+.sub-tab .tab-count {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.counter-bar {
+    display: flex;
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    margin: 0 -20px;
+    padding: 8px 10px;
+}
+.counter-item {
+    flex: 1;
+    text-align: center;
+    cursor: pointer;
+    padding: 4px 2px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    text-decoration: none;
+    color: inherit;
+}
+.counter-item:active { background: var(--ops-bg); }
+.counter-item.active { background: var(--ops-accent-soft); }
+.counter-label {
+    font-size: 10px;
+    color: var(--ops-text-dim);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+}
+.counter-num {
+    font-size: 18px;
+    font-weight: 800;
+    display: block;
+    line-height: 1;
+}
+.counter-item.active .counter-label { color: var(--ops-accent); }
+.counter-item.active .counter-num { color: var(--ops-accent); }
+
+.order-row-wrap {
     position: relative;
     overflow: hidden;
-    margin-bottom: 10px;
-    border-radius: var(--ops-radius-sm);
+    border-bottom: 1px solid var(--ops-border);
 }
+.order-row-wrap:last-child { border-bottom: none; }
 
 .order-swipe-actions {
     position: absolute;
@@ -52,120 +120,141 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 72px;
-    gap: 4px;
+    width: 70px;
+    gap: 3px;
     font-size: 10px;
     font-weight: 600;
     color: #fff;
     cursor: pointer;
 }
-.swipe-action.print-bon { background: var(--ops-blue); }
-.swipe-action.send-sms { background: var(--ops-green); }
-.swipe-action.set-time { background: var(--ops-orange); }
-.swipe-action.cancel-order { background: var(--ops-red); }
-.swipe-action i { font-size: 20px; }
+.swipe-action.print-bon { background: #3498db; }
+.swipe-action.send-sms { background: #0f9b58; }
+.swipe-action.set-time { background: #f39c12; }
+.swipe-action.cancel-order { background: #e74c3c; }
+.swipe-action i { font-size: 18px; }
 
-.order-card {
+.order-row {
     position: relative;
     z-index: 2;
-    background: var(--ops-card);
-    border: 1px solid var(--ops-border);
-    border-radius: var(--ops-radius-sm);
-    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: #fff;
+    cursor: pointer;
     transition: transform 0.25s ease;
     touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
-    box-shadow: var(--ops-shadow);
+    min-height: 64px;
+    gap: 10px;
 }
-.order-card.swiped-left { transform: translateX(-216px); }
-.order-card.swiped-right { transform: translateX(144px); }
+.order-row:active { background: #f8f9fb; }
+.order-row.swiped-left { transform: translateX(-210px); }
+.order-row.swiped-right { transform: translateX(140px); }
 
-.order-card .status-bar {
-    position: absolute;
-    top: 0; right: 0; bottom: 0;
-    width: 4px;
-    border-radius: 0 var(--ops-radius-sm) var(--ops-radius-sm) 0;
-}
-.status-bar.s-new { background: var(--ops-orange); }
-.status-bar.s-preparing { background: var(--ops-accent); }
-.status-bar.s-ready { background: var(--ops-green); }
-.status-bar.s-done { background: var(--ops-text-dim); }
-.status-bar.s-cancelled { background: var(--ops-red); }
-
-.order-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-.order-num {
+.row-order-num {
     font-weight: 800;
-    font-size: 17px;
-}
-.order-time {
-    font-size: 12px;
-    color: var(--ops-text-dim);
-}
-.order-status-pill {
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-}
-.pill-new { background: rgba(243,156,18,0.2); color: #f39c12; }
-.pill-preparing { background: rgba(233,69,96,0.2); color: #e94560; }
-.pill-ready { background: rgba(15,155,88,0.2); color: #0f9b58; }
-.pill-done { background: rgba(150,150,150,0.2); color: #999; }
-.pill-cancelled { background: rgba(231,76,60,0.2); color: #e74c3c; }
-
-.order-mid {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-}
-.order-customer { font-weight: 600; }
-.order-total { font-weight: 800; color: var(--ops-green); font-size: 15px; }
-.order-type-tag {
-    display: inline-block;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.06);
-    color: var(--ops-text-dim);
-    margin-top: 4px;
-}
-.order-eta {
-    font-size: 11px;
-    color: var(--ops-accent);
-    margin-top: 4px;
+    font-size: 14px;
+    color: var(--ops-text);
+    min-width: 20px;
+    text-align: center;
+    flex-shrink: 0;
 }
 
-.order-next-action {
-    margin-top: 10px;
-    display: flex;
-    gap: 8px;
-}
-.order-next-btn {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
+.row-type-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    transition: all 0.15s;
+    font-size: 14px;
+    flex-shrink: 0;
 }
-.order-next-btn:active { transform: scale(0.96); }
-.btn-start { background: var(--ops-accent); color: #fff; }
-.btn-ready { background: var(--ops-green); color: #fff; }
-.btn-done { background: rgba(150,150,150,0.3); color: var(--ops-text); }
-.btn-cancel { background: rgba(231,76,60,0.15); color: var(--ops-red); flex: 0; padding: 10px 14px; }
+.row-type-icon.delivery { background: #e3f2fd; color: #1976d2; }
+.row-type-icon.pickup { background: #e8f5e9; color: #388e3c; }
+
+.row-info {
+    flex: 1;
+    min-width: 0;
+}
+.row-customer {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.row-phone {
+    font-size: 12px;
+    color: var(--ops-text-dim);
+    direction: ltr;
+    text-align: right;
+}
+.row-address {
+    font-size: 11px;
+    color: var(--ops-text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row-status {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    min-width: 50px;
+    flex-shrink: 0;
+}
+.row-status.s-new { color: #e65100; }
+.row-status.s-preparing { color: #c62828; }
+.row-status.s-ready { color: #2e7d32; }
+.row-status.s-done { color: #9e9e9e; }
+.row-status.s-cancelled { color: #e74c3c; text-decoration: line-through; }
+
+.row-time-block {
+    text-align: center;
+    min-width: 50px;
+    flex-shrink: 0;
+}
+.row-time-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+}
+.row-time-badge.urgent { background: #c62828; }
+.row-time-badge.normal { background: #1976d2; }
+.row-time-badge.done { background: #9e9e9e; }
+.row-prep-time {
+    font-size: 11px;
+    color: var(--ops-text-dim);
+    margin-top: 2px;
+}
+.row-order-time {
+    font-size: 10px;
+    color: #bbb;
+}
+
+.row-amount {
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 55px;
+    text-align: left;
+    flex-shrink: 0;
+    direction: ltr;
+}
+
+.orders-list {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--ops-border);
+    margin-top: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
 
 .modal-backdrop {
     display: none;
@@ -178,7 +267,7 @@
 }
 .modal-backdrop.show { display: flex; }
 .modal-sheet {
-    background: var(--ops-surface);
+    background: #fff;
     border-radius: 16px 16px 0 0;
     width: 100%;
     max-width: 600px;
@@ -187,15 +276,16 @@
     padding: 20px;
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
     animation: sheetUp 0.2s ease;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
 }
 @keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-.modal-handle { width: 40px; height: 4px; background: var(--ops-border); border-radius: 2px; margin: 0 auto 16px; }
-.detail-sec { padding: 10px 0; border-bottom: 1px solid var(--ops-border); }
+.modal-handle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 16px; }
+.detail-sec { padding: 10px 0; border-bottom: 1px solid #eee; }
 .detail-sec:last-child { border-bottom: none; }
-.detail-lbl { font-size: 11px; color: var(--ops-text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.detail-lbl { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
 .detail-val { font-size: 14px; font-weight: 600; }
 .detail-items { list-style: none; padding: 0; margin: 0; }
-.detail-items li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--ops-border); font-size: 13px; }
+.detail-items li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
 .detail-items li:last-child { border-bottom: none; }
 .detail-cat-title { font-size: 12px; font-weight: 700; color: var(--ops-accent); margin: 8px 0 4px; padding: 4px 8px; background: var(--ops-accent-soft); border-radius: 6px; display: inline-block; }
 
@@ -208,8 +298,8 @@
 .time-btn {
     padding: 14px 8px;
     border-radius: 10px;
-    border: 1px solid var(--ops-border);
-    background: var(--ops-card);
+    border: 1px solid #ddd;
+    background: #f8f9fb;
     color: var(--ops-text);
     font-size: 16px;
     font-weight: 700;
@@ -219,25 +309,16 @@
 }
 .time-btn:active, .time-btn.selected { background: var(--ops-accent); color: #fff; border-color: var(--ops-accent); }
 
-.ops-empty { text-align: center; padding: 60px 20px; color: var(--ops-text-dim); }
+.ops-empty { text-align: center; padding: 60px 20px; color: #999; }
 .ops-empty i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
 
 .bon-preview { display: none; }
-
 @media print {
     body * { visibility: hidden; }
     .bon-preview, .bon-preview * { visibility: visible; }
     .bon-preview {
-        display: block;
-        position: fixed;
-        top: 0; left: 0;
-        width: 80mm;
-        background: #fff;
-        color: #000;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        padding: 8px;
-        direction: rtl;
+        display: block; position: fixed; top: 0; left: 0; width: 80mm;
+        background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 12px; padding: 8px; direction: rtl;
     }
     .bon-preview .bon-title { font-size: 16px; font-weight: 900; text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px; }
     .bon-preview .bon-meta { font-size: 11px; margin-bottom: 4px; }
@@ -250,33 +331,49 @@
 {% endblock %}
 
 {% block content %}
-<div class="ops-filter-bar">
-    <a href="{{ url_for('ops.orders', status='active') }}" class="ops-filter-btn {% if status_filter == 'active' %}active{% endif %} {% if counts.get('new', 0) > 0 %}has-new{% endif %}">
-        הכל <span class="cnt">{{ counts.get('active', 0) }}</span>
+<div class="type-tabs">
+    <a href="{{ url_for('ops.orders', status=status_filter, type='all') }}" class="type-tab {% if type_filter == 'all' %}active{% endif %}">משלוחים | איסוף עצמי</a>
+    <a href="{{ url_for('ops.orders', status=status_filter, type='delivery') }}" class="type-tab {% if type_filter == 'delivery' %}active{% endif %}">משלוחים</a>
+    <a href="{{ url_for('ops.orders', status=status_filter, type='pickup') }}" class="type-tab {% if type_filter == 'pickup' %}active{% endif %}">איסוף עצמי</a>
+</div>
+
+<div class="counter-bar">
+    <a class="counter-item {% if status_filter == 'new' %}active{% endif %}" href="{{ url_for('ops.orders', status='new', type=type_filter) }}">
+        <span class="counter-label">לטיפול</span>
+        <span class="counter-num">{{ counts.get('new', 0) }}</span>
     </a>
-    <a href="{{ url_for('ops.orders', status='new') }}" class="ops-filter-btn {% if status_filter == 'new' %}active{% endif %} {% if counts.get('new', 0) > 0 %}has-new{% endif %}">
-        חדשות <span class="cnt">{{ counts.get('new', 0) }}</span>
+    <a class="counter-item {% if status_filter == 'waiting' %}active{% endif %}" href="{{ url_for('ops.orders', status='waiting', type=type_filter) }}">
+        <span class="counter-label">ממתין</span>
+        <span class="counter-num">{{ counts.get('waiting', 0) }}</span>
     </a>
-    <a href="{{ url_for('ops.orders', status='preparing') }}" class="ops-filter-btn {% if status_filter == 'preparing' %}active{% endif %}">
-        בהכנה <span class="cnt">{{ counts.get('preparing', 0) }}</span>
+    <a class="counter-item {% if status_filter == 'preparing' %}active{% endif %}" href="{{ url_for('ops.orders', status='preparing', type=type_filter) }}">
+        <span class="counter-label">בהכנה</span>
+        <span class="counter-num">{{ counts.get('preparing', 0) }}</span>
     </a>
-    <a href="{{ url_for('ops.orders', status='ready') }}" class="ops-filter-btn {% if status_filter == 'ready' %}active{% endif %}">
-        מוכנות <span class="cnt">{{ counts.get('ready', 0) }}</span>
+    <a class="counter-item {% if status_filter == 'ready' %}active{% endif %}" href="{{ url_for('ops.orders', status='ready', type=type_filter) }}">
+        <span class="counter-label">מוכן</span>
+        <span class="counter-num">{{ counts.get('ready', 0) }}</span>
     </a>
-    <a href="{{ url_for('ops.orders', status='done') }}" class="ops-filter-btn {% if status_filter == 'done' %}active{% endif %}">
-        נמסרו <span class="cnt">{{ counts.get('done', 0) }}</span>
+    <a class="counter-item {% if status_filter == 'done' %}active{% endif %}" href="{{ url_for('ops.orders', status='done', type=type_filter) }}">
+        <span class="counter-label">נמסר</span>
+        <span class="counter-num">{{ counts.get('done', 0) }}</span>
     </a>
-    <a href="{{ url_for('ops.orders', status='cancelled') }}" class="ops-filter-btn {% if status_filter == 'cancelled' %}active{% endif %}">
-        בוטלו <span class="cnt">{{ counts.get('cancelled', 0) }}</span>
+    <a class="counter-item {% if status_filter == 'picked' %}active{% endif %}" href="{{ url_for('ops.orders', status='picked', type=type_filter) }}">
+        <span class="counter-label">נלקח</span>
+        <span class="counter-num">{{ counts.get('picked', 0) }}</span>
+    </a>
+    <a class="counter-item {% if status_filter == 'active' %}active{% endif %}" href="{{ url_for('ops.orders', status='active', type=type_filter) }}">
+        <span class="counter-label">הכל</span>
+        <span class="counter-num">{{ counts.get('active', 0) }}</span>
     </a>
 </div>
 
 {% if orders %}
-<div id="ordersList">
+<div class="orders-list">
     {% for order in orders %}
     {% set s_class = 's-new' if order.status in ('pending','confirmed') else ('s-preparing' if order.status == 'preparing' else ('s-ready' if order.status == 'ready' else ('s-cancelled' if order.status == 'cancelled' else 's-done'))) %}
-    {% set pill_class = 'pill-new' if order.status in ('pending','confirmed') else ('pill-preparing' if order.status == 'preparing' else ('pill-ready' if order.status == 'ready' else ('pill-cancelled' if order.status == 'cancelled' else 'pill-done'))) %}
-    <div class="order-card-wrap" data-order-id="{{ order.id }}">
+    {% set s_label = 'לטיפול' if order.status in ('pending','confirmed') else ('בהכנה' if order.status == 'preparing' else ('מוכן' if order.status == 'ready' else ('בוטל' if order.status == 'cancelled' else 'נמסר'))) %}
+    <div class="order-row-wrap" data-order-id="{{ order.id }}">
         <div class="order-swipe-actions right">
             <div class="swipe-action print-bon" onclick="openPrintMenu({{ order.id }})"><i class="fas fa-print"></i><span>הדפס</span></div>
             <div class="swipe-action send-sms" onclick="sendSms({{ order.id }})"><i class="fas fa-sms"></i><span>SMS</span></div>
@@ -286,46 +383,32 @@
             <div class="swipe-action cancel-order" onclick="cancelOrder({{ order.id }})"><i class="fas fa-ban"></i><span>בטל</span></div>
             <div class="swipe-action print-bon" onclick="openPrintMenu({{ order.id }})"><i class="fas fa-print"></i><span>הדפס</span></div>
         </div>
-        <div class="order-card" onclick="openOrder({{ order.id }})" id="card-{{ order.id }}">
-            <div class="status-bar {{ s_class }}"></div>
-            <div class="order-top">
-                <div>
-                    <span class="order-num">#{{ order.order_number }}</span>
-                    <span class="order-time"><i class="fas fa-clock"></i> {{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</span>
-                </div>
-                <span class="order-status-pill {{ pill_class }}">{{ status_labels.get(order.status, order.status) }}</span>
+        <div class="order-row" onclick="openOrder({{ order.id }})" id="card-{{ order.id }}">
+            <div class="row-order-num">{{ loop.index }}</div>
+            <div class="row-type-icon {{ 'delivery' if order.order_type == 'delivery' else 'pickup' }}">
+                <i class="fas fa-{{ 'motorcycle' if order.order_type == 'delivery' else 'shopping-bag' }}"></i>
             </div>
-            <div class="order-mid">
-                <div>
-                    <span class="order-customer">{{ order.customer_name }}</span>
-                    <div class="order-type-tag">
-                        <i class="fas fa-{{ 'motorcycle' if order.order_type == 'delivery' else 'shopping-bag' }}"></i>
-                        {{ order.order_type_display_he }}
-                    </div>
-                    {% if order.estimated_ready_at %}
-                    <div class="order-eta"><i class="fas fa-hourglass-half"></i> מוכן עד {{ order.estimated_ready_at.strftime('%H:%M') }}</div>
-                    {% endif %}
-                </div>
-                <span class="order-total">₪{{ "%.0f"|format(order.total_amount) }}</span>
-            </div>
-            {% if order.status in ('pending', 'confirmed') %}
-            <div class="order-next-action" onclick="event.stopPropagation()">
-                <button class="order-next-btn btn-start" onclick="openPrepModal({{ order.id }}, '{{ order.order_number }}')"><i class="fas fa-fire"></i> התחל הכנה</button>
-                <button class="order-next-btn btn-cancel" onclick="cancelOrder({{ order.id }})"><i class="fas fa-times"></i></button>
-            </div>
-            {% elif order.status == 'preparing' %}
-            <div class="order-next-action" onclick="event.stopPropagation()">
-                <button class="order-next-btn btn-ready" onclick="setStatus({{ order.id }}, 'ready')"><i class="fas fa-bell"></i> מוכנה!</button>
-            </div>
-            {% elif order.status == 'ready' %}
-            <div class="order-next-action" onclick="event.stopPropagation()">
-                {% if order.order_type == 'delivery' %}
-                <button class="order-next-btn btn-done" onclick="setStatus({{ order.id }}, 'delivered')"><i class="fas fa-motorcycle"></i> נמסר למשלוח</button>
-                {% else %}
-                <button class="order-next-btn btn-done" onclick="setStatus({{ order.id }}, 'pickedup')"><i class="fas fa-shopping-bag"></i> נאסף</button>
+            <div class="row-info">
+                <div class="row-customer">{{ order.customer_name }}</div>
+                <div class="row-phone">{{ order.customer_phone }}</div>
+                {% if order.order_type == 'delivery' and order.delivery_address %}
+                <div class="row-address">{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</div>
                 {% endif %}
             </div>
-            {% endif %}
+            <div class="row-status {{ s_class }}">{{ s_label }}</div>
+            <div class="row-time-block">
+                {% if order.estimated_ready_at %}
+                <span class="row-time-badge {% if order.status == 'preparing' %}urgent{% elif order.status == 'ready' %}normal{% else %}normal{% endif %}">{{ order.estimated_ready_at.strftime('%H:%M') }}</span>
+                {% endif %}
+                {% if order.status == 'preparing' %}
+                {% set mins_left = ((order.estimated_ready_at - now).total_seconds() / 60)|int if order.estimated_ready_at else 0 %}
+                {% if mins_left > 0 %}
+                <div class="row-prep-time">{{ mins_left }} דק</div>
+                {% endif %}
+                {% endif %}
+                <div class="row-order-time">{{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</div>
+            </div>
+            <div class="row-amount">₪{{ "%.2f"|format(order.total_amount) }}</div>
         </div>
     </div>
     {% endfor %}
@@ -348,7 +431,7 @@
     <div class="modal-sheet">
         <div class="modal-handle"></div>
         <div style="font-size:18px;font-weight:800;margin-bottom:4px;" id="prepTitle">התחל הכנה</div>
-        <div style="font-size:13px;color:var(--ops-text-dim);margin-bottom:16px;">בחר זמן הכנה משוער</div>
+        <div style="font-size:13px;color:#999;margin-bottom:16px;">בחר זמן הכנה משוער</div>
         <div class="time-picker-grid" id="timeGrid">
             <button class="time-btn" onclick="selectTime(10)">10 דק׳</button>
             <button class="time-btn" onclick="selectTime(15)">15 דק׳</button>
@@ -367,7 +450,7 @@
 <div class="modal-backdrop" id="printModal" onclick="if(event.target===this)closeModal('printModal')">
     <div class="modal-sheet">
         <div class="modal-handle"></div>
-        <div style="font-size:18px;font-weight:800;margin-bottom:16px;"><i class="fas fa-print" style="color:var(--ops-blue);"></i> הדפסת בונים</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:16px;"><i class="fas fa-print" style="color:#3498db;"></i> הדפסת בונים</div>
         <div id="printOptions"></div>
     </div>
 </div>
@@ -402,7 +485,7 @@ var timeModalOrderId = null;
 var cachedOrders = {};
 
 function initSwipe() {
-    document.querySelectorAll('.order-card').forEach(function(card) {
+    document.querySelectorAll('.order-row').forEach(function(card) {
         var startX, currentX, swiping = false;
         card.addEventListener('touchstart', function(e) {
             startX = e.touches[0].clientX;
@@ -415,7 +498,7 @@ function initSwipe() {
             currentX = e.touches[0].clientX;
             var dx = currentX - startX;
             if (Math.abs(dx) > 10) {
-                var max = dx > 0 ? 144 : -216;
+                var max = dx > 0 ? 140 : -210;
                 var clamped = dx > 0 ? Math.min(dx, max) : Math.max(dx, max);
                 card.style.transform = 'translateX(' + clamped + 'px)';
             }
@@ -424,12 +507,12 @@ function initSwipe() {
             swiping = false;
             card.style.transition = 'transform 0.25s ease';
             var dx = currentX - startX;
-            if (dx < -80) {
-                card.style.transform = 'translateX(-216px)';
+            if (dx < -70) {
+                card.style.transform = 'translateX(-210px)';
                 card.classList.add('swiped-left');
                 card.classList.remove('swiped-right');
-            } else if (dx > 60) {
-                card.style.transform = 'translateX(144px)';
+            } else if (dx > 50) {
+                card.style.transform = 'translateX(140px)';
                 card.classList.add('swiped-right');
                 card.classList.remove('swiped-left');
             } else {
@@ -472,7 +555,7 @@ function renderDetail(o) {
                 var price = item.price || item.unit_price || 0;
                 var opts = '';
                 if (item.options && item.options.length) {
-                    opts = '<div style="font-size:11px;color:var(--ops-text-dim);padding-right:12px;">';
+                    opts = '<div style="font-size:11px;color:#999;padding-right:12px;">';
                     item.options.forEach(function(op){opts += '• '+(op.choice_name_he||op.name||op)+'<br>';});
                     opts += '</div>';
                 }
@@ -484,7 +567,7 @@ function renderDetail(o) {
 
     var addrHtml = '';
     if (o.order_type==='delivery' && o.delivery_address) {
-        addrHtml = '<div class="detail-sec"><div class="detail-lbl">כתובת משלוח</div><div class="detail-val">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>'+(o.delivery_notes?'<div style="font-size:12px;color:var(--ops-text-dim);margin-top:3px;">'+o.delivery_notes+'</div>':'')+'</div>';
+        addrHtml = '<div class="detail-sec"><div class="detail-lbl">כתובת משלוח</div><div class="detail-val">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>'+(o.delivery_notes?'<div style="font-size:12px;color:#999;margin-top:3px;">'+o.delivery_notes+'</div>':'')+'</div>';
     }
     if (o.order_type==='pickup' && o.pickup_time) {
         addrHtml = '<div class="detail-sec"><div class="detail-lbl">זמן איסוף</div><div class="detail-val">'+o.pickup_time+'</div></div>';
@@ -495,28 +578,45 @@ function renderDetail(o) {
     var totalsHtml = '<div class="detail-sec"><div class="detail-lbl">סיכום</div>' +
         '<div style="display:flex;justify-content:space-between;font-size:13px;"><span>פריטים</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
     if(o.delivery_fee>0) totalsHtml+='<div style="display:flex;justify-content:space-between;font-size:13px;"><span>משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
-    if(o.discount_amount>0) totalsHtml+='<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ops-green);"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
-    totalsHtml+='<div style="display:flex;justify-content:space-between;font-size:17px;font-weight:800;margin-top:6px;"><span>סה"כ</span><span style="color:var(--ops-green);">₪'+o.total_amount.toFixed(0)+'</span></div></div>';
+    if(o.discount_amount>0) totalsHtml+='<div style="display:flex;justify-content:space-between;font-size:13px;color:#2e7d32;"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
+    totalsHtml+='<div style="display:flex;justify-content:space-between;font-size:17px;font-weight:800;margin-top:6px;"><span>סה"כ</span><span style="color:#2e7d32;">₪'+o.total_amount.toFixed(0)+'</span></div></div>';
 
-    var pillClass = {'pending':'pill-new','confirmed':'pill-new','preparing':'pill-preparing','ready':'pill-ready','delivered':'pill-done','pickedup':'pill-done','cancelled':'pill-cancelled'}[o.status]||'pill-done';
+    var actionsHtml = '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
+    var s = o.status;
+    if (s === 'pending' || s === 'confirmed') {
+        actionsHtml += '<button class="ops-btn ops-btn-primary ops-btn-sm" style="flex:1;" onclick="openPrepFromDetail('+o.id+',\''+o.order_number+'\')"><i class="fas fa-fire"></i> התחל הכנה</button>';
+        actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#fdecea;color:#c62828;border:none;" onclick="cancelOrder('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-times"></i> בטל</button>';
+    } else if (s === 'preparing') {
+        actionsHtml += '<button class="ops-btn ops-btn-success ops-btn-sm" style="flex:1;" onclick="setStatus('+o.id+',\'ready\')"><i class="fas fa-bell"></i> מוכנה!</button>';
+    } else if (s === 'ready') {
+        if (o.order_type === 'delivery') {
+            actionsHtml += '<button class="ops-btn ops-btn-sm" style="flex:1;background:#e0e0e0;color:#333;border:none;" onclick="setStatus('+o.id+',\'delivered\')"><i class="fas fa-motorcycle"></i> נמסר</button>';
+        } else {
+            actionsHtml += '<button class="ops-btn ops-btn-sm" style="flex:1;background:#e0e0e0;color:#333;border:none;" onclick="setStatus('+o.id+',\'pickedup\')"><i class="fas fa-shopping-bag"></i> נלקח</button>';
+        }
+    }
+    actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="openPrintMenu('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-print"></i></button>';
+    actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="sendSms('+o.id+')"><i class="fas fa-sms"></i></button>';
+    actionsHtml += '</div>';
 
     document.getElementById('orderDetail').innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
             '<div style="font-size:20px;font-weight:800;">#'+o.order_number+'</div>' +
-            '<span class="order-status-pill '+pillClass+'">'+o.status_label+'</span>' +
+            '<div class="row-status '+({'pending':'s-new','confirmed':'s-new','preparing':'s-preparing','ready':'s-ready','delivered':'s-done','pickedup':'s-done','cancelled':'s-cancelled'}[o.status]||'s-done')+'">'+o.status_label+'</div>' +
         '</div>' + etaHtml +
         '<div class="detail-sec">' +
             '<div class="detail-lbl">לקוח</div>' +
             '<div class="detail-val">'+o.customer_name+'</div>' +
             '<a href="tel:'+o.customer_phone+'" style="color:var(--ops-accent);font-size:13px;text-decoration:none;"><i class="fas fa-phone"></i> '+o.customer_phone+'</a>' +
-            '<div style="margin-top:4px;"><span class="order-type-tag"><i class="fas fa-'+(o.order_type==='delivery'?'motorcycle':'shopping-bag')+'"></i> '+o.order_type_label+'</span></div>' +
+            '<div style="margin-top:4px;font-size:12px;color:#888;"><i class="fas fa-'+(o.order_type==='delivery'?'motorcycle':'shopping-bag')+'"></i> '+o.order_type_label+'</div>' +
         '</div>' + addrHtml +
         '<div class="detail-sec"><div class="detail-lbl">פריטים</div>'+catHtml+'</div>' +
-        notesHtml + totalsHtml +
-        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
-            '<button class="ops-btn ops-btn-sm ops-btn-secondary" onclick="openPrintMenu('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-print"></i> הדפס</button>' +
-            '<button class="ops-btn ops-btn-sm ops-btn-secondary" onclick="sendSms('+o.id+')"><i class="fas fa-sms"></i> SMS</button>' +
-        '</div>';
+        notesHtml + totalsHtml + actionsHtml;
+}
+
+function openPrepFromDetail(id, num) {
+    closeModal('orderModal');
+    setTimeout(function() { openPrepModal(id, num); }, 200);
 }
 
 function openPrepModal(id, num) {
@@ -547,15 +647,14 @@ function confirmPrep() {
 
 function setStatus(id, status) {
     opsPost('{{ url_for("ops.update_order_status", order_id=0) }}'.replace('/0/', '/'+id+'/'), {status:status}, function(){
+        closeModal('orderModal');
         setTimeout(function(){location.reload();}, 300);
     });
 }
 
 function cancelOrder(id) {
     resetSwipe(id);
-    if(confirm('לבטל הזמנה?')) {
-        setStatus(id, 'cancelled');
-    }
+    if(confirm('לבטל הזמנה?')) setStatus(id, 'cancelled');
 }
 
 function openTimeModal(id) {
@@ -594,9 +693,8 @@ function openPrintMenu(id) {
 
 function showPrintOptions(o) {
     var html = '';
-    html += '<button class="ops-btn ops-btn-secondary" style="width:100%;margin-bottom:8px;justify-content:flex-start;" onclick="printBon('+o.id+',\'checker\')"><i class="fas fa-clipboard-list" style="color:var(--ops-blue);"></i> בון צ׳קר (הזמנה מלאה)</button>';
-    html += '<button class="ops-btn ops-btn-secondary" style="width:100%;margin-bottom:8px;justify-content:flex-start;" onclick="printBon('+o.id+',\'payment\')"><i class="fas fa-credit-card" style="color:var(--ops-green);"></i> בון תשלום</button>';
-
+    html += '<button class="ops-btn ops-btn-secondary" style="width:100%;margin-bottom:8px;justify-content:flex-start;" onclick="printBon('+o.id+',\'checker\')"><i class="fas fa-clipboard-list" style="color:#3498db;"></i> בון צ׳קר (הזמנה מלאה)</button>';
+    html += '<button class="ops-btn ops-btn-secondary" style="width:100%;margin-bottom:8px;justify-content:flex-start;" onclick="printBon('+o.id+',\'payment\')"><i class="fas fa-credit-card" style="color:#2e7d32;"></i> בון תשלום</button>';
     if (o.items_by_category) {
         for (var cat in o.items_by_category) {
             var count = o.items_by_category[cat].length;
@@ -615,21 +713,17 @@ function printBon(orderId, type, station) {
     var now = new Date();
     var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
     var html = '';
-
     if (type === 'checker') {
         html = '<div class="bon-title">בון הזמנה</div>';
         html += '<div class="bon-meta"><strong>#'+o.order_number+'</strong> | '+o.created_at+' | '+o.order_type_label+'</div>';
         html += '<div class="bon-meta">'+o.customer_name+' | '+o.customer_phone+'</div>';
         if (o.delivery_address) html += '<div class="bon-meta">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>';
         html += '<div class="bon-items">';
-        var allItems = o.items || [];
-        allItems.forEach(function(item) {
+        (o.items||[]).forEach(function(item) {
             var name = item.name_he || item.item_name_he || '';
             var qty = item.qty || item.quantity || 1;
             html += '<div class="bon-item"><span>'+qty+'× '+name+'</span></div>';
-            if (item.options && item.options.length) {
-                item.options.forEach(function(op) { html += '<div style="padding-right:12px;font-size:10px;">  • '+(op.choice_name_he||op.name||op)+'</div>'; });
-            }
+            if (item.options && item.options.length) item.options.forEach(function(op) { html += '<div style="padding-right:12px;font-size:10px;">  • '+(op.choice_name_he||op.name||op)+'</div>'; });
         });
         html += '</div>';
         if (o.customer_notes) html += '<div class="bon-meta" style="margin-top:4px;"><strong>הערות:</strong> '+o.customer_notes+'</div>';
@@ -661,24 +755,18 @@ function printBon(orderId, type, station) {
             var name = item.name_he || item.item_name_he || '';
             var qty = item.qty || item.quantity || 1;
             html += '<div class="bon-item"><span><strong>'+qty+'×</strong> '+name+'</span></div>';
-            if (item.options && item.options.length) {
-                item.options.forEach(function(op) { html += '<div style="padding-right:12px;font-size:10px;">  • '+(op.choice_name_he||op.name||op)+'</div>'; });
-            }
+            if (item.options && item.options.length) item.options.forEach(function(op) { html += '<div style="padding-right:12px;font-size:10px;">  • '+(op.choice_name_he||op.name||op)+'</div>'; });
         });
         html += '</div>';
         if (o.customer_notes) html += '<div class="bon-meta"><strong>הערות:</strong> '+o.customer_notes+'</div>';
         html += '<div class="bon-footer">#'+o.order_number+' | '+station+' | '+timeStr+'</div>';
     }
-
     el.innerHTML = html;
     closeModal('printModal');
-    setTimeout(function() {
-        window.print();
-    }, 200);
+    setTimeout(function() { window.print(); }, 200);
 }
 
 initSwipe();
-
 setInterval(function() { location.reload(); }, 30000);
 </script>
 {% endblock %}

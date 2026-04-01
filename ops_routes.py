@@ -291,19 +291,29 @@ def orders():
     device = _check_device()
     device_branch_id = device.branch_id if device else None
     status_filter = request.args.get('status', 'active')
+    type_filter = request.args.get('type', 'all')
 
     query = FoodOrder.query
     if device_branch_id:
         query = query.filter_by(branch_id=device_branch_id)
 
+    if type_filter == 'delivery':
+        query = query.filter_by(order_type='delivery')
+    elif type_filter == 'pickup':
+        query = query.filter_by(order_type='pickup')
+
     if status_filter == 'active':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']))
     elif status_filter == 'done':
-        query = query.filter(FoodOrder.status.in_(['delivered', 'pickedup']))
+        query = query.filter(FoodOrder.status.in_(['delivered']))
+    elif status_filter == 'picked':
+        query = query.filter(FoodOrder.status.in_(['pickedup']))
     elif status_filter == 'cancelled':
         query = query.filter_by(status='cancelled')
     elif status_filter == 'new':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed']))
+    elif status_filter == 'waiting':
+        query = query.filter(FoodOrder.status.in_(['confirmed']))
     elif status_filter == 'preparing':
         query = query.filter_by(status='preparing')
     elif status_filter == 'ready':
@@ -316,12 +326,18 @@ def orders():
     today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
     if device_branch_id:
         today_q = today_q.filter_by(branch_id=device_branch_id)
+    if type_filter == 'delivery':
+        today_q = today_q.filter_by(order_type='delivery')
+    elif type_filter == 'pickup':
+        today_q = today_q.filter_by(order_type='pickup')
     today_orders = today_q.all()
     counts = {
         'new': sum(1 for o in today_orders if o.status in ('pending', 'confirmed')),
+        'waiting': sum(1 for o in today_orders if o.status == 'confirmed'),
         'preparing': sum(1 for o in today_orders if o.status == 'preparing'),
         'ready': sum(1 for o in today_orders if o.status == 'ready'),
-        'done': sum(1 for o in today_orders if o.status in ('delivered', 'pickedup')),
+        'done': sum(1 for o in today_orders if o.status == 'delivered'),
+        'picked': sum(1 for o in today_orders if o.status == 'pickedup'),
         'cancelled': sum(1 for o in today_orders if o.status == 'cancelled'),
     }
     counts['active'] = counts['new'] + counts['preparing'] + counts['ready']
@@ -332,7 +348,9 @@ def orders():
         active_tab='orders',
         orders=order_list,
         status_filter=status_filter,
+        type_filter=type_filter,
         counts=counts,
+        now=now,
         status_labels=OPS_STATUS_LABELS,
         status_colors=OPS_STATUS_COLORS,
         categories=categories,

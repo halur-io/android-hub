@@ -2,17 +2,20 @@
 """
 SUMO Print Agent
 ================
-Run this script on a computer at the restaurant (Mac/PC) that is on the
+Run this script on a computer at the restaurant (Mac/PC/laptop) that is on the
 same network as the thermal printer. It polls the cloud server for new
 orders and prints them automatically.
+
+Usage:
+  python3 print_agent.py              # Normal mode (sends to printer)
+  python3 print_agent.py --test       # Test mode (shows output, no printer needed)
+  python3 print_agent.py --test-once  # Fetch once, show output, exit
 
 Setup:
   1. Install Python 3 on the Mac
   2. Copy this file to the Mac
   3. Edit the CONFIG section below
   4. Run:  python3 print_agent.py
-
-The script will run continuously, checking for new orders every few seconds.
 """
 
 import json
@@ -33,6 +36,9 @@ PAYMENT_COPIES = 1                           # Payment bon copies
 STATION_BONS = True                          # Print station bons (kitchen, bar, etc.)
 # ────────────────────────────────────────────────────────────────────
 
+TEST_MODE = '--test' in sys.argv or '--test-once' in sys.argv
+TEST_ONCE = '--test-once' in sys.argv
+
 ESC = b'\x1b'
 GS = b'\x1d'
 INIT = ESC + b'@'
@@ -50,6 +56,10 @@ BOLD_OFF = ESC + b'E\x00'
 class BonBuilder:
     def __init__(self):
         self.buf = bytearray()
+        self.preview_lines = []
+        self._current_bold = False
+        self._current_align = 'left'
+        self._current_font = 'normal'
 
     def _add(self, data):
         if isinstance(data, str):
@@ -57,15 +67,47 @@ class BonBuilder:
         else:
             self.buf.extend(data)
 
-    def init(self): self._add(INIT)
-    def cut(self): self._add(b'\n\n\n'); self._add(CUT_FULL)
-    def align(self, a): self._add({'center': ALIGN_CENTER, 'right': ALIGN_RIGHT}.get(a, ALIGN_LEFT))
-    def font(self, s): self._add({'double': FONT_DOUBLE, 'double_h': FONT_DOUBLE_H}.get(s, FONT_NORMAL))
-    def bold(self, on=True): self._add(BOLD_ON if on else BOLD_OFF)
-    def text(self, t): self._add(t + '\n')
-    def line(self, ch='-', w=32): self._add(ch * w + '\n')
+    def init(self):
+        self._add(INIT)
+        if TEST_MODE:
+            self.preview_lines.append('')
+
+    def cut(self):
+        self._add(b'\n\n\n')
+        self._add(CUT_FULL)
+        if TEST_MODE:
+            self.preview_lines.append('✂' * 32)
+            self.preview_lines.append('')
+
+    def align(self, a):
+        self._add({'center': ALIGN_CENTER, 'right': ALIGN_RIGHT}.get(a, ALIGN_LEFT))
+        self._current_align = a
+
+    def font(self, s):
+        self._add({'double': FONT_DOUBLE, 'double_h': FONT_DOUBLE_H}.get(s, FONT_NORMAL))
+        self._current_font = s
+
+    def bold(self, on=True):
+        self._add(BOLD_ON if on else BOLD_OFF)
+        self._current_bold = on
+
+    def text(self, t):
+        self._add(t + '\n')
+        if TEST_MODE:
+            prefix = '**' if self._current_bold else '  '
+            size = {'double': '██', 'double_h': '▓▓'}.get(self._current_font, '  ')
+            self.preview_lines.append(f'{prefix}{size} {t}')
+
+    def line(self, ch='-', w=32):
+        self._add(ch * w + '\n')
+        if TEST_MODE:
+            self.preview_lines.append('    ' + ch * w)
+
     def dashed(self): self.line('-')
     def thick(self): self.line('=')
+
+    def get_preview(self):
+        return '\n'.join(self.preview_lines)
 
 
 def build_checker(b, o):
@@ -183,6 +225,9 @@ def build_station(b, o, station_name, station_items):
 
 
 def send_to_printer(data):
+    if TEST_MODE:
+        print(f'  📄 Would send {len(data)} bytes to {PRINTER_IP}:{PRINTER_PORT}')
+        return True
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(5)
@@ -202,7 +247,7 @@ def api_get(path):
         resp = urllib.request.urlopen(req, timeout=10)
         return json.loads(resp.read().decode('utf-8'))
     except urllib.error.HTTPError as e:
-        print(f'  HTTP error {e.code}: {e.read().decode("utf-8", errors="replace")}')
+        print(f'  HTTP error {e.code}: {e.read().decode("utf-8", errors="replace")[:200]}')
         return None
     except Exception as e:
         print(f'  Connection error: {e}')
@@ -237,24 +282,32 @@ def print_order(order):
         for st_name, st_items in order['items_by_station'].items():
             build_station(b, order, st_name, st_items)
 
+    if TEST_MODE:
+        print('\n' + '=' * 40)
+        print('  BON PREVIEW')
+        print('=' * 40)
+        print(b.get_preview())
+        print('=' * 40 + '\n')
+
     return send_to_printer(b.buf)
 
 
 def main():
-    print('╔══════════════════════════════════════╗')
-    print('║     SUMO Print Agent v1.0            ║')
-    print('╠══════════════════════════════════════╣')
-    print(f'║ Server:  {SERVER_URL[:30]:<30}║')
-    print(f'║ Printer: {PRINTER_IP}:{PRINTER_PORT:<19}║')
-    print(f'║ Poll:    every {POLL_INTERVAL}s{" " * 20}║')
-    print('╚══════════════════════════════════════╝')
+    mode_str = '🧪 TEST MODE' if TEST_MODE else '🖨  LIVE MODE'
+    print('╔══════════════════════════════════════════╗')
+    print(f'║   SUMO Print Agent v1.1  {mode_str:>15} ║')
+    print('╠══════════════════════════════════════════╣')
+    print(f'║ Server:  {SERVER_URL[:32]:<32} ║')
+    if not TEST_MODE:
+        print(f'║ Printer: {PRINTER_IP}:{PRINTER_PORT:<21} ║')
+    else:
+        print(f'║ Printer: SIMULATED (no real print)       ║')
+    print(f'║ Poll:    every {POLL_INTERVAL}s                          ║')
+    print('╚══════════════════════════════════════════╝')
     print()
 
     if SERVER_URL == "https://your-app.replit.app":
         print('⚠️  Please edit SERVER_URL in the script!')
-        sys.exit(1)
-    if PRINT_AGENT_KEY == "change-me-to-a-secret":
-        print('⚠️  Please set PRINT_AGENT_KEY in the script!')
         sys.exit(1)
 
     print('🔄 Watching for new orders...\n')
@@ -270,16 +323,50 @@ def main():
                     for order in orders:
                         num = order['order_number']
                         name = order['customer_name']
-                        print(f'  🖨  Printing #{num} ({name})...', end=' ')
+                        total = order.get('total_amount', 0)
+                        otype = order.get('order_type', '')
+                        items_count = len(order.get('items', []))
+                        print(f'  🖨  #{num} | {name} | {otype} | {items_count} items | ₪{total:.0f}')
+
+                        if TEST_MODE:
+                            print(f'     📋 Items:')
+                            for item in order.get('items', []):
+                                iname = item.get('name_he') or item.get('item_name_he') or item.get('name', '?')
+                                iqty = item.get('qty') or item.get('quantity', 1)
+                                print(f'        {iqty}× {iname}')
+                            if order.get('customer_notes'):
+                                print(f'     📝 Notes: {order["customer_notes"]}')
+                            if order.get('delivery_address'):
+                                print(f'     📍 Address: {order["delivery_address"]}')
+                            stations = list(order.get('items_by_station', {}).keys())
+                            if stations:
+                                print(f'     🏷  Stations: {", ".join(stations)}')
+
                         if print_order(order):
-                            print('✅')
+                            print(f'     ✅ OK')
                             printed_ids.append(order['id'])
                         else:
-                            print('❌ FAILED')
+                            print(f'     ❌ FAILED')
 
                     if printed_ids:
-                        api_post('/ops/api/orders/mark-printed', {'order_ids': printed_ids})
-                        print(f'  ✅ Marked {len(printed_ids)} order(s) as printed\n')
+                        if TEST_MODE:
+                            print(f'\n  🧪 TEST: Would mark {len(printed_ids)} order(s) as printed')
+                            print(f'  🧪 TEST: Skipping mark-printed (orders stay unprinted for re-testing)')
+                        else:
+                            api_post('/ops/api/orders/mark-printed', {'order_ids': printed_ids})
+                            print(f'  ✅ Marked {len(printed_ids)} order(s) as printed\n')
+                else:
+                    if TEST_MODE:
+                        print(f'  ⏳ No unprinted orders found')
+            elif data:
+                print(f'  ⚠️  Server response: {data}')
+            else:
+                print(f'  ⚠️  No response from server')
+
+            if TEST_ONCE:
+                print('\n✅ Test complete!')
+                break
+
         except KeyboardInterrupt:
             print('\n👋 Shutting down...')
             break

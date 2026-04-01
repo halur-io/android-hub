@@ -276,6 +276,12 @@ def logout():
     return redirect(url_for('ops.login'))
 
 
+@ops_bp.route('/auto-print')
+@require_ops_module('orders')
+def auto_print():
+    return render_template('ops/auto_print.html', active_tab='settings')
+
+
 @ops_bp.route('/settings')
 @require_ops_module('home')
 def settings():

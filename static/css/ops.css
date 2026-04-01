@@ -96,7 +96,7 @@ html, body {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 16px 20px;
-    padding-bottom: calc(var(--tab-height) + 20px);
+    padding-bottom: 20px;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -104,12 +104,14 @@ html, body {
     display: flex;
     align-items: stretch;
     background: var(--ops-surface);
-    border-top: 1px solid var(--ops-border);
-    height: var(--tab-height);
+    border-bottom: 1px solid var(--ops-border);
+    height: 46px;
     flex-shrink: 0;
     position: relative;
     z-index: 100;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .ops-tab {
@@ -130,7 +132,7 @@ html, body {
 }
 
 .ops-tab i {
-    font-size: 22px;
+    font-size: 18px;
     transition: all 0.2s;
 }
 
@@ -138,15 +140,15 @@ html, body {
     color: var(--ops-accent);
 }
 
-.ops-tab.active::before {
+.ops-tab.active::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 20%;
-    right: 20%;
+    bottom: 0;
+    left: 15%;
+    right: 15%;
     height: 3px;
     background: var(--ops-accent);
-    border-radius: 0 0 3px 3px;
+    border-radius: 3px 3px 0 0;
 }
 
 .ops-tab:hover {

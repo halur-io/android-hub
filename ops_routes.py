@@ -232,6 +232,22 @@ def logout():
     return redirect(url_for('ops.login'))
 
 
+@ops_bp.route('/settings')
+@require_ops_module('home')
+def settings():
+    settings = _settings()
+    device = _check_device()
+    branch_name = ''
+    if device and device.branch_id:
+        branch = Branch.query.get(device.branch_id)
+        branch_name = branch.name_he if branch else ''
+    return render_template('ops/settings.html',
+        active_tab='settings',
+        settings=settings,
+        branch_name=branch_name,
+    )
+
+
 @ops_bp.route('/home')
 @require_ops_module('home')
 def home():
@@ -244,6 +260,13 @@ def home():
     active_orders = sum(1 for o in today_orders if o.status in ('pending', 'confirmed', 'preparing'))
     completed_orders = sum(1 for o in today_orders if o.status in ('delivered', 'pickedup'))
 
+    order_counts = {
+        'new': sum(1 for o in today_orders if o.status in ('pending', 'confirmed')),
+        'preparing': sum(1 for o in today_orders if o.status == 'preparing'),
+        'ready': sum(1 for o in today_orders if o.status == 'ready'),
+        'done': sum(1 for o in today_orders if o.status in ('delivered', 'pickedup')),
+    }
+
     low_stock_count = 0
     try:
         levels = StockLevel.query.join(StockItem).filter(StockItem.is_active == True).all()
@@ -253,6 +276,12 @@ def home():
     except Exception:
         pass
 
+    unavailable_items = MenuItem.query.filter_by(is_available=False).count()
+
+    recent_orders = FoodOrder.query.filter(
+        FoodOrder.created_at >= today_start
+    ).order_by(FoodOrder.created_at.desc()).limit(8).all()
+
     return render_template('ops/home.html',
         active_tab='home',
         settings=settings,
@@ -260,7 +289,10 @@ def home():
         active_orders=active_orders,
         completed_orders=completed_orders,
         total_orders=len(today_orders),
+        order_counts=order_counts,
         low_stock_count=low_stock_count,
+        unavailable_items=unavailable_items,
+        recent_orders=recent_orders,
     )
 
 

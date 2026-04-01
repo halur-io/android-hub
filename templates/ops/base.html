@@ -28,10 +28,6 @@
             </div>
         </header>
 
-        <main class="ops-content">
-            {% block content %}{% endblock %}
-        </main>
-
         <nav class="ops-tab-bar">
             {% set tabs = [] %}
             {% if 'home' in ops_modules %}
@@ -52,6 +48,9 @@
             {% if 'branches' in ops_modules %}
                 {% set _ = tabs.append(('branches', 'סניפים', 'fas fa-store', url_for('ops.branches'))) %}
             {% endif %}
+            {% if 'home' in ops_modules %}
+                {% set _ = tabs.append(('settings', 'הגדרות', 'fas fa-cog', url_for('ops.settings'))) %}
+            {% endif %}
             {% for key, label, icon, url in tabs %}
             <a href="{{ url }}" class="ops-tab {% if active_tab == key %}active{% endif %}">
                 <i class="{{ icon }}"></i>
@@ -59,6 +58,10 @@
             </a>
             {% endfor %}
         </nav>
+
+        <main class="ops-content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
     <div id="ops-toast" class="ops-toast"></div>

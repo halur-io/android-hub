@@ -1,0 +1,96 @@
+{% extends "ops/base.html" %}
+{% block header_title %}הגדרות{% endblock %}
+{% block title %}הגדרות - לוח בקרה{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-power-off" style="color: var(--ops-accent);"></i> מצב מערכת</div>
+    <div class="ops-card">
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">הזמנות אונליין</div>
+                <div class="ops-toggle-sublabel">הפעלה/השבתה של מערכת ההזמנות</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.enable_online_ordering %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_online_ordering', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">
+                    השהיית הזמנות
+                    {% if settings and settings.ordering_paused %}
+                    <span class="ops-badge ops-badge-red" style="margin-right: 8px;">מושהה</span>
+                    {% endif %}
+                </div>
+                <div class="ops-toggle-sublabel">השהיה זמנית של קבלת הזמנות חדשות</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.ordering_paused %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'ordering_paused', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">משלוחים</div>
+                <div class="ops-toggle-sublabel">אפשר/השבת משלוחים</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.enable_delivery %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_delivery', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">איסוף עצמי</div>
+                <div class="ops-toggle-sublabel">אפשר/השבת איסוף עצמי</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.enable_pickup %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_pickup', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row" style="border-bottom: none;">
+            <div>
+                <div class="ops-toggle-label">זמן משלוח משוער</div>
+                <div class="ops-toggle-sublabel">דקות (לדוגמה: 30-45)</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input type="text" class="ops-input" style="width:100px; min-height:38px; text-align:center; direction:ltr;"
+                       id="deliveryTimeInput"
+                       value="{{ settings.estimated_delivery_time if settings else '45-60' }}">
+                <button class="ops-btn ops-btn-secondary ops-btn-sm"
+                        onclick="opsPost('{{ url_for('ops.update_delivery_time') }}', {value:document.getElementById('deliveryTimeInput').value})">
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-info-circle" style="color: var(--ops-blue);"></i> מידע מכשיר</div>
+    <div class="ops-card" style="font-size: 13px; color: var(--ops-text-dim);">
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--ops-border);">
+            <strong>משתמש:</strong> {{ session.get('ops_user_name', '—') }}
+        </div>
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--ops-border);">
+            <strong>תפקיד:</strong> {{ session.get('ops_role', '—') }}
+        </div>
+        <div style="padding: 8px 0;">
+            <strong>סניף:</strong> {{ branch_name or 'כל הסניפים' }}
+        </div>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 24px;">
+    <a href="{{ url_for('ops.logout') }}" class="ops-btn" style="background: #fdecea; color: #c62828; border: none; width: 100%;">
+        <i class="fas fa-sign-out-alt"></i> התנתק
+    </a>
+</div>
+{% endblock %}

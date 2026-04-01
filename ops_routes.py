@@ -52,18 +52,28 @@ def _check_device():
     return device
 
 def _get_ops_user():
+    import logging
     pin_id = session.get('ops_pin_id')
     if pin_id:
         user = ManagerPIN.query.filter_by(id=pin_id, is_active=True).first()
         if user:
             return user
+        else:
+            logging.debug(f'OPS: session pin_id={pin_id} not found in DB')
     device = _check_device()
     if device and device.last_pin_id:
+        logging.debug(f'OPS: restoring session from device {device.id}, last_pin_id={device.last_pin_id}')
         user = ManagerPIN.query.filter_by(id=device.last_pin_id, is_active=True).first()
         if user:
             session['ops_pin_id'] = user.id
             session['ops_user_name'] = user.name
+            session.modified = True
+            logging.debug(f'OPS: session restored for user {user.name}')
             return user
+    elif device:
+        logging.debug(f'OPS: device found but no last_pin_id')
+    else:
+        logging.debug(f'OPS: no device found from cookie')
     return None
 
 def require_device(f):
@@ -220,11 +230,13 @@ def enroll_device(code):
 @require_device
 def login():
     error = None
+    users = ManagerPIN.query.filter_by(is_active=True).all()
     if request.method == 'POST':
         pin = request.form.get('pin', '')
-        pins = ManagerPIN.query.filter_by(is_active=True).all()
-        for p in pins:
-            if p.check_pin(pin):
+        user_id = request.form.get('user_id', '')
+        if user_id:
+            p = ManagerPIN.query.filter_by(id=int(user_id), is_active=True).first()
+            if p and p.check_pin(pin):
                 session['ops_pin_id'] = p.id
                 session['ops_user_name'] = p.name
                 p.last_used_at = datetime.utcnow()
@@ -233,8 +245,20 @@ def login():
                     device.last_pin_id = p.id
                 db.session.commit()
                 return redirect(url_for('ops.index'))
-        error = 'קוד PIN שגוי'
-    return render_template('ops/login.html', error=error)
+            error = 'קוד PIN שגוי'
+        else:
+            for p in users:
+                if p.check_pin(pin):
+                    session['ops_pin_id'] = p.id
+                    session['ops_user_name'] = p.name
+                    p.last_used_at = datetime.utcnow()
+                    device = _check_device()
+                    if device:
+                        device.last_pin_id = p.id
+                    db.session.commit()
+                    return redirect(url_for('ops.index'))
+            error = 'קוד PIN שגוי'
+    return render_template('ops/login.html', error=error, users=users)
 
 
 @ops_bp.route('/logout')

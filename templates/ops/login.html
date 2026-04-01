@@ -8,19 +8,78 @@
     <title>כניסה - לוח בקרה</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ops.css') }}?v={{ cache_version }}">
+    <style>
+        .login-page { min-height: 100vh; background: var(--ops-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .login-header { text-align: center; margin-bottom: 32px; }
+        .login-header .logo { font-size: 36px; font-weight: 900; color: var(--ops-accent); letter-spacing: 2px; }
+        .login-header .subtitle { color: var(--ops-text-dim); font-size: 14px; margin-top: 4px; }
+
+        .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; width: 100%; max-width: 480px; margin-bottom: 20px; }
+        .user-card {
+            background: var(--ops-card);
+            border: 2px solid var(--ops-border);
+            border-radius: 12px;
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .user-card:active, .user-card.selected {
+            border-color: var(--ops-accent);
+            background: rgba(255,111,0,0.08);
+        }
+        .user-card .user-avatar {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: var(--ops-border);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 22px; font-weight: 800;
+            color: var(--ops-text);
+        }
+        .user-card.selected .user-avatar {
+            background: var(--ops-accent);
+            color: #fff;
+        }
+        .user-card .user-name { font-size: 14px; font-weight: 700; color: var(--ops-text); }
+        .user-card .user-role { font-size: 11px; color: var(--ops-text-dim); margin-top: 2px; }
+
+        .pin-section { display: none; width: 100%; max-width: 320px; text-align: center; }
+        .pin-section.show { display: block; }
+        .pin-section .selected-user { font-size: 16px; font-weight: 700; color: var(--ops-text); margin-bottom: 16px; }
+        .pin-section .back-btn { color: var(--ops-text-dim); font-size: 13px; cursor: pointer; margin-bottom: 16px; display: inline-block; }
+
+        .ops-login-error { background: rgba(198,40,40,0.1); color: #c62828; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; font-weight: 600; text-align: center; }
+    </style>
 </head>
 <body>
-    <div class="ops-login-wrapper">
-        <div class="ops-login-box">
-            <div style="font-size: 48px; color: var(--ops-accent); margin-bottom: 16px;">
-                <i class="fas fa-tablet-alt"></i>
-            </div>
-            <div class="ops-login-title">לוח בקרה</div>
-            <div class="ops-login-subtitle">הזן קוד PIN לכניסה</div>
+    <div class="login-page">
+        <div class="login-header">
+            <div class="logo">SUMO</div>
+            <div class="subtitle">לוח בקרה</div>
+        </div>
 
-            {% if error %}
-            <div class="ops-login-error">{{ error }}</div>
-            {% endif %}
+        {% if error %}
+        <div class="ops-login-error">{{ error }}</div>
+        {% endif %}
+
+        <div id="userSelection">
+            <div style="text-align:center; color:var(--ops-text-dim); font-size:14px; margin-bottom:16px;">בחר משתמש</div>
+            <div class="user-grid">
+                {% for user in users %}
+                <div class="user-card" onclick="selectUser({{ user.id }}, '{{ user.name }}')">
+                    <div class="user-avatar">{{ user.name[:1] }}</div>
+                    <div class="user-name">{{ user.name }}</div>
+                    <div class="user-role">{% if user.is_ops_superadmin %}מנהל ראשי{% else %}צוות{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="pin-section" id="pinSection">
+            <div class="back-btn" onclick="backToUsers()"><i class="fas fa-arrow-right"></i> חזרה</div>
+            <div class="selected-user" id="selectedUserName"></div>
+            <div style="color:var(--ops-text-dim); font-size:13px; margin-bottom:16px;">הזן קוד PIN</div>
 
             <div class="ops-pin-display" id="pinDisplay">
                 <div class="ops-pin-dot" id="dot0"></div>
@@ -32,6 +91,7 @@
             <form id="pinForm" method="POST" action="{{ url_for('ops.login') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="pin" id="pinInput" value="">
+                <input type="hidden" name="user_id" id="userIdInput" value="">
             </form>
 
             <div class="ops-numpad">
@@ -54,6 +114,27 @@
     <script>
     var pin = '';
     var maxLen = 4;
+    var selectedUserId = null;
+
+    function selectUser(id, name) {
+        selectedUserId = id;
+        document.getElementById('userIdInput').value = id;
+        document.getElementById('selectedUserName').textContent = name;
+        document.getElementById('userSelection').style.display = 'none';
+        document.getElementById('pinSection').classList.add('show');
+        pin = '';
+        updateDots();
+
+        document.querySelectorAll('.user-card').forEach(function(c) { c.classList.remove('selected'); });
+    }
+
+    function backToUsers() {
+        document.getElementById('userSelection').style.display = '';
+        document.getElementById('pinSection').classList.remove('show');
+        selectedUserId = null;
+        pin = '';
+        updateDots();
+    }
 
     function updateDots() {
         for (var i = 0; i < maxLen; i++) {

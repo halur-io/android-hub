@@ -98,7 +98,7 @@
                 <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('payment_copies', 1)" style="min-width:36px;">+</button>
             </div>
         </div>
-        <div class="ops-toggle-row" style="border-bottom: none;">
+        <div class="ops-toggle-row">
             <div>
                 <div class="ops-toggle-label">בוני עמדות</div>
                 <div class="ops-toggle-sublabel">הדפס בוני עמדות (מטבח, בר, וכו׳)</div>
@@ -107,6 +107,27 @@
                 <input type="checkbox" id="printStationBons" checked onchange="togglePrintStation(this.checked)">
                 <span class="ops-switch-slider"></span>
             </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div style="flex:1">
+                <div class="ops-toggle-label">כתובת IP מדפסת</div>
+                <div class="ops-toggle-sublabel">כתובת ברשת המקומית (לדוגמה: 192.168.1.100)</div>
+            </div>
+            <input type="text" id="printerIp" placeholder="192.168.1.100" 
+                   style="width:160px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
+                   onchange="savePrinterIp(this.value)">
+        </div>
+        <div class="ops-toggle-row" style="border-bottom: none;">
+            <div style="flex:1">
+                <div class="ops-toggle-label">פורט מדפסת</div>
+                <div class="ops-toggle-sublabel">ברירת מחדל: 9100</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" id="printerPort" value="9100" 
+                       style="width:80px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
+                       onchange="savePrinterPort(this.value)">
+                <button class="ops-btn ops-btn-sm" style="background:var(--ops-accent);color:#fff;white-space:nowrap;" onclick="testPrinter()">בדיקה</button>
+            </div>
         </div>
     </div>
 </div>
@@ -137,11 +158,15 @@ var ps = JSON.parse(localStorage.getItem('ops_print_settings') || '{}');
 if (ps.checker_copies === undefined) ps.checker_copies = 2;
 if (ps.payment_copies === undefined) ps.payment_copies = 1;
 if (ps.station_bons === undefined) ps.station_bons = true;
+if (ps.printer_ip === undefined) ps.printer_ip = '';
+if (ps.printer_port === undefined) ps.printer_port = 9100;
 
 function updatePrintUI() {
     document.getElementById('printCheckerCopies').textContent = ps.checker_copies;
     document.getElementById('printPaymentCopies').textContent = ps.payment_copies;
     document.getElementById('printStationBons').checked = ps.station_bons;
+    document.getElementById('printerIp').value = ps.printer_ip || '';
+    document.getElementById('printerPort').value = ps.printer_port || 9100;
 }
 updatePrintUI();
 
@@ -154,6 +179,32 @@ function changePrintSetting(key, delta) {
 function togglePrintStation(val) {
     ps.station_bons = val;
     localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function savePrinterIp(val) {
+    ps.printer_ip = val.trim();
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function savePrinterPort(val) {
+    ps.printer_port = parseInt(val) || 9100;
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function testPrinter() {
+    var ip = document.getElementById('printerIp').value.trim();
+    var port = parseInt(document.getElementById('printerPort').value) || 9100;
+    if (!ip) { alert('יש להזין כתובת IP'); return; }
+    savePrinterIp(ip);
+    savePrinterPort(port);
+    fetch('/ops/api/print/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({printer_ip: ip, printer_port: port})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { alert(d.ok ? '✅ ' + d.message : '❌ ' + (d.error || 'שגיאה')); })
+    .catch(function() { alert('❌ שגיאת חיבור לשרת'); });
 }
 </script>
 {% endblock %}

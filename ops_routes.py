@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import secrets
+import socket
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -908,3 +909,302 @@ def branch_hours():
         wh.is_closed = bool(is_closed)
     db.session.commit()
     return jsonify({'ok': True, 'message': 'שעות עודכנו'})
+
+
+class DirectPrinter:
+    ESC = b'\x1b'
+    GS = b'\x1d'
+    INIT = b'\x1b@'
+    CUT_FULL = b'\x1dV\x00'
+    CUT_PARTIAL = b'\x1dV\x01'
+    ALIGN_LEFT = b'\x1ba\x00'
+    ALIGN_CENTER = b'\x1ba\x01'
+    ALIGN_RIGHT = b'\x1ba\x02'
+    FONT_NORMAL = b'\x1b!\x00'
+    FONT_DOUBLE_H = b'\x1b!\x10'
+    FONT_DOUBLE_W = b'\x1b!\x20'
+    FONT_DOUBLE = b'\x1b!\x30'
+    BOLD_ON = b'\x1bE\x01'
+    BOLD_OFF = b'\x1bE\x00'
+
+    def __init__(self, ip, port=9100):
+        self.ip = ip
+        self.port = port
+        self.buf = bytearray()
+
+    def _add(self, data):
+        if isinstance(data, str):
+            self.buf.extend(data.encode('utf-8'))
+        else:
+            self.buf.extend(data)
+
+    def init(self):
+        self._add(self.INIT)
+
+    def cut(self):
+        self._add(b'\n\n\n')
+        self._add(self.CUT_FULL)
+
+    def align(self, a):
+        self._add({'center': self.ALIGN_CENTER, 'right': self.ALIGN_RIGHT}.get(a, self.ALIGN_LEFT))
+
+    def font(self, s):
+        self._add({'double': self.FONT_DOUBLE, 'double_h': self.FONT_DOUBLE_H, 'double_w': self.FONT_DOUBLE_W}.get(s, self.FONT_NORMAL))
+
+    def bold(self, on=True):
+        self._add(self.BOLD_ON if on else self.BOLD_OFF)
+
+    def text(self, t):
+        self._add(t + '\n')
+
+    def line(self, ch='-', w=32):
+        self._add(ch * w + '\n')
+
+    def dashed(self, w=32):
+        self.line('-', w)
+
+    def thick(self, w=32):
+        self.line('=', w)
+
+    def send(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect((self.ip, self.port))
+            s.sendall(bytes(self.buf))
+            s.close()
+            return True
+        except Exception as e:
+            logging.error(f'Printer send error: {e}')
+            return False
+
+
+def _build_checker_bon(p, o):
+    p.init()
+    p.align('center')
+    p.font('double')
+    p.text('SUMO')
+    p.font('double_h')
+    type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
+    p.text(type_he)
+    p.font('double')
+    p.text(f'#{o.order_number}')
+    p.font('normal')
+    p.text(o.created_at.strftime('%d/%m %H:%M') if o.created_at else '')
+    p.thick()
+    p.align('right')
+
+    if o.customer_notes:
+        p.bold()
+        p.text(f'⚠ {o.customer_notes}')
+        p.bold(False)
+    if o.delivery_notes:
+        p.bold()
+        p.text(f'🚗 {o.delivery_notes}')
+        p.bold(False)
+
+    p.font('double_h')
+    p.bold()
+    p.text(o.customer_name or '')
+    p.font('normal')
+    p.text(o.customer_phone or '')
+    if o.delivery_address:
+        addr = o.delivery_address
+        if o.delivery_city:
+            addr += f', {o.delivery_city}'
+        p.text(addr)
+    p.bold(False)
+    p.dashed()
+
+    items = json.loads(o.items_json) if o.items_json else []
+    for item in items:
+        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        qty = item.get('qty') or item.get('quantity', 1)
+        p.bold()
+        p.text(f'{qty}× {name}')
+        p.bold(False)
+        opts = item.get('options') or []
+        for op in opts:
+            op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
+            p.text(f'  + {op_name}')
+
+    p.thick()
+    p.align('right')
+    p.font('double')
+    p.bold()
+    p.text(f'סה"כ: ₪{o.total_amount:.0f}')
+    p.bold(False)
+    p.font('normal')
+    p.align('center')
+    from datetime import datetime as dt
+    p.text(f'צ׳קר | {dt.now().strftime("%H:%M")}')
+    p.cut()
+
+
+def _build_payment_bon(p, o):
+    p.init()
+    p.align('center')
+    p.font('double')
+    p.text('SUMO')
+    p.font('double_h')
+    p.text('בון תשלום')
+    p.font('double')
+    p.text(f'#{o.order_number}')
+    p.font('normal')
+    type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
+    p.text(f'{type_he} | {o.created_at.strftime("%d/%m %H:%M") if o.created_at else ""}')
+    p.thick()
+    p.align('right')
+    p.font('double_h')
+    p.bold()
+    p.text(o.customer_name or '')
+    p.bold(False)
+    p.font('normal')
+    p.dashed()
+
+    items = json.loads(o.items_json) if o.items_json else []
+    for item in items:
+        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        qty = item.get('qty') or item.get('quantity', 1)
+        price = item.get('price') or item.get('unit_price', 0)
+        total = qty * price
+        p.bold()
+        p.text(f'{qty}× {name}  ₪{total:.0f}')
+        p.bold(False)
+        opts = item.get('options') or []
+        for op in opts:
+            op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
+            p.text(f'  + {op_name}')
+
+    p.dashed()
+    p.text(f'סכום: ₪{o.subtotal:.0f}')
+    if o.delivery_fee and o.delivery_fee > 0:
+        p.text(f'משלוח: ₪{o.delivery_fee:.0f}')
+    if o.discount_amount and o.discount_amount > 0:
+        p.text(f'הנחה: -₪{o.discount_amount:.0f}')
+    p.thick()
+    p.font('double')
+    p.bold()
+    p.text(f'לתשלום: ₪{o.total_amount:.0f}')
+    p.bold(False)
+    p.font('normal')
+    p.align('center')
+    p.text(f'תשלום: {o.payment_method or "—"}')
+    from datetime import datetime as dt
+    p.text(dt.now().strftime('%H:%M'))
+    p.cut()
+
+
+def _build_station_bon(p, o, station_name, station_items):
+    p.init()
+    p.align('center')
+    p.font('double')
+    p.bold()
+    p.text(station_name)
+    p.bold(False)
+    p.font('double_h')
+    p.text(f'#{o.order_number}')
+    p.font('normal')
+    type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
+    p.text(f'{type_he} | {o.created_at.strftime("%d/%m %H:%M") if o.created_at else ""}')
+    p.thick()
+    p.align('right')
+
+    if o.customer_notes:
+        p.bold()
+        p.text(f'⚠ {o.customer_notes}')
+        p.bold(False)
+
+    for item in station_items:
+        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        qty = item.get('qty') or item.get('quantity', 1)
+        p.bold()
+        p.text(f'{qty}× {name}')
+        p.bold(False)
+        opts = item.get('options') or []
+        for op in opts:
+            op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
+            p.text(f'  + {op_name}')
+
+    p.align('center')
+    p.dashed()
+    from datetime import datetime as dt
+    p.text(f'#{o.order_number} | {station_name} | {dt.now().strftime("%H:%M")}')
+    p.cut()
+
+
+@ops_bp.route('/api/print', methods=['POST'])
+@require_ops_module('orders')
+def direct_print():
+    data = request.get_json(force=True)
+    order_id = data.get('order_id')
+    printer_ip = data.get('printer_ip')
+    printer_port = int(data.get('printer_port', 9100))
+    checker_copies = int(data.get('checker_copies', 2))
+    payment_copies = int(data.get('payment_copies', 1))
+    station_bons = data.get('station_bons', True)
+
+    if not order_id or not printer_ip:
+        return jsonify({'ok': False, 'error': 'חסר מזהה הזמנה או כתובת מדפסת'})
+
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+
+    p = DirectPrinter(printer_ip, printer_port)
+
+    for _ in range(checker_copies):
+        _build_checker_bon(p, order)
+
+    for _ in range(payment_copies):
+        _build_payment_bon(p, order)
+
+    if station_bons:
+        items = json.loads(order.items_json) if order.items_json else []
+        by_station = {}
+        for item in items:
+            menu_item_id = item.get('menu_item_id') or item.get('item_id')
+            st = 'כללי'
+            if menu_item_id:
+                mi = MenuItem.query.get(menu_item_id)
+                if mi and mi.print_station:
+                    st = mi.print_station
+            if st not in by_station:
+                by_station[st] = []
+            by_station[st].append(item)
+        for st_name, st_items in by_station.items():
+            _build_station_bon(p, order, st_name, st_items)
+
+    success = p.send()
+    if success:
+        return jsonify({'ok': True, 'message': 'נשלח להדפסה'})
+    else:
+        return jsonify({'ok': False, 'error': 'שגיאת חיבור למדפסת'})
+
+
+@ops_bp.route('/api/print/test', methods=['POST'])
+@require_ops_module('orders')
+def direct_print_test():
+    data = request.get_json(force=True)
+    printer_ip = data.get('printer_ip')
+    printer_port = int(data.get('printer_port', 9100))
+    if not printer_ip:
+        return jsonify({'ok': False, 'error': 'חסר כתובת מדפסת'})
+
+    p = DirectPrinter(printer_ip, printer_port)
+    p.init()
+    p.align('center')
+    p.font('double')
+    p.text('SUMO')
+    p.font('normal')
+    p.text('בדיקת מדפסת')
+    p.dashed()
+    from datetime import datetime as dt
+    p.text(dt.now().strftime('%Y-%m-%d %H:%M:%S'))
+    p.text('החיבור תקין!')
+    p.cut()
+    success = p.send()
+    if success:
+        return jsonify({'ok': True, 'message': 'הדפסת בדיקה נשלחה'})
+    else:
+        return jsonify({'ok': False, 'error': 'שגיאת חיבור'})

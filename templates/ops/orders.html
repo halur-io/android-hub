@@ -739,6 +739,8 @@ var PRINT_SETTINGS = JSON.parse(localStorage.getItem('ops_print_settings') || '{
 if (PRINT_SETTINGS.checker_copies === undefined) PRINT_SETTINGS.checker_copies = 2;
 if (PRINT_SETTINGS.payment_copies === undefined) PRINT_SETTINGS.payment_copies = 1;
 if (PRINT_SETTINGS.station_bons === undefined) PRINT_SETTINGS.station_bons = true;
+if (PRINT_SETTINGS.printer_ip === undefined) PRINT_SETTINGS.printer_ip = '';
+if (PRINT_SETTINGS.printer_port === undefined) PRINT_SETTINGS.printer_port = 9100;
 function savePrintSettings() {
     localStorage.setItem('ops_print_settings', JSON.stringify(PRINT_SETTINGS));
 }
@@ -883,34 +885,89 @@ function queuePrint(bonHtml) {
     }
 }
 
-function printBon(orderId, type, station) {
-    var o = cachedOrders[orderId];
-    if (!o) return;
-    pendingPrintBons = [{html: buildBonHtml(o, type, station), label: type === 'station' ? station : (type === 'checker' ? 'צ׳קר' : 'תשלום')}];
-    showPreview();
+function directPrint(orderId) {
+    if (!PRINT_SETTINGS.printer_ip) {
+        alert('יש להגדיר כתובת IP של מדפסת בהגדרות');
+        return;
+    }
     closeModal('printModal');
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;font-weight:700;';
+    toast.textContent = '⏳ שולח להדפסה...';
+    document.body.appendChild(toast);
+
+    fetch('/ops/api/print', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            order_id: orderId,
+            printer_ip: PRINT_SETTINGS.printer_ip,
+            printer_port: PRINT_SETTINGS.printer_port || 9100,
+            checker_copies: PRINT_SETTINGS.checker_copies,
+            payment_copies: PRINT_SETTINGS.payment_copies,
+            station_bons: PRINT_SETTINGS.station_bons
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        toast.textContent = d.ok ? '✅ הודפס בהצלחה' : '❌ ' + (d.error || 'שגיאה');
+        toast.style.background = d.ok ? '#2e7d32' : '#c62828';
+        setTimeout(function() { toast.remove(); }, 2500);
+    })
+    .catch(function() {
+        toast.textContent = '❌ שגיאת חיבור';
+        toast.style.background = '#c62828';
+        setTimeout(function() { toast.remove(); }, 2500);
+    });
+}
+
+function printAll(orderId) {
+    directPrint(orderId);
+}
+
+function printBon(orderId, type, station) {
+    if (!PRINT_SETTINGS.printer_ip) {
+        alert('יש להגדיר כתובת IP של מדפסת בהגדרות');
+        return;
+    }
+    closeModal('printModal');
+
+    var copies = {checker_copies: 0, payment_copies: 0, station_bons: false};
+    if (type === 'checker') copies.checker_copies = 1;
+    else if (type === 'payment') copies.payment_copies = 1;
+    else if (type === 'station') copies.station_bons = true;
+
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;font-weight:700;';
+    toast.textContent = '⏳ שולח להדפסה...';
+    document.body.appendChild(toast);
+
+    fetch('/ops/api/print', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            order_id: orderId,
+            printer_ip: PRINT_SETTINGS.printer_ip,
+            printer_port: PRINT_SETTINGS.printer_port || 9100,
+            checker_copies: copies.checker_copies,
+            payment_copies: copies.payment_copies,
+            station_bons: copies.station_bons
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        toast.textContent = d.ok ? '✅ הודפס' : '❌ ' + (d.error || 'שגיאה');
+        toast.style.background = d.ok ? '#2e7d32' : '#c62828';
+        setTimeout(function() { toast.remove(); }, 2500);
+    })
+    .catch(function() {
+        toast.textContent = '❌ שגיאת חיבור';
+        toast.style.background = '#c62828';
+        setTimeout(function() { toast.remove(); }, 2500);
+    });
 }
 
 var pendingPrintBons = [];
-
-function printAll(orderId) {
-    var o = cachedOrders[orderId];
-    if (!o) return;
-    pendingPrintBons = [];
-    for (var c = 0; c < PRINT_SETTINGS.checker_copies; c++) {
-        pendingPrintBons.push({html: buildBonHtml(o, 'checker'), label: 'צ׳קר'});
-    }
-    for (var p = 0; p < PRINT_SETTINGS.payment_copies; p++) {
-        pendingPrintBons.push({html: buildBonHtml(o, 'payment'), label: 'תשלום'});
-    }
-    if (PRINT_SETTINGS.station_bons && o.items_by_station) {
-        for (var st in o.items_by_station) {
-            pendingPrintBons.push({html: buildBonHtml(o, 'station', st), label: st});
-        }
-    }
-    showPreview();
-    closeModal('printModal');
-}
 
 function showPreview() {
     var container = document.getElementById('bonPreviewContent');
@@ -924,20 +981,6 @@ function showPreview() {
 
 function doPrintAll() {
     closeBonPreview();
-    var combined = '';
-    pendingPrintBons.forEach(function(bon) {
-        combined += '<div class="bon-page">' + bon.html + '</div>';
-    });
-    var frame = getPrintFrame();
-    var doc = frame.contentDocument || frame.contentWindow.document;
-    var fullHtml = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + combined + '</body></html>';
-    doc.open();
-    doc.write(fullHtml);
-    doc.close();
-    setTimeout(function() {
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-    }, 250);
 }
 
 function closeBonPreview() {

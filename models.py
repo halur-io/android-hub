@@ -2541,6 +2541,8 @@ class FoodOrder(db.Model):
     coupon_discount = db.Column(db.Float, default=0)
     customer_account_id = db.Column(db.Integer, nullable=True)
     items_json = db.Column(db.Text)
+    bon_printed = db.Column(db.Boolean, default=False)
+    bon_printed_at = db.Column(db.DateTime, nullable=True)
     items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
 
     def set_order_number(self):

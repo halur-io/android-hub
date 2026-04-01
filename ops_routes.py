@@ -1177,9 +1177,90 @@ def direct_print():
 
     success = p.send()
     if success:
+        order.bon_printed = True
+        order.bon_printed_at = datetime.utcnow()
+        db.session.commit()
         return jsonify({'ok': True, 'message': 'נשלח להדפסה'})
     else:
         return jsonify({'ok': False, 'error': 'שגיאת חיבור למדפסת'})
+
+
+@ops_bp.route('/api/orders/unprinted', methods=['GET'])
+def get_unprinted_orders():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    orders = FoodOrder.query.filter(
+        FoodOrder.bon_printed == False,
+        FoodOrder.status.in_(['pending', 'confirmed', 'preparing'])
+    ).order_by(FoodOrder.created_at.asc()).all()
+
+    result = []
+    for o in orders:
+        items = json.loads(o.items_json) if o.items_json else []
+        by_station = {}
+        for item in items:
+            menu_item_id = item.get('menu_item_id') or item.get('item_id')
+            st = 'כללי'
+            if menu_item_id:
+                mi = MenuItem.query.get(menu_item_id)
+                if mi and mi.print_station:
+                    st = mi.print_station
+            if st not in by_station:
+                by_station[st] = []
+            by_station[st].append(item)
+
+        result.append({
+            'id': o.id,
+            'order_number': o.order_number,
+            'order_type': o.order_type,
+            'status': o.status,
+            'customer_name': o.customer_name or '',
+            'customer_phone': o.customer_phone or '',
+            'delivery_address': o.delivery_address or '',
+            'delivery_city': o.delivery_city or '',
+            'delivery_notes': o.delivery_notes or '',
+            'customer_notes': o.customer_notes or '',
+            'subtotal': o.subtotal or 0,
+            'delivery_fee': o.delivery_fee or 0,
+            'discount_amount': o.discount_amount or 0,
+            'total_amount': o.total_amount or 0,
+            'payment_method': o.payment_method or '',
+            'coupon_code': o.coupon_code or '',
+            'created_at': o.created_at.strftime('%d/%m %H:%M') if o.created_at else '',
+            'items': items,
+            'items_by_station': by_station,
+        })
+
+    return jsonify({'ok': True, 'orders': result})
+
+
+@ops_bp.route('/api/orders/mark-printed', methods=['POST'])
+def mark_orders_printed():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(force=True)
+    order_ids = data.get('order_ids', [])
+    if not order_ids:
+        return jsonify({'ok': False, 'error': 'missing order_ids'})
+
+    from datetime import datetime as dt
+    for oid in order_ids:
+        order = FoodOrder.query.get(oid)
+        if order:
+            order.bon_printed = True
+            order.bon_printed_at = dt.utcnow()
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'{len(order_ids)} orders marked as printed'})
 
 
 @ops_bp.route('/api/print/test', methods=['POST'])

@@ -38,10 +38,18 @@ I prefer clear, concise language in all communications. For coding, I favor an i
     - Modules: Home (KPIs), Menu management, Stock management, Deals & Coupons, Branch settings, Orders module (Kanban-style board with status progression).
     - Orders module features: Kanban board with status filters, detailed order view, one-tap status progression, branch-scoped order display, auto-refresh.
 
+### Auto-Print System (Print Agent)
+- **Architecture:** Cloud server cannot reach restaurant LAN printer directly. Solution: a local print agent (`print_agent.py`) runs on a Mac at the restaurant, polls the server for new orders, and sends ESC/POS commands to the thermal printer via TCP.
+- **API Endpoints:** `GET /ops/api/orders/unprinted` (returns unprinted orders), `POST /ops/api/orders/mark-printed` (marks orders as printed). Auth via `X-Print-Key` header matching `PRINT_AGENT_KEY` env var.
+- **DB Fields:** `FoodOrder.bon_printed` (Boolean), `FoodOrder.bon_printed_at` (DateTime) track print status.
+- **Printer:** 80mm thermal (SNBC-style ESC/POS), IP 10.100.10.10, port 9100.
+- **Bon Types:** Checker bon (2 copies), Payment bon (1 copy), Station bons (per print_station on MenuItem).
+- **Print Modes:** Browser (hidden iframe + print dialog) or Server (direct TCP, currently via print agent only).
+
 ### System Design Choices
 - **Modularity:** Separation of concerns (e.g., `standalone_order_service` for ordering).
 - **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`.
-- **API Endpoints:** Dedicated endpoints for order validation, coupon validation, and upsell suggestions.
+- **API Endpoints:** Dedicated endpoints for order validation, coupon validation, upsell suggestions, and print agent polling.
 
 ## External Dependencies
 - **Payment Gateways:** HYP, MAX Pay (with branch-specific configurations).

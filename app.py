@@ -241,6 +241,7 @@ except Exception as e:
 try:
     from ops_routes import ops_bp
     app.register_blueprint(ops_bp)
+    csrf.exempt(ops_bp)
     logging.info("Ops dashboard registered: /ops")
 except Exception as e:
     logging.error(f"Error registering ops blueprint: {e}")

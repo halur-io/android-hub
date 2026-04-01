@@ -832,38 +832,45 @@ function buildBonHtml(o, type, station) {
     return h;
 }
 
-var printWindow = null;
 var printQueue = [];
 var printBusy = false;
+
+function getPrintFrame() {
+    var f = document.getElementById('bonPrintFrame');
+    if (!f) {
+        f = document.createElement('iframe');
+        f.id = 'bonPrintFrame';
+        f.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:80mm;height:0;border:none;visibility:hidden;';
+        document.body.appendChild(f);
+    }
+    return f;
+}
 
 function processNextPrint() {
     if (printQueue.length === 0) {
         printBusy = false;
-        if (printWindow) { try { printWindow.close(); } catch(e){} printWindow = null; }
         return;
     }
     var bonHtml = printQueue.shift();
-    var doc = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + bonHtml + '</body></html>';
+    var frame = getPrintFrame();
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    var fullHtml = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + bonHtml + '</body></html>';
 
-    if (!printWindow || printWindow.closed) {
-        printWindow = window.open('', 'bon_print', 'width=320,height=600');
-        if (!printWindow) { alert('אנא אפשר חלונות קופצים להדפסה'); printBusy = false; return; }
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(doc);
-    printWindow.document.close();
+    doc.open();
+    doc.write(fullHtml);
+    doc.close();
 
     setTimeout(function() {
-        printWindow.focus();
-        printWindow.onafterprint = function() {
-            setTimeout(processNextPrint, 400);
+        var cw = frame.contentWindow;
+        cw.onafterprint = function() {
+            setTimeout(processNextPrint, 500);
         };
-        printWindow.print();
+        cw.focus();
+        cw.print();
         setTimeout(function() {
-            if (printQueue.length > 0 || printBusy) processNextPrint();
-        }, 6000);
-    }, 300);
+            if (printBusy && printQueue.length > 0) processNextPrint();
+        }, 5000);
+    }, 200);
 }
 
 function queuePrint(bonHtml) {

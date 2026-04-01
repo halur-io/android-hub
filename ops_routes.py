@@ -53,9 +53,18 @@ def _check_device():
 
 def _get_ops_user():
     pin_id = session.get('ops_pin_id')
-    if not pin_id:
-        return None
-    return ManagerPIN.query.filter_by(id=pin_id, is_active=True).first()
+    if pin_id:
+        user = ManagerPIN.query.filter_by(id=pin_id, is_active=True).first()
+        if user:
+            return user
+    device = _check_device()
+    if device and device.last_pin_id:
+        user = ManagerPIN.query.filter_by(id=device.last_pin_id, is_active=True).first()
+        if user:
+            session['ops_pin_id'] = user.id
+            session['ops_user_name'] = user.name
+            return user
+    return None
 
 def require_device(f):
     @wraps(f)
@@ -219,6 +228,9 @@ def login():
                 session['ops_pin_id'] = p.id
                 session['ops_user_name'] = p.name
                 p.last_used_at = datetime.utcnow()
+                device = _check_device()
+                if device:
+                    device.last_pin_id = p.id
                 db.session.commit()
                 return redirect(url_for('ops.index'))
         error = 'קוד PIN שגוי'
@@ -229,6 +241,13 @@ def login():
 def logout():
     session.pop('ops_pin_id', None)
     session.pop('ops_user_name', None)
+    device = _check_device()
+    if device:
+        device.last_pin_id = None
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     return redirect(url_for('ops.login'))
 
 

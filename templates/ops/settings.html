@@ -74,6 +74,44 @@
 </div>
 
 <div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-print" style="color: var(--ops-accent);"></i> הגדרות הדפסה</div>
+    <div class="ops-card">
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">עותקי בון צ׳קר</div>
+                <div class="ops-toggle-sublabel">כמה עותקים להדפיס בלחיצת "הדפס הכל"</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('checker_copies', -1)" style="min-width:36px;">−</button>
+                <span id="printCheckerCopies" style="font-size:18px; font-weight:800; min-width:24px; text-align:center;">2</span>
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('checker_copies', 1)" style="min-width:36px;">+</button>
+            </div>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">עותקי בון תשלום</div>
+                <div class="ops-toggle-sublabel">כמה עותקים להדפיס בלחיצת "הדפס הכל"</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('payment_copies', -1)" style="min-width:36px;">−</button>
+                <span id="printPaymentCopies" style="font-size:18px; font-weight:800; min-width:24px; text-align:center;">1</span>
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('payment_copies', 1)" style="min-width:36px;">+</button>
+            </div>
+        </div>
+        <div class="ops-toggle-row" style="border-bottom: none;">
+            <div>
+                <div class="ops-toggle-label">בוני עמדות</div>
+                <div class="ops-toggle-sublabel">הדפס בוני עמדות (מטבח, בר, וכו׳)</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" id="printStationBons" checked onchange="togglePrintStation(this.checked)">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
     <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-info-circle" style="color: var(--ops-blue);"></i> מידע מכשיר</div>
     <div class="ops-card" style="font-size: 13px; color: var(--ops-text-dim);">
         <div style="padding: 8px 0; border-bottom: 1px solid var(--ops-border);">
@@ -93,4 +131,29 @@
         <i class="fas fa-sign-out-alt"></i> התנתק
     </a>
 </div>
+
+<script>
+var ps = JSON.parse(localStorage.getItem('ops_print_settings') || '{}');
+if (ps.checker_copies === undefined) ps.checker_copies = 2;
+if (ps.payment_copies === undefined) ps.payment_copies = 1;
+if (ps.station_bons === undefined) ps.station_bons = true;
+
+function updatePrintUI() {
+    document.getElementById('printCheckerCopies').textContent = ps.checker_copies;
+    document.getElementById('printPaymentCopies').textContent = ps.payment_copies;
+    document.getElementById('printStationBons').checked = ps.station_bons;
+}
+updatePrintUI();
+
+function changePrintSetting(key, delta) {
+    ps[key] = Math.max(0, Math.min(5, (ps[key]||0) + delta));
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+    updatePrintUI();
+}
+
+function togglePrintStation(val) {
+    ps.station_bons = val;
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+</script>
 {% endblock %}

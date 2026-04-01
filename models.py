@@ -2667,9 +2667,11 @@ class EnrolledDevice(db.Model):
     enrolled_by = db.Column(db.Integer, db.ForeignKey('admin_users.id'))
     last_seen = db.Column(db.DateTime)
     user_agent = db.Column(db.String(500))
+    last_pin_id = db.Column(db.Integer, db.ForeignKey('manager_pins.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     branch = db.relationship('Branch', backref='enrolled_devices')
+    last_pin = db.relationship('ManagerPIN', backref='enrolled_devices')
     enrolled_by_user = db.relationship('AdminUser', backref='enrolled_devices')
 
     def __repr__(self):

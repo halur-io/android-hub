@@ -109,24 +109,37 @@
             </label>
         </div>
         <div class="ops-toggle-row">
-            <div style="flex:1">
-                <div class="ops-toggle-label">כתובת IP מדפסת</div>
-                <div class="ops-toggle-sublabel">כתובת ברשת המקומית (לדוגמה: 192.168.1.100)</div>
+            <div>
+                <div class="ops-toggle-label">מצב הדפסה</div>
+                <div class="ops-toggle-sublabel">דפדפן = דיאלוג הדפסה אחד | שרת = שקט לחלוטין (שרת מקומי)</div>
             </div>
-            <input type="text" id="printerIp" placeholder="192.168.1.100" 
-                   style="width:160px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
-                   onchange="savePrinterIp(this.value)">
+            <select id="printMode" onchange="savePrintMode(this.value)"
+                    style="padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;">
+                <option value="browser">דפדפן</option>
+                <option value="server">שרת (ישיר)</option>
+            </select>
         </div>
-        <div class="ops-toggle-row" style="border-bottom: none;">
-            <div style="flex:1">
-                <div class="ops-toggle-label">פורט מדפסת</div>
-                <div class="ops-toggle-sublabel">ברירת מחדל: 9100</div>
+        <div id="serverPrinterSettings" style="display:none;">
+            <div class="ops-toggle-row">
+                <div style="flex:1">
+                    <div class="ops-toggle-label">כתובת IP מדפסת</div>
+                    <div class="ops-toggle-sublabel">כתובת ברשת המקומית (לדוגמה: 192.168.1.100)</div>
+                </div>
+                <input type="text" id="printerIp" placeholder="192.168.1.100" 
+                       style="width:160px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
+                       onchange="savePrinterIp(this.value)">
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <input type="number" id="printerPort" value="9100" 
-                       style="width:80px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
-                       onchange="savePrinterPort(this.value)">
-                <button class="ops-btn ops-btn-sm" style="background:var(--ops-accent);color:#fff;white-space:nowrap;" onclick="testPrinter()">בדיקה</button>
+            <div class="ops-toggle-row" style="border-bottom: none;">
+                <div style="flex:1">
+                    <div class="ops-toggle-label">פורט מדפסת</div>
+                    <div class="ops-toggle-sublabel">ברירת מחדל: 9100</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <input type="number" id="printerPort" value="9100" 
+                           style="width:80px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
+                           onchange="savePrinterPort(this.value)">
+                    <button class="ops-btn ops-btn-sm" style="background:var(--ops-accent);color:#fff;white-space:nowrap;" onclick="testPrinter()">בדיקה</button>
+                </div>
             </div>
         </div>
     </div>
@@ -160,13 +173,16 @@ if (ps.payment_copies === undefined) ps.payment_copies = 1;
 if (ps.station_bons === undefined) ps.station_bons = true;
 if (ps.printer_ip === undefined) ps.printer_ip = '';
 if (ps.printer_port === undefined) ps.printer_port = 9100;
+if (ps.print_mode === undefined) ps.print_mode = 'browser';
 
 function updatePrintUI() {
     document.getElementById('printCheckerCopies').textContent = ps.checker_copies;
     document.getElementById('printPaymentCopies').textContent = ps.payment_copies;
     document.getElementById('printStationBons').checked = ps.station_bons;
+    document.getElementById('printMode').value = ps.print_mode || 'browser';
     document.getElementById('printerIp').value = ps.printer_ip || '';
     document.getElementById('printerPort').value = ps.printer_port || 9100;
+    document.getElementById('serverPrinterSettings').style.display = ps.print_mode === 'server' ? 'block' : 'none';
 }
 updatePrintUI();
 
@@ -179,6 +195,12 @@ function changePrintSetting(key, delta) {
 function togglePrintStation(val) {
     ps.station_bons = val;
     localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function savePrintMode(val) {
+    ps.print_mode = val;
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+    updatePrintUI();
 }
 
 function savePrinterIp(val) {

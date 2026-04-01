@@ -764,8 +764,6 @@ body{direction:rtl;text-align:right;font-family:"Courier New",Courier,monospace;
 .pbon-total-lbl{font-size:11pt;font-weight:700}\
 .pbon-total-val{font-size:18pt;font-weight:900}\
 .pbon-footer{text-align:center;font-size:9pt;font-weight:700;margin-top:10px;border-top:2px dashed #000;padding-top:7px}\
-.bon-page{page-break-after:always;page-break-inside:avoid;break-after:page;break-inside:avoid}\
-.bon-page:last-child{page-break-after:auto;break-after:auto}\
 ';
 
 function renderItems(items, showPrice) {
@@ -834,17 +832,46 @@ function buildBonHtml(o, type, station) {
     return h;
 }
 
-function printViaWindow(fullHtml) {
-    var w = window.open('', '_blank', 'width=320,height=600');
-    if (!w) { alert('אנא אפשר חלונות קופצים להדפסה'); return; }
-    w.document.write(fullHtml);
-    w.document.close();
+var printWindow = null;
+var printQueue = [];
+var printBusy = false;
+
+function processNextPrint() {
+    if (printQueue.length === 0) {
+        printBusy = false;
+        if (printWindow) { try { printWindow.close(); } catch(e){} printWindow = null; }
+        return;
+    }
+    var bonHtml = printQueue.shift();
+    var doc = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + bonHtml + '</body></html>';
+
+    if (!printWindow || printWindow.closed) {
+        printWindow = window.open('', 'bon_print', 'width=320,height=600');
+        if (!printWindow) { alert('אנא אפשר חלונות קופצים להדפסה'); printBusy = false; return; }
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(doc);
+    printWindow.document.close();
+
     setTimeout(function() {
-        w.focus();
-        w.print();
-        w.onafterprint = function() { w.close(); };
-        setTimeout(function() { try { w.close(); } catch(e){} }, 8000);
+        printWindow.focus();
+        printWindow.onafterprint = function() {
+            setTimeout(processNextPrint, 400);
+        };
+        printWindow.print();
+        setTimeout(function() {
+            if (printQueue.length > 0 || printBusy) processNextPrint();
+        }, 6000);
     }, 300);
+}
+
+function queuePrint(bonHtml) {
+    printQueue.push(bonHtml);
+    if (!printBusy) {
+        printBusy = true;
+        processNextPrint();
+    }
 }
 
 function printBon(orderId, type, station) {
@@ -888,12 +915,9 @@ function showPreview() {
 
 function doPrintAll() {
     closeBonPreview();
-    var allBonsHtml = '';
     pendingPrintBons.forEach(function(bon) {
-        allBonsHtml += '<div class="bon-page">' + bon.html + '</div>';
+        queuePrint(bon.html);
     });
-    var fullDoc = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + allBonsHtml + '</body></html>';
-    printViaWindow(fullDoc);
 }
 
 function closeBonPreview() {

@@ -312,94 +312,38 @@
 .ops-empty { text-align: center; padding: 60px 20px; color: #999; }
 .ops-empty i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
 
-.bon-preview { display: none; }
-
 .bon-preview-screen {
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.9);
     z-index: 2000;
     overflow-y: auto;
-    padding: 20px;
+    padding: 16px;
     direction: rtl;
 }
-.bon-preview-screen.show { display: block; }
-.bon-preview-screen .bon-preview-inner {
-    max-width: 300px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 12px;
-    border-radius: 8px;
-}
+.bon-preview-screen.show { display: flex; flex-direction: column; align-items: center; }
 .bon-preview-screen .bon-close-bar {
-    max-width: 300px;
-    margin: 0 auto 12px;
-    display: flex;
-    gap: 8px;
+    width: 100%; max-width: 300px;
+    display: flex; gap: 8px; margin-bottom: 12px; flex-shrink: 0;
 }
 .bon-preview-screen .bon-close-bar button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
+    flex: 1; padding: 12px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
 }
-
-@media print {
-    html, body { margin: 0 !important; padding: 0 !important; width: 80mm !important; }
-    body * { visibility: hidden !important; }
-    .bon-preview, .bon-preview * { visibility: visible !important; }
-    .bon-preview-screen { display: none !important; }
-    .bon-preview {
-        display: block !important;
-        visibility: visible !important;
-        position: absolute;
-        top: 0; right: 0; left: 0;
-        width: 80mm;
-        margin: 0; padding: 0;
-        background: #fff;
-        z-index: 99999;
-    }
-    .bon-single-page {
-        page-break-after: always !important;
-        break-after: page !important;
-        page-break-inside: avoid !important;
-    }
-    .bon-single-page:last-child {
-        page-break-after: avoid !important;
-        break-after: avoid !important;
-    }
-    .bon-cut-line { display: none !important; }
+.bon-preview-screen .bon-scroll {
+    flex: 1; overflow-y: auto; width: 100%; max-width: 300px;
 }
-
-.bon-preview, .bon-preview-inner {
-    direction: rtl;
-    text-align: right;
-    font-family: 'Arial', 'Helvetica', sans-serif;
-    color: #000;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.4;
+.bon-preview-card {
+    background: #fff; padding: 10px; border-radius: 6px;
+    margin-bottom: 12px; direction: rtl; text-align: right;
+    font-family: Arial, sans-serif; font-size: 13px; font-weight: 700;
+    line-height: 1.3; color: #000;
 }
-.bon-single-page { padding: 2mm; }
-.b-center { text-align: center; }
-.b-logo { font-size: 18px; font-weight: 900; letter-spacing: 2px; margin-bottom: 1px; }
-.b-type { font-size: 13px; font-weight: 900; background: #000; color: #fff; padding: 1px 8px; display: inline-block; margin: 2px 0; }
-.b-num { font-size: 22px; font-weight: 900; line-height: 1.1; }
-.b-line { border-top: 1px solid #000; margin: 2px 0; }
-.b-dline { border-top: 2px dashed #000; margin: 2px 0; }
-.b-thickline { border-top: 3px solid #000; margin: 2px 0; }
-.b-info { font-size: 12px; font-weight: 700; margin: 0; line-height: 1.3; }
-.b-notes { border: 2px solid #000; padding: 2px 4px; font-size: 13px; font-weight: 900; margin: 2px 0; }
-.b-item { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; padding: 1px 0; border-bottom: 1px dotted #999; }
-.b-item:last-child { border-bottom: none; }
-.b-qty { font-weight: 900; }
-.b-opt { padding-right: 12px; font-size: 11px; font-weight: 600; color: #333; }
-.b-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; padding: 2px 0; }
-.b-foot { text-align: center; font-size: 10px; color: #666; margin-top: 2px; }
+.bon-preview-card .bon-label {
+    background: var(--ops-accent); color: #fff; font-size: 11px;
+    padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px;
+}
 </style>
 {% endblock %}
 
@@ -534,15 +478,14 @@
     </div>
 </div>
 
-<div class="bon-preview" id="bonPrint"></div>
-
 <div class="bon-preview-screen" id="bonPreviewScreen" onclick="if(event.target===this)closeBonPreview()">
     <div class="bon-close-bar">
-        <button onclick="doPrint()" style="background:#2e7d32;color:#fff;"><i class="fas fa-print"></i> הדפס</button>
+        <button onclick="doPrintAll()" style="background:#2e7d32;color:#fff;"><i class="fas fa-print"></i> הדפס</button>
         <button onclick="closeBonPreview()" style="background:#e0e0e0;color:#333;">סגור</button>
     </div>
-    <div class="bon-preview-inner" id="bonPreviewContent"></div>
+    <div class="bon-scroll" id="bonPreviewContent"></div>
 </div>
+<iframe id="bonPrintFrame" style="position:fixed;top:-9999px;left:-9999px;width:80mm;height:0;border:none;"></iframe>
 
 {% endblock %}
 
@@ -786,6 +729,27 @@ function savePrintSettings() {
     localStorage.setItem('ops_print_settings', JSON.stringify(PRINT_SETTINGS));
 }
 
+var BON_CSS = '\
+html,body{margin:0;padding:0;width:80mm;}\
+*{box-sizing:border-box;}\
+body{direction:rtl;text-align:right;font-family:Arial,sans-serif;font-size:13px;font-weight:700;line-height:1.3;color:#000;padding:2mm;}\
+.b-c{text-align:center}\
+.b-logo{font-size:18px;font-weight:900;letter-spacing:2px}\
+.b-type{font-size:13px;font-weight:900;background:#000;color:#fff;padding:1px 8px;display:inline-block;margin:2px 0}\
+.b-num{font-size:22px;font-weight:900;line-height:1.1}\
+.b-ln{border-top:1px solid #000;margin:3px 0}\
+.b-dl{border-top:2px dashed #000;margin:3px 0}\
+.b-tl{border-top:3px solid #000;margin:3px 0}\
+.b-info{font-size:12px;font-weight:700;margin:0;line-height:1.2}\
+.b-notes{border:2px solid #000;padding:2px 4px;font-size:13px;font-weight:900;margin:3px 0}\
+.b-item{display:flex;justify-content:space-between;font-size:13px;font-weight:800;padding:1px 0;border-bottom:1px dotted #999}\
+.b-item:last-child{border-bottom:none}\
+.b-qty{font-weight:900}\
+.b-opt{padding-right:12px;font-size:11px;font-weight:600;color:#333}\
+.b-total{display:flex;justify-content:space-between;font-size:16px;font-weight:900;padding:2px 0}\
+.b-foot{text-align:center;font-size:10px;color:#666;margin-top:2px}\
+';
+
 function renderItems(items, showPrice) {
     var h = '';
     (items||[]).forEach(function(it) {
@@ -802,109 +766,118 @@ function renderItems(items, showPrice) {
     return h;
 }
 
-function bonHeader(o, label) {
-    var typeLabel = o.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי';
-    return '<div class="b-center"><div class="b-logo">SUMO</div><div class="b-type">'+label+'</div><div class="b-num">#'+o.order_number+'</div><div>'+typeLabel+' | '+o.created_at+'</div></div><div class="b-thickline"></div>';
-}
-
-function bonNotes(o) {
-    if (!o.customer_notes && !o.delivery_notes) return '';
-    var h = '';
-    if (o.customer_notes) h += '<div class="b-notes">⚠ '+o.customer_notes+'</div>';
-    if (o.delivery_notes) h += '<div class="b-notes">🚗 '+o.delivery_notes+'</div>';
-    return h;
-}
-
-function bonCustomer(o) {
-    var parts = [o.customer_name, o.customer_phone];
-    if (o.delivery_address) parts.push(o.delivery_address + (o.delivery_city ? ', '+o.delivery_city : ''));
-    return '<div class="b-info">'+parts.join(' | ')+'</div>';
-}
-
 function buildBonHtml(o, type, station) {
     var now = new Date();
     var t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+    var typeHe = o.order_type === 'delivery' ? 'משלוח' : 'איסוף';
     var h = '';
 
     if (type === 'checker') {
-        h += bonHeader(o, o.order_type === 'delivery' ? 'משלוח' : 'איסוף');
-        h += bonNotes(o);
-        h += bonCustomer(o);
-        h += '<div class="b-dline"></div>';
+        h += '<div class="b-c"><div class="b-logo">SUMO</div><div class="b-type">'+typeHe+'</div><div class="b-num">#'+o.order_number+'</div></div>';
+        h += '<div class="b-tl"></div>';
+        if (o.customer_notes) h += '<div class="b-notes">⚠ '+o.customer_notes+'</div>';
+        if (o.delivery_notes) h += '<div class="b-notes">🚗 '+o.delivery_notes+'</div>';
+        h += '<div class="b-info">'+o.customer_name+' | '+o.customer_phone+'</div>';
+        if (o.delivery_address) h += '<div class="b-info">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>';
+        h += '<div class="b-dl"></div>';
         h += renderItems(o.items, false);
-        h += '<div class="b-thickline"></div>';
+        h += '<div class="b-tl"></div>';
         h += '<div class="b-total"><span>סה"כ</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
-        h += '<div class="b-foot">צ׳קר | '+t+' | SUMO</div>';
+        h += '<div class="b-foot">צ׳קר | '+t+'</div>';
 
     } else if (type === 'payment') {
-        h += bonHeader(o, 'בון תשלום');
+        h += '<div class="b-c"><div class="b-logo">SUMO</div><div class="b-type">בון תשלום</div><div class="b-num">#'+o.order_number+'</div></div>';
+        h += '<div class="b-tl"></div>';
         h += '<div class="b-info">'+o.customer_name+'</div>';
-        h += '<div class="b-dline"></div>';
+        h += '<div class="b-dl"></div>';
         h += renderItems(o.items, true);
-        h += '<div class="b-line"></div>';
-        h += '<div class="b-item"><span>סכום פריטים</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
-        if (o.delivery_fee > 0) h += '<div class="b-item"><span>דמי משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
-        if (o.discount_amount > 0) h += '<div class="b-item"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
-        h += '<div class="b-thickline"></div>';
-        h += '<div class="b-total"><span>סה"כ לתשלום</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
-        h += '<div class="b-center" style="font-size:12px;">תשלום: '+(o.payment_method||'—')+'</div>';
-        h += '<div class="b-foot">'+t+' | SUMO</div>';
+        h += '<div class="b-ln"></div>';
+        h += '<div class="b-item"><span>סכום</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
+        if (o.delivery_fee > 0) h += '<div class="b-item"><span>משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
+        if (o.discount_amount > 0) h += '<div class="b-item"><span>הנחה</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
+        h += '<div class="b-tl"></div>';
+        h += '<div class="b-total"><span>לתשלום</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
+        h += '<div class="b-c" style="font-size:11px">תשלום: '+(o.payment_method||'—')+'</div>';
+        h += '<div class="b-foot">'+t+'</div>';
 
     } else if (type === 'station' && station) {
-        var items = (o.items_by_station && o.items_by_station[station]) || [];
-        h += '<div class="b-center"><div class="b-type" style="font-size:18px;">'+station+'</div><div class="b-num">#'+o.order_number+'</div><div>'+(o.order_type==='delivery'?'משלוח':'איסוף')+' | '+o.created_at+'</div></div>';
-        h += '<div class="b-thickline"></div>';
-        h += bonNotes(o);
-        h += renderItems(items, false);
+        var sitems = (o.items_by_station && o.items_by_station[station]) || [];
+        h += '<div class="b-c"><div class="b-type" style="font-size:16px">'+station+'</div><div class="b-num">#'+o.order_number+'</div></div>';
+        h += '<div class="b-tl"></div>';
+        if (o.customer_notes) h += '<div class="b-notes">⚠ '+o.customer_notes+'</div>';
+        h += renderItems(sitems, false);
         h += '<div class="b-foot">#'+o.order_number+' | '+station+' | '+t+'</div>';
     }
     return h;
 }
 
+function printViaIframe(html, callback) {
+    var frame = document.getElementById('bonPrintFrame');
+    var doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html dir="rtl"><head><style>'+BON_CSS+'</style></head><body>'+html+'</body></html>');
+    doc.close();
+    setTimeout(function() {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+        setTimeout(function() { if (callback) callback(); }, 800);
+    }, 150);
+}
+
 function printBon(orderId, type, station) {
     var o = cachedOrders[orderId];
     if (!o) return;
-    var html = '<div class="bon-single-page">' + buildBonHtml(o, type, station) + '</div>';
-    document.getElementById('bonPrint').innerHTML = html;
-    document.getElementById('bonPreviewContent').innerHTML = html;
-    document.getElementById('bonPreviewScreen').classList.add('show');
+    var html = buildBonHtml(o, type, station);
+    pendingPrintBons = [{html: html, label: type === 'station' ? station : type}];
+    showPreview();
     closeModal('printModal');
 }
+
+var pendingPrintBons = [];
 
 function printAll(orderId) {
     var o = cachedOrders[orderId];
     if (!o) return;
-    var pages = [];
+    pendingPrintBons = [];
 
     for (var c = 0; c < PRINT_SETTINGS.checker_copies; c++) {
-        pages.push(buildBonHtml(o, 'checker'));
+        pendingPrintBons.push({html: buildBonHtml(o, 'checker'), label: 'צ׳קר'});
     }
-
     for (var p = 0; p < PRINT_SETTINGS.payment_copies; p++) {
-        pages.push(buildBonHtml(o, 'payment'));
+        pendingPrintBons.push({html: buildBonHtml(o, 'payment'), label: 'תשלום'});
     }
-
     if (PRINT_SETTINGS.station_bons && o.items_by_station) {
         for (var st in o.items_by_station) {
-            pages.push(buildBonHtml(o, 'station', st));
+            pendingPrintBons.push({html: buildBonHtml(o, 'station', st), label: st});
         }
     }
-
-    var fullHtml = pages.map(function(pg, i) {
-        var cut = (i < pages.length - 1) ? '<div class="bon-cut-line" style="border-top:2px dashed #999;margin:16px 0;text-align:center;color:#999;font-size:11px;padding-top:4px;">✂ חיתוך</div>' : '';
-        return '<div class="bon-single-page">' + pg + cut + '</div>';
-    }).join('');
-
-    document.getElementById('bonPrint').innerHTML = fullHtml;
-    document.getElementById('bonPreviewContent').innerHTML = fullHtml;
-    document.getElementById('bonPreviewScreen').classList.add('show');
+    showPreview();
     closeModal('printModal');
 }
 
-function doPrint() {
-    closeBonPreview();
-    setTimeout(function() { window.print(); }, 200);
+function showPreview() {
+    var container = document.getElementById('bonPreviewContent');
+    var previewHtml = '';
+    pendingPrintBons.forEach(function(bon, i) {
+        previewHtml += '<div class="bon-preview-card"><div class="bon-label">'+(i+1)+'/'+pendingPrintBons.length+' — '+bon.label+'</div>'+bon.html+'</div>';
+    });
+    container.innerHTML = previewHtml;
+    document.getElementById('bonPreviewScreen').classList.add('show');
 }
+
+function doPrintAll() {
+    closeBonPreview();
+    var idx = 0;
+    function next() {
+        if (idx >= pendingPrintBons.length) return;
+        printViaIframe(pendingPrintBons[idx].html, function() {
+            idx++;
+            next();
+        });
+    }
+    setTimeout(next, 300);
+}
+
 function closeBonPreview() {
     document.getElementById('bonPreviewScreen').classList.remove('show');
 }

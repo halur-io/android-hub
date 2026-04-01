@@ -324,26 +324,41 @@
 }
 .bon-preview-screen.show { display: flex; flex-direction: column; align-items: center; }
 .bon-preview-screen .bon-close-bar {
-    width: 100%; max-width: 300px;
+    width: 100%; max-width: 320px;
     display: flex; gap: 8px; margin-bottom: 12px; flex-shrink: 0;
 }
 .bon-preview-screen .bon-close-bar button {
-    flex: 1; padding: 12px; border: none; border-radius: 8px;
-    font-size: 14px; font-weight: 700; cursor: pointer;
+    flex: 1; padding: 14px; border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
 }
 .bon-preview-screen .bon-scroll {
-    flex: 1; overflow-y: auto; width: 100%; max-width: 300px;
+    flex: 1; overflow-y: auto; width: 100%; max-width: 320px;
 }
 .bon-preview-card {
-    background: #fff; padding: 10px; border-radius: 6px;
-    margin-bottom: 12px; direction: rtl; text-align: right;
-    font-family: Arial, sans-serif; font-size: 13px; font-weight: 700;
-    line-height: 1.3; color: #000;
+    background: #fff; padding: 14px; border-radius: 8px;
+    margin-bottom: 14px; direction: rtl; text-align: right;
+    font-family: 'Courier New', Courier, monospace; font-size: 11pt; font-weight: 700;
+    line-height: 1.4; color: #000;
 }
 .bon-preview-card .bon-label {
-    background: var(--ops-accent); color: #fff; font-size: 11px;
-    padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px;
+    font-family: Arial, sans-serif;
+    background: var(--ops-accent); color: #fff; font-size: 12px;
+    padding: 3px 10px; border-radius: 4px; display: inline-block; margin-bottom: 8px;
 }
+.bon-preview-card .pbon-head { text-align:center; border-bottom:3px solid #000; padding-bottom:6px; margin-bottom:6px; }
+.bon-preview-card .pbon-num { font-size:18pt; font-weight:900; }
+.bon-preview-card .pbon-sub { font-size:10pt; font-weight:700; margin-top:2px; }
+.bon-preview-card .pbon-cust { margin-bottom:6px; padding-bottom:5px; border-bottom:2px dashed #000; }
+.bon-preview-card .pbon-cname { font-size:12pt; font-weight:900; }
+.bon-preview-card .pbon-cinfo { font-size:10pt; font-weight:700; }
+.bon-preview-card .pbon-item { display:flex; justify-content:space-between; font-size:12pt; font-weight:900; padding:3px 0; border-bottom:1px solid #ccc; }
+.bon-preview-card .pbon-item:last-child { border-bottom:none; }
+.bon-preview-card .pbon-note { font-size:9pt; font-weight:700; padding-right:16px; }
+.bon-preview-card .pbon-notebox { border:2px solid #000; padding:4px 6px; margin:4px 0 6px; font-size:10pt; font-weight:800; }
+.bon-preview-card .pbon-total { display:flex; justify-content:space-between; border-top:3px solid #000; padding-top:6px; margin-top:4px; }
+.bon-preview-card .pbon-total-lbl { font-size:11pt; font-weight:700; }
+.bon-preview-card .pbon-total-val { font-size:16pt; font-weight:900; }
+.bon-preview-card .pbon-footer { text-align:center; font-size:9pt; font-weight:700; margin-top:6px; border-top:2px dashed #000; padding-top:5px; }
 </style>
 {% endblock %}
 
@@ -485,7 +500,6 @@
     </div>
     <div class="bon-scroll" id="bonPreviewContent"></div>
 </div>
-<iframe id="bonPrintFrame" style="position:fixed;top:-9999px;left:-9999px;width:80mm;height:0;border:none;"></iframe>
 
 {% endblock %}
 
@@ -729,25 +743,28 @@ function savePrintSettings() {
     localStorage.setItem('ops_print_settings', JSON.stringify(PRINT_SETTINGS));
 }
 
-var BON_CSS = '\
-html,body{margin:0;padding:0;width:80mm;}\
-*{box-sizing:border-box;}\
-body{direction:rtl;text-align:right;font-family:Arial,sans-serif;font-size:13px;font-weight:700;line-height:1.3;color:#000;padding:2mm;}\
-.b-c{text-align:center}\
-.b-logo{font-size:18px;font-weight:900;letter-spacing:2px}\
-.b-type{font-size:13px;font-weight:900;background:#000;color:#fff;padding:1px 8px;display:inline-block;margin:2px 0}\
-.b-num{font-size:22px;font-weight:900;line-height:1.1}\
-.b-ln{border-top:1px solid #000;margin:3px 0}\
-.b-dl{border-top:2px dashed #000;margin:3px 0}\
-.b-tl{border-top:3px solid #000;margin:3px 0}\
-.b-info{font-size:12px;font-weight:700;margin:0;line-height:1.2}\
-.b-notes{border:2px solid #000;padding:2px 4px;font-size:13px;font-weight:900;margin:3px 0}\
-.b-item{display:flex;justify-content:space-between;font-size:13px;font-weight:800;padding:1px 0;border-bottom:1px dotted #999}\
-.b-item:last-child{border-bottom:none}\
-.b-qty{font-weight:900}\
-.b-opt{padding-right:12px;font-size:11px;font-weight:600;color:#333}\
-.b-total{display:flex;justify-content:space-between;font-size:16px;font-weight:900;padding:2px 0}\
-.b-foot{text-align:center;font-size:10px;color:#666;margin-top:2px}\
+var BON_PRINT_CSS = '\
+@page{margin:6mm;size:80mm auto}\
+*{box-sizing:border-box;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}\
+html,body{margin:0;padding:0;width:100%}\
+body{direction:rtl;text-align:right;font-family:"Courier New",Courier,monospace;font-size:10pt;font-weight:700;line-height:1.4;color:#000}\
+.pbon-head{text-align:center;border-bottom:3px solid #000;padding-bottom:8px;margin-bottom:8px}\
+.pbon-num{font-size:18pt;font-weight:900;letter-spacing:1px}\
+.pbon-sub{font-size:10pt;font-weight:700;margin-top:3px}\
+.pbon-badge{font-size:12pt;font-weight:900;background:#000;color:#fff!important;padding:2px 12px;display:inline-block;margin:4px 0}\
+.pbon-cust{margin-bottom:8px;padding-bottom:7px;border-bottom:2px dashed #000}\
+.pbon-cname{font-size:14pt;font-weight:900}\
+.pbon-cinfo{font-size:10pt;font-weight:700}\
+.pbon-items{margin-bottom:8px}\
+.pbon-item{display:flex;justify-content:space-between;font-size:13pt;font-weight:900;padding:4px 0;border-bottom:1px solid #000}\
+.pbon-item:last-child{border-bottom:none}\
+.pbon-note{font-size:9pt;font-weight:700;padding-right:20px;display:block}\
+.pbon-notebox{border:2px solid #000;padding:5px 8px;margin:4px 0 8px;font-size:10pt;font-weight:700}\
+.pbon-total{display:flex;justify-content:space-between;align-items:baseline;border-top:3px solid #000;padding-top:7px;margin-top:4px}\
+.pbon-total-lbl{font-size:11pt;font-weight:700}\
+.pbon-total-val{font-size:18pt;font-weight:900}\
+.pbon-footer{text-align:center;font-size:9pt;font-weight:700;margin-top:10px;border-top:2px dashed #000;padding-top:7px}\
+.page-break{page-break-after:always}\
 ';
 
 function renderItems(items, showPrice) {
@@ -756,11 +773,11 @@ function renderItems(items, showPrice) {
         var name = it.name_he || it.item_name_he || it.name || '';
         var qty = it.qty || it.quantity || 1;
         var price = it.price || it.unit_price || 0;
-        h += '<div class="b-item"><span><span class="b-qty">'+qty+'×</span> '+name+'</span>';
+        h += '<div class="pbon-item"><span>'+qty+'× '+name+'</span>';
         if (showPrice) h += '<span>₪'+(qty*price).toFixed(0)+'</span>';
         h += '</div>';
         if (it.options && it.options.length) {
-            it.options.forEach(function(op) { h += '<div class="b-opt">+ '+(op.choice_name_he||op.name||op)+'</div>'; });
+            it.options.forEach(function(op) { h += '<div class="pbon-note">+ '+(op.choice_name_he||op.name||op)+'</div>'; });
         }
     });
     return h;
@@ -769,66 +786,70 @@ function renderItems(items, showPrice) {
 function buildBonHtml(o, type, station) {
     var now = new Date();
     var t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-    var typeHe = o.order_type === 'delivery' ? 'משלוח' : 'איסוף';
+    var typeHe = o.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי';
     var h = '';
 
     if (type === 'checker') {
-        h += '<div class="b-c"><div class="b-logo">SUMO</div><div class="b-type">'+typeHe+'</div><div class="b-num">#'+o.order_number+'</div></div>';
-        h += '<div class="b-tl"></div>';
-        if (o.customer_notes) h += '<div class="b-notes">⚠ '+o.customer_notes+'</div>';
-        if (o.delivery_notes) h += '<div class="b-notes">🚗 '+o.delivery_notes+'</div>';
-        h += '<div class="b-info">'+o.customer_name+' | '+o.customer_phone+'</div>';
-        if (o.delivery_address) h += '<div class="b-info">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>';
-        h += '<div class="b-dl"></div>';
-        h += renderItems(o.items, false);
-        h += '<div class="b-tl"></div>';
-        h += '<div class="b-total"><span>סה"כ</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
-        h += '<div class="b-foot">צ׳קר | '+t+'</div>';
+        h += '<div class="pbon-head"><div style="font-size:14pt;font-weight:900;letter-spacing:2px">SUMO</div>';
+        h += '<div class="pbon-badge">'+typeHe+'</div>';
+        h += '<div class="pbon-num">#'+o.order_number+'</div>';
+        h += '<div class="pbon-sub">'+o.created_at+'</div></div>';
+        if (o.customer_notes) h += '<div class="pbon-notebox">⚠ '+o.customer_notes+'</div>';
+        if (o.delivery_notes) h += '<div class="pbon-notebox">🚗 '+o.delivery_notes+'</div>';
+        h += '<div class="pbon-cust">';
+        h += '<div class="pbon-cname">'+o.customer_name+'</div>';
+        h += '<div class="pbon-cinfo">'+o.customer_phone+'</div>';
+        if (o.delivery_address) h += '<div class="pbon-cinfo">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>';
+        h += '</div>';
+        h += '<div class="pbon-items">'+renderItems(o.items, false)+'</div>';
+        h += '<div class="pbon-total"><span class="pbon-total-lbl">סה"כ</span><span class="pbon-total-val">₪'+o.total_amount.toFixed(0)+'</span></div>';
+        h += '<div class="pbon-footer">צ׳קר | '+t+'</div>';
 
     } else if (type === 'payment') {
-        h += '<div class="b-c"><div class="b-logo">SUMO</div><div class="b-type">בון תשלום</div><div class="b-num">#'+o.order_number+'</div></div>';
-        h += '<div class="b-tl"></div>';
-        h += '<div class="b-info">'+o.customer_name+'</div>';
-        h += '<div class="b-dl"></div>';
-        h += renderItems(o.items, true);
-        h += '<div class="b-ln"></div>';
-        h += '<div class="b-item"><span>סכום</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
-        if (o.delivery_fee > 0) h += '<div class="b-item"><span>משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
-        if (o.discount_amount > 0) h += '<div class="b-item"><span>הנחה</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
-        h += '<div class="b-tl"></div>';
-        h += '<div class="b-total"><span>לתשלום</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
-        h += '<div class="b-c" style="font-size:11px">תשלום: '+(o.payment_method||'—')+'</div>';
-        h += '<div class="b-foot">'+t+'</div>';
+        h += '<div class="pbon-head"><div style="font-size:14pt;font-weight:900;letter-spacing:2px">SUMO</div>';
+        h += '<div class="pbon-badge">בון תשלום</div>';
+        h += '<div class="pbon-num">#'+o.order_number+'</div>';
+        h += '<div class="pbon-sub">'+typeHe+' | '+o.created_at+'</div></div>';
+        h += '<div class="pbon-cust"><div class="pbon-cname">'+o.customer_name+'</div></div>';
+        h += '<div class="pbon-items">'+renderItems(o.items, true)+'</div>';
+        h += '<div style="border-top:1px dashed #000;padding-top:4px;margin-top:4px">';
+        h += '<div class="pbon-item" style="font-size:10pt"><span>סכום</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
+        if (o.delivery_fee > 0) h += '<div class="pbon-item" style="font-size:10pt"><span>משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
+        if (o.discount_amount > 0) h += '<div class="pbon-item" style="font-size:10pt"><span>הנחה</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
+        h += '</div>';
+        h += '<div class="pbon-total"><span class="pbon-total-lbl">לתשלום</span><span class="pbon-total-val">₪'+o.total_amount.toFixed(0)+'</span></div>';
+        h += '<div style="text-align:center;font-size:9pt;margin-top:4px">תשלום: '+(o.payment_method||'—')+'</div>';
+        h += '<div class="pbon-footer">'+t+'</div>';
 
     } else if (type === 'station' && station) {
         var sitems = (o.items_by_station && o.items_by_station[station]) || [];
-        h += '<div class="b-c"><div class="b-type" style="font-size:16px">'+station+'</div><div class="b-num">#'+o.order_number+'</div></div>';
-        h += '<div class="b-tl"></div>';
-        if (o.customer_notes) h += '<div class="b-notes">⚠ '+o.customer_notes+'</div>';
-        h += renderItems(sitems, false);
-        h += '<div class="b-foot">#'+o.order_number+' | '+station+' | '+t+'</div>';
+        h += '<div class="pbon-head"><div class="pbon-badge" style="font-size:14pt">'+station+'</div>';
+        h += '<div class="pbon-num">#'+o.order_number+'</div>';
+        h += '<div class="pbon-sub">'+typeHe+' | '+o.created_at+'</div></div>';
+        if (o.customer_notes) h += '<div class="pbon-notebox">⚠ '+o.customer_notes+'</div>';
+        h += '<div class="pbon-items">'+renderItems(sitems, false)+'</div>';
+        h += '<div class="pbon-footer">#'+o.order_number+' | '+station+' | '+t+'</div>';
     }
     return h;
 }
 
-function printViaIframe(html, callback) {
-    var frame = document.getElementById('bonPrintFrame');
-    var doc = frame.contentDocument || frame.contentWindow.document;
-    doc.open();
-    doc.write('<!DOCTYPE html><html dir="rtl"><head><style>'+BON_CSS+'</style></head><body>'+html+'</body></html>');
-    doc.close();
+function printViaWindow(fullHtml) {
+    var w = window.open('', '_blank', 'width=320,height=600');
+    if (!w) { alert('אנא אפשר חלונות קופצים להדפסה'); return; }
+    w.document.write(fullHtml);
+    w.document.close();
     setTimeout(function() {
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-        setTimeout(function() { if (callback) callback(); }, 800);
-    }, 150);
+        w.focus();
+        w.print();
+        w.onafterprint = function() { w.close(); };
+        setTimeout(function() { try { w.close(); } catch(e){} }, 8000);
+    }, 300);
 }
 
 function printBon(orderId, type, station) {
     var o = cachedOrders[orderId];
     if (!o) return;
-    var html = buildBonHtml(o, type, station);
-    pendingPrintBons = [{html: html, label: type === 'station' ? station : type}];
+    pendingPrintBons = [{html: buildBonHtml(o, type, station), label: type === 'station' ? station : (type === 'checker' ? 'צ׳קר' : 'תשלום')}];
     showPreview();
     closeModal('printModal');
 }
@@ -839,7 +860,6 @@ function printAll(orderId) {
     var o = cachedOrders[orderId];
     if (!o) return;
     pendingPrintBons = [];
-
     for (var c = 0; c < PRINT_SETTINGS.checker_copies; c++) {
         pendingPrintBons.push({html: buildBonHtml(o, 'checker'), label: 'צ׳קר'});
     }
@@ -857,25 +877,23 @@ function printAll(orderId) {
 
 function showPreview() {
     var container = document.getElementById('bonPreviewContent');
-    var previewHtml = '';
+    var html = '';
     pendingPrintBons.forEach(function(bon, i) {
-        previewHtml += '<div class="bon-preview-card"><div class="bon-label">'+(i+1)+'/'+pendingPrintBons.length+' — '+bon.label+'</div>'+bon.html+'</div>';
+        html += '<div class="bon-preview-card"><div class="bon-label">'+(i+1)+'/'+pendingPrintBons.length+' '+bon.label+'</div>'+bon.html+'</div>';
     });
-    container.innerHTML = previewHtml;
+    container.innerHTML = html;
     document.getElementById('bonPreviewScreen').classList.add('show');
 }
 
 function doPrintAll() {
     closeBonPreview();
-    var idx = 0;
-    function next() {
-        if (idx >= pendingPrintBons.length) return;
-        printViaIframe(pendingPrintBons[idx].html, function() {
-            idx++;
-            next();
-        });
-    }
-    setTimeout(next, 300);
+    var allBonsHtml = '';
+    pendingPrintBons.forEach(function(bon, i) {
+        if (i > 0) allBonsHtml += '<div class="page-break"></div>';
+        allBonsHtml += bon.html;
+    });
+    var fullDoc = '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><style>' + BON_PRINT_CSS + '</style></head><body>' + allBonsHtml + '</body></html>';
+    printViaWindow(fullDoc);
 }
 
 function closeBonPreview() {

@@ -264,19 +264,19 @@ def home():
     )
 
 
-ORDER_STATUS_FLOW = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'pickedup', 'cancelled']
-ORDER_STATUS_LABELS = {
-    'pending': 'ממתין',
-    'confirmed': 'אושר',
+OPS_STATUS_FLOW = ['pending', 'preparing', 'ready', 'delivered', 'cancelled']
+OPS_STATUS_LABELS = {
+    'pending': 'חדשה',
+    'confirmed': 'חדשה',
     'preparing': 'בהכנה',
-    'ready': 'מוכן',
-    'delivered': 'נמסר',
-    'pickedup': 'נאסף',
-    'cancelled': 'בוטל',
+    'ready': 'מוכנה',
+    'delivered': 'נמסרה',
+    'pickedup': 'נמסרה',
+    'cancelled': 'בוטלה',
 }
-ORDER_STATUS_COLORS = {
-    'pending': 'warning',
-    'confirmed': 'info',
+OPS_STATUS_COLORS = {
+    'pending': 'orange',
+    'confirmed': 'orange',
     'preparing': 'accent',
     'ready': 'green',
     'delivered': 'dim',
@@ -298,8 +298,16 @@ def orders():
 
     if status_filter == 'active':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']))
-    elif status_filter in ORDER_STATUS_FLOW:
-        query = query.filter_by(status=status_filter)
+    elif status_filter == 'done':
+        query = query.filter(FoodOrder.status.in_(['delivered', 'pickedup']))
+    elif status_filter == 'cancelled':
+        query = query.filter_by(status='cancelled')
+    elif status_filter == 'new':
+        query = query.filter(FoodOrder.status.in_(['pending', 'confirmed']))
+    elif status_filter == 'preparing':
+        query = query.filter_by(status='preparing')
+    elif status_filter == 'ready':
+        query = query.filter_by(status='ready')
 
     order_list = query.order_by(FoodOrder.created_at.desc()).limit(100).all()
 
@@ -309,19 +317,25 @@ def orders():
     if device_branch_id:
         today_q = today_q.filter_by(branch_id=device_branch_id)
     today_orders = today_q.all()
-    counts = {}
-    for s in ORDER_STATUS_FLOW:
-        counts[s] = sum(1 for o in today_orders if o.status == s)
-    counts['active'] = counts.get('pending', 0) + counts.get('confirmed', 0) + counts.get('preparing', 0) + counts.get('ready', 0)
+    counts = {
+        'new': sum(1 for o in today_orders if o.status in ('pending', 'confirmed')),
+        'preparing': sum(1 for o in today_orders if o.status == 'preparing'),
+        'ready': sum(1 for o in today_orders if o.status == 'ready'),
+        'done': sum(1 for o in today_orders if o.status in ('delivered', 'pickedup')),
+        'cancelled': sum(1 for o in today_orders if o.status == 'cancelled'),
+    }
+    counts['active'] = counts['new'] + counts['preparing'] + counts['ready']
+
+    categories = {c.id: c.name_he for c in MenuCategory.query.all()}
 
     return render_template('ops/orders.html',
         active_tab='orders',
         orders=order_list,
         status_filter=status_filter,
         counts=counts,
-        status_labels=ORDER_STATUS_LABELS,
-        status_colors=ORDER_STATUS_COLORS,
-        status_flow=ORDER_STATUS_FLOW,
+        status_labels=OPS_STATUS_LABELS,
+        status_colors=OPS_STATUS_COLORS,
+        categories=categories,
     )
 
 
@@ -330,7 +344,9 @@ def orders():
 def update_order_status(order_id):
     data = request.get_json(force=True)
     new_status = data.get('status')
-    if new_status not in ORDER_STATUS_FLOW:
+    prep_minutes = data.get('prep_minutes', 0)
+    valid = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'pickedup', 'cancelled']
+    if new_status not in valid:
         return jsonify({'ok': False, 'error': 'סטטוס לא תקין'})
 
     order = FoodOrder.query.get(order_id)
@@ -346,8 +362,16 @@ def update_order_status(order_id):
     now = datetime.utcnow()
     if new_status == 'confirmed' and not order.confirmed_at:
         order.confirmed_at = now
-    elif new_status == 'preparing' and not order.preparing_at:
+    elif new_status == 'preparing':
         order.preparing_at = now
+        if not order.confirmed_at:
+            order.confirmed_at = now
+        try:
+            mins = int(prep_minutes)
+            if mins > 0:
+                order.estimated_ready_at = now + timedelta(minutes=mins)
+        except (ValueError, TypeError):
+            pass
     elif new_status == 'ready' and not order.ready_at:
         order.ready_at = now
     elif new_status in ('delivered', 'pickedup') and not order.completed_at:
@@ -372,9 +396,9 @@ def update_order_status(order_id):
     db.session.commit()
     return jsonify({
         'ok': True,
-        'message': f'הזמנה #{order.order_number} → {ORDER_STATUS_LABELS.get(new_status, new_status)}',
+        'message': f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}',
         'new_status': new_status,
-        'label': ORDER_STATUS_LABELS.get(new_status, new_status),
+        'label': OPS_STATUS_LABELS.get(new_status, new_status),
     })
 
 
@@ -385,13 +409,33 @@ def get_order_detail(order_id):
     if not order:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
     items = order.get_items()
+    categories = {c.id: c.name_he for c in MenuCategory.query.all()}
+    for item in items:
+        cat_id = item.get('category_id')
+        if cat_id and cat_id in categories:
+            item['category_name'] = categories[cat_id]
+        elif not item.get('category_name'):
+            menu_item_id = item.get('menu_item_id') or item.get('item_id')
+            if menu_item_id:
+                mi = MenuItem.query.get(menu_item_id)
+                if mi and mi.category:
+                    item['category_name'] = mi.category.name_he
+                    item['category_id'] = mi.category_id
+
+    by_category = {}
+    for item in items:
+        cat = item.get('category_name', 'כללי')
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(item)
+
     return jsonify({
         'ok': True,
         'order': {
             'id': order.id,
             'order_number': order.order_number,
             'status': order.status,
-            'status_label': ORDER_STATUS_LABELS.get(order.status, order.status),
+            'status_label': OPS_STATUS_LABELS.get(order.status, order.status),
             'customer_name': order.customer_name,
             'customer_phone': order.customer_phone,
             'order_type': order.order_type,
@@ -410,7 +454,9 @@ def get_order_detail(order_id):
             'payment_status': order.payment_status or '',
             'created_at': order.created_at.strftime('%H:%M') if order.created_at else '',
             'items': items,
+            'items_by_category': by_category,
             'branch_name': order.branch_name or '',
+            'estimated_ready_at': order.estimated_ready_at.strftime('%H:%M') if order.estimated_ready_at else '',
         }
     })
 

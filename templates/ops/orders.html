@@ -314,18 +314,115 @@
 
 .bon-preview { display: none; }
 @media print {
-    body * { visibility: hidden; }
-    .bon-preview, .bon-preview * { visibility: visible; }
+    * { margin: 0; padding: 0; }
+    body, body * { visibility: hidden !important; }
+    .bon-preview, .bon-preview * { visibility: visible !important; }
     .bon-preview {
-        display: block; position: fixed; top: 0; left: 0; width: 80mm;
-        background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 12px; padding: 8px; direction: rtl;
+        display: block !important;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        width: 80mm;
+        max-width: 100%;
+        background: #fff;
+        color: #000;
+        font-family: 'Arial', 'Helvetica', sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 6mm;
+        direction: rtl;
+        line-height: 1.5;
+        z-index: 99999;
     }
-    .bon-preview .bon-title { font-size: 16px; font-weight: 900; text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 6px; }
-    .bon-preview .bon-meta { font-size: 11px; margin-bottom: 4px; }
-    .bon-preview .bon-items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 4px 0; margin: 4px 0; }
-    .bon-preview .bon-item { display: flex; justify-content: space-between; padding: 2px 0; }
-    .bon-preview .bon-total { font-size: 14px; font-weight: 900; text-align: center; margin-top: 6px; }
-    .bon-preview .bon-footer { text-align: center; font-size: 10px; margin-top: 8px; border-top: 1px dashed #000; padding-top: 4px; }
+    .bon-preview .bon-header {
+        text-align: center;
+        margin-bottom: 4mm;
+        padding-bottom: 3mm;
+        border-bottom: 3px double #000;
+    }
+    .bon-preview .bon-logo {
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        margin-bottom: 2px;
+    }
+    .bon-preview .bon-type {
+        font-size: 18px;
+        font-weight: 900;
+        background: #000;
+        color: #fff;
+        padding: 3px 12px;
+        display: inline-block;
+        margin: 4px 0;
+    }
+    .bon-preview .bon-order-num {
+        font-size: 28px;
+        font-weight: 900;
+        margin: 4px 0;
+    }
+    .bon-preview .bon-section {
+        padding: 3mm 0;
+        border-bottom: 1px dashed #000;
+    }
+    .bon-preview .bon-section:last-child { border-bottom: none; }
+    .bon-preview .bon-section-title {
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 2mm;
+        color: #000;
+    }
+    .bon-preview .bon-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1.5mm 0;
+        font-size: 14px;
+        font-weight: 700;
+    }
+    .bon-preview .bon-row.item-row {
+        font-size: 15px;
+        font-weight: 800;
+        padding: 2mm 0;
+        border-bottom: 1px dotted #ccc;
+    }
+    .bon-preview .bon-row.item-row:last-child { border-bottom: none; }
+    .bon-preview .bon-qty {
+        font-weight: 900;
+        min-width: 30px;
+    }
+    .bon-preview .bon-option {
+        padding-right: 5mm;
+        font-size: 12px;
+        font-weight: 600;
+        color: #333;
+    }
+    .bon-preview .bon-total-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 20px;
+        font-weight: 900;
+        padding: 3mm 0 1mm;
+        border-top: 3px double #000;
+        margin-top: 2mm;
+    }
+    .bon-preview .bon-notes {
+        background: #f0f0f0;
+        padding: 2mm 3mm;
+        border: 2px solid #000;
+        font-size: 14px;
+        font-weight: 800;
+        margin-top: 2mm;
+    }
+    .bon-preview .bon-footer {
+        text-align: center;
+        font-size: 11px;
+        font-weight: 600;
+        margin-top: 3mm;
+        padding-top: 2mm;
+        border-top: 1px dashed #000;
+        color: #666;
+    }
 }
 </style>
 {% endblock %}
@@ -705,52 +802,103 @@ function printBon(orderId, type, station) {
     var now = new Date();
     var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
     var html = '';
-    if (type === 'checker') {
-        html = '<div class="bon-title">בון הזמנה</div>';
-        html += '<div class="bon-meta"><strong>#'+o.order_number+'</strong> | '+o.created_at+' | '+o.order_type_label+'</div>';
-        html += '<div class="bon-meta">'+o.customer_name+' | '+o.customer_phone+'</div>';
-        if (o.delivery_address) html += '<div class="bon-meta">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>';
-        html += '<div class="bon-items">';
-        (o.items||[]).forEach(function(item) {
-            var name = item.name_he || item.item_name_he || '';
-            var qty = item.qty || item.quantity || 1;
-            html += '<div class="bon-item"><span>'+qty+'× '+name+'</span></div>';
-            if (item.options && item.options.length) item.options.forEach(function(op) { html += '<div style="padding-right:12px;font-size:10px;">  • '+(op.choice_name_he||op.name||op)+'</div>'; });
-        });
-        html += '</div>';
-        if (o.customer_notes) html += '<div class="bon-meta" style="margin-top:4px;"><strong>הערות:</strong> '+o.customer_notes+'</div>';
-        html += '<div class="bon-total">סה"כ: ₪'+o.total_amount.toFixed(0)+'</div>';
-        html += '<div class="bon-footer">הודפס '+timeStr+'</div>';
-    } else if (type === 'payment') {
-        html = '<div class="bon-title">בון תשלום</div>';
-        html += '<div class="bon-meta"><strong>#'+o.order_number+'</strong> | '+o.created_at+'</div>';
-        html += '<div class="bon-meta">'+o.customer_name+'</div>';
-        html += '<div class="bon-items">';
-        (o.items||[]).forEach(function(item) {
-            var name = item.name_he || item.item_name_he || '';
+    var orderTypeLabel = o.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי';
+
+    function renderItems(itemsList, showPrice) {
+        var h = '';
+        (itemsList||[]).forEach(function(item) {
+            var name = item.name_he || item.item_name_he || item.name || '';
             var qty = item.qty || item.quantity || 1;
             var price = item.price || item.unit_price || 0;
-            html += '<div class="bon-item"><span>'+qty+'× '+name+'</span><span>₪'+(qty*price).toFixed(0)+'</span></div>';
+            h += '<div class="bon-row item-row">';
+            h += '<span><span class="bon-qty">'+qty+'×</span> '+name+'</span>';
+            if (showPrice) h += '<span>₪'+(qty*price).toFixed(0)+'</span>';
+            h += '</div>';
+            if (item.options && item.options.length) {
+                item.options.forEach(function(op) {
+                    h += '<div class="bon-option">+ '+(op.choice_name_he||op.name||op)+'</div>';
+                });
+            }
         });
+        return h;
+    }
+
+    if (type === 'checker') {
+        html = '<div class="bon-header">';
+        html += '<div class="bon-logo">SUMO</div>';
+        html += '<div class="bon-type">'+orderTypeLabel+'</div>';
+        html += '<div class="bon-order-num">#'+o.order_number+'</div>';
+        html += '<div>'+o.created_at+'</div>';
         html += '</div>';
-        if (o.delivery_fee > 0) html += '<div class="bon-item"><span>דמי משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
-        if (o.discount_amount > 0) html += '<div class="bon-item"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
-        html += '<div class="bon-total">סה"כ לתשלום: ₪'+o.total_amount.toFixed(0)+'</div>';
-        html += '<div class="bon-meta" style="text-align:center;margin-top:4px;">אמצעי: '+(o.payment_method||'—')+'</div>';
-        html += '<div class="bon-footer">הודפס '+timeStr+'</div>';
+
+        html += '<div class="bon-section">';
+        html += '<div class="bon-section-title">פרטי לקוח</div>';
+        html += '<div class="bon-row"><span>'+o.customer_name+'</span></div>';
+        html += '<div class="bon-row"><span>'+o.customer_phone+'</span></div>';
+        if (o.delivery_address) {
+            html += '<div class="bon-row"><span>'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</span></div>';
+        }
+        if (o.delivery_notes) {
+            html += '<div class="bon-row"><span>'+o.delivery_notes+'</span></div>';
+        }
+        html += '</div>';
+
+        html += '<div class="bon-section">';
+        html += '<div class="bon-section-title">פריטים</div>';
+        html += renderItems(o.items, false);
+        html += '</div>';
+
+        if (o.customer_notes) {
+            html += '<div class="bon-notes">⚠ הערות: '+o.customer_notes+'</div>';
+        }
+
+        html += '<div class="bon-total-row"><span>סה"כ</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
+        html += '<div class="bon-footer">הודפס '+timeStr+' | SUMO</div>';
+
+    } else if (type === 'payment') {
+        html = '<div class="bon-header">';
+        html += '<div class="bon-logo">SUMO</div>';
+        html += '<div class="bon-type">בון תשלום</div>';
+        html += '<div class="bon-order-num">#'+o.order_number+'</div>';
+        html += '<div>'+o.created_at+' | '+orderTypeLabel+'</div>';
+        html += '</div>';
+
+        html += '<div class="bon-section">';
+        html += '<div class="bon-row"><span>'+o.customer_name+'</span></div>';
+        html += '</div>';
+
+        html += '<div class="bon-section">';
+        html += '<div class="bon-section-title">פירוט</div>';
+        html += renderItems(o.items, true);
+        html += '</div>';
+
+        html += '<div class="bon-section">';
+        html += '<div class="bon-row"><span>סכום פריטים</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
+        if (o.delivery_fee > 0) html += '<div class="bon-row"><span>דמי משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
+        if (o.discount_amount > 0) html += '<div class="bon-row"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
+        html += '</div>';
+
+        html += '<div class="bon-total-row"><span>סה"כ לתשלום</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
+        html += '<div class="bon-row" style="justify-content:center;font-size:13px;"><span>אמצעי תשלום: '+(o.payment_method||'—')+'</span></div>';
+        html += '<div class="bon-footer">הודפס '+timeStr+' | SUMO</div>';
+
     } else if (type === 'station' && station) {
         var stationItems = (o.items_by_station && o.items_by_station[station]) || [];
-        html = '<div class="bon-title">'+station+'</div>';
-        html += '<div class="bon-meta"><strong>#'+o.order_number+'</strong> | '+o.created_at+'</div>';
-        html += '<div class="bon-items">';
-        stationItems.forEach(function(item) {
-            var name = item.name_he || item.item_name_he || '';
-            var qty = item.qty || item.quantity || 1;
-            html += '<div class="bon-item"><span><strong>'+qty+'×</strong> '+name+'</span></div>';
-            if (item.options && item.options.length) item.options.forEach(function(op) { html += '<div style="padding-right:12px;font-size:10px;">  • '+(op.choice_name_he||op.name||op)+'</div>'; });
-        });
+
+        html = '<div class="bon-header">';
+        html += '<div class="bon-type">'+station+'</div>';
+        html += '<div class="bon-order-num">#'+o.order_number+'</div>';
+        html += '<div>'+o.created_at+' | '+orderTypeLabel+'</div>';
         html += '</div>';
-        if (o.customer_notes) html += '<div class="bon-meta"><strong>הערות:</strong> '+o.customer_notes+'</div>';
+
+        html += '<div class="bon-section">';
+        html += renderItems(stationItems, false);
+        html += '</div>';
+
+        if (o.customer_notes) {
+            html += '<div class="bon-notes">⚠ הערות: '+o.customer_notes+'</div>';
+        }
+
         html += '<div class="bon-footer">#'+o.order_number+' | '+station+' | '+timeStr+'</div>';
     }
     el.innerHTML = html;

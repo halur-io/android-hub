@@ -326,21 +326,14 @@
 }
 .bon-preview-screen.show { display: block; }
 .bon-preview-screen .bon-preview-inner {
-    max-width: 320px;
+    max-width: 300px;
     margin: 0 auto;
     background: #fff;
-    padding: 20px;
+    padding: 12px;
     border-radius: 8px;
-    direction: rtl;
-    text-align: right;
-    font-family: 'Arial', 'Helvetica', sans-serif;
-    color: #000;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1.6;
 }
 .bon-preview-screen .bon-close-bar {
-    max-width: 320px;
+    max-width: 300px;
     margin: 0 auto 12px;
     display: flex;
     gap: 8px;
@@ -355,149 +348,58 @@
     cursor: pointer;
 }
 
-.bon-page-break { margin-bottom: 30px; border-bottom: 3px dashed #999; padding-bottom: 20px; }
-
 @media print {
-    * { margin: 0; padding: 0; }
-    body, body * { visibility: hidden !important; }
+    html, body { margin: 0 !important; padding: 0 !important; width: 80mm !important; }
+    body * { visibility: hidden !important; }
     .bon-preview, .bon-preview * { visibility: visible !important; }
     .bon-preview-screen { display: none !important; }
     .bon-preview {
         display: block !important;
+        visibility: visible !important;
         position: absolute;
         top: 0; right: 0; left: 0;
         width: 80mm;
+        margin: 0; padding: 0;
         background: #fff;
-        color: #000;
-        font-family: 'Arial', 'Helvetica', sans-serif;
-        font-size: 14px;
-        font-weight: 700;
-        padding: 4mm;
-        direction: rtl;
-        text-align: right;
-        line-height: 1.6;
         z-index: 99999;
     }
     .bon-single-page {
         page-break-after: always !important;
         break-after: page !important;
+        page-break-inside: avoid !important;
     }
     .bon-single-page:last-child {
         page-break-after: avoid !important;
         break-after: avoid !important;
     }
-    .bon-cut-line {
-        display: none !important;
-    }
+    .bon-cut-line { display: none !important; }
 }
 
-.bon-preview .bon-header,
-.bon-preview-inner .bon-header {
-    text-align: center;
-    margin-bottom: 4mm;
-    padding-bottom: 3mm;
-    border-bottom: 3px solid #000;
-}
-.bon-preview .bon-logo,
-.bon-preview-inner .bon-logo {
-    font-size: 24px;
-    font-weight: 900;
-    letter-spacing: 3px;
-}
-.bon-preview .bon-type,
-.bon-preview-inner .bon-type {
-    font-size: 16px;
-    font-weight: 900;
-    background: #000;
-    color: #fff;
-    padding: 4px 16px;
-    display: inline-block;
-    margin: 6px 0;
-}
-.bon-preview .bon-order-num,
-.bon-preview-inner .bon-order-num {
-    font-size: 30px;
-    font-weight: 900;
-    margin: 4px 0;
-}
-.bon-preview .bon-section,
-.bon-preview-inner .bon-section {
-    padding: 3mm 0;
-    border-bottom: 2px dashed #000;
-    text-align: right;
-}
-.bon-preview .bon-section:last-child,
-.bon-preview-inner .bon-section:last-child { border-bottom: none; }
-.bon-preview .bon-section-title,
-.bon-preview-inner .bon-section-title {
-    font-size: 13px;
-    font-weight: 900;
-    margin-bottom: 2mm;
-    color: #000;
-    text-decoration: underline;
-}
-.bon-preview .bon-row,
-.bon-preview-inner .bon-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 1.5mm 0;
-    font-size: 14px;
-    font-weight: 700;
+.bon-preview, .bon-preview-inner {
     direction: rtl;
-}
-.bon-preview .bon-row.item-row,
-.bon-preview-inner .bon-row.item-row {
-    font-size: 16px;
-    font-weight: 800;
-    padding: 2.5mm 0;
-    border-bottom: 1px solid #ccc;
-}
-.bon-preview .bon-row.item-row:last-child,
-.bon-preview-inner .bon-row.item-row:last-child { border-bottom: none; }
-.bon-preview .bon-qty,
-.bon-preview-inner .bon-qty {
-    font-weight: 900;
-    min-width: 30px;
-    display: inline-block;
-}
-.bon-preview .bon-option,
-.bon-preview-inner .bon-option {
-    padding-right: 20px;
+    text-align: right;
+    font-family: 'Arial', 'Helvetica', sans-serif;
+    color: #000;
     font-size: 13px;
-    font-weight: 600;
-    color: #444;
-    text-align: right;
+    font-weight: 700;
+    line-height: 1.4;
 }
-.bon-preview .bon-total-row,
-.bon-preview-inner .bon-total-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 22px;
-    font-weight: 900;
-    padding: 3mm 0 1mm;
-    border-top: 3px solid #000;
-    margin-top: 2mm;
-}
-.bon-preview .bon-notes,
-.bon-preview-inner .bon-notes {
-    padding: 8px 10px;
-    border: 2px solid #000;
-    font-size: 15px;
-    font-weight: 800;
-    margin-top: 2mm;
-    text-align: right;
-}
-.bon-preview .bon-footer,
-.bon-preview-inner .bon-footer {
-    text-align: center;
-    font-size: 12px;
-    font-weight: 600;
-    margin-top: 3mm;
-    padding-top: 2mm;
-    border-top: 2px dashed #000;
-    color: #555;
-}
+.bon-single-page { padding: 3mm; }
+.b-center { text-align: center; }
+.b-logo { font-size: 20px; font-weight: 900; letter-spacing: 2px; }
+.b-type { font-size: 14px; font-weight: 900; background: #000; color: #fff; padding: 2px 10px; display: inline-block; margin: 3px 0; }
+.b-num { font-size: 24px; font-weight: 900; }
+.b-line { border-top: 1px solid #000; margin: 4px 0; }
+.b-dline { border-top: 2px dashed #000; margin: 4px 0; }
+.b-thickline { border-top: 3px solid #000; margin: 4px 0; }
+.b-info { font-size: 13px; font-weight: 700; margin: 1px 0; }
+.b-notes { border: 2px solid #000; padding: 4px 6px; font-size: 14px; font-weight: 900; margin: 4px 0; }
+.b-item { display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; padding: 2px 0; border-bottom: 1px dotted #999; }
+.b-item:last-child { border-bottom: none; }
+.b-qty { font-weight: 900; }
+.b-opt { padding-right: 14px; font-size: 12px; font-weight: 600; color: #333; }
+.b-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 900; padding: 4px 0; }
+.b-foot { text-align: center; font-size: 11px; color: #666; margin-top: 4px; }
 </style>
 {% endblock %}
 
@@ -884,91 +786,85 @@ function savePrintSettings() {
     localStorage.setItem('ops_print_settings', JSON.stringify(PRINT_SETTINGS));
 }
 
-function renderItems(itemsList, showPrice) {
+function renderItems(items, showPrice) {
     var h = '';
-    (itemsList||[]).forEach(function(item) {
-        var name = item.name_he || item.item_name_he || item.name || '';
-        var qty = item.qty || item.quantity || 1;
-        var price = item.price || item.unit_price || 0;
-        h += '<div class="bon-row item-row">';
-        h += '<span><span class="bon-qty">'+qty+'×</span> '+name+'</span>';
+    (items||[]).forEach(function(it) {
+        var name = it.name_he || it.item_name_he || it.name || '';
+        var qty = it.qty || it.quantity || 1;
+        var price = it.price || it.unit_price || 0;
+        h += '<div class="b-item"><span><span class="b-qty">'+qty+'×</span> '+name+'</span>';
         if (showPrice) h += '<span>₪'+(qty*price).toFixed(0)+'</span>';
         h += '</div>';
-        if (item.options && item.options.length) {
-            item.options.forEach(function(op) {
-                h += '<div class="bon-option">+ '+(op.choice_name_he||op.name||op)+'</div>';
-            });
+        if (it.options && it.options.length) {
+            it.options.forEach(function(op) { h += '<div class="b-opt">+ '+(op.choice_name_he||op.name||op)+'</div>'; });
         }
     });
     return h;
 }
 
+function bonHeader(o, label) {
+    var typeLabel = o.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי';
+    return '<div class="b-center"><div class="b-logo">SUMO</div><div class="b-type">'+label+'</div><div class="b-num">#'+o.order_number+'</div><div>'+typeLabel+' | '+o.created_at+'</div></div><div class="b-thickline"></div>';
+}
+
+function bonNotes(o) {
+    if (!o.customer_notes && !o.delivery_notes) return '';
+    var h = '';
+    if (o.customer_notes) h += '<div class="b-notes">⚠ '+o.customer_notes+'</div>';
+    if (o.delivery_notes) h += '<div class="b-notes">🚗 '+o.delivery_notes+'</div>';
+    return h;
+}
+
+function bonCustomer(o) {
+    var h = '<div class="b-info">'+o.customer_name+' | '+o.customer_phone+'</div>';
+    if (o.delivery_address) h += '<div class="b-info">'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</div>';
+    return h;
+}
+
 function buildBonHtml(o, type, station) {
     var now = new Date();
-    var timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-    var orderTypeLabel = o.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי';
-    var html = '';
+    var t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+    var h = '';
 
     if (type === 'checker') {
-        html = '<div class="bon-header">';
-        html += '<div class="bon-logo">SUMO</div>';
-        html += '<div class="bon-type">'+orderTypeLabel+'</div>';
-        html += '<div class="bon-order-num">#'+o.order_number+'</div>';
-        html += '<div>'+o.created_at+'</div>';
-        html += '</div>';
-        html += '<div class="bon-section"><div class="bon-section-title">פרטי לקוח</div>';
-        html += '<div class="bon-row"><span>'+o.customer_name+'</span></div>';
-        html += '<div class="bon-row"><span>'+o.customer_phone+'</span></div>';
-        if (o.delivery_address) html += '<div class="bon-row"><span>'+o.delivery_address+(o.delivery_city?', '+o.delivery_city:'')+'</span></div>';
-        if (o.delivery_notes) html += '<div class="bon-row"><span>'+o.delivery_notes+'</span></div>';
-        html += '</div>';
-        html += '<div class="bon-section"><div class="bon-section-title">פריטים</div>';
-        html += renderItems(o.items, false);
-        html += '</div>';
-        if (o.customer_notes) html += '<div class="bon-notes">⚠ הערות: '+o.customer_notes+'</div>';
-        html += '<div class="bon-total-row"><span>סה"כ</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
-        html += '<div class="bon-footer">צ׳קר | הודפס '+timeStr+' | SUMO</div>';
+        h += bonHeader(o, o.order_type === 'delivery' ? 'משלוח' : 'איסוף');
+        h += bonNotes(o);
+        h += bonCustomer(o);
+        h += '<div class="b-dline"></div>';
+        h += renderItems(o.items, false);
+        h += '<div class="b-thickline"></div>';
+        h += '<div class="b-total"><span>סה"כ</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
+        h += '<div class="b-foot">צ׳קר | '+t+' | SUMO</div>';
 
     } else if (type === 'payment') {
-        html = '<div class="bon-header">';
-        html += '<div class="bon-logo">SUMO</div>';
-        html += '<div class="bon-type">בון תשלום</div>';
-        html += '<div class="bon-order-num">#'+o.order_number+'</div>';
-        html += '<div>'+o.created_at+' | '+orderTypeLabel+'</div>';
-        html += '</div>';
-        html += '<div class="bon-section"><div class="bon-row"><span>'+o.customer_name+'</span></div></div>';
-        html += '<div class="bon-section"><div class="bon-section-title">פירוט</div>';
-        html += renderItems(o.items, true);
-        html += '</div>';
-        html += '<div class="bon-section">';
-        html += '<div class="bon-row"><span>סכום פריטים</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
-        if (o.delivery_fee > 0) html += '<div class="bon-row"><span>דמי משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
-        if (o.discount_amount > 0) html += '<div class="bon-row"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
-        html += '</div>';
-        html += '<div class="bon-total-row"><span>סה"כ לתשלום</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
-        html += '<div class="bon-row" style="justify-content:center;font-size:13px;"><span>אמצעי תשלום: '+(o.payment_method||'—')+'</span></div>';
-        html += '<div class="bon-footer">הודפס '+timeStr+' | SUMO</div>';
+        h += bonHeader(o, 'בון תשלום');
+        h += '<div class="b-info">'+o.customer_name+'</div>';
+        h += '<div class="b-dline"></div>';
+        h += renderItems(o.items, true);
+        h += '<div class="b-line"></div>';
+        h += '<div class="b-item"><span>סכום פריטים</span><span>₪'+o.subtotal.toFixed(0)+'</span></div>';
+        if (o.delivery_fee > 0) h += '<div class="b-item"><span>דמי משלוח</span><span>₪'+o.delivery_fee.toFixed(0)+'</span></div>';
+        if (o.discount_amount > 0) h += '<div class="b-item"><span>הנחה'+(o.coupon_code?' ('+o.coupon_code+')':'')+'</span><span>-₪'+o.discount_amount.toFixed(0)+'</span></div>';
+        h += '<div class="b-thickline"></div>';
+        h += '<div class="b-total"><span>סה"כ לתשלום</span><span>₪'+o.total_amount.toFixed(0)+'</span></div>';
+        h += '<div class="b-center" style="font-size:12px;">תשלום: '+(o.payment_method||'—')+'</div>';
+        h += '<div class="b-foot">'+t+' | SUMO</div>';
 
     } else if (type === 'station' && station) {
-        var stationItems = (o.items_by_station && o.items_by_station[station]) || [];
-        html = '<div class="bon-header">';
-        html += '<div class="bon-type" style="font-size:20px;">'+station+'</div>';
-        html += '<div class="bon-order-num">#'+o.order_number+'</div>';
-        html += '<div>'+o.created_at+' | '+orderTypeLabel+'</div>';
-        html += '</div>';
-        html += '<div class="bon-section">';
-        html += renderItems(stationItems, false);
-        html += '</div>';
-        if (o.customer_notes) html += '<div class="bon-notes">⚠ הערות: '+o.customer_notes+'</div>';
-        html += '<div class="bon-footer">#'+o.order_number+' | '+station+' | '+timeStr+'</div>';
+        var items = (o.items_by_station && o.items_by_station[station]) || [];
+        h += '<div class="b-center"><div class="b-type" style="font-size:18px;">'+station+'</div><div class="b-num">#'+o.order_number+'</div><div>'+(o.order_type==='delivery'?'משלוח':'איסוף')+' | '+o.created_at+'</div></div>';
+        h += '<div class="b-thickline"></div>';
+        h += bonNotes(o);
+        h += renderItems(items, false);
+        h += '<div class="b-foot">#'+o.order_number+' | '+station+' | '+t+'</div>';
     }
-    return html;
+    return h;
 }
 
 function printBon(orderId, type, station) {
     var o = cachedOrders[orderId];
     if (!o) return;
-    var html = buildBonHtml(o, type, station);
+    var html = '<div class="bon-single-page">' + buildBonHtml(o, type, station) + '</div>';
     document.getElementById('bonPrint').innerHTML = html;
     document.getElementById('bonPreviewContent').innerHTML = html;
     document.getElementById('bonPreviewScreen').classList.add('show');

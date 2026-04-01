@@ -355,7 +355,7 @@
     cursor: pointer;
 }
 
-.bon-page-break { page-break-after: always; margin-bottom: 30px; border-bottom: 3px dashed #999; padding-bottom: 20px; }
+.bon-page-break { margin-bottom: 30px; border-bottom: 3px dashed #999; padding-bottom: 20px; }
 
 @media print {
     * { margin: 0; padding: 0; }
@@ -379,7 +379,19 @@
         line-height: 1.6;
         z-index: 99999;
     }
-    .bon-page-break { page-break-after: always; }
+    .bon-single-page {
+        page-break-after: always !important;
+        break-after: page !important;
+        padding-bottom: 10mm;
+        margin-bottom: 0;
+    }
+    .bon-single-page:last-child {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+    .bon-cut-line {
+        display: none !important;
+    }
 }
 
 .bon-preview .bon-header,
@@ -986,7 +998,8 @@ function printAll(orderId) {
     }
 
     var fullHtml = pages.map(function(pg, i) {
-        return '<div class="' + (i < pages.length - 1 ? 'bon-page-break' : '') + '">' + pg + '</div>';
+        var cut = (i < pages.length - 1) ? '<div class="bon-cut-line" style="border-top:2px dashed #999;margin:16px 0;text-align:center;color:#999;font-size:11px;padding-top:4px;">✂ חיתוך</div>' : '';
+        return '<div class="bon-single-page">' + pg + cut + '</div>';
     }).join('');
 
     document.getElementById('bonPrint').innerHTML = fullHtml;

@@ -1429,11 +1429,12 @@ def edit_menu_item(id=None):
     from models import PrintStation, PrinterStation, Printer
     all_print_stations = PrintStation.query.order_by(PrintStation.name).all()
     station_printer_map = {}
-    for ps in all_print_stations:
-        linked = db.session.query(Printer).join(PrinterStation, PrinterStation.printer_id == Printer.id).filter(
-            PrinterStation.station_name == ps.name
-        ).all()
-        station_printer_map[ps.name] = [{'name': p.name + (' [לא פעילה]' if not p.is_active else ''), 'ip': p.ip_address, 'branch': p.branch.name_he if p.branch else ''} for p in linked]
+    all_links = db.session.query(PrinterStation.station_name, Printer).join(
+        Printer, PrinterStation.printer_id == Printer.id
+    ).all()
+    for station_name, p in all_links:
+        entry = {'name': p.name + (' [לא פעילה]' if not p.is_active else ''), 'ip': p.ip_address, 'branch': p.branch.name_he if p.branch else ''}
+        station_printer_map.setdefault(station_name, []).append(entry)
 
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map)
 

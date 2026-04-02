@@ -534,8 +534,13 @@ function showSummary(connected, failed, total) {
     body.innerHTML = html;
 }
 
-var savedTab = localStorage.getItem('printerTab');
-if (savedTab) {
+var hash = window.location.hash;
+var savedTab = hash ? hash.replace('#', '#') : localStorage.getItem('printerTab');
+if (hash) {
+    var hashTarget = '#' + hash.replace('#', '');
+    var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + hashTarget + '"]');
+    if (tabEl) { new bootstrap.Tab(tabEl).show(); }
+} else if (savedTab) {
     var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + savedTab + '"]');
     if (tabEl) { new bootstrap.Tab(tabEl).show(); }
 }

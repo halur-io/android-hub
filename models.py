@@ -2785,3 +2785,59 @@ class SMSLog(db.Model):
 
     def __repr__(self):
         return f'<SMSLog {self.message_type} to {self.recipient_phone}>'
+
+
+class Printer(db.Model):
+    __tablename__ = 'printers'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id', ondelete='CASCADE'), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False)
+    port = db.Column(db.Integer, default=9100)
+    encoding = db.Column(db.String(30), default='iso-8859-8')
+    codepage_num = db.Column(db.Integer, default=32)
+    cut_feed_lines = db.Column(db.Integer, default=6)
+    is_active = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+    checker_copies = db.Column(db.Integer, default=2)
+    payment_copies = db.Column(db.Integer, default=1)
+    is_default = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    branch = db.relationship('Branch', backref=db.backref('printers', lazy=True, cascade='all, delete-orphan'))
+    stations = db.relationship('PrinterStation', backref='printer', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'branch_id': self.branch_id,
+            'ip_address': self.ip_address,
+            'port': self.port,
+            'encoding': self.encoding,
+            'codepage_num': self.codepage_num,
+            'cut_feed_lines': self.cut_feed_lines,
+            'is_active': self.is_active,
+            'display_order': self.display_order,
+            'checker_copies': self.checker_copies,
+            'payment_copies': self.payment_copies,
+            'is_default': self.is_default,
+            'stations': [s.station_name for s in self.stations],
+        }
+
+    def __repr__(self):
+        return f'<Printer {self.name} @ {self.ip_address}>'
+
+
+class PrinterStation(db.Model):
+    __tablename__ = 'printer_stations'
+    __table_args__ = (
+        db.UniqueConstraint('printer_id', 'station_name', name='uq_printer_station'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    printer_id = db.Column(db.Integer, db.ForeignKey('printers.id', ondelete='CASCADE'), nullable=False)
+    station_name = db.Column(db.String(50), nullable=False)
+
+    def __repr__(self):
+        return f'<PrinterStation {self.station_name} -> Printer#{self.printer_id}>'

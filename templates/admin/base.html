@@ -751,9 +751,9 @@
                 <i class="fas fa-cogs me-2"></i> {{ 'הגדרות מערכת' if (admin_language or 'he') == 'he' else 'System Settings' }}
             </a>
             {% endif %}
-            {% if has_permission('kitchen.view') %}
-            <a class="nav-link {% if request.endpoint == 'admin.kitchen_config' %}active{% endif %}" href="{{ url_for('admin.kitchen_config') }}">
-                <i class="fas fa-print me-2"></i> {{ 'מדפסות SNBC' if (admin_language or 'he') == 'he' else 'SNBC Printers' }}
+            {% if has_permission('kitchen.manage') %}
+            <a class="nav-link {% if request.endpoint in ['admin.printers', 'admin.add_printer', 'admin.edit_printer'] %}active{% endif %}" href="{{ url_for('admin.printers') }}">
+                <i class="fas fa-print me-2"></i> {{ 'ניהול מדפסות' if (admin_language or 'he') == 'he' else 'Printer Management' }}
             </a>
             {% endif %}
             <hr class="my-3">

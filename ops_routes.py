@@ -19,6 +19,7 @@ from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
     MenuCategory, MenuItem, StockItem, StockLevel, StockTransaction,
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
+    Printer, PrinterStation,
 )
 
 ops_bp = Blueprint(
@@ -1200,10 +1201,14 @@ def get_unprinted_orders():
         if not pin:
             return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
-    orders = FoodOrder.query.filter(
+    branch_id = request.args.get('branch_id', type=int)
+    query = FoodOrder.query.filter(
         FoodOrder.bon_printed == False,
         FoodOrder.status.in_(['pending', 'confirmed', 'preparing'])
-    ).order_by(FoodOrder.created_at.asc()).all()
+    )
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    orders = query.order_by(FoodOrder.created_at.asc()).all()
 
     result = []
     for o in orders:
@@ -1225,6 +1230,7 @@ def get_unprinted_orders():
             'order_number': o.order_number,
             'order_type': o.order_type,
             'status': o.status,
+            'branch_id': o.branch_id,
             'customer_name': o.customer_name or '',
             'customer_phone': o.customer_phone or '',
             'delivery_address': o.delivery_address or '',
@@ -1267,6 +1273,39 @@ def mark_orders_printed():
             order.bon_printed_at = dt.utcnow()
     db.session.commit()
     return jsonify({'ok': True, 'message': f'{len(order_ids)} orders marked as printed'})
+
+
+@ops_bp.route('/api/branch/<int:branch_id>/printers', methods=['GET'])
+def get_branch_printers(branch_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    branch = Branch.query.get(branch_id)
+    if not branch:
+        return jsonify({'ok': False, 'error': 'branch not found'}), 404
+
+    printers = Printer.query.filter_by(branch_id=branch_id, is_active=True).order_by(Printer.display_order).all()
+    station_map = {}
+    default_printer = None
+    for p in printers:
+        pd = p.to_dict()
+        if p.is_default:
+            default_printer = pd
+        for st in p.stations:
+            station_map[st.station_name] = pd
+
+    return jsonify({
+        'ok': True,
+        'branch_id': branch_id,
+        'branch_name': branch.name_he,
+        'default_printer': default_printer,
+        'station_map': station_map,
+        'printers': [p.to_dict() for p in printers],
+    })
 
 
 @ops_bp.route('/api/print/test', methods=['POST'])

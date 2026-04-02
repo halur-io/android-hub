@@ -114,6 +114,12 @@ ROUTE_PERMISSIONS = {
     # Kitchen
     'admin.kitchen': 'kitchen.view',
     'admin.kitchen_config': 'kitchen.manage',
+    # Printers
+    'admin.printers': 'kitchen.manage',
+    'admin.add_printer': 'kitchen.manage',
+    'admin.edit_printer': 'kitchen.manage',
+    'admin.delete_printer': 'kitchen.manage',
+    'admin.toggle_printer': 'kitchen.manage',
     # Reports
     'admin.reports': 'reports.view',
     # System
@@ -1420,10 +1426,11 @@ def edit_menu_item(id=None):
         # Redirect back to edit page to show uploaded image
         return redirect(url_for('admin.edit_menu_item', id=item.id))
     
+    from models import PrinterStation
+    db_stations = db.session.query(PrinterStation.station_name).distinct().all()
     existing_stations = db.session.query(MenuItem.print_station).filter(MenuItem.print_station.isnot(None), MenuItem.print_station != '').distinct().all()
-    print_stations = sorted(set(s[0] for s in existing_stations))
-    if not print_stations:
-        print_stations = ['מטבח', 'בר', 'סושי', 'פיצה', 'גריל']
+    all_station_names = set(s[0] for s in db_stations) | set(s[0] for s in existing_stations)
+    print_stations = sorted(all_station_names) if all_station_names else ['מטבח', 'בר', 'סושי', 'פיצה', 'גריל']
 
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=print_stations)
 
@@ -5094,15 +5101,129 @@ def permissions():
 @admin_bp.route('/kitchen-config')
 @login_required
 def kitchen_config():
-    """Kitchen and printer configuration"""
-    from services.kitchen.kitchen_service import PrinterConfig, KitchenStation
-    
-    printers = PrinterConfig.query.all()
-    stations = KitchenStation.query.all()
-    
-    return render_template('admin/kitchen_config.html',
-                         printers=printers,
-                         stations=stations)
+    return redirect(url_for('admin.printers'))
+
+@admin_bp.route('/printers')
+@login_required
+@require_permission('kitchen.manage')
+def printers():
+    from models import Printer, Branch
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    all_printers = Printer.query.order_by(Printer.branch_id, Printer.display_order).all()
+    printers_by_branch = {}
+    for p in all_printers:
+        printers_by_branch.setdefault(p.branch_id, []).append(p)
+    return render_template('admin/printers.html',
+                         branches=branches,
+                         printers_by_branch=printers_by_branch)
+
+@admin_bp.route('/printers/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('kitchen.manage')
+def add_printer():
+    from models import Printer, PrinterStation, Branch
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        branch_id = request.form.get('branch_id', type=int)
+        ip_address = request.form.get('ip_address', '').strip()
+        port = request.form.get('port', 9100, type=int)
+        encoding = request.form.get('encoding', 'iso-8859-8').strip()
+        codepage_num = request.form.get('codepage_num', 32, type=int)
+        cut_feed_lines = request.form.get('cut_feed_lines', 6, type=int)
+        checker_copies = request.form.get('checker_copies', 2, type=int)
+        payment_copies = request.form.get('payment_copies', 1, type=int)
+        is_default = request.form.get('is_default') == 'on'
+        stations_raw = request.form.get('stations', '').strip()
+
+        if not name or not branch_id or not ip_address:
+            flash('יש למלא שם, סניף וכתובת IP', 'error')
+            return render_template('admin/edit_printer.html', printer=None, branches=branches)
+
+        if is_default:
+            Printer.query.filter_by(branch_id=branch_id, is_default=True).update({'is_default': False})
+
+        printer = Printer(
+            name=name, branch_id=branch_id, ip_address=ip_address,
+            port=port, encoding=encoding, codepage_num=codepage_num,
+            cut_feed_lines=cut_feed_lines, checker_copies=checker_copies,
+            payment_copies=payment_copies, is_default=is_default, is_active=True,
+        )
+        db.session.add(printer)
+        db.session.flush()
+
+        if stations_raw:
+            for st in [s.strip() for s in stations_raw.split(',') if s.strip()]:
+                db.session.add(PrinterStation(printer_id=printer.id, station_name=st))
+
+        db.session.commit()
+        flash(f'מדפסת "{name}" נוספה בהצלחה', 'success')
+        return redirect(url_for('admin.printers'))
+
+    return render_template('admin/edit_printer.html', printer=None, branches=branches)
+
+@admin_bp.route('/printers/edit/<int:printer_id>', methods=['GET', 'POST'])
+@login_required
+@require_permission('kitchen.manage')
+def edit_printer(printer_id):
+    from models import Printer, PrinterStation, Branch
+    printer = Printer.query.get_or_404(printer_id)
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+
+    if request.method == 'POST':
+        printer.name = request.form.get('name', '').strip()
+        printer.branch_id = request.form.get('branch_id', type=int)
+        printer.ip_address = request.form.get('ip_address', '').strip()
+        printer.port = request.form.get('port', 9100, type=int)
+        printer.encoding = request.form.get('encoding', 'iso-8859-8').strip()
+        printer.codepage_num = request.form.get('codepage_num', 32, type=int)
+        printer.cut_feed_lines = request.form.get('cut_feed_lines', 6, type=int)
+        printer.checker_copies = request.form.get('checker_copies', 2, type=int)
+        printer.payment_copies = request.form.get('payment_copies', 1, type=int)
+        is_default = request.form.get('is_default') == 'on'
+        stations_raw = request.form.get('stations', '').strip()
+
+        if not printer.name or not printer.branch_id or not printer.ip_address:
+            flash('יש למלא שם, סניף וכתובת IP', 'error')
+            return render_template('admin/edit_printer.html', printer=printer, branches=branches)
+
+        if is_default:
+            Printer.query.filter(Printer.branch_id == printer.branch_id, Printer.id != printer.id, Printer.is_default == True).update({'is_default': False})
+        printer.is_default = is_default
+
+        PrinterStation.query.filter_by(printer_id=printer.id).delete()
+        if stations_raw:
+            for st in [s.strip() for s in stations_raw.split(',') if s.strip()]:
+                db.session.add(PrinterStation(printer_id=printer.id, station_name=st))
+
+        db.session.commit()
+        flash(f'מדפסת "{printer.name}" עודכנה בהצלחה', 'success')
+        return redirect(url_for('admin.printers'))
+
+    return render_template('admin/edit_printer.html', printer=printer, branches=branches)
+
+@admin_bp.route('/printers/delete/<int:printer_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def delete_printer(printer_id):
+    from models import Printer
+    printer = Printer.query.get_or_404(printer_id)
+    name = printer.name
+    db.session.delete(printer)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'מדפסת "{name}" נמחקה'})
+
+@admin_bp.route('/printers/toggle/<int:printer_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def toggle_printer(printer_id):
+    from models import Printer
+    printer = Printer.query.get_or_404(printer_id)
+    printer.is_active = not printer.is_active
+    db.session.commit()
+    status = 'פעילה' if printer.is_active else 'כבויה'
+    return jsonify({'success': True, 'message': f'מדפסת "{printer.name}" - {status}'})
 
 @admin_bp.route('/payment-config')
 @login_required

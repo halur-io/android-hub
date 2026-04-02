@@ -38,17 +38,24 @@ I prefer clear, concise language in all communications. For coding, I favor an i
     - Modules: Home (KPIs), Menu management, Stock management, Deals & Coupons, Branch settings, Orders module (Kanban-style board with status progression).
     - Orders module features: Kanban board with status filters, detailed order view, one-tap status progression, branch-scoped order display, auto-refresh.
 
-### Auto-Print System (Print Agent)
-- **Architecture:** Cloud server cannot reach restaurant LAN printer directly. Solution: a local print agent (`print_agent.py`) runs on a Mac at the restaurant, polls the server for new orders, and sends ESC/POS commands to the thermal printer via TCP.
-- **API Endpoints:** `GET /ops/api/orders/unprinted` (returns unprinted orders), `POST /ops/api/orders/mark-printed` (marks orders as printed). Auth via `X-Print-Key` header matching `PRINT_AGENT_KEY` env var.
+### Auto-Print System (Print Agent v4.0 - Multi-Printer)
+- **Architecture:** Cloud server cannot reach restaurant LAN printers directly. Solution: a local print agent (`print_agent.py`) runs on a Mac at the restaurant (one per branch), fetches printer config from the server, polls for new orders, and routes each bon to the correct printer by station.
+- **Multi-Printer Management:** Admin panel (`/admin/printers`) allows CRUD of printers per branch. Each printer has IP, port, encoding, codepage, stations, and copy settings. One printer per branch is marked as default (receives checker + payment bons).
+- **DB Models:** `Printer` (per-branch printer config), `PrinterStation` (maps station names to printers). `MenuItem.print_station` links dishes to stations.
+- **API Endpoints:**
+    - `GET /ops/api/orders/unprinted?branch_id=X` (returns unprinted orders, optionally filtered by branch)
+    - `POST /ops/api/orders/mark-printed` (marks orders as printed)
+    - `GET /ops/api/branch/<id>/printers` (returns printer config for print agent: default printer, station map, all printers)
+- Auth via `X-Print-Key` header matching `PRINT_AGENT_KEY` env var.
 - **DB Fields:** `FoodOrder.bon_printed` (Boolean), `FoodOrder.bon_printed_at` (DateTime) track print status.
-- **Printer:** 80mm thermal (SNBC-style ESC/POS), IP 10.100.10.10, port 9100.
-- **Bon Types:** Checker bon (2 copies), Payment bon (1 copy), Station bons (per print_station on MenuItem).
-- **Print Modes:** Browser (hidden iframe + print dialog) or Server (direct TCP, currently via print agent only).
+- **Printer:** HSPOS HS-C830ULWB 80mm thermal (ESC/POS, ISO-8859-8, codepage 32).
+- **Bon Types:** Checker bon (configurable copies), Payment bon (configurable copies), Station bons (routed to correct printer by dish station).
+- **Print Agent Usage:** `python3 print_agent.py --branch <BRANCH_ID>` (env vars: `PRINT_AGENT_SERVER`, `PRINT_AGENT_KEY`)
+- **Print Modes:** Browser (hidden iframe + print dialog) or Server (direct TCP via print agent).
 
 ### System Design Choices
 - **Modularity:** Separation of concerns (e.g., `standalone_order_service` for ordering).
-- **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`.
+- **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`, `Printer`, `PrinterStation`.
 - **API Endpoints:** Dedicated endpoints for order validation, coupon validation, upsell suggestions, and print agent polling.
 
 ## External Dependencies

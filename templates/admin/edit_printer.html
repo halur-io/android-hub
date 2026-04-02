@@ -1,0 +1,177 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if printer %}עריכת מדפסת{% else %}הוספת מדפסת{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-print me-2"></i>
+            {% if printer %}עריכת מדפסת: {{ printer.name }}{% else %}הוספת מדפסת חדשה{% endif %}
+        </h2>
+        <a href="{{ url_for('admin.printers') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-1"></i> חזרה לרשימה
+        </a>
+    </div>
+
+    <form method="POST" action="{% if printer %}{{ url_for('admin.edit_printer', printer_id=printer.id) }}{% else %}{{ url_for('admin.add_printer') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>פרטי מדפסת</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">שם המדפסת <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name"
+                                   value="{{ printer.name if printer else '' }}" required
+                                   placeholder="לדוגמה: מדפסת מטבח ראשית">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="branch_id" class="form-label">סניף <span class="text-danger">*</span></label>
+                            <select class="form-select" id="branch_id" name="branch_id" required>
+                                <option value="">בחר סניף...</option>
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}"
+                                    {% if printer and printer.branch_id == branch.id %}selected{% endif %}
+                                    {% if not printer and request.args.get('branch_id')|int == branch.id %}selected{% endif %}>
+                                    {{ branch.name_he }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="mb-3">
+                                    <label for="ip_address" class="form-label">כתובת IP <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="ip_address" name="ip_address"
+                                           value="{{ printer.ip_address if printer else '' }}" required
+                                           placeholder="10.100.10.234" dir="ltr">
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="mb-3">
+                                    <label for="port" class="form-label">פורט</label>
+                                    <input type="number" class="form-control" id="port" name="port"
+                                           value="{{ printer.port if printer else 9100 }}" dir="ltr">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_default" name="is_default"
+                                       {% if printer and printer.is_default %}checked{% endif %}>
+                                <label class="form-check-label" for="is_default">
+                                    <i class="fas fa-star text-warning me-1"></i>
+                                    מדפסת ברירת מחדל (מקבלת בונים של צ'קר ותשלום)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-list me-2"></i>עמדות הדפסה (סטיישנים)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="stations" class="form-label">עמדות מופרדות בפסיק</label>
+                            <input type="text" class="form-control" id="stations" name="stations"
+                                   value="{{ printer.stations|map(attribute='station_name')|join(', ') if printer else '' }}"
+                                   placeholder="מטבח, בר, סושי, גריל" dir="rtl">
+                            <small class="form-text text-muted">
+                                עמדות ההדפסה שמדפסת זו מקבלת. מנות עם עמדת הדפסה תואמת יישלחו למדפסת זו.
+                            </small>
+                        </div>
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>דוגמה:</strong> אם מדפסת זו ממוקמת במטבח, הזן "מטבח".
+                            מנות שהוגדרו עם עמדת הדפסה "מטבח" יישלחו אליה.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-cog me-2"></i>הגדרות טכניות</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="encoding" class="form-label">קידוד תווים</label>
+                                    <select class="form-select" id="encoding" name="encoding">
+                                        <option value="iso-8859-8" {% if not printer or printer.encoding == 'iso-8859-8' %}selected{% endif %}>ISO-8859-8 (Hebrew)</option>
+                                        <option value="cp862" {% if printer and printer.encoding == 'cp862' %}selected{% endif %}>CP862 (DOS Hebrew)</option>
+                                        <option value="cp1255" {% if printer and printer.encoding == 'cp1255' %}selected{% endif %}>CP1255 (Windows Hebrew)</option>
+                                        <option value="utf-8" {% if printer and printer.encoding == 'utf-8' %}selected{% endif %}>UTF-8</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="codepage_num" class="form-label">קודפייג' ESC/POS</label>
+                                    <input type="number" class="form-control" id="codepage_num" name="codepage_num"
+                                           value="{{ printer.codepage_num if printer else 32 }}" dir="ltr">
+                                    <small class="form-text text-muted">HSPOS=32, EPSON=36</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cut_feed_lines" class="form-label">שורות הזנה לפני חיתוך</label>
+                            <input type="number" class="form-control" id="cut_feed_lines" name="cut_feed_lines"
+                                   value="{{ printer.cut_feed_lines if printer else 6 }}" min="0" max="20" dir="ltr">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-copy me-2"></i>הגדרות עותקים</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="checker_copies" class="form-label">עותקי בון צ'קר</label>
+                                    <input type="number" class="form-control" id="checker_copies" name="checker_copies"
+                                           value="{{ printer.checker_copies if printer else 2 }}" min="0" max="5" dir="ltr">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <label for="payment_copies" class="form-label">עותקי בון תשלום</label>
+                                    <input type="number" class="form-control" id="payment_copies" name="payment_copies"
+                                           value="{{ printer.payment_copies if printer else 1 }}" min="0" max="5" dir="ltr">
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            בונים של צ'קר ותשלום נשלחים רק למדפסת ברירת המחדל של הסניף.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('admin.printers') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-1"></i> ביטול
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-save me-1"></i> {% if printer %}שמור שינויים{% else %}הוסף מדפסת{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,42 +1,48 @@
 #!/usr/bin/env python3
 """
-SUMO Print Agent v3.0
-=====================
-Run this on a Mac at the restaurant, same network as the thermal printer.
-Polls the server for new orders and prints them automatically.
+SUMO Print Agent v4.0 - Multi-Printer Edition
+==============================================
+Run this on a Mac at the restaurant, same network as the thermal printers.
+Fetches printer config from the server per branch, then polls for new orders
+and routes each bon to the correct printer by station.
 
 Usage:
-  python3 print_agent.py              # Normal mode (sends to printer)
-  python3 print_agent.py --test       # Test mode (shows output, no printer)
-  python3 print_agent.py --test-once  # Fetch once, show output, exit
+  python3 print_agent.py --branch 1              # Normal mode (sends to printers)
+  python3 print_agent.py --branch 1 --test        # Test mode (shows output, no printer)
+  python3 print_agent.py --branch 1 --test-once   # Fetch once, show output, exit
 
 Printer: HSPOS HS-C830ULWB (80mm, ESC/POS, ISO-8859-8)
 """
 
 import json
+import os
 import socket
 import time
 import sys
+import argparse
 import urllib.request
 import urllib.error
 
 # --- CONFIG ---------------------------------------------------------
-SERVER_URL = "https://cad2a536-a2eb-41a8-a0a3-6f4a608fee70-00-2gvg9dtirvl7z.picard.replit.dev"
-PRINT_AGENT_KEY = "sumo-print-2024-secure"
-PRINTER_IP = "10.100.10.10"
-PRINTER_PORT = 9100
+SERVER_URL = os.environ.get("PRINT_AGENT_SERVER", "https://cad2a536-a2eb-41a8-a0a3-6f4a608fee70-00-2gvg9dtirvl7z.picard.replit.dev")
+PRINT_AGENT_KEY = os.environ.get("PRINT_AGENT_KEY", "sumo-print-2024-secure")
 POLL_INTERVAL = 5
-CHECKER_COPIES = 2
-PAYMENT_COPIES = 1
-STATION_BONS = True
-CUT_FEED_LINES = 6
-ENCODING = 'iso-8859-8'
-CODEPAGE_NUM = 32
 # --------------------------------------------------------------------
 
-TEST_MODE = '--test' in sys.argv or '--test-once' in sys.argv
-TEST_ONCE = '--test-once' in sys.argv
+parser = argparse.ArgumentParser(description='SUMO Print Agent v4.0')
+parser.add_argument('--branch', type=int, required=True, help='Branch ID to fetch printers for')
+parser.add_argument('--test', action='store_true', help='Test mode (no actual printing)')
+parser.add_argument('--test-once', action='store_true', help='Fetch once, show output, exit')
+args = parser.parse_args()
+
+BRANCH_ID = args.branch
+TEST_MODE = args.test or args.test_once
+TEST_ONCE = args.test_once
 FIRST_RUN = True
+
+PRINTERS_CONFIG = {}
+DEFAULT_PRINTER = None
+STATION_MAP = {}
 
 ESC = b'\x1b'
 GS = b'\x1d'
@@ -57,43 +63,46 @@ INVERT_ON = GS + b'B\x01'
 INVERT_OFF = GS + b'B\x00'
 
 
-def set_codepage():
-    return ESC + b't' + bytes([CODEPAGE_NUM])
+def set_codepage(cp_num):
+    return ESC + b't' + bytes([cp_num])
 
 
-def encode_text(t):
+def encode_text(t, encoding='iso-8859-8'):
     try:
-        return t.encode(ENCODING)
+        return t.encode(encoding)
     except (UnicodeEncodeError, LookupError):
         safe = ''
         for ch in t:
             try:
-                ch.encode(ENCODING)
+                ch.encode(encoding)
                 safe += ch
             except UnicodeEncodeError:
                 safe += '?'
-        return safe.encode(ENCODING, errors='replace')
+        return safe.encode(encoding, errors='replace')
 
 
 class BonBuilder:
-    def __init__(self):
+    def __init__(self, encoding='iso-8859-8', codepage_num=32, cut_feed_lines=6):
         self.buf = bytearray()
         self.preview_lines = []
         self._bold = False
         self._font = 'normal'
+        self.encoding = encoding
+        self.codepage_num = codepage_num
+        self.cut_feed_lines = cut_feed_lines
 
     def _add(self, data):
         if isinstance(data, str):
-            self.buf.extend(encode_text(data))
+            self.buf.extend(encode_text(data, self.encoding))
         else:
             self.buf.extend(data)
 
     def init(self):
         self._add(INIT)
-        self._add(set_codepage())
+        self._add(set_codepage(self.codepage_num))
 
     def cut(self):
-        self._add(b'\n' * CUT_FEED_LINES)
+        self._add(b'\n' * self.cut_feed_lines)
         self._add(CUT_FULL)
         if TEST_MODE:
             self.preview_lines.append('---CUT---')
@@ -291,6 +300,9 @@ def build_station(b, o, station_name, station_items):
         b.text(f'{name} {qty}')
         b.bold(False)
         b.font('normal')
+        for op in (item.get('options') or []):
+            op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
+            b.text(f'{op_name}')
 
     b.dashed()
     b.align('center')
@@ -303,19 +315,19 @@ def build_station(b, o, station_name, station_items):
     b.cut()
 
 
-def send_to_printer(data):
+def send_to_printer(data, ip, port):
     if TEST_MODE:
-        print(f'  [SIM] Would send {len(data)} bytes to {PRINTER_IP}:{PRINTER_PORT}')
+        print(f'  [SIM] Would send {len(data)} bytes to {ip}:{port}')
         return True
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(5)
-        s.connect((PRINTER_IP, PRINTER_PORT))
+        s.connect((ip, port))
         s.sendall(bytes(data))
         s.close()
         return True
     except Exception as e:
-        print(f'  [ERR] Printer error: {e}')
+        print(f'  [ERR] Printer error ({ip}:{port}): {e}')
         return False
 
 
@@ -348,42 +360,113 @@ def api_post(path, body):
         return None
 
 
+def fetch_printer_config():
+    global PRINTERS_CONFIG, DEFAULT_PRINTER, STATION_MAP
+    data = api_get(f'/ops/api/branch/{BRANCH_ID}/printers')
+    if not data or not data.get('ok'):
+        print('[ERR] Failed to fetch printer config from server')
+        return False
+
+    PRINTERS_CONFIG = {p['id']: p for p in data.get('printers', [])}
+    DEFAULT_PRINTER = data.get('default_printer')
+    STATION_MAP = data.get('station_map', {})
+
+    branch_name = data.get('branch_name', f'Branch {BRANCH_ID}')
+    print(f'[OK] Branch: {branch_name}')
+    print(f'[OK] Loaded {len(PRINTERS_CONFIG)} printer(s)')
+
+    if DEFAULT_PRINTER:
+        print(f'     Default: {DEFAULT_PRINTER["name"]} ({DEFAULT_PRINTER["ip_address"]}:{DEFAULT_PRINTER["port"]})')
+
+    for st_name, pr in STATION_MAP.items():
+        print(f'     Station "{st_name}" -> {pr["name"]} ({pr["ip_address"]})')
+
+    if not DEFAULT_PRINTER and not STATION_MAP:
+        print('[WARN] No printers configured -- orders will not print')
+
+    return True
+
+
+def get_printer_for_station(station_name):
+    if station_name in STATION_MAP:
+        return STATION_MAP[station_name]
+    return DEFAULT_PRINTER
+
+
 def print_order(order):
-    b = BonBuilder()
+    if not DEFAULT_PRINTER and not STATION_MAP:
+        print('  [ERR] No printers configured for this branch')
+        return False
 
-    for _ in range(CHECKER_COPIES):
-        build_checker(b, order)
+    all_ok = True
+    dp = DEFAULT_PRINTER
+    if dp:
+        enc = dp.get('encoding', 'iso-8859-8')
+        cp = dp.get('codepage_num', 32)
+        cfl = dp.get('cut_feed_lines', 6)
+        checker_copies = dp.get('checker_copies', 2)
+        payment_copies = dp.get('payment_copies', 1)
 
-    for _ in range(PAYMENT_COPIES):
-        build_payment(b, order)
+        b = BonBuilder(encoding=enc, codepage_num=cp, cut_feed_lines=cfl)
+        for _ in range(checker_copies):
+            build_checker(b, order)
+        for _ in range(payment_copies):
+            build_payment(b, order)
 
-    if STATION_BONS and order.get('items_by_station'):
+        if TEST_MODE:
+            print('\n' + '=' * 50)
+            print(f'  BON PREVIEW -> {dp["name"]} ({dp["ip_address"]})')
+            print('=' * 50)
+            print(b.get_preview())
+            print('=' * 50 + '\n')
+
+        if not send_to_printer(b.buf, dp['ip_address'], dp['port']):
+            all_ok = False
+
+    if order.get('items_by_station'):
+        printer_jobs = {}
         for st_name, st_items in order['items_by_station'].items():
-            build_station(b, order, st_name, st_items)
+            pr = get_printer_for_station(st_name)
+            if not pr:
+                print(f'  [WARN] No printer for station "{st_name}", items will not print')
+                continue
+            pr_key = (pr['ip_address'], pr['port'])
+            if pr_key not in printer_jobs:
+                printer_jobs[pr_key] = {'printer': pr, 'stations': {}}
+            printer_jobs[pr_key]['stations'][st_name] = st_items
 
-    if TEST_MODE:
-        print('\n' + '=' * 50)
-        print('  BON PREVIEW')
-        print('=' * 50)
-        print(b.get_preview())
-        print('=' * 50 + '\n')
+        for pr_key, job in printer_jobs.items():
+            pr = job['printer']
+            b_st = BonBuilder(encoding=pr.get('encoding', 'iso-8859-8'),
+                              codepage_num=pr.get('codepage_num', 32),
+                              cut_feed_lines=pr.get('cut_feed_lines', 6))
 
-    return send_to_printer(b.buf)
+            for st_name, st_items in job['stations'].items():
+                build_station(b_st, order, st_name, st_items)
+
+            if TEST_MODE:
+                print('\n' + '=' * 50)
+                print(f'  STATION BON -> {pr["name"]} ({pr["ip_address"]})')
+                print('=' * 50)
+                print(b_st.get_preview())
+                print('=' * 50 + '\n')
+
+            if not send_to_printer(b_st.buf, pr['ip_address'], pr['port']):
+                print(f'  [ERR] Station bon failed for {pr["name"]}')
+                all_ok = False
+
+    return all_ok
 
 
 def main():
     global FIRST_RUN
     mode_str = 'TEST MODE' if TEST_MODE else 'LIVE MODE'
     print('+----------------------------------------------+')
-    print(f'|   SUMO Print Agent v3.0  ({mode_str})')
+    print(f'|   SUMO Print Agent v4.0  ({mode_str})')
     print('+----------------------------------------------+')
     print(f'| Server:  {SERVER_URL[:42]}')
-    if not TEST_MODE:
-        print(f'| Printer: {PRINTER_IP}:{PRINTER_PORT}')
-    else:
-        print(f'| Printer: SIMULATED')
+    print(f'| Branch:  {BRANCH_ID}')
     print(f'| Poll:    every {POLL_INTERVAL}s')
-    print(f'| Encoding: {ENCODING} (codepage {CODEPAGE_NUM})')
     print('+----------------------------------------------+')
     print()
 
@@ -391,11 +474,17 @@ def main():
         print('[ERR] Please edit SERVER_URL in the script!')
         sys.exit(1)
 
+    print('[...] Fetching printer config from server...')
+    if not fetch_printer_config():
+        print('[ERR] Cannot start without printer config. Check server URL and branch ID.')
+        sys.exit(1)
+
+    print()
     print('[OK] Watching for new orders...\n')
 
     while True:
         try:
-            data = api_get('/ops/api/orders/unprinted')
+            data = api_get(f'/ops/api/orders/unprinted?branch_id={BRANCH_ID}')
             if data and data.get('ok'):
                 orders = data.get('orders', [])
                 if orders:

@@ -1,0 +1,179 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מדפסות{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-print me-2"></i>ניהול מדפסות</h2>
+        <a href="{{ url_for('admin.add_printer') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> הוספת מדפסת
+        </a>
+    </div>
+
+    {% if not branches %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        אין סניפים פעילים. יש להוסיף סניף לפני הוספת מדפסת.
+    </div>
+    {% else %}
+        {% for branch in branches %}
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-store me-2"></i>{{ branch.name_he }}
+                    {% if branch.name_en %}<small class="text-muted ms-2">({{ branch.name_en }})</small>{% endif %}
+                </h5>
+                <span class="badge bg-light text-dark">
+                    {{ (printers_by_branch.get(branch.id, [])|length) }} מדפסות
+                </span>
+            </div>
+            <div class="card-body">
+                {% set branch_printers = printers_by_branch.get(branch.id, []) %}
+                {% if branch_printers %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>שם</th>
+                                <th>כתובת IP</th>
+                                <th>פורט</th>
+                                <th>קידוד</th>
+                                <th>עמדות</th>
+                                <th>ברירת מחדל</th>
+                                <th>סטטוס</th>
+                                <th style="width: 50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for printer in branch_printers %}
+                            <tr>
+                                <td>
+                                    <strong>{{ printer.name }}</strong>
+                                </td>
+                                <td><code>{{ printer.ip_address }}</code></td>
+                                <td>{{ printer.port }}</td>
+                                <td>
+                                    <small>{{ printer.encoding }} (CP{{ printer.codepage_num }})</small>
+                                </td>
+                                <td>
+                                    {% for station in printer.stations %}
+                                    <span class="badge bg-info text-dark me-1">{{ station.station_name }}</span>
+                                    {% endfor %}
+                                    {% if not printer.stations %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if printer.is_default %}
+                                    <span class="badge bg-success"><i class="fas fa-star me-1"></i>ברירת מחדל</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if printer.is_active %}
+                                    <span class="badge bg-success">פעילה</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">כבויה</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ url_for('admin.edit_printer', printer_id=printer.id) }}">
+                                                    <i class="fas fa-edit me-2"></i>עריכה
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="togglePrinter({{ printer.id }}, '{{ printer.name }}'); return false;">
+                                                    <i class="fas fa-power-off me-2"></i>{{ 'כיבוי' if printer.is_active else 'הפעלה' }}
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" onclick="deletePrinter({{ printer.id }}, '{{ printer.name }}'); return false;">
+                                                    <i class="fas fa-trash me-2"></i>מחיקה
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-print fa-3x mb-3 d-block opacity-25"></i>
+                    <p>לא הוגדרו מדפסות לסניף זה</p>
+                    <a href="{{ url_for('admin.add_printer') }}?branch_id={{ branch.id }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i> הוסף מדפסת
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>מידע על Print Agent</h6>
+        </div>
+        <div class="card-body">
+            <p class="mb-2">
+                ה-Print Agent רץ על מחשב Mac ברשת המקומית של המסעדה ומושך את הגדרות המדפסות מהשרת.
+            </p>
+            <p class="mb-2">
+                <strong>API Endpoint:</strong>
+                <code>GET /ops/api/branch/&lt;branch_id&gt;/printers</code>
+            </p>
+            <p class="mb-0">
+                <strong>הפעלה:</strong>
+                <code>python3 print_agent.py --branch &lt;BRANCH_ID&gt;</code>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+function deletePrinter(id, name) {
+    if (!confirm('למחוק את המדפסת "' + name + '"?')) return;
+    fetch('/admin/printers/delete/' + id, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה');
+        }
+    });
+}
+
+function togglePrinter(id, name) {
+    fetch('/admin/printers/toggle/' + id, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה');
+        }
+    });
+}
+</script>
+{% endblock %}

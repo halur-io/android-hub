@@ -27,6 +27,8 @@ csrf = CSRFProtect(app)
 # Exempt admin API endpoints from CSRF
 csrf.exempt('admin.toggle_dietary_property')
 csrf.exempt('admin.delete_dietary_property')
+csrf.exempt('admin.delete_printer')
+csrf.exempt('admin.toggle_printer')
 
 # Exempt menu parsing routes from CSRF
 csrf.exempt('admin.parse_word_menu')

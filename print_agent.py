@@ -22,6 +22,8 @@ import sys
 import argparse
 import urllib.request
 import urllib.error
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # --- CONFIG ---------------------------------------------------------
 SERVER_URL = os.environ.get("PRINT_AGENT_SERVER", "https://cad2a536-a2eb-41a8-a0a3-6f4a608fee70-00-2gvg9dtirvl7z.picard.replit.dev")
@@ -458,6 +460,90 @@ def print_order(order):
     return all_ok
 
 
+LOCAL_API_PORT = int(os.environ.get("PRINT_AGENT_PORT", 8899))
+
+
+class PrintAgentAPIHandler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *a):
+        pass
+
+    def _cors(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+
+    def _json(self, code, obj):
+        body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self._cors()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._cors()
+        self.end_headers()
+
+    def do_GET(self):
+        if self.path == '/status':
+            self._json(200, {
+                'ok': True,
+                'agent': 'SUMO Print Agent v4.0',
+                'branch_id': BRANCH_ID,
+                'printers': list(PRINTERS_CONFIG.values()),
+                'default_printer': DEFAULT_PRINTER,
+                'station_map': STATION_MAP,
+            })
+        elif self.path == '/test-all':
+            results = []
+            for pid, pr in PRINTERS_CONFIG.items():
+                ip = pr['ip_address']
+                port = pr['port']
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.settimeout(3)
+                    s.connect((ip, port))
+                    s.close()
+                    results.append({'id': int(pid), 'name': pr['name'], 'ip': ip, 'port': port, 'status': 'connected'})
+                except socket.timeout:
+                    results.append({'id': int(pid), 'name': pr['name'], 'ip': ip, 'port': port, 'status': 'timeout'})
+                except ConnectionRefusedError:
+                    results.append({'id': int(pid), 'name': pr['name'], 'ip': ip, 'port': port, 'status': 'refused'})
+                except Exception as e:
+                    results.append({'id': int(pid), 'name': pr['name'], 'ip': ip, 'port': port, 'status': 'error', 'error': str(e)})
+            self._json(200, {'ok': True, 'results': results})
+        elif self.path.startswith('/test/'):
+            pid = self.path.split('/test/')[-1]
+            pr = PRINTERS_CONFIG.get(pid) or PRINTERS_CONFIG.get(int(pid)) if pid.isdigit() else None
+            if not pr:
+                self._json(404, {'ok': False, 'error': 'Printer not found'})
+                return
+            ip = pr['ip_address']
+            port = pr['port']
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(3)
+                s.connect((ip, port))
+                s.close()
+                self._json(200, {'ok': True, 'status': 'connected', 'name': pr['name']})
+            except socket.timeout:
+                self._json(200, {'ok': True, 'status': 'timeout', 'name': pr['name']})
+            except ConnectionRefusedError:
+                self._json(200, {'ok': True, 'status': 'refused', 'name': pr['name']})
+            except Exception as e:
+                self._json(200, {'ok': True, 'status': 'error', 'name': pr['name'], 'error': str(e)})
+        else:
+            self._json(404, {'ok': False, 'error': 'Not found'})
+
+
+def start_local_api():
+    server = HTTPServer(('0.0.0.0', LOCAL_API_PORT), PrintAgentAPIHandler)
+    print(f'[API] Local API server on port {LOCAL_API_PORT}')
+    print(f'[API] Test from iPad/phone: http://<mac-ip>:{LOCAL_API_PORT}/test-all')
+    server.serve_forever()
+
+
 def main():
     global FIRST_RUN
     mode_str = 'TEST MODE' if TEST_MODE else 'LIVE MODE'
@@ -478,6 +564,9 @@ def main():
     if not fetch_printer_config():
         print('[ERR] Cannot start without printer config. Check server URL and branch ID.')
         sys.exit(1)
+
+    api_thread = threading.Thread(target=start_local_api, daemon=True)
+    api_thread.start()
 
     print()
     print('[OK] Watching for new orders...\n')

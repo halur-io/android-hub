@@ -5351,8 +5351,12 @@ def delete_station(station_id):
     menu_count = MenuItem.query.filter_by(print_station=station.name).count()
     printer_count = PrinterStation.query.filter_by(station_name=station.name).count()
     if (menu_count > 0 or printer_count > 0) and not confirm:
-        flash(f'עמדה "{station.name}" משויכת ל-{menu_count} מנות ו-{printer_count} מדפסות. לחץ שוב על מחיקה כדי לאשר.', 'warning')
+        from flask import session as flask_session
+        flask_session['pending_delete_station'] = station_id
+        flash(f'עמדה "{station.name}" משויכת ל-{menu_count} מנות ו-{printer_count} מדפסות. לחץ "אשר מחיקה" כדי למחוק.', 'warning')
         return redirect(url_for('admin.printers') + '#stations-pane')
+    from flask import session as flask_session
+    flask_session.pop('pending_delete_station', None)
     PrinterStation.query.filter_by(station_name=station.name).delete()
     MenuItem.query.filter_by(print_station=station.name).update({'print_station': None})
     db.session.delete(station)

@@ -402,7 +402,7 @@
                                                 {% for station in print_stations %}
                                                 {% set printers_for_station = station_printer_map.get(station.name, []) %}
                                                 {% if printers_for_station %}
-                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} &rarr; {{ printers_for_station|map(attribute='name')|join(', ') }} ({{ printers_for_station[0].ip }})</option>
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} &rarr; {% for p in printers_for_station %}{{ p.name }} ({{ p.ip }}){% if not loop.last %}, {% endif %}{% endfor %}</option>
                                                 {% else %}
                                                 <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} (לא משויכת למדפסת)</option>
                                                 {% endif %}

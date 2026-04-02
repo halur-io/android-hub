@@ -34,7 +34,13 @@ POLL_INTERVAL = 5
 CHECKER_COPIES = 2
 PAYMENT_COPIES = 1
 STATION_BONS = True
-CODEPAGE = 'cp862'
+HEBREW_MODE = 3
+# HEBREW_MODE options -- try each until Hebrew prints correctly:
+#   1 = CP862 (Hebrew DOS codepage)
+#   2 = Windows-1255
+#   3 = UTF-8 with codepage 255
+#   4 = UTF-8 with Kanji/multibyte mode (FS &)
+#   5 = ISO-8859-8
 # --------------------------------------------------------------------
 
 TEST_MODE = '--test' in sys.argv or '--test-once' in sys.argv
@@ -43,6 +49,7 @@ FIRST_RUN = True
 
 ESC = b'\x1b'
 GS = b'\x1d'
+FS = b'\x1c'
 INIT = ESC + b'@'
 CUT_FULL = GS + b'V\x00'
 ALIGN_LEFT = ESC + b'a\x00'
@@ -53,12 +60,22 @@ FONT_DOUBLE_H = ESC + b'!\x10'
 FONT_DOUBLE = ESC + b'!\x30'
 BOLD_ON = ESC + b'E\x01'
 BOLD_OFF = ESC + b'E\x00'
-SET_CP862 = ESC + b't\x24'
+
+HEBREW_CONFIGS = {
+    1: {'name': 'CP862', 'encoding': 'cp862', 'esc_cmd': ESC + b't\x24'},
+    2: {'name': 'Windows-1255', 'encoding': 'cp1255', 'esc_cmd': ESC + b't\x14'},
+    3: {'name': 'UTF-8 (codepage 255)', 'encoding': 'utf-8', 'esc_cmd': ESC + b't\xff'},
+    4: {'name': 'UTF-8 (Kanji/multibyte)', 'encoding': 'utf-8', 'esc_cmd': FS + b'&'},
+    5: {'name': 'ISO-8859-8', 'encoding': 'iso-8859-8', 'esc_cmd': ESC + b't\x22'},
+}
+
+HEB_CFG = HEBREW_CONFIGS[HEBREW_MODE]
 
 
 def encode_text(t):
+    enc = HEB_CFG['encoding']
     try:
-        return t.encode(CODEPAGE)
+        return t.encode(enc)
     except (UnicodeEncodeError, LookupError):
         return t.encode('utf-8', errors='replace')
 
@@ -79,7 +96,7 @@ class BonBuilder:
 
     def init(self):
         self._add(INIT)
-        self._add(SET_CP862)
+        self._add(HEB_CFG['esc_cmd'])
         if TEST_MODE:
             self.preview_lines.append('')
 
@@ -314,7 +331,7 @@ def main():
     else:
         print(f'| Printer: SIMULATED (no real print)')
     print(f'| Poll:    every {POLL_INTERVAL}s')
-    print(f'| Codepage: {CODEPAGE} (Hebrew)')
+    print(f'| Hebrew:  mode {HEBREW_MODE} = {HEB_CFG["name"]}')
     print('+------------------------------------------+')
     print()
 

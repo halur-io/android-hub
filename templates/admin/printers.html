@@ -533,19 +533,22 @@ function showSummary(connected, failed, total) {
     body.innerHTML = html;
 }
 
-var hash = window.location.hash;
-var savedTab = hash ? hash.replace('#', '#') : localStorage.getItem('printerTab');
-if (hash) {
-    var hashTarget = '#' + hash.replace('#', '');
-    var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + hashTarget + '"]');
-    if (tabEl) { new bootstrap.Tab(tabEl).show(); }
-} else if (savedTab) {
-    var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + savedTab + '"]');
-    if (tabEl) { new bootstrap.Tab(tabEl).show(); }
-}
-document.querySelectorAll('#printerTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
-    btn.addEventListener('shown.bs.tab', function(e) {
-        localStorage.setItem('printerTab', e.target.getAttribute('data-bs-target'));
+document.addEventListener('DOMContentLoaded', function() {
+    var hash = window.location.hash;
+    if (hash) {
+        var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + hash + '"]');
+        if (tabEl && typeof bootstrap !== 'undefined') { new bootstrap.Tab(tabEl).show(); }
+    } else {
+        var savedTab = localStorage.getItem('printerTab');
+        if (savedTab) {
+            var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + savedTab + '"]');
+            if (tabEl && typeof bootstrap !== 'undefined') { new bootstrap.Tab(tabEl).show(); }
+        }
+    }
+    document.querySelectorAll('#printerTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            localStorage.setItem('printerTab', e.target.getAttribute('data-bs-target'));
+        });
     });
 });
 </script>

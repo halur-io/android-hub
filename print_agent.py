@@ -35,13 +35,14 @@ CHECKER_COPIES = 2
 PAYMENT_COPIES = 1
 STATION_BONS = True
 CUT_FEED_LINES = 6
-HEBREW_MODE = 3
+HEBREW_MODE = 6
 # HEBREW_MODE options -- try each until Hebrew prints correctly:
 #   1 = CP862 (Hebrew DOS codepage)
 #   2 = Windows-1255
 #   3 = UTF-8 with codepage 255
 #   4 = UTF-8 with Kanji/multibyte mode (FS &)
-#   5 = ISO-8859-8
+#   5 = ISO-8859-8 (codepage 34)
+#   6 = ISO-8859-8 (codepage 42) -- HSPOS HS-C830 series
 # --------------------------------------------------------------------
 
 TEST_MODE = '--test' in sys.argv or '--test-once' in sys.argv
@@ -68,6 +69,7 @@ HEBREW_CONFIGS = {
     3: {'name': 'UTF-8 (codepage 255)', 'encoding': 'utf-8', 'esc_cmd': ESC + b't\xff'},
     4: {'name': 'UTF-8 (Kanji/multibyte)', 'encoding': 'utf-8', 'esc_cmd': FS + b'&'},
     5: {'name': 'ISO-8859-8', 'encoding': 'iso-8859-8', 'esc_cmd': ESC + b't\x22'},
+    6: {'name': 'ISO-8859-8 (HSPOS cp42)', 'encoding': 'iso-8859-8', 'esc_cmd': ESC + b't\x2a'},
 }
 
 HEB_CFG = HEBREW_CONFIGS[HEBREW_MODE]

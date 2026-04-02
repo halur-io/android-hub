@@ -5301,6 +5301,8 @@ def test_all_printers():
 @login_required
 @require_permission('kitchen.manage')
 def add_station():
+    from flask import session as flask_session
+    flask_session.pop('pending_delete_station', None)
     from models import PrintStation
     name = request.form.get('name', '').strip()
     display_name = request.form.get('display_name', '').strip()

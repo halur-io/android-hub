@@ -26,7 +26,7 @@ import urllib.request
 import urllib.error
 
 # ─── CONFIG ─────────────────────────────────────────────────────────
-SERVER_URL = "https://your-app.replit.app"   # Your deployed site URL
+SERVER_URL = "https://cad2a536-a2eb-41a8-a0a3-6f4a608fee70-00-2gvg9dtirvl7z.picard.replit.dev"   # Update after deploying
 PRINT_AGENT_KEY = "sumo-print-2024-secure"   # Must match PRINT_AGENT_KEY env var on server
 PRINTER_IP = "10.100.10.10"                  # Thermal printer IP on local network
 PRINTER_PORT = 9100                          # Default ESC/POS port

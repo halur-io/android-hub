@@ -518,6 +518,7 @@ class MenuItem(db.Model):
     allow_delivery = db.Column(db.Boolean, default=True)  # Can be ordered for delivery
     prep_time_minutes = db.Column(db.Integer)  # Preparation time
     print_station = db.Column(db.String(50))  # Print station/route for bon printing (e.g. kitchen, bar, sushi)
+    print_name = db.Column(db.String(100))  # Custom short name for bon printing (different language/code)
     calories = db.Column(db.Integer)  # Nutritional info
     spice_level = db.Column(db.Integer, default=0)  # 0-5 scale
     allergens = db.Column(db.Text)  # JSON array of allergens

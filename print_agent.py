@@ -177,7 +177,7 @@ def build_checker(b, o):
     b.dashed()
 
     for item in o.get('items', []):
-        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        name = item.get('print_name') or item.get('name_he') or item.get('item_name_he') or item.get('name', '')
         qty = item.get('qty') or item.get('quantity', 1)
         b.align('right')
         b.font('double_h')
@@ -244,7 +244,7 @@ def build_payment(b, o):
     b.dashed()
 
     for item in o.get('items', []):
-        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        name = item.get('print_name') or item.get('name_he') or item.get('item_name_he') or item.get('name', '')
         qty = item.get('qty') or item.get('quantity', 1)
         price = item.get('price') or item.get('unit_price', 0)
         total = qty * price
@@ -294,7 +294,7 @@ def build_station(b, o, station_name, station_items):
         b.bold(False)
 
     for item in station_items:
-        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        name = item.get('print_name') or item.get('name_he') or item.get('item_name_he') or item.get('name', '')
         qty = item.get('qty') or item.get('quantity', 1)
         b.align('right')
         b.font('double_h')
@@ -599,7 +599,7 @@ def main():
 
                         if TEST_MODE:
                             for item in order.get('items', []):
-                                iname = item.get('name_he') or item.get('item_name_he') or item.get('name', '?')
+                                iname = item.get('print_name') or item.get('name_he') or item.get('item_name_he') or item.get('name', '?')
                                 iqty = item.get('qty') or item.get('quantity', 1)
                                 print(f'     {iqty}x {iname}')
 

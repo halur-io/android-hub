@@ -1315,6 +1315,7 @@ def edit_menu_item(id=None):
         item.allow_takeaway = request.form.get('allow_takeaway') == 'on'
         item.prep_time_minutes = int(request.form.get('prep_time_minutes', 0)) if request.form.get('prep_time_minutes') else None
         item.print_station = request.form.get('print_station', '').strip() or None
+        item.print_name = request.form.get('print_name', '').strip() or None
         item.calories = int(request.form.get('calories', 0)) if request.form.get('calories') else None
         item.spice_level = int(request.form.get('spice_level', 0))
         

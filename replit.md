@@ -41,7 +41,8 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 ### Auto-Print System (Print Agent v4.0 - Multi-Printer)
 - **Architecture:** Cloud server cannot reach restaurant LAN printers directly. Solution: a local print agent (`print_agent.py`) runs on a Mac at the restaurant (one per branch), fetches printer config from the server, polls for new orders, and routes each bon to the correct printer by station.
 - **Multi-Printer Management:** Admin panel (`/admin/printers`) allows CRUD of printers per branch. Each printer has IP, port, encoding, codepage, stations, and copy settings. One printer per branch is marked as default (receives checker + payment bons).
-- **DB Models:** `Printer` (per-branch printer config), `PrinterStation` (maps station names to printers). `MenuItem.print_station` links dishes to stations.
+- **DB Models:** `Printer` (per-branch printer config), `PrinterStation` (maps station names to printers). `MenuItem.print_station` links dishes to stations. `MenuItem.print_name` (optional custom name for bon printing).
+- **Print Settings Tab:** Dedicated tab in menu item edit form (`enhanced_menu_item.html`) with print station dropdown and custom print name field. Print name is used on bons when set; falls back to `name_he`.
 - **API Endpoints:**
     - `GET /ops/api/orders/unprinted?branch_id=X` (returns unprinted orders, optionally filtered by branch)
     - `POST /ops/api/orders/mark-printed` (marks orders as printed)

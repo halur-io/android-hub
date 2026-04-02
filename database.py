@@ -30,6 +30,7 @@ def _run_safe_migrations(db):
         ("branches", "enable_delivery", "ALTER TABLE branches ADD COLUMN enable_delivery BOOLEAN DEFAULT TRUE"),
         ("branches", "enable_pickup", "ALTER TABLE branches ADD COLUMN enable_pickup BOOLEAN DEFAULT TRUE"),
         ("enrolled_devices", "pending_request_token", "ALTER TABLE enrolled_devices ADD COLUMN pending_request_token VARCHAR(64) UNIQUE"),
+        ("menu_items", "print_name", "ALTER TABLE menu_items ADD COLUMN print_name VARCHAR(100)"),
     ]
     for table, column, sql in migrations:
         try:

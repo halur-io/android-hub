@@ -1025,10 +1025,15 @@ def _build_checker_bon(p, o):
 
     items = json.loads(o.items_json) if o.items_json else []
     for item in items:
-        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        display_name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi and mi.print_name:
+                display_name = mi.print_name
         qty = item.get('qty') or item.get('quantity', 1)
         p.bold()
-        p.text(f'{qty}× {name}')
+        p.text(f'{qty}× {display_name}')
         p.bold(False)
         opts = item.get('options') or []
         for op in opts:
@@ -1071,12 +1076,17 @@ def _build_payment_bon(p, o):
 
     items = json.loads(o.items_json) if o.items_json else []
     for item in items:
-        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        display_name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi and mi.print_name:
+                display_name = mi.print_name
         qty = item.get('qty') or item.get('quantity', 1)
         price = item.get('price') or item.get('unit_price', 0)
         total = qty * price
         p.bold()
-        p.text(f'{qty}× {name}  ₪{total:.0f}')
+        p.text(f'{qty}× {display_name}  ₪{total:.0f}')
         p.bold(False)
         opts = item.get('options') or []
         for op in opts:
@@ -1123,10 +1133,15 @@ def _build_station_bon(p, o, station_name, station_items):
         p.bold(False)
 
     for item in station_items:
-        name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        display_name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi and mi.print_name:
+                display_name = mi.print_name
         qty = item.get('qty') or item.get('quantity', 1)
         p.bold()
-        p.text(f'{qty}× {name}')
+        p.text(f'{qty}× {display_name}')
         p.bold(False)
         opts = item.get('options') or []
         for op in opts:
@@ -1219,8 +1234,11 @@ def get_unprinted_orders():
             st = 'כללי'
             if menu_item_id:
                 mi = MenuItem.query.get(menu_item_id)
-                if mi and mi.print_station:
-                    st = mi.print_station
+                if mi:
+                    if mi.print_station:
+                        st = mi.print_station
+                    if mi.print_name:
+                        item['print_name'] = mi.print_name
             if st not in by_station:
                 by_station[st] = []
             by_station[st].append(item)

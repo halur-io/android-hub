@@ -48,6 +48,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="print-tab" data-bs-toggle="tab" data-bs-target="#print" type="button" role="tab">
+                            <i class="fas fa-print me-2"></i>הגדרות הדפסה
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">
                             <i class="fas fa-cogs me-2"></i>הגדרות מתקדמות
                         </button>
@@ -393,30 +398,6 @@
                                             <input type="number" class="form-control" id="prep_time_minutes" name="prep_time_minutes" value="{{ item.prep_time_minutes or '' }}">
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="print_station" class="form-label"><i class="fas fa-print me-1"></i>עמדת הדפסה (בון)</label>
-                                            {% if print_stations %}
-                                            <select class="form-select" id="print_station" name="print_station">
-                                                <option value="">-- ללא --</option>
-                                                {% for station in print_stations %}
-                                                {% set printers_for_station = station_printer_map.get(station.name, []) %}
-                                                {% if printers_for_station %}
-                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} &rarr; {% for p in printers_for_station %}{{ p.name }} ({{ p.ip }}){% if not loop.last %}, {% endif %}{% endfor %}</option>
-                                                {% else %}
-                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} (לא משויכת למדפסת)</option>
-                                                {% endif %}
-                                                {% endfor %}
-                                            </select>
-                                            <div class="form-text">לאיזה מדפסת/עמדה הבון של מנה זו יודפס</div>
-                                            {% else %}
-                                            <div class="alert alert-warning py-2 mb-0">
-                                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                                אין עמדות הדפסה מוגדרות. <a href="{{ url_for('admin.printers') }}">הגדר עמדות</a> בלשונית "עמדות הדפסה" בדף המדפסות.
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
                                 </div>
                                 
                                 <div class="mt-3">
@@ -521,6 +502,59 @@
                             </div>
                         </div>
                         {% endif %}
+                    </div>
+
+                    <!-- Print Settings Tab -->
+                    <div class="tab-pane fade" id="print" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-print me-2"></i>הגדרות הדפסת בון</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="print_station" class="form-label">עמדת הדפסה</label>
+                                            {% if print_stations %}
+                                            <select class="form-select" id="print_station" name="print_station">
+                                                <option value="">-- ללא (מדפסת ברירת מחדל) --</option>
+                                                {% for station in print_stations %}
+                                                {% set printers_for_station = station_printer_map.get(station.name, []) %}
+                                                {% if printers_for_station %}
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} &rarr; {% for p in printers_for_station %}{{ p.name }} ({{ p.ip }}){% if not loop.last %}, {% endif %}{% endfor %}</option>
+                                                {% else %}
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} (לא משויכת למדפסת)</option>
+                                                {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">לאיזה מדפסת/עמדה הבון של מנה זו יישלח</div>
+                                            {% else %}
+                                            <div class="alert alert-warning py-2 mb-0">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                                אין עמדות הדפסה מוגדרות. <a href="{{ url_for('admin.printers') }}">הגדר עמדות</a> בלשונית "עמדות הדפסה" בדף המדפסות.
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="print_name" class="form-label">שם הדפסה מותאם</label>
+                                            <input type="text" class="form-control" id="print_name" name="print_name"
+                                                   value="{{ item.print_name or '' }}"
+                                                   placeholder="{{ item.name_he or 'שם המנה בעברית' }}" dir="rtl">
+                                            <div class="form-text">שם קצר או שונה שיודפס על הבון. אם ריק, יודפס שם המנה הרגיל.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mt-2 mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>איך זה עובד:</strong> כשמנה זו נכללת בהזמנה, הבון יישלח למדפסת של העמדה שנבחרה.
+                                    אם לא נבחרה עמדה, הבון יישלח למדפסת ברירת המחדל של הסניף.
+                                    השם המותאם מאפשר לקצר או לשנות את שם המנה כפי שיופיע על הבון (לדוגמה: קוד מטבח, שם קצר, או שפה אחרת).
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Advanced Settings Tab -->

@@ -5141,6 +5141,10 @@ def add_printer():
             flash('יש למלא שם, סניף וכתובת IP', 'error')
             return render_template('admin/edit_printer.html', printer=None, branches=branches)
 
+        existing_default = Printer.query.filter_by(branch_id=branch_id, is_default=True).first()
+        if not existing_default:
+            is_default = True
+
         if is_default:
             Printer.query.filter_by(branch_id=branch_id, is_default=True).update({'is_default': False})
 
@@ -5210,7 +5214,14 @@ def delete_printer(printer_id):
     from models import Printer
     printer = Printer.query.get_or_404(printer_id)
     name = printer.name
+    was_default = printer.is_default
+    branch_id = printer.branch_id
     db.session.delete(printer)
+    db.session.flush()
+    if was_default:
+        next_printer = Printer.query.filter_by(branch_id=branch_id).first()
+        if next_printer:
+            next_printer.is_default = True
     db.session.commit()
     return jsonify({'success': True, 'message': f'מדפסת "{name}" נמחקה'})
 

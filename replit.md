@@ -57,7 +57,8 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 
 ### System Design Choices
 - **Modularity:** Separation of concerns (e.g., `standalone_order_service` for ordering).
-- **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`, `Printer`, `PrinterStation`.
+- **Print Stations as Entities:** `PrintStation` model is a standalone first-class entity (name + display_name). Managed via admin tab at `/admin/printers` (עמדות הדפסה). `PrinterStation` remains as a join table linking printers to stations. Menu item edit form shows real stations with their linked printer info (name + IP). No hardcoded station fallbacks.
+- **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`, `Printer`, `PrinterStation`, `PrintStation`.
 - **API Endpoints:** Dedicated endpoints for order validation, coupon validation, upsell suggestions, and print agent polling.
 
 ## External Dependencies

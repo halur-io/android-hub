@@ -19,7 +19,7 @@ from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
     MenuCategory, MenuItem, StockItem, StockLevel, StockTransaction,
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
-    Printer, PrinterStation,
+    Printer, PrinterStation, PrintStation,
 )
 
 ops_bp = Blueprint(

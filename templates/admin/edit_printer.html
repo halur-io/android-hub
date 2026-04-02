@@ -91,19 +91,30 @@
                         <h6 class="mb-0"><i class="fas fa-list me-2"></i>עמדות הדפסה (סטיישנים)</h6>
                     </div>
                     <div class="card-body">
+                        {% if all_stations %}
                         <div class="mb-3">
-                            <label for="stations" class="form-label">עמדות מופרדות בפסיק</label>
-                            <input type="text" class="form-control" id="stations" name="stations"
-                                   value="{{ printer.stations|map(attribute='station_name')|join(', ') if printer else '' }}"
-                                   placeholder="מטבח, בר, סושי, גריל" dir="rtl">
-                            <small class="form-text text-muted">
-                                עמדות ההדפסה שמדפסת זו מקבלת. מנות עם עמדת הדפסה תואמת יישלחו למדפסת זו.
-                            </small>
+                            <label class="form-label">בחר עמדות הדפסה למדפסת זו</label>
+                            {% set current_station_names = printer.stations|map(attribute='station_name')|list if printer else [] %}
+                            {% for station in all_stations %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="station_ids" value="{{ station.id }}" id="st_{{ station.id }}"
+                                    {% if station.name in current_station_names %}checked{% endif %}>
+                                <label class="form-check-label" for="st_{{ station.id }}">
+                                    {{ station.display_name or station.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
-                        <div class="alert alert-info mb-0">
+                        {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            אין עמדות הדפסה מוגדרות. <a href="{{ url_for('admin.printers') }}">הוסף עמדות</a> בלשונית "עמדות הדפסה" בדף המדפסות.
+                        </div>
+                        {% endif %}
+                        <div class="alert alert-info mb-0 mt-2">
                             <i class="fas fa-lightbulb me-2"></i>
-                            <strong>דוגמה:</strong> אם מדפסת זו ממוקמת במטבח, הזן "מטבח".
-                            מנות שהוגדרו עם עמדת הדפסה "מטבח" יישלחו אליה.
+                            <strong>דוגמה:</strong> אם מדפסת זו ממוקמת במטבח, סמן את עמדת "מטבח".
+                            מנות שהוגדרו עם עמדת הדפסה "מטבח" יישלחו למדפסת זו.
                         </div>
                     </div>
                 </div>

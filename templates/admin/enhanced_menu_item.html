@@ -399,7 +399,12 @@
                                             <select class="form-select" id="print_station" name="print_station">
                                                 <option value="">-- ללא --</option>
                                                 {% for station in print_stations %}
-                                                <option value="{{ station }}" {% if item.print_station == station %}selected{% endif %}>{{ station }}</option>
+                                                {% set printers_for_station = station_printer_map.get(station.name, []) %}
+                                                {% if printers_for_station %}
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} &rarr; {{ printers_for_station|map(attribute='name')|join(', ') }} ({{ printers_for_station[0].ip }})</option>
+                                                {% else %}
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} (לא משויכת למדפסת)</option>
+                                                {% endif %}
                                                 {% endfor %}
                                             </select>
                                             <div class="form-text">לאיזה מדפסת/עמדה הבון של מנה זו יודפס</div>

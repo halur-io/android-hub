@@ -18,6 +18,12 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="stations-tab" data-bs-toggle="tab" data-bs-target="#stations-pane" type="button" role="tab">
+                <i class="fas fa-map-marker-alt me-1"></i>עמדות הדפסה
+                <span class="badge bg-secondary ms-1">{{ all_stations|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="test-tab" data-bs-toggle="tab" data-bs-target="#test-pane" type="button" role="tab">
                 <i class="fas fa-network-wired me-1"></i>בדיקת חיבור
             </button>
@@ -159,6 +165,130 @@
                         <strong>הפעלה:</strong>
                         <code>python3 print_agent.py --branch &lt;BRANCH_ID&gt;</code>
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="stations-pane" role="tabpanel">
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>עמדות הדפסה</h5>
+                    <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#addStationForm">
+                        <i class="fas fa-plus me-1"></i>הוסף עמדה
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="collapse mb-3" id="addStationForm">
+                        <form method="POST" action="{{ url_for('admin.add_station') }}" class="card card-body bg-light">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label">שם מזהה (באנגלית/עברית)</label>
+                                    <input type="text" class="form-control" name="name" required placeholder="kitchen">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">שם תצוגה</label>
+                                    <input type="text" class="form-control" name="display_name" placeholder="מטבח">
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-plus me-1"></i>הוסף
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% if all_stations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>שם מזהה</th>
+                                    <th>שם תצוגה</th>
+                                    <th>מדפסות משויכות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for station in all_stations %}
+                                <tr>
+                                    <td><strong>{{ station.name }}</strong></td>
+                                    <td>{{ station.display_name or station.name }}</td>
+                                    <td>
+                                        {% set linked_printers = [] %}
+                                        {% for branch in branches %}
+                                        {% for p in printers_by_branch.get(branch.id, []) %}
+                                        {% for ps in p.stations %}
+                                        {% if ps.station_name == station.name %}
+                                        <span class="badge bg-info me-1">{{ p.name }} ({{ p.ip_address }})</span>
+                                        {% endif %}
+                                        {% endfor %}
+                                        {% endfor %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editStationModal{{ station.id }}">
+                                                        <i class="fas fa-edit me-2"></i>עריכה
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <form method="POST" action="{{ url_for('admin.delete_station', station_id=station.id) }}" onsubmit="return confirm('למחוק עמדה {{ station.name }}?')">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="fas fa-trash me-2"></i>מחיקה
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="modal fade" id="editStationModal{{ station.id }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <form method="POST" action="{{ url_for('admin.edit_station', station_id=station.id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">עריכת עמדה: {{ station.name }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="mb-3">
+                                                                <label class="form-label">שם מזהה</label>
+                                                                <input type="text" class="form-control" name="name" value="{{ station.name }}" required>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label">שם תצוגה</label>
+                                                                <input type="text" class="form-control" name="display_name" value="{{ station.display_name or '' }}">
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                                            <button type="submit" class="btn btn-primary">שמירה</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-map-marker-alt fa-3x mb-3 d-block"></i>
+                        <p>אין עמדות הדפסה מוגדרות עדיין.</p>
+                        <p>הוסף עמדות כדי שתוכל לשייך אותן למדפסות ולמנות בתפריט.</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

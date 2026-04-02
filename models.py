@@ -2832,6 +2832,17 @@ class Printer(db.Model):
         return f'<Printer {self.name} @ {self.ip_address}>'
 
 
+class PrintStation(db.Model):
+    __tablename__ = 'print_stations'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    display_name = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<PrintStation {self.name}>'
+
+
 class PrinterStation(db.Model):
     __tablename__ = 'printer_stations'
     __table_args__ = (

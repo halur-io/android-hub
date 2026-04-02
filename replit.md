@@ -48,7 +48,9 @@ I prefer clear, concise language in all communications. For coding, I favor an i
     - `GET /ops/api/branch/<id>/printers` (returns printer config for print agent: default printer, station map, all printers)
 - Auth via `X-Print-Key` header matching `PRINT_AGENT_KEY` env var.
 - **DB Fields:** `FoodOrder.bon_printed` (Boolean), `FoodOrder.bon_printed_at` (DateTime) track print status.
-- **Printer:** HSPOS HS-C830ULWB 80mm thermal (ESC/POS, ISO-8859-8, codepage 32).
+- **Printer:** SNBC BTP-R880NPV 80mm thermal (ESC/POS, ISO-8859-8, Hebrew1 codepage 36, IP 10.100.10.234:9100).
+- **Printer Model Field:** `Printer.printer_type` stores the hardware model (default: `snbc-btp-r880npv`).
+- **Connection Test:** Admin tab at `/admin/printers` (בדיקת חיבור) tests TCP connectivity to all configured printers.
 - **Bon Types:** Checker bon (configurable copies), Payment bon (configurable copies), Station bons (routed to correct printer by dish station).
 - **Print Agent Usage:** `python3 print_agent.py --branch <BRANCH_ID>` (env vars: `PRINT_AGENT_SERVER`, `PRINT_AGENT_KEY`)
 - **Print Modes:** Browser (hidden iframe + print dialog) or Server (direct TCP via print agent).

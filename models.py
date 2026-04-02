@@ -2792,10 +2792,11 @@ class Printer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id', ondelete='CASCADE'), nullable=False)
+    printer_type = db.Column(db.String(50), default='snbc-btp-r880npv')
     ip_address = db.Column(db.String(45), nullable=False)
     port = db.Column(db.Integer, default=9100)
     encoding = db.Column(db.String(30), default='iso-8859-8')
-    codepage_num = db.Column(db.Integer, default=32)
+    codepage_num = db.Column(db.Integer, default=36)
     cut_feed_lines = db.Column(db.Integer, default=6)
     is_active = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
@@ -2812,6 +2813,7 @@ class Printer(db.Model):
         return {
             'id': self.id,
             'name': self.name,
+            'printer_type': self.printer_type or 'escpos',
             'branch_id': self.branch_id,
             'ip_address': self.ip_address,
             'port': self.port,

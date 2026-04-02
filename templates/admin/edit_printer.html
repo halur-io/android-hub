@@ -32,6 +32,16 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="printer_type" class="form-label">דגם מדפסת</label>
+                            <select class="form-select" id="printer_type" name="printer_type">
+                                <option value="snbc-btp-r880npv" {% if not printer or printer.printer_type == 'snbc-btp-r880npv' %}selected{% endif %}>SNBC BTP-R880NPV</option>
+                                <option value="epson-tm" {% if printer and printer.printer_type == 'epson-tm' %}selected{% endif %}>Epson TM Series</option>
+                                <option value="star-tsp" {% if printer and printer.printer_type == 'star-tsp' %}selected{% endif %}>Star TSP Series</option>
+                                <option value="escpos-generic" {% if printer and printer.printer_type == 'escpos-generic' %}selected{% endif %}>ESC/POS Generic</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="branch_id" class="form-label">סניף <span class="text-danger">*</span></label>
                             <select class="form-select" id="branch_id" name="branch_id" required>
                                 <option value="">בחר סניף...</option>
@@ -122,7 +132,7 @@
                                     <label for="codepage_num" class="form-label">קודפייג' ESC/POS</label>
                                     <input type="number" class="form-control" id="codepage_num" name="codepage_num"
                                            value="{{ printer.codepage_num if printer else 32 }}" dir="ltr">
-                                    <small class="form-text text-muted">HSPOS=32, EPSON=36</small>
+                                    <small class="form-text text-muted">SNBC Hebrew1=36, EPSON=36, HSPOS=32</small>
                                 </div>
                             </div>
                         </div>

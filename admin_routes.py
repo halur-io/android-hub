@@ -5126,11 +5126,12 @@ def add_printer():
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
+        printer_type = request.form.get('printer_type', 'snbc-btp-r880npv').strip()
         branch_id = request.form.get('branch_id', type=int)
         ip_address = request.form.get('ip_address', '').strip()
         port = request.form.get('port', 9100, type=int)
         encoding = request.form.get('encoding', 'iso-8859-8').strip()
-        codepage_num = request.form.get('codepage_num', 32, type=int)
+        codepage_num = request.form.get('codepage_num', 36, type=int)
         cut_feed_lines = request.form.get('cut_feed_lines', 6, type=int)
         checker_copies = request.form.get('checker_copies', 2, type=int)
         payment_copies = request.form.get('payment_copies', 1, type=int)
@@ -5149,7 +5150,7 @@ def add_printer():
             Printer.query.filter_by(branch_id=branch_id, is_default=True).update({'is_default': False})
 
         printer = Printer(
-            name=name, branch_id=branch_id, ip_address=ip_address,
+            name=name, printer_type=printer_type, branch_id=branch_id, ip_address=ip_address,
             port=port, encoding=encoding, codepage_num=codepage_num,
             cut_feed_lines=cut_feed_lines, checker_copies=checker_copies,
             payment_copies=payment_copies, is_default=is_default, is_active=True,
@@ -5177,11 +5178,12 @@ def edit_printer(printer_id):
 
     if request.method == 'POST':
         printer.name = request.form.get('name', '').strip()
+        printer.printer_type = request.form.get('printer_type', 'snbc-btp-r880npv').strip()
         printer.branch_id = request.form.get('branch_id', type=int)
         printer.ip_address = request.form.get('ip_address', '').strip()
         printer.port = request.form.get('port', 9100, type=int)
         printer.encoding = request.form.get('encoding', 'iso-8859-8').strip()
-        printer.codepage_num = request.form.get('codepage_num', 32, type=int)
+        printer.codepage_num = request.form.get('codepage_num', 36, type=int)
         printer.cut_feed_lines = request.form.get('cut_feed_lines', 6, type=int)
         printer.checker_copies = request.form.get('checker_copies', 2, type=int)
         printer.payment_copies = request.form.get('payment_copies', 1, type=int)
@@ -5235,6 +5237,49 @@ def toggle_printer(printer_id):
     db.session.commit()
     status = 'פעילה' if printer.is_active else 'כבויה'
     return jsonify({'success': True, 'message': f'מדפסת "{printer.name}" - {status}'})
+
+@admin_bp.route('/printers/test/<int:printer_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def test_printer(printer_id):
+    import socket
+    from models import Printer
+    printer = Printer.query.get_or_404(printer_id)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(3)
+        s.connect((printer.ip_address, printer.port))
+        s.close()
+        return jsonify({'success': True, 'status': 'connected', 'message': f'חיבור תקין ל-{printer.name}'})
+    except socket.timeout:
+        return jsonify({'success': True, 'status': 'timeout', 'message': f'לא ניתן להתחבר ל-{printer.name} - timeout'})
+    except ConnectionRefusedError:
+        return jsonify({'success': True, 'status': 'refused', 'message': f'החיבור נדחה ע"י {printer.name}'})
+    except Exception as e:
+        return jsonify({'success': True, 'status': 'error', 'message': f'שגיאה: {str(e)}'})
+
+@admin_bp.route('/printers/test-all', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def test_all_printers():
+    import socket
+    from models import Printer
+    printers = Printer.query.filter_by(is_active=True).all()
+    results = []
+    for printer in printers:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(3)
+            s.connect((printer.ip_address, printer.port))
+            s.close()
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'connected'})
+        except socket.timeout:
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'timeout'})
+        except ConnectionRefusedError:
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'refused'})
+        except Exception as e:
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'error', 'error': str(e)})
+    return jsonify({'success': True, 'results': results})
 
 @admin_bp.route('/payment-config')
 @login_required

@@ -34,6 +34,7 @@ POLL_INTERVAL = 5
 CHECKER_COPIES = 2
 PAYMENT_COPIES = 1
 STATION_BONS = True
+CUT_FEED_LINES = 6
 HEBREW_MODE = 3
 # HEBREW_MODE options -- try each until Hebrew prints correctly:
 #   1 = CP862 (Hebrew DOS codepage)
@@ -101,7 +102,7 @@ class BonBuilder:
             self.preview_lines.append('')
 
     def cut(self):
-        self._add(b'\n\n\n')
+        self._add(b'\n' * CUT_FEED_LINES)
         self._add(CUT_FULL)
         if TEST_MODE:
             self.preview_lines.append('-' * 32 + ' CUT ' + '-' * 32)

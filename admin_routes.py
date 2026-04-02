@@ -1431,9 +1431,9 @@ def edit_menu_item(id=None):
     station_printer_map = {}
     for ps in all_print_stations:
         linked = db.session.query(Printer).join(PrinterStation, PrinterStation.printer_id == Printer.id).filter(
-            PrinterStation.station_name == ps.name, Printer.is_active == True
+            PrinterStation.station_name == ps.name
         ).all()
-        station_printer_map[ps.name] = [{'name': p.name, 'ip': p.ip_address, 'branch': p.branch.name_he if p.branch else ''} for p in linked]
+        station_printer_map[ps.name] = [{'name': p.name + (' [לא פעילה]' if not p.is_active else ''), 'ip': p.ip_address, 'branch': p.branch.name_he if p.branch else ''} for p in linked]
 
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map)
 
@@ -5351,8 +5351,8 @@ def delete_station(station_id):
     menu_count = MenuItem.query.filter_by(print_station=station.name).count()
     printer_count = PrinterStation.query.filter_by(station_name=station.name).count()
     if (menu_count > 0 or printer_count > 0) and not confirm:
-        flash(f'עמדה "{station.name}" משויכת ל-{menu_count} מנות ו-{printer_count} מדפסות. לחץ שוב כדי לאשר מחיקה.', 'warning')
-        return redirect(url_for('admin.printers'))
+        flash(f'עמדה "{station.name}" משויכת ל-{menu_count} מנות ו-{printer_count} מדפסות. לחץ שוב על מחיקה כדי לאשר.', 'warning')
+        return redirect(url_for('admin.printers') + '#stations-pane')
     PrinterStation.query.filter_by(station_name=station.name).delete()
     MenuItem.query.filter_by(print_station=station.name).update({'print_station': None})
     db.session.delete(station)

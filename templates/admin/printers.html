@@ -141,12 +141,15 @@
 </div>
 
 <script>
+var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
 function deletePrinter(id, name) {
     if (!confirm('למחוק את המדפסת "' + name + '"?')) return;
     fetch('/admin/printers/delete/' + id, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
     })
     .then(r => r.json())
@@ -163,7 +166,8 @@ function togglePrinter(id, name) {
     fetch('/admin/printers/toggle/' + id, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
     })
     .then(r => r.json())

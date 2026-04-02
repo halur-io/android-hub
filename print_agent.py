@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-SUMO Print Agent
-================
-Run this script on a computer at the restaurant (Mac/PC/laptop) that is on the
+SUMO Print Agent v2.0
+=====================
+Run this script on a computer at the restaurant (Mac/PC) that is on the
 same network as the thermal printer. It polls the cloud server for new
 orders and prints them automatically.
 
@@ -25,19 +25,21 @@ import sys
 import urllib.request
 import urllib.error
 
-# ─── CONFIG ─────────────────────────────────────────────────────────
+# --- CONFIG ---------------------------------------------------------
 SERVER_URL = "https://cad2a536-a2eb-41a8-a0a3-6f4a608fee70-00-2gvg9dtirvl7z.picard.replit.dev"   # Update after deploying
-PRINT_AGENT_KEY = "sumo-print-2024-secure"   # Must match PRINT_AGENT_KEY env var on server
-PRINTER_IP = "10.100.10.10"                  # Thermal printer IP on local network
-PRINTER_PORT = 9100                          # Default ESC/POS port
-POLL_INTERVAL = 5                            # Seconds between checks
-CHECKER_COPIES = 2                           # Checker bon copies
-PAYMENT_COPIES = 1                           # Payment bon copies
-STATION_BONS = True                          # Print station bons (kitchen, bar, etc.)
-# ────────────────────────────────────────────────────────────────────
+PRINT_AGENT_KEY = "sumo-print-2024-secure"
+PRINTER_IP = "10.100.10.10"
+PRINTER_PORT = 9100
+POLL_INTERVAL = 5
+CHECKER_COPIES = 2
+PAYMENT_COPIES = 1
+STATION_BONS = True
+CODEPAGE = 'cp862'
+# --------------------------------------------------------------------
 
 TEST_MODE = '--test' in sys.argv or '--test-once' in sys.argv
 TEST_ONCE = '--test-once' in sys.argv
+FIRST_RUN = True
 
 ESC = b'\x1b'
 GS = b'\x1d'
@@ -51,6 +53,14 @@ FONT_DOUBLE_H = ESC + b'!\x10'
 FONT_DOUBLE = ESC + b'!\x30'
 BOLD_ON = ESC + b'E\x01'
 BOLD_OFF = ESC + b'E\x00'
+SET_CP862 = ESC + b't\x24'
+
+
+def encode_text(t):
+    try:
+        return t.encode(CODEPAGE)
+    except (UnicodeEncodeError, LookupError):
+        return t.encode('utf-8', errors='replace')
 
 
 class BonBuilder:
@@ -63,12 +73,13 @@ class BonBuilder:
 
     def _add(self, data):
         if isinstance(data, str):
-            self.buf.extend(data.encode('utf-8'))
+            self.buf.extend(encode_text(data))
         else:
             self.buf.extend(data)
 
     def init(self):
         self._add(INIT)
+        self._add(SET_CP862)
         if TEST_MODE:
             self.preview_lines.append('')
 
@@ -76,7 +87,7 @@ class BonBuilder:
         self._add(b'\n\n\n')
         self._add(CUT_FULL)
         if TEST_MODE:
-            self.preview_lines.append('✂' * 32)
+            self.preview_lines.append('-' * 32 + ' CUT ' + '-' * 32)
             self.preview_lines.append('')
 
     def align(self, a):
@@ -94,14 +105,13 @@ class BonBuilder:
     def text(self, t):
         self._add(t + '\n')
         if TEST_MODE:
-            prefix = '**' if self._current_bold else '  '
-            size = {'double': '██', 'double_h': '▓▓'}.get(self._current_font, '  ')
-            self.preview_lines.append(f'{prefix}{size} {t}')
+            prefix = '** ' if self._current_bold else '   '
+            self.preview_lines.append(f'{prefix}{t}')
 
     def line(self, ch='-', w=32):
         self._add(ch * w + '\n')
         if TEST_MODE:
-            self.preview_lines.append('    ' + ch * w)
+            self.preview_lines.append('   ' + ch * w)
 
     def dashed(self): self.line('-')
     def thick(self): self.line('=')
@@ -126,9 +136,9 @@ def build_checker(b, o):
     b.align('right')
 
     if o.get('customer_notes'):
-        b.bold(); b.text(f'⚠ {o["customer_notes"]}'); b.bold(False)
+        b.bold(); b.text(f'! {o["customer_notes"]}'); b.bold(False)
     if o.get('delivery_notes'):
-        b.bold(); b.text(f'🚗 {o["delivery_notes"]}'); b.bold(False)
+        b.bold(); b.text(f'>> {o["delivery_notes"]}'); b.bold(False)
 
     b.font('double_h')
     b.bold(); b.text(o.get('customer_name', '')); b.font('normal')
@@ -143,7 +153,7 @@ def build_checker(b, o):
     for item in o.get('items', []):
         name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
         qty = item.get('qty') or item.get('quantity', 1)
-        b.bold(); b.text(f'{qty}× {name}'); b.bold(False)
+        b.bold(); b.text(f'{qty}x {name}'); b.bold(False)
         for op in (item.get('options') or []):
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
             b.text(f'  + {op_name}')
@@ -151,10 +161,10 @@ def build_checker(b, o):
     b.thick()
     b.align('right')
     b.font('double')
-    b.bold(); b.text(f'סה"כ: ₪{o["total_amount"]:.0f}'); b.bold(False)
+    b.bold(); b.text(f'סה"כ: {o["total_amount"]:.0f} ש"ח'); b.bold(False)
     b.font('normal')
     b.align('center')
-    b.text(f'צ׳קר | {time.strftime("%H:%M")}')
+    b.text(f'צ\'קר | {time.strftime("%H:%M")}')
     b.cut()
 
 
@@ -182,20 +192,20 @@ def build_payment(b, o):
         qty = item.get('qty') or item.get('quantity', 1)
         price = item.get('price') or item.get('unit_price', 0)
         total = qty * price
-        b.bold(); b.text(f'{qty}× {name}  ₪{total:.0f}'); b.bold(False)
+        b.bold(); b.text(f'{qty}x {name}  {total:.0f} ש"ח'); b.bold(False)
 
     b.dashed()
-    b.text(f'סכום: ₪{o["subtotal"]:.0f}')
+    b.text(f'סכום: {o["subtotal"]:.0f} ש"ח')
     if o.get('delivery_fee', 0) > 0:
-        b.text(f'משלוח: ₪{o["delivery_fee"]:.0f}')
+        b.text(f'משלוח: {o["delivery_fee"]:.0f} ש"ח')
     if o.get('discount_amount', 0) > 0:
-        b.text(f'הנחה: -₪{o["discount_amount"]:.0f}')
+        b.text(f'הנחה: -{o["discount_amount"]:.0f} ש"ח')
     b.thick()
     b.font('double')
-    b.bold(); b.text(f'לתשלום: ₪{o["total_amount"]:.0f}'); b.bold(False)
+    b.bold(); b.text(f'לתשלום: {o["total_amount"]:.0f} ש"ח'); b.bold(False)
     b.font('normal')
     b.align('center')
-    b.text(f'תשלום: {o.get("payment_method", "—")}')
+    b.text(f'תשלום: {o.get("payment_method", "-")}')
     b.text(time.strftime('%H:%M'))
     b.cut()
 
@@ -213,11 +223,11 @@ def build_station(b, o, station_name, station_items):
     b.thick()
     b.align('right')
     if o.get('customer_notes'):
-        b.bold(); b.text(f'⚠ {o["customer_notes"]}'); b.bold(False)
+        b.bold(); b.text(f'! {o["customer_notes"]}'); b.bold(False)
     for item in station_items:
         name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
         qty = item.get('qty') or item.get('quantity', 1)
-        b.bold(); b.text(f'{qty}× {name}'); b.bold(False)
+        b.bold(); b.text(f'{qty}x {name}'); b.bold(False)
     b.align('center')
     b.dashed()
     b.text(f'#{o["order_number"]} | {station_name} | {time.strftime("%H:%M")}')
@@ -226,7 +236,7 @@ def build_station(b, o, station_name, station_items):
 
 def send_to_printer(data):
     if TEST_MODE:
-        print(f'  📄 Would send {len(data)} bytes to {PRINTER_IP}:{PRINTER_PORT}')
+        print(f'  [SIM] Would send {len(data)} bytes to {PRINTER_IP}:{PRINTER_PORT}')
         return True
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -236,7 +246,7 @@ def send_to_printer(data):
         s.close()
         return True
     except Exception as e:
-        print(f'  ❌ Printer error: {e}')
+        print(f'  [ERR] Printer error: {e}')
         return False
 
 
@@ -247,10 +257,10 @@ def api_get(path):
         resp = urllib.request.urlopen(req, timeout=10)
         return json.loads(resp.read().decode('utf-8'))
     except urllib.error.HTTPError as e:
-        print(f'  HTTP error {e.code}: {e.read().decode("utf-8", errors="replace")[:200]}')
+        print(f'  [ERR] HTTP {e.code}: {e.read().decode("utf-8", errors="replace")[:200]}')
         return None
     except Exception as e:
-        print(f'  Connection error: {e}')
+        print(f'  [ERR] Connection: {e}')
         return None
 
 
@@ -265,7 +275,7 @@ def api_post(path, body):
         resp = urllib.request.urlopen(req, timeout=10)
         return json.loads(resp.read().decode('utf-8'))
     except Exception as e:
-        print(f'  Mark-printed error: {e}')
+        print(f'  [ERR] Mark-printed: {e}')
         return None
 
 
@@ -293,24 +303,26 @@ def print_order(order):
 
 
 def main():
-    mode_str = '🧪 TEST MODE' if TEST_MODE else '🖨  LIVE MODE'
-    print('╔══════════════════════════════════════════╗')
-    print(f'║   SUMO Print Agent v1.1  {mode_str:>15} ║')
-    print('╠══════════════════════════════════════════╣')
-    print(f'║ Server:  {SERVER_URL[:32]:<32} ║')
+    global FIRST_RUN
+    mode_str = 'TEST MODE' if TEST_MODE else 'LIVE MODE'
+    print('+------------------------------------------+')
+    print(f'|   SUMO Print Agent v2.0  ({mode_str})')
+    print('+------------------------------------------+')
+    print(f'| Server:  {SERVER_URL[:40]}')
     if not TEST_MODE:
-        print(f'║ Printer: {PRINTER_IP}:{PRINTER_PORT:<21} ║')
+        print(f'| Printer: {PRINTER_IP}:{PRINTER_PORT}')
     else:
-        print(f'║ Printer: SIMULATED (no real print)       ║')
-    print(f'║ Poll:    every {POLL_INTERVAL}s                          ║')
-    print('╚══════════════════════════════════════════╝')
+        print(f'| Printer: SIMULATED (no real print)')
+    print(f'| Poll:    every {POLL_INTERVAL}s')
+    print(f'| Codepage: {CODEPAGE} (Hebrew)')
+    print('+------------------------------------------+')
     print()
 
     if SERVER_URL == "https://your-app.replit.app":
-        print('⚠️  Please edit SERVER_URL in the script!')
+        print('[ERR] Please edit SERVER_URL in the script!')
         sys.exit(1)
 
-    print('🔄 Watching for new orders...\n')
+    print('[OK] Watching for new orders...\n')
 
     while True:
         try:
@@ -318,7 +330,18 @@ def main():
             if data and data.get('ok'):
                 orders = data.get('orders', [])
                 if orders:
-                    print(f'📦 Found {len(orders)} new order(s)')
+                    if FIRST_RUN and not TEST_MODE:
+                        print(f'[SKIP] First run: {len(orders)} old order(s) found, marking as printed without printing')
+                        old_ids = [o['id'] for o in orders]
+                        api_post('/ops/api/orders/mark-printed', {'order_ids': old_ids})
+                        print(f'[OK] Marked {len(old_ids)} old order(s) as printed')
+                        print('[OK] From now on, only NEW orders will print\n')
+                        FIRST_RUN = False
+                        time.sleep(POLL_INTERVAL)
+                        continue
+
+                    FIRST_RUN = False
+                    print(f'[NEW] {len(orders)} new order(s)')
                     printed_ids = []
                     for order in orders:
                         num = order['order_number']
@@ -326,52 +349,51 @@ def main():
                         total = order.get('total_amount', 0)
                         otype = order.get('order_type', '')
                         items_count = len(order.get('items', []))
-                        print(f'  🖨  #{num} | {name} | {otype} | {items_count} items | ₪{total:.0f}')
+                        print(f'  >> #{num} | {name} | {otype} | {items_count} items | {total:.0f} NIS')
 
                         if TEST_MODE:
-                            print(f'     📋 Items:')
+                            print(f'     Items:')
                             for item in order.get('items', []):
                                 iname = item.get('name_he') or item.get('item_name_he') or item.get('name', '?')
                                 iqty = item.get('qty') or item.get('quantity', 1)
-                                print(f'        {iqty}× {iname}')
+                                print(f'        {iqty}x {iname}')
                             if order.get('customer_notes'):
-                                print(f'     📝 Notes: {order["customer_notes"]}')
+                                print(f'     Notes: {order["customer_notes"]}')
                             if order.get('delivery_address'):
-                                print(f'     📍 Address: {order["delivery_address"]}')
+                                print(f'     Address: {order["delivery_address"]}')
                             stations = list(order.get('items_by_station', {}).keys())
                             if stations:
-                                print(f'     🏷  Stations: {", ".join(stations)}')
+                                print(f'     Stations: {", ".join(stations)}')
 
                         if print_order(order):
-                            print(f'     ✅ OK')
+                            print(f'     [OK] Printed')
                             printed_ids.append(order['id'])
                         else:
-                            print(f'     ❌ FAILED')
+                            print(f'     [FAIL] Print failed')
 
                     if printed_ids:
                         if TEST_MODE:
-                            print(f'\n  🧪 TEST: Would mark {len(printed_ids)} order(s) as printed')
-                            print(f'  🧪 TEST: Skipping mark-printed (orders stay unprinted for re-testing)')
+                            print(f'\n  [TEST] Would mark {len(printed_ids)} order(s) as printed')
+                            print(f'  [TEST] Skipping (orders stay unprinted for re-testing)')
                         else:
                             api_post('/ops/api/orders/mark-printed', {'order_ids': printed_ids})
-                            print(f'  ✅ Marked {len(printed_ids)} order(s) as printed\n')
+                            print(f'  [OK] Marked {len(printed_ids)} order(s) as printed\n')
                 else:
-                    if TEST_MODE:
-                        print(f'  ⏳ No unprinted orders found')
+                    FIRST_RUN = False
             elif data:
-                print(f'  ⚠️  Server response: {data}')
+                print(f'  [WARN] Server response: {data}')
             else:
-                print(f'  ⚠️  No response from server')
+                print(f'  [WARN] No response from server')
 
             if TEST_ONCE:
-                print('\n✅ Test complete!')
+                print('\n[DONE] Test complete!')
                 break
 
         except KeyboardInterrupt:
-            print('\n👋 Shutting down...')
+            print('\n[EXIT] Shutting down...')
             break
         except Exception as e:
-            print(f'  Error: {e}')
+            print(f'  [ERR] {e}')
 
         time.sleep(POLL_INTERVAL)
 

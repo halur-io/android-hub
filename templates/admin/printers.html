@@ -239,8 +239,9 @@
                                                     </a>
                                                 </li>
                                                 <li>
-                                                    <form method="POST" action="{{ url_for('admin.delete_station', station_id=station.id) }}" onsubmit="return confirm('למחוק עמדה {{ station.name }}?')">
+                                                    <form method="POST" action="{{ url_for('admin.delete_station', station_id=station.id) }}" onsubmit="return confirm('למחוק עמדה {{ station.name }}? שיוכים למדפסות ומנות יוסרו.')">
                                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <input type="hidden" name="confirm_delete" value="yes">
                                                         <button type="submit" class="dropdown-item text-danger">
                                                             <i class="fas fa-trash me-2"></i>מחיקה
                                                         </button>

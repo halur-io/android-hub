@@ -5347,6 +5347,12 @@ def edit_station(station_id):
 def delete_station(station_id):
     from models import PrintStation, PrinterStation, MenuItem
     station = PrintStation.query.get_or_404(station_id)
+    confirm = request.form.get('confirm_delete') == 'yes'
+    menu_count = MenuItem.query.filter_by(print_station=station.name).count()
+    printer_count = PrinterStation.query.filter_by(station_name=station.name).count()
+    if (menu_count > 0 or printer_count > 0) and not confirm:
+        flash(f'עמדה "{station.name}" משויכת ל-{menu_count} מנות ו-{printer_count} מדפסות. לחץ שוב כדי לאשר מחיקה.', 'warning')
+        return redirect(url_for('admin.printers'))
     PrinterStation.query.filter_by(station_name=station.name).delete()
     MenuItem.query.filter_by(print_station=station.name).update({'print_station': None})
     db.session.delete(station)

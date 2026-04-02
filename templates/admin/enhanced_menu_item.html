@@ -396,6 +396,7 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="print_station" class="form-label"><i class="fas fa-print me-1"></i>עמדת הדפסה (בון)</label>
+                                            {% if print_stations %}
                                             <select class="form-select" id="print_station" name="print_station">
                                                 <option value="">-- ללא --</option>
                                                 {% for station in print_stations %}
@@ -408,6 +409,12 @@
                                                 {% endfor %}
                                             </select>
                                             <div class="form-text">לאיזה מדפסת/עמדה הבון של מנה זו יודפס</div>
+                                            {% else %}
+                                            <div class="alert alert-warning py-2 mb-0">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                                אין עמדות הדפסה מוגדרות. <a href="{{ url_for('admin.printers') }}">הגדר עמדות</a> בלשונית "עמדות הדפסה" בדף המדפסות.
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>

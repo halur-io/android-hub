@@ -44,6 +44,25 @@ def _run_safe_migrations(db):
             db.session.rollback()
             logging.warning(f"Migration skipped for {table}.{column}: {e}")
 
+    try:
+        from models import PrintStation, PrinterStation, MenuItem
+        existing_names = set(r[0] for r in db.session.query(PrintStation.name).all())
+        legacy_names = set()
+        for (name,) in db.session.query(PrinterStation.station_name).distinct().all():
+            if name and name not in existing_names:
+                legacy_names.add(name)
+        for (name,) in db.session.query(MenuItem.print_station).filter(MenuItem.print_station.isnot(None), MenuItem.print_station != '').distinct().all():
+            if name and name not in existing_names:
+                legacy_names.add(name)
+        for name in legacy_names:
+            db.session.add(PrintStation(name=name, display_name=name))
+            logging.info(f"Backfill: created PrintStation '{name}' from legacy data")
+        if legacy_names:
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"PrintStation backfill skipped: {e}")
+
 def init_db(app):
     """Initialize database with the Flask app"""
     # Configure database

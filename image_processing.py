@@ -66,14 +66,63 @@ def fix_exif_orientation(img):
     return img
 
 
-def remove_background(img):
+def remove_background(img, keep_plate=True):
     from rembg import remove
     import io
+    from scipy import ndimage
+
     buf = io.BytesIO()
     img.save(buf, format='PNG')
-    buf.seek(0)
-    output_data = remove(buf.read())
-    return Image.open(io.BytesIO(output_data)).convert('RGBA')
+    raw = buf.getvalue()
+
+    if not keep_plate:
+        output_data = remove(raw)
+        return Image.open(io.BytesIO(output_data)).convert('RGBA')
+
+    mask_data = remove(raw, only_mask=True)
+    mask = Image.open(io.BytesIO(mask_data)).convert('L')
+    mask_arr = np.array(mask).astype(np.float32) / 255.0
+
+    binary = (mask_arr > 0.3).astype(np.float32)
+
+    struct = ndimage.generate_binary_structure(2, 2)
+    dilated = ndimage.binary_dilation(binary, structure=struct, iterations=25).astype(np.float32)
+
+    cols_with_fg = np.any(binary > 0, axis=0)
+    rows_with_fg = np.any(binary > 0, axis=1)
+    if cols_with_fg.any() and rows_with_fg.any():
+        col_indices = np.where(cols_with_fg)[0]
+        row_indices = np.where(rows_with_fg)[0]
+        fg_left, fg_right = col_indices[0], col_indices[-1]
+        fg_top, fg_bottom = row_indices[0], row_indices[-1]
+
+        fg_height = fg_bottom - fg_top
+        plate_extend = int(fg_height * 0.35)
+        plate_bottom = min(mask_arr.shape[0], fg_bottom + plate_extend)
+
+        plate_zone = np.zeros_like(dilated)
+        horizontal_margin = int((fg_right - fg_left) * 0.15)
+        plate_left = max(0, fg_left - horizontal_margin)
+        plate_right = min(mask_arr.shape[1], fg_right + horizontal_margin)
+        plate_zone[fg_bottom:plate_bottom, plate_left:plate_right] = 1.0
+
+        plate_zone = ndimage.gaussian_filter(plate_zone, sigma=15)
+        plate_zone = np.clip(plate_zone, 0, 1)
+
+        dilated = np.maximum(dilated, plate_zone)
+
+    smooth = ndimage.gaussian_filter(dilated, sigma=5)
+    smooth = np.clip(smooth, 0, 1)
+
+    final_mask = np.maximum(mask_arr, smooth * 0.95)
+    final_mask = np.clip(final_mask, 0, 1)
+
+    alpha = (final_mask * 255).astype(np.uint8)
+    alpha_img = Image.fromarray(alpha, mode='L')
+
+    result = img.convert('RGBA')
+    result.putalpha(alpha_img)
+    return result
 
 
 def auto_crop_and_center(img, target_size):

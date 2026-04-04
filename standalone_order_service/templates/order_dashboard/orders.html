@@ -1300,7 +1300,7 @@ function cancelPauseHold() {
 function executePauseToggle() {
   const fd = new FormData();
   fd.append('action', 'toggle_pause');
-  fetch('{{ url_for("order_dashboard.settings") }}', { method: 'POST', body: fd })
+  fetch('{{ url_for("order_dashboard.settings_page") }}', { method: 'POST', body: fd })
     .then(r => r.json())
     .then(d => {
       if (d.success) {

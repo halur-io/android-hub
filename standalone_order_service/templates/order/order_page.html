@@ -1314,7 +1314,10 @@ function optionsKey(itemId, options, excludedIngredients) {
     key += '__' + options.map(o => o.choice_id).sort((a,b) => a-b).join('_');
   }
   if (excludedIngredients && excludedIngredients.length) {
-    key += '__ex_' + excludedIngredients.slice().sort().join('_');
+    var exHash = excludedIngredients.slice().sort().map(function(s) {
+      var h = 0; for (var i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return Math.abs(h).toString(36);
+    }).join('_');
+    key += '__ex_' + exHash;
   }
   return key;
 }

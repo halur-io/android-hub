@@ -1365,6 +1365,9 @@ def edit_menu_item(id=None):
                 raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
                 file.save(raw_path)
 
+                old_image = item.image_path
+                old_hero = item.image_hero_path
+
                 try:
                     from image_processing import process_dish_image
                     base_name = f"menu_{timestamp}_{filename_base}"
@@ -1373,6 +1376,14 @@ def edit_menu_item(id=None):
                     item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
                     if os.path.exists(raw_path):
                         os.remove(raw_path)
+                    for old_file in [old_image, old_hero]:
+                        if old_file and old_file.startswith('/static/uploads/'):
+                            old_abs = old_file.lstrip('/')
+                            if os.path.exists(old_abs) and old_abs != f'static/uploads/{base_name}_card.jpg' and old_abs != f'static/uploads/{base_name}_hero.jpg':
+                                try:
+                                    os.remove(old_abs)
+                                except OSError:
+                                    pass
                     print(f"Menu image processed: card={result['card_size_kb']}KB, hero={result['hero_size_kb']}KB")
                 except Exception as e:
                     print(f"Image processing failed, using fallback: {e}")
@@ -1389,11 +1400,13 @@ def edit_menu_item(id=None):
                         fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
                         img.save(fallback_path, 'JPEG', quality=85, optimize=True)
                         item.image_path = f'/static/uploads/{fallback_name}'
+                        item.image_hero_path = None
                         if os.path.exists(raw_path) and raw_path != fallback_path:
                             os.remove(raw_path)
                     except Exception as e2:
                         print(f"Fallback also failed: {e2}")
                         item.image_path = f'/static/uploads/{raw_filename}'
+                        item.image_hero_path = None
         
         if not id:
             db.session.add(item)
@@ -1439,6 +1452,9 @@ def upload_menu_item_image(item_id):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
     file.save(raw_path)
+
+    old_image = item.image_path
+    old_hero = item.image_hero_path
 
     import queue
     import threading
@@ -1502,6 +1518,14 @@ def upload_menu_item_image(item_id):
 
             if os.path.exists(raw_path):
                 os.remove(raw_path)
+            for old_file in [old_image, old_hero]:
+                if old_file and old_file.startswith('/static/uploads/'):
+                    old_abs = old_file.lstrip('/')
+                    if os.path.exists(old_abs) and old_abs != f'static/uploads/{base_name}_card.jpg' and old_abs != f'static/uploads/{base_name}_hero.jpg':
+                        try:
+                            os.remove(old_abs)
+                        except OSError:
+                            pass
 
             yield _json.dumps({
                 'step': 'done',
@@ -1531,6 +1555,7 @@ def upload_menu_item_image(item_id):
                 fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
                 img.save(fallback_path, 'JPEG', quality=85, optimize=True)
                 item.image_path = f'/static/uploads/{fallback_name}'
+                item.image_hero_path = None
                 db.session.commit()
                 if os.path.exists(raw_path) and raw_path != fallback_path:
                     os.remove(raw_path)

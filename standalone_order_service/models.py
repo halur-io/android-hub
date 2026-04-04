@@ -107,6 +107,7 @@ def register_models(db):
         ingredients_en = db.Column(db.Text)
         base_price = db.Column(db.Float)
         image_path = db.Column(db.String(500))
+        image_hero_path = db.Column(db.String(500))
         image_data = db.Column(db.LargeBinary)
         gallery_images = db.Column(db.Text)
         is_vegetarian = db.Column(db.Boolean, default=False)

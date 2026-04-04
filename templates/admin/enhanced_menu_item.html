@@ -281,85 +281,101 @@
                                     var formData = new FormData();
                                     formData.append('image', file);
 
-                                    var xhr = new XMLHttpRequest();
-                                    xhr.open('POST', '/admin/menu/item/' + _itemId + '/upload-image', true);
-                                    xhr.setRequestHeader('X-CSRFToken', _csrfToken);
+                                    var stepLabels = {
+                                        'upload': 'מעלה תמונה לשרת...',
+                                        'removing_bg': 'מסיר רקע בעזרת AI...',
+                                        'compositing': 'מוסיף רקע כהה מבריק...',
+                                        'saving': 'אופטימיזציה ושמירה...',
+                                    };
 
-                                    xhr.upload.onprogress = function(e) {
-                                        if (e.lengthComputable) {
-                                            var uploadPct = Math.round((e.loaded / e.total) * 15);
-                                            updateProgress(5 + uploadPct, 'מעלה תמונה לשרת...');
+                                    var stepToUi = {
+                                        'upload': 'upload',
+                                        'removing_bg': 'removing',
+                                        'compositing': 'compositing',
+                                        'saving': 'optimizing',
+                                    };
+
+                                    var prevUiStep = null;
+
+                                    function handleStreamEvent(data) {
+                                        if (data.success !== undefined) {
+                                            _processingActive = false;
+                                            document.getElementById('uploadProgress').style.display = 'none';
+                                            document.getElementById('uploadResult').style.display = 'block';
+
+                                            if (data.success) {
+                                                ['upload','removing','compositing','optimizing'].forEach(function(s) { setStep(s, 'done'); });
+                                                updateProgress(100, 'הושלם!');
+                                                document.getElementById('uploadSuccess').style.display = 'block';
+                                                document.getElementById('uploadError').style.display = 'none';
+                                                var ts = '?t=' + Date.now();
+                                                document.getElementById('processedPreview').src = data.image_path + ts;
+                                                var infoText = 'כרטיס: ' + (data.card_size_kb || '?') + 'KB';
+                                                if (data.hero_size_kb) infoText += ' | גדולה: ' + data.hero_size_kb + 'KB';
+                                                if (data.warning) infoText += ' | ' + data.warning;
+                                                document.getElementById('resultInfo').textContent = infoText;
+                                                var curImg = document.getElementById('currentImage');
+                                                if (curImg) curImg.src = data.image_path + ts;
+                                                document.getElementById('currentImageBox').style.display = 'block';
+                                                var cropImg = document.getElementById('cropperImage');
+                                                if (cropImg) cropImg.src = data.image_path + ts;
+                                            } else {
+                                                showUploadError(data.error || 'Unknown error');
+                                            }
+                                            return;
                                         }
-                                    };
 
-                                    xhr.upload.onload = function() {
-                                        setStep('upload', 'done');
-                                        setStep('removing', 'active');
-                                        updateProgress(20, 'מסיר רקע בעזרת AI...');
+                                        var uiStep = stepToUi[data.step] || data.step;
+                                        var label = stepLabels[data.step] || data.step;
+                                        var pct = data.progress || 0;
 
-                                        setTimeout(function() {
-                                            if (_processingActive) updateProgress(35, 'מסיר רקע בעזרת AI...');
-                                        }, 2000);
-                                        setTimeout(function() {
-                                            if (_processingActive) {
-                                                updateProgress(50, 'מסיר רקע בעזרת AI...');
-                                            }
-                                        }, 4000);
-                                        setTimeout(function() {
-                                            if (_processingActive) {
-                                                setStep('removing', 'done');
-                                                setStep('compositing', 'active');
-                                                updateProgress(65, 'מוסיף רקע כהה מבריק...');
-                                            }
-                                        }, 5000);
-                                        setTimeout(function() {
-                                            if (_processingActive) {
-                                                setStep('compositing', 'done');
-                                                setStep('optimizing', 'active');
-                                                updateProgress(80, 'אופטימיזציה ושמירה...');
-                                            }
-                                        }, 6000);
-                                    };
+                                        if (prevUiStep && prevUiStep !== uiStep) {
+                                            setStep(prevUiStep, 'done');
+                                        }
+                                        setStep(uiStep, 'active');
+                                        prevUiStep = uiStep;
+                                        updateProgress(pct, label);
+                                    }
 
-                                    xhr.onload = function() {
-                                        _processingActive = false;
-                                        document.getElementById('uploadProgress').style.display = 'none';
-                                        document.getElementById('uploadResult').style.display = 'block';
+                                    fetch('/admin/menu/item/' + _itemId + '/upload-image', {
+                                        method: 'POST',
+                                        headers: { 'X-CSRFToken': _csrfToken },
+                                        body: formData
+                                    }).then(function(response) {
+                                        if (!response.ok) {
+                                            throw new Error('Server error (' + response.status + ')');
+                                        }
+                                        var reader = response.body.getReader();
+                                        var decoder = new TextDecoder();
+                                        var buffer = '';
 
-                                        if (xhr.status === 200) {
-                                            try {
-                                                var data = JSON.parse(xhr.responseText);
-                                                if (data.success) {
-                                                    document.getElementById('uploadSuccess').style.display = 'block';
-                                                    document.getElementById('uploadError').style.display = 'none';
-                                                    var ts = '?t=' + Date.now();
-                                                    document.getElementById('processedPreview').src = data.image_path + ts;
-                                                    var infoText = 'כרטיס: ' + (data.card_size_kb || '?') + 'KB';
-                                                    if (data.hero_size_kb) infoText += ' | גדולה: ' + data.hero_size_kb + 'KB';
-                                                    if (data.warning) infoText += ' | ' + data.warning;
-                                                    document.getElementById('resultInfo').textContent = infoText;
-                                                    var curImg = document.getElementById('currentImage');
-                                                    if (curImg) curImg.src = data.image_path + ts;
-                                                    document.getElementById('currentImageBox').style.display = 'block';
-                                                } else {
-                                                    showUploadError(data.error || 'Unknown error');
+                                        function processChunk() {
+                                            return reader.read().then(function(result) {
+                                                if (result.done) {
+                                                    if (buffer.trim()) {
+                                                        try { handleStreamEvent(JSON.parse(buffer.trim())); } catch(e) {}
+                                                    }
+                                                    return;
                                                 }
-                                            } catch(e) {
-                                                showUploadError('Invalid response from server');
-                                            }
-                                        } else {
-                                            showUploadError('Server error (' + xhr.status + ')');
+                                                buffer += decoder.decode(result.value, {stream: true});
+                                                var lines = buffer.split('\n');
+                                                buffer = lines.pop();
+                                                lines.forEach(function(line) {
+                                                    if (line.trim()) {
+                                                        try { handleStreamEvent(JSON.parse(line)); } catch(e) {}
+                                                    }
+                                                });
+                                                return processChunk();
+                                            });
                                         }
-                                    };
 
-                                    xhr.onerror = function() {
+                                        return processChunk();
+                                    }).catch(function(err) {
                                         _processingActive = false;
                                         document.getElementById('uploadProgress').style.display = 'none';
                                         document.getElementById('uploadResult').style.display = 'block';
-                                        showUploadError('Network error - check your connection');
-                                    };
-
-                                    xhr.send(formData);
+                                        showUploadError(err.message || 'Network error');
+                                    });
                                 }
 
                                 function showUploadError(msg) {

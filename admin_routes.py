@@ -236,7 +236,7 @@ class SiteSettingsForm(FlaskForm):
 UPLOAD_FOLDER = 'static/uploads'
 CSV_UPLOAD_FOLDER = 'static/csv_uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
-ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}  # Images only, no video
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_CSV_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
 def allowed_file(filename):
@@ -1420,7 +1420,7 @@ def edit_menu_item(id=None):
 @login_required
 def upload_menu_item_image(item_id):
     import json as _json
-    from image_processing import process_dish_image
+    from flask import Response, stream_with_context
 
     item = MenuItem.query.get_or_404(item_id)
 
@@ -1440,59 +1440,113 @@ def upload_menu_item_image(item_id):
     raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
     file.save(raw_path)
 
-    try:
-        base_name = f"menu_{timestamp}_{filename_base}"
-        result = process_dish_image(
-            raw_path,
-            output_dir=UPLOAD_FOLDER,
-            base_name=base_name,
-        )
+    import queue
+    import threading
 
-        item.image_path = f'/static/uploads/{base_name}_card.jpg'
-        item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
-        db.session.commit()
+    step_map = {
+        'opening': ('upload', 25),
+        'removing_bg': ('removing_bg', 40),
+        'cropping': ('compositing', 60),
+        'compositing': ('compositing', 75),
+        'saving': ('saving', 90),
+        'done': ('saving', 95),
+    }
+    progress_queue = queue.Queue()
+    result_holder = [None]
+    error_holder = [None]
 
-        if os.path.exists(raw_path):
-            os.remove(raw_path)
-
-        return jsonify({
-            'success': True,
-            'image_path': item.image_path,
-            'hero_path': item.image_hero_path,
-            'card_size_kb': result['card_size_kb'],
-            'hero_size_kb': result['hero_size_kb'],
-        })
-
-    except Exception as e:
-        print(f"Error processing dish image: {e}")
-        import traceback
-        traceback.print_exc()
-
+    def run_processing():
         try:
-            img = Image.open(raw_path)
-            from image_processing import fix_exif_orientation
-            img = fix_exif_orientation(img)
-            if max(img.size) > 1200:
-                ratio = 1200 / max(img.size)
-                img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
-            if img.mode in ('RGBA', 'P'):
-                img = img.convert('RGB')
-            fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
-            fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
-            img.save(fallback_path, 'JPEG', quality=85, optimize=True)
-            item.image_path = f'/static/uploads/{fallback_name}'
+            from image_processing import process_dish_image
+            base_name = f"menu_{timestamp}_{filename_base}"
+
+            def on_progress(step, _pct):
+                mapped = step_map.get(step, (step, _pct))
+                progress_queue.put({'step': mapped[0], 'progress': mapped[1]})
+
+            result = process_dish_image(
+                raw_path,
+                output_dir=UPLOAD_FOLDER,
+                base_name=base_name,
+                progress_callback=on_progress,
+            )
+            result_holder[0] = (base_name, result)
+        except Exception as e:
+            error_holder[0] = e
+        finally:
+            progress_queue.put(None)
+
+    def generate():
+        yield _json.dumps({'step': 'upload', 'progress': 20}) + '\n'
+
+        worker = threading.Thread(target=run_processing, daemon=True)
+        worker.start()
+
+        while True:
+            try:
+                evt = progress_queue.get(timeout=60)
+            except queue.Empty:
+                yield _json.dumps({'success': False, 'error': 'Processing timeout'}) + '\n'
+                return
+            if evt is None:
+                break
+            yield _json.dumps(evt) + '\n'
+
+        worker.join(timeout=5)
+
+        if result_holder[0]:
+            base_name, result = result_holder[0]
+            item.image_path = f'/static/uploads/{base_name}_card.jpg'
+            item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
             db.session.commit()
-            if os.path.exists(raw_path) and raw_path != fallback_path:
+
+            if os.path.exists(raw_path):
                 os.remove(raw_path)
-            return jsonify({
+
+            yield _json.dumps({
+                'step': 'done',
+                'progress': 100,
                 'success': True,
                 'image_path': item.image_path,
-                'hero_path': None,
-                'warning': 'Background processing failed, image saved without processing',
-            })
-        except Exception as e2:
-            print(f"Fallback save also failed: {e2}")
-            return jsonify({'success': False, 'error': str(e)}), 500
+                'hero_path': item.image_hero_path,
+                'card_size_kb': result['card_size_kb'],
+                'hero_size_kb': result['hero_size_kb'],
+            }) + '\n'
+        elif error_holder[0]:
+            e = error_holder[0]
+            print(f"Error processing dish image: {e}")
+            import traceback
+            traceback.print_exc()
+
+            try:
+                from image_processing import fix_exif_orientation
+                img = Image.open(raw_path)
+                img = fix_exif_orientation(img)
+                if max(img.size) > 1200:
+                    ratio = 1200 / max(img.size)
+                    img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
+                fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
+                img.save(fallback_path, 'JPEG', quality=85, optimize=True)
+                item.image_path = f'/static/uploads/{fallback_name}'
+                db.session.commit()
+                if os.path.exists(raw_path) and raw_path != fallback_path:
+                    os.remove(raw_path)
+                yield _json.dumps({
+                    'step': 'done',
+                    'progress': 100,
+                    'success': True,
+                    'image_path': item.image_path,
+                    'hero_path': None,
+                    'warning': 'Background processing failed, image saved without processing',
+                }) + '\n'
+            except Exception as e2:
+                print(f"Fallback save also failed: {e2}")
+                yield _json.dumps({'success': False, 'error': str(e)}) + '\n'
+
+    return Response(stream_with_context(generate()), content_type='application/x-ndjson')
 
 
 # Image Editor - Rotate, Crop, Zoom for menu item images

@@ -1109,10 +1109,12 @@ function openItemModal(card) {
     if (groups.length) {
       groups.forEach(g => {
         const gName = IS_HE ? g.name_he : g.name_en;
-        const inputType = g.type === 'multi' ? 'checkbox' : 'radio';
+        const isMulti = (g.type === 'multi' || g.type === 'multiple');
+        const inputType = isMulti ? 'checkbox' : 'radio';
         html += '<div class="opt-group" data-gid="' + g.id + '">';
         html += '<div class="opt-group-head"><span class="opt-group-name">' + gName + '</span>';
         if (g.required) html += '<span class="opt-required-badge">{{ "חובה" if language == "he" else "Required" }}</span>';
+        if (isMulti && g.max > 0) html += '<span class="opt-required-badge" style="background:#e0e7ff;color:#4338ca;">' + (IS_HE ? 'עד ' + g.max : 'Up to ' + g.max) + '</span>';
         html += '</div>';
         g.choices.forEach(c => {
           const cName = IS_HE ? c.name_he : c.name_en;
@@ -1123,7 +1125,7 @@ function openItemModal(card) {
           html += '<label class="opt-choice-row">';
           html += '<input type="' + inputType + '" name="opt_g_' + g.id + '" value="' + c.id + '" class="opt-choice-input" data-gid="' + g.id + '" data-cid="' + c.id + '" data-price="' + c.price + '"';
           if (isChecked) html += ' checked';
-          html += ' onchange="onOptionChange()">';
+          html += ' onchange="onOptionChange(this)">';
           html += '<span class="opt-choice-label">' + cName + '</span>';
           if (priceStr) html += '<span class="opt-choice-price">' + priceStr + '</span>';
           html += '</label>';
@@ -1254,20 +1256,37 @@ function onComboChange() {
   _updateModalQty();
 }
 
-function onOptionChange() {
+function onOptionChange(changedInput) {
   _modalSelectedOptions = {};
   const groups = ITEM_OPTIONS[_modalId] || [];
   groups.forEach(g => {
+    const isMulti = (g.type === 'multi' || g.type === 'multiple');
     const checked = document.querySelectorAll('#item-sheet-options input[data-gid="' + g.id + '"]:checked');
-    _modalSelectedOptions[g.id] = [];
-    checked.forEach(inp => {
-      const c = g.choices.find(ch => ch.id === parseInt(inp.dataset.cid));
-      if (c) _modalSelectedOptions[g.id].push({
-        group_id: g.id, group_name_he: g.name_he, group_name_en: g.name_en,
-        choice_id: c.id, choice_name_he: c.name_he, choice_name_en: c.name_en,
-        price_modifier: c.price
+    if (isMulti && g.max > 0 && checked.length > g.max) {
+      if (changedInput && changedInput.dataset && String(changedInput.dataset.gid) === String(g.id)) {
+        changedInput.checked = false;
+      }
+      var enforced = document.querySelectorAll('#item-sheet-options input[data-gid="' + g.id + '"]:checked');
+      _modalSelectedOptions[g.id] = [];
+      enforced.forEach(inp => {
+        const c = g.choices.find(ch => ch.id === parseInt(inp.dataset.cid));
+        if (c) _modalSelectedOptions[g.id].push({
+          group_id: g.id, group_name_he: g.name_he, group_name_en: g.name_en,
+          choice_id: c.id, choice_name_he: c.name_he, choice_name_en: c.name_en,
+          price_modifier: c.price
+        });
       });
-    });
+    } else {
+      _modalSelectedOptions[g.id] = [];
+      checked.forEach(inp => {
+        const c = g.choices.find(ch => ch.id === parseInt(inp.dataset.cid));
+        if (c) _modalSelectedOptions[g.id].push({
+          group_id: g.id, group_name_he: g.name_he, group_name_en: g.name_en,
+          choice_id: c.id, choice_name_he: c.name_he, choice_name_en: c.name_en,
+          price_modifier: c.price
+        });
+      });
+    }
   });
   _updateModalQty();
 }

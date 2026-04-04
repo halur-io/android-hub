@@ -1075,7 +1075,7 @@ function renderGroups(groups) {
                     <div class="d-flex align-items-center gap-2">
                         ${priceStr}
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="#" onclick="editChoice(${g.id}, ${c.id}); return false;"><i class="fas fa-edit me-2"></i>ערוך</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="toggleChoiceAvail(${g.id}, ${c.id}, ${c.is_available ? 'false' : 'true'}); return false;"><i class="fas fa-${c.is_available ? 'eye-slash' : 'eye'} me-2"></i>${c.is_available ? 'השבת' : 'הפעל'}</a></li>
@@ -1098,11 +1098,11 @@ function renderGroups(groups) {
                         <small class="text-muted ms-2">${typeDesc}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="showAddChoiceModal(${g.id})">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showAddChoiceModal(${g.id})">
                             <i class="fas fa-plus me-1"></i>הוסף בחירה
                         </button>
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="#" onclick="editGroup(${g.id}); return false;"><i class="fas fa-edit me-2"></i>ערוך קבוצה</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="toggleGroup(${g.id}, ${g.is_active ? 'false' : 'true'}); return false;"><i class="fas fa-${g.is_active ? 'eye-slash' : 'eye'} me-2"></i>${g.is_active ? 'השבת' : 'הפעל'}</a></li>

@@ -1139,12 +1139,13 @@ function openItemModal(card) {
       html += '<div class="opt-group" data-gid="ingredients">';
       html += '<div class="opt-group-head"><span class="opt-group-name">' + (IS_HE ? 'רכיבים' : 'Ingredients') + '</span></div>';
       ingredientsList.forEach(function(ing, idx) {
+        var safeIng = ing.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         var isExcluded = existingExcluded.indexOf(ing) !== -1;
         html += '<label class="opt-choice-row ingredient-row' + (isExcluded ? ' ingredient-excluded' : '') + '">';
-        html += '<input type="checkbox" name="ingredient_' + idx + '" value="' + ing.replace(/"/g, '&quot;') + '" class="opt-choice-input ingredient-checkbox" data-ingredient="' + ing.replace(/"/g, '&quot;') + '"';
+        html += '<input type="checkbox" name="ingredient_' + idx + '" value="' + safeIng + '" class="opt-choice-input ingredient-checkbox" data-ingredient="' + safeIng + '"';
         if (!isExcluded) html += ' checked';
         html += ' onchange="onIngredientToggle(this)">';
-        html += '<span class="opt-choice-label ingredient-label">' + ing + '</span>';
+        html += '<span class="opt-choice-label ingredient-label">' + safeIng + '</span>';
         html += '</label>';
       });
       html += '</div>';

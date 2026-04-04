@@ -1448,6 +1448,7 @@ def edit_menu_item(id=None):
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map)
 
 @admin_bp.route('/menu/item/<int:item_id>/upload-image', methods=['POST'])
+@csrf.exempt
 @login_required
 def upload_menu_item_image(item_id):
     import json as _json

@@ -1367,46 +1367,64 @@ def edit_menu_item(id=None):
 
                 old_image = item.image_path
                 old_hero = item.image_hero_path
+                form_refine = request.form.get('refine_image') == 'on'
 
-                try:
-                    from image_processing import process_dish_image
-                    base_name = f"menu_{timestamp}_{filename_base}"
-                    result = process_dish_image(raw_path, output_dir=UPLOAD_FOLDER, base_name=base_name)
-                    item.image_path = f'/static/uploads/{base_name}_card.jpg'
-                    item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
-                    if os.path.exists(raw_path):
+                if not form_refine:
+                    from image_processing import fix_exif_orientation
+                    img = Image.open(raw_path)
+                    img = fix_exif_orientation(img)
+                    if max(img.size) > 1200:
+                        ratio = 1200 / max(img.size)
+                        img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    final_name = f"menu_{timestamp}_{filename_base}.jpg"
+                    final_path = os.path.join(UPLOAD_FOLDER, final_name)
+                    img.save(final_path, 'JPEG', quality=85, optimize=True)
+                    item.image_path = f'/static/uploads/{final_name}'
+                    item.image_hero_path = None
+                    if os.path.exists(raw_path) and raw_path != final_path:
                         os.remove(raw_path)
-                    for old_file in [old_image, old_hero]:
-                        if old_file and old_file.startswith('/static/uploads/'):
-                            old_abs = old_file.lstrip('/')
-                            if os.path.exists(old_abs) and old_abs != f'static/uploads/{base_name}_card.jpg' and old_abs != f'static/uploads/{base_name}_hero.jpg':
-                                try:
-                                    os.remove(old_abs)
-                                except OSError:
-                                    pass
-                    print(f"Menu image processed: card={result['card_size_kb']}KB, hero={result['hero_size_kb']}KB")
-                except Exception as e:
-                    print(f"Image processing failed, using fallback: {e}")
+                else:
                     try:
-                        from image_processing import fix_exif_orientation
-                        img = Image.open(raw_path)
-                        img = fix_exif_orientation(img)
-                        if max(img.size) > 1200:
-                            ratio = 1200 / max(img.size)
-                            img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
-                        if img.mode in ('RGBA', 'P'):
-                            img = img.convert('RGB')
-                        fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
-                        fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
-                        img.save(fallback_path, 'JPEG', quality=85, optimize=True)
-                        item.image_path = f'/static/uploads/{fallback_name}'
-                        item.image_hero_path = None
-                        if os.path.exists(raw_path) and raw_path != fallback_path:
+                        from image_processing import process_dish_image
+                        base_name = f"menu_{timestamp}_{filename_base}"
+                        result = process_dish_image(raw_path, output_dir=UPLOAD_FOLDER, base_name=base_name)
+                        item.image_path = f'/static/uploads/{base_name}_card.jpg'
+                        item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
+                        if os.path.exists(raw_path):
                             os.remove(raw_path)
-                    except Exception as e2:
-                        print(f"Fallback also failed: {e2}")
-                        item.image_path = f'/static/uploads/{raw_filename}'
-                        item.image_hero_path = None
+                        for old_file in [old_image, old_hero]:
+                            if old_file and old_file.startswith('/static/uploads/'):
+                                old_abs = old_file.lstrip('/')
+                                if os.path.exists(old_abs) and old_abs != f'static/uploads/{base_name}_card.jpg' and old_abs != f'static/uploads/{base_name}_hero.jpg':
+                                    try:
+                                        os.remove(old_abs)
+                                    except OSError:
+                                        pass
+                        print(f"Menu image processed: card={result['card_size_kb']}KB, hero={result['hero_size_kb']}KB")
+                    except Exception as e:
+                        print(f"Image processing failed, using fallback: {e}")
+                        try:
+                            from image_processing import fix_exif_orientation as _fix_exif
+                            img = Image.open(raw_path)
+                            img = _fix_exif(img)
+                            if max(img.size) > 1200:
+                                ratio = 1200 / max(img.size)
+                                img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                            if img.mode in ('RGBA', 'P'):
+                                img = img.convert('RGB')
+                            fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
+                            fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
+                            img.save(fallback_path, 'JPEG', quality=85, optimize=True)
+                            item.image_path = f'/static/uploads/{fallback_name}'
+                            item.image_hero_path = None
+                            if os.path.exists(raw_path) and raw_path != fallback_path:
+                                os.remove(raw_path)
+                        except Exception as e2:
+                            print(f"Fallback also failed: {e2}")
+                            item.image_path = f'/static/uploads/{raw_filename}'
+                            item.image_hero_path = None
         
         if not id:
             db.session.add(item)
@@ -1455,6 +1473,45 @@ def upload_menu_item_image(item_id):
 
     old_image = item.image_path
     old_hero = item.image_hero_path
+
+    refine = request.form.get('refine', '1') == '1'
+
+    if not refine:
+        try:
+            from image_processing import fix_exif_orientation
+            img = Image.open(raw_path)
+            img = fix_exif_orientation(img)
+            if max(img.size) > 1200:
+                ratio = 1200 / max(img.size)
+                img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            final_name = f"menu_{timestamp}_{filename_base}.jpg"
+            final_path = os.path.join(UPLOAD_FOLDER, final_name)
+            img.save(final_path, 'JPEG', quality=85, optimize=True)
+            item.image_path = f'/static/uploads/{final_name}'
+            item.image_hero_path = None
+            db.session.commit()
+            if os.path.exists(raw_path) and raw_path != final_path:
+                os.remove(raw_path)
+            for old_file in [old_image, old_hero]:
+                if old_file and old_file.startswith('/static/uploads/'):
+                    old_abs = old_file.lstrip('/')
+                    if os.path.exists(old_abs) and old_abs != f'static/uploads/{final_name}':
+                        try:
+                            os.remove(old_abs)
+                        except OSError:
+                            pass
+            file_size_kb = round(os.path.getsize(final_path) / 1024, 1)
+            return jsonify({
+                'success': True,
+                'image_path': item.image_path,
+                'hero_path': None,
+                'card_size_kb': file_size_kb,
+            })
+        except Exception as e:
+            print(f"Error saving original image: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
 
     import queue
     import threading

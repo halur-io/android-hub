@@ -496,6 +496,7 @@ class MenuItem(db.Model):
     ingredients_en = db.Column(db.Text)
     base_price = db.Column(db.Float)  # Base price
     image_path = db.Column(db.String(500))
+    image_hero_path = db.Column(db.String(500))  # Hero-size processed image for detail views
     gallery_images = db.Column(db.Text)  # JSON array of additional images
     
     # Dietary & Special Properties

@@ -56,6 +56,15 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Print Agent Usage:** `python3 print_agent.py --branch <BRANCH_ID>` (env vars: `PRINT_AGENT_SERVER`, `PRINT_AGENT_KEY`)
 - **Print Modes:** Browser (hidden iframe + print dialog) or Server (direct TCP via print agent).
 
+### Dish Photo Processing System
+- **Pipeline:** `image_processing.py` — EXIF fix → rembg AI background removal → auto-crop → dark glaze radial gradient compositing → 500x500 card + 1200px hero output.
+- **Admin Upload:** AJAX endpoint `POST /admin/menu/item/<id>/upload-image` with 4-step progress bar (upload → AI removal → glaze compositing → optimize). Fallback to basic resize on processing failure. Permission-protected via `menu.edit` RBAC.
+- **Form Submit:** New items (id=0) use form-submit path with same processing pipeline.
+- **DB Fields:** `MenuItem.image_path` (card image), `MenuItem.image_hero_path` (hero image for detail view).
+- **Order Display:** Dish card backgrounds use `#1a1a1a` dark to complement processed images. Item detail sheet uses hero image when available.
+- **Batch CLI:** `python3 process_dish_photo.py --batch [--update-db]` processes all unprocessed menu images. Single file: `python3 process_dish_photo.py <image_path>`.
+- **File Validation:** Uses `allowed_image_file()` (jpg/jpeg/png/gif/webp only) for dish uploads. Filenames include microseconds to prevent collisions.
+
 ### System Design Choices
 - **Modularity:** Separation of concerns (e.g., `standalone_order_service` for ordering).
 - **Print Stations as Entities:** `PrintStation` model is a standalone first-class entity (name + display_name). Managed via admin tab at `/admin/printers` (עמדות הדפסה). `PrinterStation` remains as a join table linking printers to stations. Menu item edit form shows real stations with their linked printer info (name + IP). No hardcoded station fallbacks.
@@ -68,3 +77,4 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Analytics:** Google Tag Manager.
 - **UI Libraries:** SortableJS (for drag-and-drop in Popup Designer).
 - **Messaging:** Telegram (for order notifications).
+- **Image Processing:** rembg (AI background removal), Pillow (image manipulation).

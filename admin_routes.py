@@ -66,6 +66,7 @@ ROUTE_PERMISSIONS = {
     'admin.delete_category': 'menu.edit',
     'admin.excel_menu_upload': 'menu.edit',
     'admin.excel_upload_simple': 'menu.edit',
+    'admin.upload_menu_item_image': 'menu.edit',
     # Media/Gallery
     'admin.media': 'settings.view',
     'admin.upload_media': 'settings.edit',
@@ -1352,71 +1353,47 @@ def edit_menu_item(id=None):
         else:
             item.allergens = '[]'
         
-        # Handle image upload - resize only (background removal disabled)
         if 'image' in request.files:
             file = request.files['image']
-            if file and file.filename and allowed_file(file.filename):
+            if file and file.filename and allowed_image_file(file.filename):
                 filename = secure_filename(file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
                 filename_base = filename.rsplit('.', 1)[0]
-                ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
-                final_filename = f"menu_{timestamp}_{filename_base}.{ext}"
-                
+                raw_filename = f"menu_{timestamp}_{filename_base}_raw.jpg"
+
                 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                final_path = os.path.join(UPLOAD_FOLDER, final_filename)
-                
+                raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
+                file.save(raw_path)
+
                 try:
-                    # Save file first
-                    file.save(final_path)
-                    
-                    # Open and fix EXIF orientation
-                    img = Image.open(final_path)
-                    
-                    # Fix EXIF orientation (prevents rotated images from mobile phones)
-                    try:
-                        from PIL import ExifTags
-                        if hasattr(img, '_getexif') and img._getexif():
-                            exif = img._getexif()
-                            if exif:
-                                for orientation_key in ExifTags.TAGS.keys():
-                                    if ExifTags.TAGS[orientation_key] == 'Orientation':
-                                        break
-                                if orientation_key in exif:
-                                    orientation = exif[orientation_key]
-                                    if orientation == 3:
-                                        img = img.rotate(180, expand=True)
-                                    elif orientation == 6:
-                                        img = img.rotate(270, expand=True)
-                                    elif orientation == 8:
-                                        img = img.rotate(90, expand=True)
-                                    print(f"✓ Fixed EXIF orientation: {orientation}")
-                    except Exception as exif_error:
-                        print(f"EXIF processing skipped: {exif_error}")
-                    
-                    original_size = img.size
-                    max_dimension = 1200
-                    
-                    # Resize if needed (max 1200px, maintains aspect ratio)
-                    if max(original_size) > max_dimension:
-                        ratio = max_dimension / max(original_size)
-                        new_size = (int(original_size[0] * ratio), int(original_size[1] * ratio))
-                        img = img.resize(new_size, Image.Resampling.LANCZOS)
-                        print(f"✓ Menu image resized: {original_size} → {new_size}")
-                    
-                    # Convert to RGB if needed (for JPEG)
-                    if img.mode in ('RGBA', 'P') and ext in ('jpg', 'jpeg'):
-                        img = img.convert('RGB')
-                    
-                    img.save(final_path, quality=85, optimize=True)
-                    
-                    file_size_kb = os.path.getsize(final_path) / 1024
-                    print(f"✓ Menu image saved: {final_filename} ({file_size_kb:.1f}KB)")
-                    
-                    item.image_path = f'/static/uploads/{final_filename}'
-                    
+                    from image_processing import process_dish_image
+                    base_name = f"menu_{timestamp}_{filename_base}"
+                    result = process_dish_image(raw_path, output_dir=UPLOAD_FOLDER, base_name=base_name)
+                    item.image_path = f'/static/uploads/{base_name}_card.jpg'
+                    item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
+                    if os.path.exists(raw_path):
+                        os.remove(raw_path)
+                    print(f"Menu image processed: card={result['card_size_kb']}KB, hero={result['hero_size_kb']}KB")
                 except Exception as e:
-                    print(f"Error processing image: {e}")
-                    item.image_path = f'/static/uploads/{final_filename}'
+                    print(f"Image processing failed, using fallback: {e}")
+                    try:
+                        from image_processing import fix_exif_orientation
+                        img = Image.open(raw_path)
+                        img = fix_exif_orientation(img)
+                        if max(img.size) > 1200:
+                            ratio = 1200 / max(img.size)
+                            img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                        if img.mode in ('RGBA', 'P'):
+                            img = img.convert('RGB')
+                        fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
+                        fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
+                        img.save(fallback_path, 'JPEG', quality=85, optimize=True)
+                        item.image_path = f'/static/uploads/{fallback_name}'
+                        if os.path.exists(raw_path) and raw_path != fallback_path:
+                            os.remove(raw_path)
+                    except Exception as e2:
+                        print(f"Fallback also failed: {e2}")
+                        item.image_path = f'/static/uploads/{raw_filename}'
         
         if not id:
             db.session.add(item)
@@ -1438,6 +1415,85 @@ def edit_menu_item(id=None):
         station_printer_map.setdefault(station_name, []).append(entry)
 
     return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map)
+
+@admin_bp.route('/menu/item/<int:item_id>/upload-image', methods=['POST'])
+@login_required
+def upload_menu_item_image(item_id):
+    import json as _json
+    from image_processing import process_dish_image
+
+    item = MenuItem.query.get_or_404(item_id)
+
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'error': 'No image file'}), 400
+
+    file = request.files['image']
+    if not file or not file.filename or not allowed_image_file(file.filename):
+        return jsonify({'success': False, 'error': 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp'}), 400
+
+    filename = secure_filename(file.filename)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    filename_base = filename.rsplit('.', 1)[0]
+    raw_filename = f"menu_{timestamp}_{filename_base}_raw.jpg"
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
+    file.save(raw_path)
+
+    try:
+        base_name = f"menu_{timestamp}_{filename_base}"
+        result = process_dish_image(
+            raw_path,
+            output_dir=UPLOAD_FOLDER,
+            base_name=base_name,
+        )
+
+        item.image_path = f'/static/uploads/{base_name}_card.jpg'
+        item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
+        db.session.commit()
+
+        if os.path.exists(raw_path):
+            os.remove(raw_path)
+
+        return jsonify({
+            'success': True,
+            'image_path': item.image_path,
+            'hero_path': item.image_hero_path,
+            'card_size_kb': result['card_size_kb'],
+            'hero_size_kb': result['hero_size_kb'],
+        })
+
+    except Exception as e:
+        print(f"Error processing dish image: {e}")
+        import traceback
+        traceback.print_exc()
+
+        try:
+            img = Image.open(raw_path)
+            from image_processing import fix_exif_orientation
+            img = fix_exif_orientation(img)
+            if max(img.size) > 1200:
+                ratio = 1200 / max(img.size)
+                img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
+            fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
+            img.save(fallback_path, 'JPEG', quality=85, optimize=True)
+            item.image_path = f'/static/uploads/{fallback_name}'
+            db.session.commit()
+            if os.path.exists(raw_path) and raw_path != fallback_path:
+                os.remove(raw_path)
+            return jsonify({
+                'success': True,
+                'image_path': item.image_path,
+                'hero_path': None,
+                'warning': 'Background processing failed, image saved without processing',
+            })
+        except Exception as e2:
+            print(f"Fallback save also failed: {e2}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # Image Editor - Rotate, Crop, Zoom for menu item images
 @admin_bp.route('/menu/item/<int:item_id>/edit-image', methods=['POST'])

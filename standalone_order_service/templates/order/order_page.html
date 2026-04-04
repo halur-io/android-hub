@@ -240,6 +240,7 @@
                    data-ingredients-he="{{ (item.ingredients_he or '') | e }}"
                    data-ingredients-en="{{ (item.ingredients_en or '') | e }}"
                    data-image="{{ url_for('order_page.menu_image', item_id=item.id) if item.image_data else (item.image_path or '') }}"
+                   data-image-hero="{{ item.image_hero_path or '' }}"
                    data-available="{{ '1' if item._order_available else '0' }}"
                    data-is-combo="{{ '1' if item.is_combo else '0' }}"
                    data-category="{{ (cat.name_he if language == 'he' else cat.name_en) | e }}">
@@ -603,7 +604,7 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
 }
 
 .dish-img-wrap {
-  width: 100%; position: relative; overflow: hidden; background: #f3f4f6;
+  width: 100%; position: relative; overflow: hidden; background: #1a1a1a;
   padding-top: 88%;
 }
 .dish-img {
@@ -696,7 +697,7 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
   flex: 1 1 auto; min-height: 0;
 }
 #item-sheet-hero {
-  width: 100%; height: 200px; background: #e5e7eb;
+  width: 100%; height: 200px; background: #1a1a1a;
   overflow: hidden; position: relative;
 }
 #item-sheet-img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -994,7 +995,7 @@ function openItemModal(card) {
   const name  = IS_HE ? card.dataset.nameHe  : (card.dataset.nameEn  || card.dataset.nameHe);
   const desc  = IS_HE ? card.dataset.descriptionHe : (card.dataset.descriptionEn || card.dataset.descriptionHe);
   const ingredients = IS_HE ? (card.dataset.ingredientsHe || '') : (card.dataset.ingredientsEn || card.dataset.ingredientsHe || '');
-  const image = card.dataset.image || '';
+  const image = card.dataset.imageHero || card.dataset.image || '';
 
   document.getElementById('item-sheet-name').textContent = name;
   document.getElementById('item-sheet-desc').textContent = desc || '';

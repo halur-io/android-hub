@@ -39,6 +39,9 @@
               {% if item.options %}
               <div class="item-opts">{{ item.options | map(attribute='choice_name_he') | join(', ') }}</div>
               {% endif %}
+              {% if item.excluded_ingredients %}
+              <div class="item-opts" style="color:#ef4444;font-weight:600;">{% for ing in item.excluded_ingredients %}ללא {{ ing }}{% if not loop.last %}, {% endif %}{% endfor %}</div>
+              {% endif %}
             </div>
           </div>
           <span class="item-price" id="cart-price-{{ loop.index0 }}">₪{{ (item.price * item.qty) | int }}</span>

@@ -188,6 +188,10 @@ def build_checker(b, o):
         for op in (item.get('options') or []):
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
             b.text(f'{op_name}')
+        for ex_ing in (item.get('excluded_ingredients') or []):
+            b.bold()
+            b.text(f'ללא {ex_ing}')
+            b.bold(False)
         b.dashed()
 
     if o.get('delivery_address'):
@@ -305,6 +309,10 @@ def build_station(b, o, station_name, station_items):
         for op in (item.get('options') or []):
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
             b.text(f'{op_name}')
+        for ex_ing in (item.get('excluded_ingredients') or []):
+            b.bold()
+            b.text(f'ללא {ex_ing}')
+            b.bold(False)
 
     b.dashed()
     b.align('center')

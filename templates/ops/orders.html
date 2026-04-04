@@ -586,7 +586,16 @@ function renderDetail(o) {
                     item.options.forEach(function(op){opts += '• '+(op.choice_name_he||op.name||op)+'<br>';});
                     opts += '</div>';
                 }
-                catHtml += '<li><div>'+qty+'× '+name+opts+'</div><div>₪'+(qty*price).toFixed(0)+'</div></li>';
+                var exclHtml = '';
+                if (item.excluded_ingredients && Array.isArray(item.excluded_ingredients) && item.excluded_ingredients.length) {
+                    exclHtml = '<div style="font-size:11px;color:#ef4444;font-weight:600;padding-right:12px;">';
+                    item.excluded_ingredients.forEach(function(ing){
+                        var safe = String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                        exclHtml += 'ללא '+safe+'<br>';
+                    });
+                    exclHtml += '</div>';
+                }
+                catHtml += '<li><div>'+qty+'× '+name+opts+exclHtml+'</div><div>₪'+(qty*price).toFixed(0)+'</div></li>';
             });
             catHtml += '</ul>';
         }
@@ -782,6 +791,12 @@ function renderItems(items, showPrice) {
         h += '</div>';
         if (it.options && it.options.length) {
             it.options.forEach(function(op) { h += '<div class="pbon-note">+ '+(op.choice_name_he||op.name||op)+'</div>'; });
+        }
+        if (it.excluded_ingredients && Array.isArray(it.excluded_ingredients) && it.excluded_ingredients.length) {
+            it.excluded_ingredients.forEach(function(ing) {
+                var safe = String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                h += '<div class="pbon-note" style="color:#c00;font-weight:bold;">ללא '+safe+'</div>';
+            });
         }
     });
     return h;

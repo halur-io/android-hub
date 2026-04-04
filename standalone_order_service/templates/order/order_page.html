@@ -886,6 +886,12 @@ body { overflow-x: hidden; overflow-y: auto; }
 .opt-choice-price {
   font-size: .78rem; font-weight: 700; color: var(--c-primary); flex-shrink: 0; direction: ltr;
 }
+.ingredient-row.ingredient-excluded .ingredient-label {
+  text-decoration: line-through; color: #9ca3af;
+}
+.ingredient-row.ingredient-excluded::after {
+  content: 'ללא'; font-size: .7rem; color: #ef4444; font-weight: 600; flex-shrink: 0;
+}
 </style>
 
 <script>
@@ -1001,13 +1007,8 @@ function openItemModal(card) {
   document.getElementById('item-sheet-desc').textContent = desc || '';
   var ingEl = document.getElementById('item-sheet-ingredients');
   if (ingEl) {
-    if (ingredients) {
-      ingEl.textContent = ingredients;
-      ingEl.style.display = '';
-    } else {
-      ingEl.textContent = '';
-      ingEl.style.display = 'none';
-    }
+    ingEl.textContent = '';
+    ingEl.style.display = 'none';
   }
   var heroEl = document.getElementById('item-sheet-hero');
   var img = document.getElementById('item-sheet-img');
@@ -1129,6 +1130,24 @@ function openItemModal(card) {
         });
         html += '</div>';
       });
+    }
+
+    var rawIngredients = card.dataset.ingredientsHe || '';
+    var ingredientsList = rawIngredients.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+    if (ingredientsList.length > 0) {
+      var existingExcluded = (existingInCart && existingInCart.excluded_ingredients) ? existingInCart.excluded_ingredients : [];
+      html += '<div class="opt-group" data-gid="ingredients">';
+      html += '<div class="opt-group-head"><span class="opt-group-name">' + (IS_HE ? 'רכיבים' : 'Ingredients') + '</span></div>';
+      ingredientsList.forEach(function(ing, idx) {
+        var isExcluded = existingExcluded.indexOf(ing) !== -1;
+        html += '<label class="opt-choice-row ingredient-row' + (isExcluded ? ' ingredient-excluded' : '') + '">';
+        html += '<input type="checkbox" name="ingredient_' + idx + '" value="' + ing.replace(/"/g, '&quot;') + '" class="opt-choice-input ingredient-checkbox" data-ingredient="' + ing.replace(/"/g, '&quot;') + '"';
+        if (!isExcluded) html += ' checked';
+        html += ' onchange="onIngredientToggle(this)">';
+        html += '<span class="opt-choice-label ingredient-label">' + ing + '</span>';
+        html += '</label>';
+      });
+      html += '</div>';
     }
   }
   optContainer.innerHTML = html;
@@ -1289,10 +1308,36 @@ function closeItemModal() {
   _modalId = null;
 }
 
-function optionsKey(itemId, options) {
-  if (!options || !options.length) return itemId;
-  const sig = options.map(o => o.choice_id).sort((a,b) => a-b).join('_');
-  return itemId + '__' + sig;
+function optionsKey(itemId, options, excludedIngredients) {
+  var key = itemId;
+  if (options && options.length) {
+    key += '__' + options.map(o => o.choice_id).sort((a,b) => a-b).join('_');
+  }
+  if (excludedIngredients && excludedIngredients.length) {
+    key += '__ex_' + excludedIngredients.slice().sort().join('_');
+  }
+  return key;
+}
+
+function onIngredientToggle(cb) {
+  var row = cb.closest('.ingredient-row');
+  if (row) {
+    if (cb.checked) {
+      row.classList.remove('ingredient-excluded');
+    } else {
+      row.classList.add('ingredient-excluded');
+    }
+  }
+}
+
+function getExcludedIngredients() {
+  var excluded = [];
+  document.querySelectorAll('#item-sheet-options .ingredient-checkbox').forEach(function(cb) {
+    if (!cb.checked) {
+      excluded.push(cb.dataset.ingredient);
+    }
+  });
+  return excluded;
 }
 
 function addFromModal() {
@@ -1371,10 +1416,11 @@ function addFromModal() {
   const allOptions = [];
   Object.values(_modalSelectedOptions).forEach(arr => arr.forEach(o => allOptions.push(o)));
   const optionsExtra = allOptions.reduce((s, o) => s + o.price_modifier, 0);
+  const excludedIngredients = getExcludedIngredients();
 
   var pvId = pvSel ? pvSel.value : '';
   var pvKeySuffix = pvId ? '_pv' + pvId : '';
-  var cartKey = optionsKey(_modalId, allOptions) + pvKeySuffix;
+  var cartKey = optionsKey(_modalId, allOptions, excludedIngredients) + pvKeySuffix;
   var existing = cart[cartKey];
 
   var itemNameHe = card.dataset.nameHe;
@@ -1396,6 +1442,7 @@ function addFromModal() {
     base_price: _modalPrice,
     qty: existing ? existing.qty + _modalQty : _modalQty,
     options: allOptions,
+    excluded_ingredients: excludedIngredients,
     price_variant_id: pvId || null
   };
   renderCart();
@@ -1463,8 +1510,13 @@ function renderCart() {
         optStr = '<div style="font-size:.7rem;color:#6b7280;margin-top:2px;">' +
           it.options.map(o => (IS_HE ? o.choice_name_he : o.choice_name_en)).join(', ') + '</div>';
       }
+      let exclStr = '';
+      if (it.excluded_ingredients && it.excluded_ingredients.length) {
+        exclStr = '<div style="font-size:.7rem;color:#ef4444;margin-top:2px;">' +
+          it.excluded_ingredients.map(ing => 'ללא ' + String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(', ') + '</div>';
+      }
       return `<div class="cart-row">
-        <div style="flex:1;min-width:0"><div class="fw-semibold text-truncate" style="font-size:.83rem;">${it.name_he}</div>${optStr}
+        <div style="flex:1;min-width:0"><div class="fw-semibold text-truncate" style="font-size:.83rem;">${it.name_he}</div>${optStr}${exclStr}
         <div class="text-muted" style="font-size:.75rem;">₪${it.price} × ${it.qty}</div></div>
         <div class="d-flex align-items-center gap-1 flex-shrink-0">
           <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>

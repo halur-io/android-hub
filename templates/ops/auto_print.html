@@ -393,6 +393,12 @@ function buildBonHTML(order) {
                     s += `<div style="font-size:10pt; padding-right:10px;">+ ${opName}</div>`;
                 });
             }
+            if (item.excluded_ingredients && Array.isArray(item.excluded_ingredients) && item.excluded_ingredients.length) {
+                item.excluded_ingredients.forEach(ing => {
+                    const safe = String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                    s += `<div style="font-size:10pt; padding-right:10px; color:#c00; font-weight:bold;">ללא ${safe}</div>`;
+                });
+            }
             return s;
         }).join('');
     }

@@ -745,6 +745,12 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         order.total_amount = total_amount
         order.status = 'pending'
         order.payment_status = 'pending' if payment_method == 'card' else 'cash'
+        for ci in cart:
+            raw_ex = ci.get('excluded_ingredients', [])
+            if isinstance(raw_ex, list):
+                ci['excluded_ingredients'] = [str(e).strip()[:100] for e in raw_ex if isinstance(e, str) and e.strip()][:20]
+            else:
+                ci.pop('excluded_ingredients', None)
         order.items_json = json.dumps(cart)
 
         order.utm_source = request.form.get('utm_source', '').strip()[:200] or session.get('order_utm_source', '')[:200] or None
@@ -870,13 +876,24 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             oi.unit_price = base_price + options_extra
             oi.total_price = oi.quantity * oi.unit_price
             oi.special_instructions = item.get('notes', '')
+            raw_excluded = item.get('excluded_ingredients', [])
+            excluded_ingredients = []
+            if isinstance(raw_excluded, list):
+                for ei in raw_excluded:
+                    if isinstance(ei, str):
+                        cleaned = ei.strip()[:100]
+                        if cleaned:
+                            excluded_ingredients.append(cleaned)
+                excluded_ingredients = excluded_ingredients[:20]
             combined_json = {}
             if item_options:
                 combined_json['options'] = item_options
             if combo_selections:
                 combined_json['combo_selections'] = combo_selections
+            if excluded_ingredients:
+                combined_json['excluded_ingredients'] = excluded_ingredients
             if combined_json:
-                oi.options_json = json.dumps(combined_json if combo_selections else item_options, ensure_ascii=False)
+                oi.options_json = json.dumps(combined_json if (combo_selections or excluded_ingredients) else item_options, ensure_ascii=False)
             verified_subtotal += oi.total_price
             db.session.add(oi)
 

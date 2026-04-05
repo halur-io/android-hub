@@ -128,9 +128,6 @@ def _get_effective_branch_id():
     worker_branch = session.get('ops_branch_id')
     if worker_branch:
         return worker_branch
-    device = _check_device()
-    if device and device.branch_id:
-        return device.branch_id
     return None
 
 @ops_bp.context_processor
@@ -311,10 +308,10 @@ def auto_print():
 @require_ops_module('home')
 def settings():
     settings = _settings()
-    device = _check_device()
+    effective_branch = _get_effective_branch_id()
     branch_name = ''
-    if device and device.branch_id:
-        branch = Branch.query.get(device.branch_id)
+    if effective_branch:
+        branch = Branch.query.get(effective_branch)
         branch_name = branch.name_he if branch else ''
     return render_template('ops/settings.html',
         active_tab='settings',
@@ -692,20 +689,19 @@ def menu_price():
 @ops_bp.route('/stock')
 @require_ops_module('stock')
 def stock():
-    device = _check_device()
-    device_branch_id = device.branch_id if device else None
+    effective_branch = _get_effective_branch_id()
 
     items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
     levels = {}
     level_query = StockLevel.query
-    if device_branch_id:
-        level_query = level_query.filter_by(branch_id=device_branch_id)
+    if effective_branch:
+        level_query = level_query.filter_by(branch_id=effective_branch)
     for lvl in level_query.all():
         levels[lvl.item_id] = lvl
 
     txn_query = StockTransaction.query
-    if device_branch_id:
-        txn_query = txn_query.filter_by(branch_id=device_branch_id)
+    if effective_branch:
+        txn_query = txn_query.filter_by(branch_id=effective_branch)
     recent_txns = txn_query.order_by(
         StockTransaction.transaction_date.desc()
     ).limit(20).all()
@@ -742,18 +738,16 @@ def stock_transaction():
     except (ValueError, TypeError):
         return jsonify({'ok': False, 'error': 'כמות לא תקינה'})
 
-    device = _check_device()
-    if device and device.branch_id:
-        branch_id = device.branch_id
-    else:
+    effective_branch = _get_effective_branch_id()
+    if not effective_branch:
         first_branch = Branch.query.filter_by(is_active=True).first()
-        branch_id = first_branch.id if first_branch else None
-    if not branch_id:
+        effective_branch = first_branch.id if first_branch else None
+    if not effective_branch:
         return jsonify({'ok': False, 'error': 'לא נמצא סניף'})
 
     txn = StockTransaction(
         item_id=item_id,
-        branch_id=branch_id,
+        branch_id=effective_branch,
         transaction_type=txn_type,
         quantity=qty,
         notes=notes,

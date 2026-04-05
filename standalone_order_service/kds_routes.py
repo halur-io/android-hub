@@ -328,7 +328,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         worker_branch_id = session.get('order_dashboard_branch_id')
         if worker_branch_id and order.branch_id != worker_branch_id:
             flash('הזמנה לא שייכת לסניף זה', 'danger')
-            return redirect(url_for('order_dashboard.orders_page'))
+            return redirect(url_for('order_dashboard.orders'))
         message = request.form.get('message', '').strip()[:500]
         if not message:
             flash('נא להזין הודעה.', 'warning')

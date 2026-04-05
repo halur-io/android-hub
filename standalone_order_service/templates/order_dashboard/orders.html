@@ -365,6 +365,7 @@
     </div>
     <span class="clock" id="live-clock">--:--:--</span>
     <div class="top-nav-btns">
+      {% if is_kds_admin %}
       <!-- PAUSE toggle -->
       <button id="pause-btn" onclick="togglePause()" type="button"
         style="background:{% if ordering_paused %}#f59e0b{% else %}var(--card2){% endif %};
@@ -376,17 +377,34 @@
         <i class="fas {% if ordering_paused %}fa-play{% else %}fa-pause{% endif %}" id="pause-icon"></i>
         <span id="pause-label" class="pause-text">{% if ordering_paused %}פתח הזמנות{% else %}הקפא{% endif %}</span>
       </button>
+      {% endif %}
       <a href="{{ url_for('order_dashboard.statistics') }}" class="nav-btn" title="סטטיסטיקות">
         <i class="fas fa-chart-bar"></i><span class="nav-btn-text" style="margin-right:5px;">סטטיסטיקות</span>
       </a>
+      {% if is_kds_admin %}
       <a href="{{ url_for('order_dashboard.settings_page') }}" class="nav-btn" title="הגדרות">
         <i class="fas fa-cog"></i><span class="nav-btn-text" style="margin-right:5px;">הגדרות</span>
       </a>
+      {% endif %}
       <a href="{{ url_for('order_dashboard.logout') }}" class="nav-btn red" title="יציאה">
         <i class="fas fa-sign-out-alt"></i>
       </a>
     </div>
   </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;width:90%;max-width:500px;">
+    {% for category, message in messages %}
+    <div style="background:{% if category == 'danger' %}#ef4444{% elif category == 'warning' %}#f59e0b{% else %}#22c55e{% endif %};
+                color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:8px;font-weight:700;text-align:center;
+                font-family:'Heebo',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.3);"
+         onclick="this.remove()">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
   <!-- Row 2: live stats pills (horizontally scrollable) -->
   <div class="top-bar-row2">
     <span class="stat-pill {% if pending_count > 0 %}warn{% endif %}">

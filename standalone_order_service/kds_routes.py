@@ -78,6 +78,19 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             return get_settings()
         return None
 
+    @bp.context_processor
+    def inject_kds_admin_flag():
+        staff_id = session.get('order_dashboard_staff_id')
+        if staff_id:
+            pin = ManagerPIN.query.get(staff_id)
+            if pin:
+                if pin.is_ops_superadmin:
+                    return {'is_kds_admin': True}
+                perms = pin.ops_permissions or []
+                if 'home' in perms:
+                    return {'is_kds_admin': True}
+        return {'is_kds_admin': False}
+
     def _get_israel_now():
         try:
             from zoneinfo import ZoneInfo
@@ -444,9 +457,24 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
 
     # ── Settings ──────────────────────────────────────────────────────
 
+    def _is_kds_admin():
+        staff_id = session.get('order_dashboard_staff_id')
+        if not staff_id:
+            return False
+        pin = ManagerPIN.query.get(staff_id)
+        if not pin:
+            return False
+        if pin.is_ops_superadmin:
+            return True
+        perms = pin.ops_permissions or []
+        return 'home' in perms
+
     @bp.route('/settings', methods=['GET', 'POST'])
     @require_auth
     def settings_page():
+        if not _is_kds_admin():
+            flash('אין לך הרשאה לגשת לדף ההגדרות', 'danger')
+            return redirect(url_for('order_dashboard.orders'))
         site_settings = _settings()
 
         if request.method == 'POST':

@@ -63,7 +63,7 @@
             {% if 'branches' in ops_modules %}
                 {% set _ = tabs.append(('branches', 'סניפים', 'fas fa-store', url_for('ops.branches'))) %}
             {% endif %}
-            {% if 'home' in ops_modules %}
+            {% if is_ops_superadmin %}
                 {% set _ = tabs.append(('settings', 'הגדרות', 'fas fa-cog', url_for('ops.settings'))) %}
             {% endif %}
             {% for key, label, icon, url in tabs %}
@@ -74,6 +74,20 @@
             {% endfor %}
         </nav>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;width:90%;max-width:500px;">
+            {% for category, message in messages %}
+            <div style="background:{% if category == 'danger' %}#ef4444{% elif category == 'warning' %}#f59e0b{% else %}#22c55e{% endif %};
+                        color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:8px;font-weight:700;text-align:center;
+                        font-family:'Heebo',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.3);"
+                 onclick="this.remove()">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
         <main class="ops-content">
             {% block content %}{% endblock %}
         </main>

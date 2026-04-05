@@ -140,14 +140,15 @@ def inject_ops_context():
         branch = Branch.query.get(branch_id)
         if branch:
             branch_name = branch.name_he
-    can_switch_branch = user.is_ops_superadmin if user else False
-    all_branches = Branch.query.filter_by(is_active=True).all() if can_switch_branch else []
+    is_ops_superadmin = user.is_ops_superadmin if user else False
+    all_branches = Branch.query.filter_by(is_active=True).all() if is_ops_superadmin else []
     return dict(
         ops_modules=modules,
         ops_user=user,
         ops_branch_id=branch_id,
         ops_branch_name=branch_name,
-        can_switch_branch=can_switch_branch,
+        is_ops_superadmin=is_ops_superadmin,
+        can_switch_branch=is_ops_superadmin,
         all_branches=all_branches,
     )
 
@@ -325,12 +326,20 @@ def logout():
 @ops_bp.route('/auto-print')
 @require_ops_module('orders')
 def auto_print():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        flash('אין לך הרשאה לגשת לדף ההגדרות', 'danger')
+        return redirect(url_for('ops.home'))
     return render_template('ops/auto_print.html', active_tab='settings')
 
 
 @ops_bp.route('/settings')
 @require_ops_module('home')
 def settings():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        flash('אין לך הרשאה לגשת לדף ההגדרות', 'danger')
+        return redirect(url_for('ops.home'))
     settings = _settings()
     effective_branch = _get_effective_branch_id()
     branch_name = ''

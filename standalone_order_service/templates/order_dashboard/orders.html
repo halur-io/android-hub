@@ -361,8 +361,19 @@
     <div class="brand-icon"><i class="fas fa-fire-alt"></i></div>
     <div style="flex-shrink:0;min-width:0;">
       <div class="brand-title">KDS — מטבח</div>
-      <div class="brand-sub">{{ staff_name }}</div>
+      <div class="brand-sub">{{ staff_name }}{% if worker_branch_name %} · {{ worker_branch_name }}{% endif %}</div>
     </div>
+    {% if is_kds_superadmin %}
+    <select id="kds-branch-select" onchange="kdsSwitchBranch(this.value)"
+            style="background:var(--card2);color:var(--text);border:1px solid var(--border);
+                   border-radius:8px;padding:4px 8px;font-size:0.72rem;font-family:'Heebo',sans-serif;
+                   max-width:110px;cursor:pointer;flex-shrink:0;">
+        <option value="" {% if not kds_branch_id %}selected{% endif %}>כל הסניפים</option>
+        {% for b in kds_branches %}
+        <option value="{{ b.id }}" {% if kds_branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
     <span class="clock" id="live-clock">--:--:--</span>
     <div class="top-nav-btns">
       {% if is_kds_admin %}
@@ -1128,6 +1139,16 @@
 <div id="print-bon-area" style="display:none;"></div>
 
 <script>
+function kdsSwitchBranch(branchId) {
+  fetch('{{ url_for("order_dashboard.switch_branch") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({branch_id: branchId || null})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.ok) location.reload(); })
+  .catch(function() {});
+}
 /* ── board height calculation ────────────────────────────────── */
 function fitBoard() {
   const topBar  = document.querySelector('.top-bar');

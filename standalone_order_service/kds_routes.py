@@ -81,15 +81,26 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     @bp.context_processor
     def inject_kds_admin_flag():
         staff_id = session.get('order_dashboard_staff_id')
+        is_admin = False
+        is_superadmin = False
         if staff_id:
             pin = ManagerPIN.query.get(staff_id)
             if pin:
                 if pin.is_ops_superadmin:
-                    return {'is_kds_admin': True}
-                perms = pin.ops_permissions or []
-                if 'home' in perms:
-                    return {'is_kds_admin': True}
-        return {'is_kds_admin': False}
+                    is_admin = True
+                    is_superadmin = True
+                else:
+                    perms = pin.ops_permissions or []
+                    if 'home' in perms:
+                        is_admin = True
+        kds_branches = Branch.query.filter_by(is_active=True).all() if is_superadmin else []
+        kds_branch_id = session.get('order_dashboard_branch_id')
+        return {
+            'is_kds_admin': is_admin,
+            'is_kds_superadmin': is_superadmin,
+            'kds_branches': kds_branches,
+            'kds_branch_id': kds_branch_id,
+        }
 
     def _get_israel_now():
         try:
@@ -173,6 +184,21 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         session.pop('order_dashboard_staff_id', None)
         session.pop('order_dashboard_branch_id', None)
         return redirect(url_for('order_dashboard.login_page'))
+
+    @bp.route('/switch-branch', methods=['POST'])
+    @require_auth
+    def switch_branch():
+        staff_id = session.get('order_dashboard_staff_id')
+        pin = ManagerPIN.query.get(staff_id) if staff_id else None
+        if not pin or not pin.is_ops_superadmin:
+            return jsonify({'ok': False, 'error': 'אין הרשאה'})
+        data = request.get_json(force=True)
+        new_branch = data.get('branch_id')
+        if new_branch:
+            session['order_dashboard_branch_id'] = int(new_branch)
+        else:
+            session['order_dashboard_branch_id'] = None
+        return jsonify({'ok': True})
 
     # ── Orders list ───────────────────────────────────────────────────
 

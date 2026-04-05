@@ -140,12 +140,30 @@ def inject_ops_context():
         branch = Branch.query.get(branch_id)
         if branch:
             branch_name = branch.name_he
+    can_switch_branch = user.is_ops_superadmin if user else False
+    all_branches = Branch.query.filter_by(is_active=True).all() if can_switch_branch else []
     return dict(
         ops_modules=modules,
         ops_user=user,
         ops_branch_id=branch_id,
         ops_branch_name=branch_name,
+        can_switch_branch=can_switch_branch,
+        all_branches=all_branches,
     )
+
+
+@ops_bp.route('/switch-branch', methods=['POST'])
+def switch_branch():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'})
+    data = request.get_json(force=True)
+    new_branch = data.get('branch_id')
+    if new_branch:
+        session['ops_branch_id'] = int(new_branch)
+    else:
+        session['ops_branch_id'] = None
+    return jsonify({'ok': True})
 
 
 @ops_bp.route('/')
@@ -355,7 +373,19 @@ def home():
     except Exception:
         pass
 
-    unavailable_items = MenuItem.query.filter_by(is_available=False).count()
+    if effective_branch:
+        all_items = MenuItem.query.all()
+        branch_overrides_map = {bmi.menu_item_id: bmi for bmi in BranchMenuItem.query.filter_by(branch_id=effective_branch).all()}
+        unavailable_items = 0
+        for mi in all_items:
+            bmi = branch_overrides_map.get(mi.id)
+            if bmi:
+                if not bmi.is_available:
+                    unavailable_items += 1
+            elif not mi.is_available:
+                unavailable_items += 1
+    else:
+        unavailable_items = MenuItem.query.filter_by(is_available=False).count()
 
     recent_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
     if effective_branch:

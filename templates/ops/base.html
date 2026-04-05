@@ -18,6 +18,21 @@
                 {% block header_title %}לוח בקרה{% endblock %}
             </div>
             <div class="ops-header-right">
+                {% if can_switch_branch %}
+                <select id="ops-branch-select" onchange="switchBranch(this.value)"
+                        style="background:var(--ops-card);color:var(--ops-text);border:1px solid var(--ops-border);
+                               border-radius:8px;padding:4px 8px;font-size:0.75rem;font-family:'Heebo',sans-serif;
+                               max-width:120px;cursor:pointer;">
+                    <option value="" {% if not ops_branch_id %}selected{% endif %}>כל הסניפים</option>
+                    {% for b in all_branches %}
+                    <option value="{{ b.id }}" {% if ops_branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
+                    {% endfor %}
+                </select>
+                {% elif ops_branch_name %}
+                <span style="font-size:0.7rem;color:var(--ops-muted);margin-left:8px;">
+                    <i class="fas fa-store" style="margin-left:3px;"></i>{{ ops_branch_name }}
+                </span>
+                {% endif %}
                 <span class="ops-header-user">
                     <i class="fas fa-user-circle"></i>
                     {{ session.get('ops_user_name', '') }}
@@ -72,6 +87,20 @@
         t.textContent = message;
         t.className = 'ops-toast' + (isError ? ' error' : '') + ' show';
         setTimeout(function() { t.className = 'ops-toast'; }, 2500);
+    }
+
+    function switchBranch(branchId) {
+        fetch('{{ url_for("ops.switch_branch") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({branch_id: branchId || null})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) location.reload();
+            else showToast(d.error || 'שגיאה', true);
+        })
+        .catch(function() { showToast('שגיאת תקשורת', true); });
     }
 
     function opsPost(url, data, onSuccess) {

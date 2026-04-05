@@ -345,7 +345,10 @@ def home():
 
     low_stock_count = 0
     try:
-        levels = StockLevel.query.join(StockItem).filter(StockItem.is_active == True).all()
+        stock_q = StockLevel.query.join(StockItem).filter(StockItem.is_active == True)
+        if effective_branch:
+            stock_q = stock_q.filter(StockLevel.branch_id == effective_branch)
+        levels = stock_q.all()
         for lvl in levels:
             if lvl.item and lvl.current_quantity <= (lvl.item.minimum_stock or 0):
                 low_stock_count += 1
@@ -1197,6 +1200,9 @@ def direct_print():
     order = FoodOrder.query.get(order_id)
     if not order:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
 
     p = DirectPrinter(printer_ip, printer_port)
 
@@ -1236,12 +1242,17 @@ def direct_print():
 def get_unprinted_orders():
     api_key = request.headers.get('X-Print-Key') or request.args.get('key')
     expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
             return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     branch_id = request.args.get('branch_id', type=int)
+    if not is_api_key_auth:
+        effective_branch = _get_effective_branch_id()
+        if effective_branch:
+            branch_id = effective_branch
     query = FoodOrder.query.filter(
         FoodOrder.bon_printed == False,
         FoodOrder.status.in_(['pending', 'confirmed', 'preparing'])
@@ -1298,7 +1309,8 @@ def get_unprinted_orders():
 def mark_orders_printed():
     api_key = request.headers.get('X-Print-Key') or request.args.get('key')
     expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
             return jsonify({'ok': False, 'error': 'unauthorized'}), 401
@@ -1308,10 +1320,14 @@ def mark_orders_printed():
     if not order_ids:
         return jsonify({'ok': False, 'error': 'missing order_ids'})
 
+    effective_branch = _get_effective_branch_id() if not is_api_key_auth else None
+
     from datetime import datetime as dt
     for oid in order_ids:
         order = FoodOrder.query.get(oid)
         if order:
+            if effective_branch and order.branch_id != effective_branch:
+                continue
             order.bon_printed = True
             order.bon_printed_at = dt.utcnow()
     db.session.commit()

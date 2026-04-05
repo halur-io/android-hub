@@ -103,7 +103,7 @@
     {% if worker_totals %}
     <div class="card mb-4">
         <div class="card-header">
-            <i class="fas fa-chart-bar me-1"></i>{{ 'סיכום שעות' if he else 'Hours Summary' }}
+            <i class="fas fa-chart-bar me-1"></i>{{ 'סיכום כולל' if he else 'Overall Summary' }}
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -121,6 +121,70 @@
                             <td>{{ wt.name }}</td>
                             <td>{{ wt.shifts }}</td>
                             <td><span class="badge bg-primary">{{ wt.display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if daily_totals %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-calendar-day me-1"></i>{{ 'סיכום יומי' if he else 'Daily Totals' }}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>{{ 'תאריך' if he else 'Date' }}</th>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'משמרות' if he else 'Shifts' }}</th>
+                            <th>{{ 'שעות' if he else 'Hours' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dt in daily_totals %}
+                        <tr>
+                            <td>{{ dt.date }}</td>
+                            <td>{{ dt.name }}</td>
+                            <td>{{ dt.shifts }}</td>
+                            <td><span class="badge bg-info">{{ dt.display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if weekly_totals %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-calendar-week me-1"></i>{{ 'סיכום שבועי' if he else 'Weekly Totals' }}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>{{ 'שבוע' if he else 'Week' }}</th>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'משמרות' if he else 'Shifts' }}</th>
+                            <th>{{ 'שעות' if he else 'Hours' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wt in weekly_totals %}
+                        <tr>
+                            <td>{{ wt.week_label }}</td>
+                            <td>{{ wt.name }}</td>
+                            <td>{{ wt.shifts }}</td>
+                            <td><span class="badge bg-warning text-dark">{{ wt.display }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>

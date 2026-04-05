@@ -251,5 +251,24 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+_last_stale_check = 0
+
+@app.before_request
+def _auto_close_stale_shifts():
+    global _last_stale_check
+    now = time.time()
+    if now - _last_stale_check < 300:
+        return
+    _last_stale_check = now
+    try:
+        from models import TimeLog
+        closed = TimeLog.auto_close_stale()
+        if closed:
+            from database import db as _db
+            _db.session.commit()
+            logging.info(f"Auto-closed {closed} stale time log(s)")
+    except Exception:
+        pass
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

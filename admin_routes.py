@@ -9911,20 +9911,55 @@ def time_logs():
     logs = query.order_by(TimeLog.clock_in.desc()).limit(500).all()
 
     worker_totals = {}
+    daily_totals = {}
     for log in logs:
         wid = log.worker_id
+        wname = log.worker.name if log.worker else f'#{wid}'
         if wid not in worker_totals:
-            worker_totals[wid] = {'name': log.worker.name if log.worker else f'#{wid}', 'seconds': 0, 'shifts': 0}
+            worker_totals[wid] = {'name': wname, 'seconds': 0, 'shifts': 0}
         worker_totals[wid]['seconds'] += log.duration_seconds
         worker_totals[wid]['shifts'] += 1
+        day_key = log.clock_in.strftime('%Y-%m-%d')
+        dt_key = (wid, day_key)
+        if dt_key not in daily_totals:
+            daily_totals[dt_key] = {'name': wname, 'date': day_key, 'seconds': 0, 'shifts': 0}
+        daily_totals[dt_key]['seconds'] += log.duration_seconds
+        daily_totals[dt_key]['shifts'] += 1
     for wt in worker_totals.values():
         h, remainder = divmod(wt['seconds'], 3600)
         m, _ = divmod(remainder, 60)
         wt['display'] = f'{h}:{m:02d}'
+    for dt in daily_totals.values():
+        h, remainder = divmod(dt['seconds'], 3600)
+        m, _ = divmod(remainder, 60)
+        dt['display'] = f'{h}:{m:02d}'
+    daily_list = sorted(daily_totals.values(), key=lambda x: (x['date'], x['name']), reverse=True)
+
+    weekly_totals = {}
+    for log in logs:
+        wid = log.worker_id
+        wname = log.worker.name if log.worker else f'#{wid}'
+        iso_year, iso_week, _ = log.clock_in.isocalendar()
+        wk_key = (wid, iso_year, iso_week)
+        if wk_key not in weekly_totals:
+            week_start = log.clock_in - td(days=log.clock_in.weekday())
+            weekly_totals[wk_key] = {
+                'name': wname,
+                'week_label': f'{week_start.strftime("%d/%m")}–{(week_start + td(days=6)).strftime("%d/%m/%Y")}',
+                'seconds': 0, 'shifts': 0,
+            }
+        weekly_totals[wk_key]['seconds'] += log.duration_seconds
+        weekly_totals[wk_key]['shifts'] += 1
+    for wt in weekly_totals.values():
+        h, remainder = divmod(wt['seconds'], 3600)
+        m, _ = divmod(remainder, 60)
+        wt['display'] = f'{h}:{m:02d}'
+    weekly_list = sorted(weekly_totals.values(), key=lambda x: x['week_label'], reverse=True)
 
     workers = ManagerPIN.query.filter_by(is_active=True).order_by(ManagerPIN.name).all()
     branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
     open_shifts = TimeLog.query.filter(TimeLog.clock_out.is_(None)).all()
+    auto_close_hours = TimeLog.get_auto_close_hours()
 
     return render_template('admin/time_logs.html',
         logs=logs,
@@ -9932,6 +9967,9 @@ def time_logs():
         branches=branches,
         open_shifts=open_shifts,
         worker_totals=worker_totals,
+        daily_totals=daily_list,
+        weekly_totals=weekly_list,
+        auto_close_hours=auto_close_hours,
         filter_worker_id=worker_id,
         filter_branch_id=branch_id,
         filter_date_from=date_from,
@@ -9955,7 +9993,7 @@ def time_log_clock_out(log_id):
 @admin_bp.route('/time-logs/auto-close', methods=['POST'])
 @login_required
 def time_log_auto_close():
-    count = TimeLog.auto_close_stale(threshold_hours=12)
+    count = TimeLog.auto_close_stale()
     db.session.commit()
     flash(f'{count} משמרות ישנות נסגרו אוטומטית', 'success')
     return redirect(url_for('admin.time_logs'))

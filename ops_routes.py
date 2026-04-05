@@ -142,12 +142,6 @@ def inject_ops_context():
             branch_name = branch.name_he
     is_ops_superadmin = user.is_ops_superadmin if user else False
     all_branches = Branch.query.filter_by(is_active=True).all() if is_ops_superadmin else []
-    active_time_log = None
-    tl_id = session.get('ops_active_time_log_id')
-    if tl_id:
-        active_time_log = TimeLog.query.get(tl_id)
-        if active_time_log and not active_time_log.is_open:
-            active_time_log = None
     return dict(
         ops_modules=modules,
         ops_user=user,
@@ -156,7 +150,6 @@ def inject_ops_context():
         is_ops_superadmin=is_ops_superadmin,
         can_switch_branch=is_ops_superadmin,
         all_branches=all_branches,
-        active_time_log=active_time_log,
     )
 
 
@@ -296,18 +289,7 @@ def login():
                 device = _check_device()
                 if device:
                     device.last_pin_id = p.id
-                try:
-                    existing_open = TimeLog.query.filter_by(
-                        worker_id=p.id, source='ops'
-                    ).filter(TimeLog.clock_out.is_(None)).all()
-                    for eo in existing_open:
-                        eo.close_shift()
-                    tl = TimeLog(worker_id=p.id, branch_id=getattr(p, 'branch_id', None), source='ops')
-                    db.session.add(tl)
-                    db.session.commit()
-                    session['ops_active_time_log_id'] = tl.id
-                except Exception:
-                    db.session.rollback()
+                db.session.commit()
                 return redirect(url_for('ops.index'))
             error = 'קוד PIN שגוי'
         else:
@@ -320,18 +302,7 @@ def login():
                     device = _check_device()
                     if device:
                         device.last_pin_id = p.id
-                    try:
-                        existing_open = TimeLog.query.filter_by(
-                            worker_id=p.id, source='ops'
-                        ).filter(TimeLog.clock_out.is_(None)).all()
-                        for eo in existing_open:
-                            eo.close_shift()
-                        tl = TimeLog(worker_id=p.id, branch_id=getattr(p, 'branch_id', None), source='ops')
-                        db.session.add(tl)
-                        db.session.commit()
-                        session['ops_active_time_log_id'] = tl.id
-                    except Exception:
-                        db.session.rollback()
+                    db.session.commit()
                     return redirect(url_for('ops.index'))
             error = 'קוד PIN שגוי'
     return render_template('ops/login.html', error=error, users=users)
@@ -339,15 +310,6 @@ def login():
 
 @ops_bp.route('/logout')
 def logout():
-    tl_id = session.pop('ops_active_time_log_id', None)
-    if tl_id:
-        try:
-            tl = TimeLog.query.get(tl_id)
-            if tl and tl.is_open:
-                tl.close_shift()
-                db.session.commit()
-        except Exception:
-            db.session.rollback()
     session.pop('ops_pin_id', None)
     session.pop('ops_user_name', None)
     session.pop('ops_branch_id', None)
@@ -359,6 +321,81 @@ def logout():
         except Exception:
             db.session.rollback()
     return redirect(url_for('ops.login'))
+
+
+@ops_bp.route('/shifts')
+@require_ops_module('shifts')
+def shifts():
+    effective_branch = _get_effective_branch_id()
+    workers = ManagerPIN.query.filter_by(is_active=True).order_by(ManagerPIN.name).all()
+    if effective_branch:
+        workers = [w for w in workers if w.branch_id is None or w.branch_id == effective_branch]
+    open_shifts = TimeLog.query.filter(TimeLog.clock_out.is_(None))
+    if effective_branch:
+        open_shifts = open_shifts.filter_by(branch_id=effective_branch)
+    open_shifts = open_shifts.all()
+    open_worker_ids = {tl.worker_id for tl in open_shifts}
+    now = _get_israel_now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_logs = TimeLog.query.filter(TimeLog.clock_in >= today_start)
+    if effective_branch:
+        today_logs = today_logs.filter_by(branch_id=effective_branch)
+    today_logs = today_logs.order_by(TimeLog.clock_in.desc()).all()
+    return render_template('ops/shifts.html',
+        active_tab='shifts',
+        workers=workers,
+        open_shifts=open_shifts,
+        open_worker_ids=open_worker_ids,
+        today_logs=today_logs,
+    )
+
+
+@ops_bp.route('/shifts/clock-in', methods=['POST'])
+@require_ops_module('shifts')
+def shift_clock_in():
+    data = request.get_json(force=True)
+    worker_id = data.get('worker_id')
+    pin = data.get('pin', '')
+    if not worker_id or not pin:
+        return jsonify({'ok': False, 'error': 'חסרים פרטים'})
+    try:
+        worker_id = int(worker_id)
+    except (ValueError, TypeError):
+        return jsonify({'ok': False, 'error': 'שגיאה'})
+    worker = ManagerPIN.query.filter_by(id=worker_id, is_active=True).first()
+    if not worker or not worker.check_pin(pin):
+        return jsonify({'ok': False, 'error': 'קוד PIN שגוי'})
+    existing = TimeLog.query.filter_by(worker_id=worker_id).filter(TimeLog.clock_out.is_(None)).first()
+    if existing:
+        return jsonify({'ok': False, 'error': f'{worker.name} כבר בשעון נוכחות'})
+    effective_branch = _get_effective_branch_id() or worker.branch_id
+    tl = TimeLog(worker_id=worker_id, branch_id=effective_branch, source='ops')
+    db.session.add(tl)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'{worker.name} נכנס/ה למשמרת'})
+
+
+@ops_bp.route('/shifts/clock-out', methods=['POST'])
+@require_ops_module('shifts')
+def shift_clock_out():
+    data = request.get_json(force=True)
+    worker_id = data.get('worker_id')
+    pin = data.get('pin', '')
+    if not worker_id or not pin:
+        return jsonify({'ok': False, 'error': 'חסרים פרטים'})
+    try:
+        worker_id = int(worker_id)
+    except (ValueError, TypeError):
+        return jsonify({'ok': False, 'error': 'שגיאה'})
+    worker = ManagerPIN.query.filter_by(id=worker_id, is_active=True).first()
+    if not worker or not worker.check_pin(pin):
+        return jsonify({'ok': False, 'error': 'קוד PIN שגוי'})
+    open_log = TimeLog.query.filter_by(worker_id=worker_id).filter(TimeLog.clock_out.is_(None)).first()
+    if not open_log:
+        return jsonify({'ok': False, 'error': f'{worker.name} לא בשעון נוכחות'})
+    open_log.close_shift()
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'{worker.name} יצא/ה מהמשמרת ({open_log.duration_display})'})
 
 
 @ops_bp.route('/auto-print')

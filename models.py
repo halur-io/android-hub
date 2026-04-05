@@ -2638,7 +2638,7 @@ class ManagerPIN(db.Model):
 
     branch = db.relationship('Branch', foreign_keys=[branch_id])
 
-    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches']
+    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches', 'shifts']
 
     def set_pin(self, pin):
         self.pin_hash = generate_password_hash(pin)
@@ -2894,7 +2894,17 @@ class TimeLog(db.Model):
             self.clock_out = datetime.utcnow()
 
     @staticmethod
-    def auto_close_stale(threshold_hours=12):
+    def get_auto_close_hours():
+        import os
+        try:
+            return float(os.environ.get('SHIFT_AUTO_CLOSE_HOURS', '12'))
+        except (ValueError, TypeError):
+            return 12.0
+
+    @staticmethod
+    def auto_close_stale(threshold_hours=None):
+        if threshold_hours is None:
+            threshold_hours = TimeLog.get_auto_close_hours()
         cutoff = datetime.utcnow() - timedelta(hours=threshold_hours)
         stale = TimeLog.query.filter(
             TimeLog.clock_out.is_(None),

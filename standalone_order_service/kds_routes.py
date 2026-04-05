@@ -93,6 +93,13 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         def decorated(*args, **kwargs):
             if not _authenticated():
                 return redirect(url_for('order_dashboard.login_page'))
+            if 'order_dashboard_branch_id' not in session:
+                staff_id = session.get('order_dashboard_staff_id')
+                if staff_id:
+                    pin = ManagerPIN.query.get(staff_id)
+                    if pin:
+                        session['order_dashboard_branch_id'] = getattr(pin, 'branch_id', None)
+                        session.modified = True
             return f(*args, **kwargs)
         return decorated
 
@@ -138,14 +145,20 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         session['order_dashboard_authenticated'] = True
         session['order_dashboard_staff_name'] = staff.name
         session['order_dashboard_staff_id'] = staff.id
+        staff_branch_id = getattr(staff, 'branch_id', None)
+        session['order_dashboard_branch_id'] = staff_branch_id
         session.permanent = True
-        return jsonify({'success': True, 'redirect': url_for('order_dashboard.orders')})
+        redirect_url = url_for('order_dashboard.orders')
+        if staff_branch_id:
+            redirect_url = url_for('order_dashboard.orders', branch_id=staff_branch_id)
+        return jsonify({'success': True, 'redirect': redirect_url})
 
     @bp.route('/logout')
     def logout():
         session.pop('order_dashboard_authenticated', None)
         session.pop('order_dashboard_staff_name', None)
         session.pop('order_dashboard_staff_id', None)
+        session.pop('order_dashboard_branch_id', None)
         return redirect(url_for('order_dashboard.login_page'))
 
     # ── Orders list ───────────────────────────────────────────────────
@@ -157,6 +170,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         status_filter = request.args.get('status', 'active')
         date_str = request.args.get('date', '')
         branch_filter = request.args.get('branch_id', '')
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        if worker_branch_id:
+            branch_filter = str(worker_branch_id)
         now = _get_israel_now()
         today = now.date()
         if date_str:
@@ -184,6 +200,12 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             orders_list = [o for o in all_today if o.status == status_filter]
 
         all_branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+        branch_name = ''
+        if worker_branch_id:
+            for b in all_branches:
+                if b.id == worker_branch_id:
+                    branch_name = b.name_he
+                    break
         return render_template('orders.html',
                                orders=orders_list,
                                all_today=all_today,
@@ -205,7 +227,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
                                ordering_paused=getattr(settings, 'ordering_paused', False) if settings else False,
                                staff_name=session.get('order_dashboard_staff_name', ''),
                                branches=all_branches,
-                               branch_filter=branch_filter)
+                               branch_filter=branch_filter,
+                               worker_branch_id=worker_branch_id,
+                               worker_branch_name=branch_name)
 
     # ── Order detail ──────────────────────────────────────────────────
 
@@ -214,6 +238,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     def order_detail(order_id):
         settings = _settings()
         order = FoodOrder.query.get_or_404(order_id)
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        if worker_branch_id and order.branch_id != worker_branch_id:
+            return jsonify({'error': 'הזמנה לא שייכת לסניף זה'}), 403
         return render_template('order_detail.html',
                                order=order,
                                items=order.get_items(),
@@ -226,6 +253,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     @require_auth
     def update_status(order_id):
         order = FoodOrder.query.get_or_404(order_id)
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        if worker_branch_id and order.branch_id != worker_branch_id:
+            return jsonify({'success': False, 'error': 'הזמנה לא שייכת לסניף זה'}), 403
         new_status = request.form.get('status') or (request.json.get('status') if request.is_json else None)
         admin_note = request.form.get('admin_note', '').strip()[:500]
         valid = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'pickedup', 'cancelled']
@@ -277,6 +307,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     @require_auth
     def add_note(order_id):
         order = FoodOrder.query.get_or_404(order_id)
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        if worker_branch_id and order.branch_id != worker_branch_id:
+            return jsonify({'success': False, 'error': 'הזמנה לא שייכת לסניף זה'}), 403
         note = request.form.get('note', '').strip()
         if note:
             ts = _get_israel_now().strftime('%d/%m %H:%M')
@@ -292,6 +325,10 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     @require_auth
     def send_sms_route(order_id):
         order = FoodOrder.query.get_or_404(order_id)
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        if worker_branch_id and order.branch_id != worker_branch_id:
+            flash('הזמנה לא שייכת לסניף זה', 'danger')
+            return redirect(url_for('order_dashboard.orders_page'))
         message = request.form.get('message', '').strip()[:500]
         if not message:
             flash('נא להזין הודעה.', 'warning')
@@ -346,6 +383,9 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     @require_auth
     def cancel_order(order_id):
         order = FoodOrder.query.get_or_404(order_id)
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        if worker_branch_id and order.branch_id != worker_branch_id:
+            return jsonify({'success': False, 'error': 'הזמנה לא שייכת לסניף זה'}), 403
         reason = request.form.get('reason', '').strip()[:500]
         old_status = order.status
         order.status = 'cancelled'
@@ -376,9 +416,19 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     def orders_feed():
         now = _get_israel_now()
         today = now.date()
-        ords = FoodOrder.query.filter(
+        q = FoodOrder.query.filter(
             FoodOrder.created_at >= datetime.combine(today, datetime.min.time())
-        ).order_by(FoodOrder.created_at.desc()).all()
+        )
+        worker_branch_id = session.get('order_dashboard_branch_id')
+        feed_branch = request.args.get('branch_id', '')
+        if worker_branch_id:
+            q = q.filter(FoodOrder.branch_id == worker_branch_id)
+        elif feed_branch:
+            try:
+                q = q.filter(FoodOrder.branch_id == int(feed_branch))
+            except (ValueError, TypeError):
+                pass
+        ords = q.order_by(FoodOrder.created_at.desc()).all()
         return jsonify([{
             'id': o.id,
             'order_number': o.order_number,

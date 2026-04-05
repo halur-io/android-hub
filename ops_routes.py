@@ -59,6 +59,9 @@ def _get_ops_user():
     if pin_id:
         user = ManagerPIN.query.filter_by(id=pin_id, is_active=True).first()
         if user:
+            if 'ops_branch_id' not in session:
+                session['ops_branch_id'] = getattr(user, 'branch_id', None)
+                session.modified = True
             return user
         else:
             logging.debug(f'OPS: session pin_id={pin_id} not found in DB')
@@ -69,6 +72,7 @@ def _get_ops_user():
         if user:
             session['ops_pin_id'] = user.id
             session['ops_user_name'] = user.name
+            session['ops_branch_id'] = getattr(user, 'branch_id', None)
             session.modified = True
             logging.debug(f'OPS: session restored for user {user.name}')
             return user
@@ -120,13 +124,30 @@ def require_ops_module(module_name):
         return decorated
     return decorator
 
+def _get_effective_branch_id():
+    worker_branch = session.get('ops_branch_id')
+    if worker_branch:
+        return worker_branch
+    device = _check_device()
+    if device and device.branch_id:
+        return device.branch_id
+    return None
+
 @ops_bp.context_processor
 def inject_ops_context():
     user = _get_ops_user()
     modules = user.get_ops_modules() if user else []
+    branch_id = _get_effective_branch_id()
+    branch_name = ''
+    if branch_id:
+        branch = Branch.query.get(branch_id)
+        if branch:
+            branch_name = branch.name_he
     return dict(
         ops_modules=modules,
         ops_user=user,
+        ops_branch_id=branch_id,
+        ops_branch_name=branch_name,
     )
 
 
@@ -241,6 +262,7 @@ def login():
             if p and p.check_pin(pin):
                 session['ops_pin_id'] = p.id
                 session['ops_user_name'] = p.name
+                session['ops_branch_id'] = getattr(p, 'branch_id', None)
                 p.last_used_at = datetime.utcnow()
                 device = _check_device()
                 if device:
@@ -253,6 +275,7 @@ def login():
                 if p.check_pin(pin):
                     session['ops_pin_id'] = p.id
                     session['ops_user_name'] = p.name
+                    session['ops_branch_id'] = getattr(p, 'branch_id', None)
                     p.last_used_at = datetime.utcnow()
                     device = _check_device()
                     if device:
@@ -267,6 +290,7 @@ def login():
 def logout():
     session.pop('ops_pin_id', None)
     session.pop('ops_user_name', None)
+    session.pop('ops_branch_id', None)
     device = _check_device()
     if device:
         device.last_pin_id = None
@@ -305,8 +329,12 @@ def home():
     settings = _settings()
     now = _get_israel_now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    effective_branch = _get_effective_branch_id()
 
-    today_orders = FoodOrder.query.filter(FoodOrder.created_at >= today_start).all()
+    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
+    if effective_branch:
+        today_q = today_q.filter_by(branch_id=effective_branch)
+    today_orders = today_q.all()
     total_revenue = sum(o.total_amount or 0 for o in today_orders if o.payment_status == 'paid')
     active_orders = sum(1 for o in today_orders if o.status in ('pending', 'confirmed', 'preparing'))
     completed_orders = sum(1 for o in today_orders if o.status in ('delivered', 'pickedup'))
@@ -329,9 +357,10 @@ def home():
 
     unavailable_items = MenuItem.query.filter_by(is_available=False).count()
 
-    recent_orders = FoodOrder.query.filter(
-        FoodOrder.created_at >= today_start
-    ).order_by(FoodOrder.created_at.desc()).limit(8).all()
+    recent_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
+    if effective_branch:
+        recent_q = recent_q.filter_by(branch_id=effective_branch)
+    recent_orders = recent_q.order_by(FoodOrder.created_at.desc()).limit(8).all()
 
     return render_template('ops/home.html',
         active_tab='home',
@@ -371,14 +400,13 @@ OPS_STATUS_COLORS = {
 @ops_bp.route('/orders')
 @require_ops_module('orders')
 def orders():
-    device = _check_device()
-    device_branch_id = device.branch_id if device else None
+    effective_branch = _get_effective_branch_id()
     status_filter = request.args.get('status', 'active')
     type_filter = request.args.get('type', 'all')
 
     query = FoodOrder.query
-    if device_branch_id:
-        query = query.filter_by(branch_id=device_branch_id)
+    if effective_branch:
+        query = query.filter_by(branch_id=effective_branch)
 
     if type_filter == 'delivery':
         query = query.filter_by(order_type='delivery')
@@ -403,8 +431,8 @@ def orders():
     now = _get_israel_now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
-    if device_branch_id:
-        today_q = today_q.filter_by(branch_id=device_branch_id)
+    if effective_branch:
+        today_q = today_q.filter_by(branch_id=effective_branch)
     if type_filter == 'delivery':
         today_q = today_q.filter_by(order_type='delivery')
     elif type_filter == 'pickup':
@@ -448,8 +476,8 @@ def update_order_status(order_id):
     if not order:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
 
-    device = _check_device()
-    if device and device.branch_id and order.branch_id != device.branch_id:
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
 
     old_status = order.status
@@ -503,6 +531,9 @@ def get_order_detail(order_id):
     order = FoodOrder.query.get(order_id)
     if not order:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
     items = order.get_items()
     categories = {c.id: c.name_he for c in MenuCategory.query.all()}
     for item in items:

@@ -199,7 +199,7 @@
                                 {% endfor %}
                                 {% if not devices %}
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">
+                                    <td colspan="8" class="text-center text-muted py-4">
                                         <i class="fas fa-tablet-alt fa-2x mb-2 d-block"></i>
                                         {{ 'אין מכשירים רשומים' if (admin_language or 'he') == 'he' else 'No enrolled devices' }}
                                     </td>
@@ -232,6 +232,15 @@
                             <div class="col-md-3">
                                 <label class="form-label">{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</label>
                                 <input type="text" class="form-control" name="description" placeholder="אופציונלי">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</label>
+                                <select name="branch_id" class="form-select">
+                                    <option value="">{{ 'כל הסניפים' if (admin_language or 'he') == 'he' else 'All Branches' }}</option>
+                                    {% for b in branches %}
+                                    <option value="{{ b.id }}">{{ b.name_he }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">{{ 'הרשאות מודולים' if (admin_language or 'he') == 'he' else 'Module Permissions' }}</label>
@@ -287,6 +296,7 @@
                                 <tr>
                                     <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
                                     <th>{{ 'PIN' if (admin_language or 'he') == 'he' else 'PIN' }}</th>
+                                    <th>{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</th>
                                     <th>{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</th>
                                     <th>{{ 'הרשאות' if (admin_language or 'he') == 'he' else 'Permissions' }}</th>
                                     <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
@@ -299,6 +309,13 @@
                                 <tr>
                                     <td>{{ pin.name }}</td>
                                     <td><code>****</code></td>
+                                    <td>
+                                        {% if pin.branch %}
+                                        <span class="badge bg-info">{{ pin.branch.name_he }}</span>
+                                        {% else %}
+                                        <span class="text-muted">{{ 'כל הסניפים' if (admin_language or 'he') == 'he' else 'All' }}</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ pin.description or '—' }}</td>
                                     <td>
                                         {% if pin.is_ops_superadmin %}
@@ -326,7 +343,7 @@
                                                 <i class="fas fa-ellipsis-v"></i>
                                             </button>
                                             <div class="action-dropdown">
-                                                <a href="#" class="dropdown-item" onclick="editPin({{ pin.id }}, '{{ pin.name }}', '{{ pin.description or '' }}', {{ pin.is_ops_superadmin|lower }}, {{ (pin.ops_permissions or [])|tojson }}, {{ pin.is_active|lower }}); return false;">
+                                                <a href="#" class="dropdown-item" onclick="editPin({{ pin.id }}, '{{ pin.name }}', '{{ pin.description or '' }}', {{ pin.is_ops_superadmin|lower }}, {{ (pin.ops_permissions or [])|tojson }}, {{ pin.is_active|lower }}, '{{ pin.branch_id or '' }}'); return false;">
                                                     <i class="fas fa-edit me-1"></i> {{ 'עריכה' if (admin_language or 'he') == 'he' else 'Edit' }}
                                                 </a>
                                                 <form method="POST" action="{{ url_for('admin.delete_manager_pin', pin_id=pin.id) }}" style="display:inline;" onsubmit="return confirm('{{ 'למחוק PIN?' if (admin_language or 'he') == 'he' else 'Delete PIN?' }}')">
@@ -342,7 +359,7 @@
                                 {% endfor %}
                                 {% if not pins %}
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">
+                                    <td colspan="8" class="text-center text-muted py-4">
                                         <i class="fas fa-key fa-2x mb-2 d-block"></i>
                                         {{ 'אין קודי PIN' if (admin_language or 'he') == 'he' else 'No PIN codes' }}
                                     </td>
@@ -380,6 +397,15 @@
                         <input type="text" class="form-control" name="description" id="editPinDesc">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</label>
+                        <select name="branch_id" class="form-select" id="editPinBranch">
+                            <option value="">{{ 'כל הסניפים' if (admin_language or 'he') == 'he' else 'All Branches' }}</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}">{{ b.name_he }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">{{ 'הרשאות מודולים' if (admin_language or 'he') == 'he' else 'Module Permissions' }}</label>
                         <div class="d-flex flex-wrap gap-2">
                             <div class="form-check"><input class="form-check-input edit-perm" type="checkbox" name="ops_permissions" value="home" id="edit_perm_home"><label class="form-check-label" for="edit_perm_home">Home</label></div>
@@ -415,12 +441,13 @@ function copyText(text) {
     });
 }
 
-function editPin(id, name, desc, isSuperadmin, perms, isActive) {
+function editPin(id, name, desc, isSuperadmin, perms, isActive, branchId) {
     document.getElementById('editPinForm').action = '/admin/manager-pins/edit/' + id;
     document.getElementById('editPinName').value = name;
     document.getElementById('editPinDesc').value = desc;
     document.getElementById('editSuperadmin').checked = isSuperadmin;
     document.getElementById('editActive').checked = isActive;
+    document.getElementById('editPinBranch').value = branchId || '';
     document.querySelectorAll('.edit-perm').forEach(function(cb) {
         cb.checked = perms.indexOf(cb.value) !== -1;
     });

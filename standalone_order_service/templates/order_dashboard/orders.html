@@ -427,6 +427,11 @@
 
   {% if branches is defined and branches | length > 1 %}
   <div class="nav-sep" style="margin:0 4px;"></div>
+  {% if worker_branch_id %}
+  <span style="flex-shrink:0;background:var(--primary);border:1px solid var(--primary);color:#fff;border-radius:16px;padding:4px 12px;font-size:.74rem;font-weight:700;">
+    <i class="fas fa-map-marker-alt me-1"></i>{{ worker_branch_name }}
+  </span>
+  {% else %}
   <select class="branch-filter-select" onchange="var p=new URLSearchParams(window.location.search);if(this.value){p.set('branch_id',this.value)}else{p.delete('branch_id')};window.location.search=p.toString();"
     style="flex-shrink:0;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:16px;padding:4px 12px;font-size:.74rem;font-weight:700;">
     <option value="">כל הסניפים</option>
@@ -434,6 +439,7 @@
     <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
     {% endfor %}
   </select>
+  {% endif %}
   {% endif %}
 
   <div class="ctrl-sep"></div>

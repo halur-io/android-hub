@@ -2629,11 +2629,14 @@ class ManagerPIN(db.Model):
     pin_plain = db.Column(db.String(10), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_used_at = db.Column(db.DateTime)
     ops_permissions = db.Column(db.JSON, default=list)
     is_ops_superadmin = db.Column(db.Boolean, default=False)
+
+    branch = db.relationship('Branch', foreign_keys=[branch_id])
 
     OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches']
 

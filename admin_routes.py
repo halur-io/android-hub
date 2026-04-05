@@ -9791,10 +9791,16 @@ def create_manager_pin():
     description = request.form.get('description', '').strip()
     is_ops_superadmin = request.form.get('is_ops_superadmin') == 'on'
     ops_permissions = request.form.getlist('ops_permissions')
+    branch_id_str = request.form.get('branch_id', '').strip()
     if not name or not pin or len(pin) < 4:
         flash('שם וקוד PIN (לפחות 4 ספרות) נדרשים', 'error')
         return redirect(url_for('admin.enrolled_devices'))
     mp = ManagerPIN(name=name, description=description, is_ops_superadmin=is_ops_superadmin, ops_permissions=ops_permissions)
+    if branch_id_str:
+        try:
+            mp.branch_id = int(branch_id_str)
+        except (ValueError, TypeError):
+            pass
     mp.set_pin(pin)
     db.session.add(mp)
     db.session.commit()
@@ -9810,6 +9816,14 @@ def edit_manager_pin(pin_id):
     mp.description = request.form.get('description', '').strip()
     mp.is_ops_superadmin = request.form.get('is_ops_superadmin') == 'on'
     mp.ops_permissions = request.form.getlist('ops_permissions')
+    branch_id_str = request.form.get('branch_id', '').strip()
+    if branch_id_str:
+        try:
+            mp.branch_id = int(branch_id_str)
+        except (ValueError, TypeError):
+            mp.branch_id = None
+    else:
+        mp.branch_id = None
     new_pin = request.form.get('pin', '').strip()
     if new_pin and len(new_pin) >= 4:
         mp.set_pin(new_pin)

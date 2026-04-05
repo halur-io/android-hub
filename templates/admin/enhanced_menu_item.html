@@ -48,6 +48,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="branches-tab" data-bs-toggle="tab" data-bs-target="#branches" type="button" role="tab">
+                            <i class="fas fa-store me-2"></i>סניפים
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="print-tab" data-bs-toggle="tab" data-bs-target="#print" type="button" role="tab">
                             <i class="fas fa-print me-2"></i>הגדרות הדפסה
                         </button>
@@ -714,6 +719,72 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Branches Tab -->
+                    <div class="tab-pane fade" id="branches" role="tabpanel">
+                        {% if not item.id %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            יש לשמור את המנה קודם כדי להגדיר זמינות ותמחור לכל סניף.
+                        </div>
+                        {% elif not branches_data %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            לא נמצאו סניפים פעילים במערכת.
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            כאן ניתן לקבוע עבור כל סניף אם המנה מוצגת ובאיזה מחיר. אם המחיר ריק — ייעשה שימוש במחיר הבסיס.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:30%">סניף</th>
+                                        <th style="width:20%" class="text-center">מוצג בתפריט</th>
+                                        <th style="width:25%">מחיר מותאם</th>
+                                        <th style="width:25%">סדר תצוגה</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for bd in branches_data %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ bd.branch.name_he }}</strong>
+                                            {% if bd.branch.name_en %}<br><small class="text-muted">{{ bd.branch.name_en }}</small>{% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check form-switch d-flex justify-content-center">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="branch_available_{{ bd.branch.id }}"
+                                                       value="1"
+                                                       {% if bd.is_available %}checked{% endif %}>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">₪</span>
+                                                <input type="number" step="0.01" min="0" class="form-control"
+                                                       name="branch_price_{{ bd.branch.id }}"
+                                                       value="{{ bd.custom_price if bd.custom_price is not none else '' }}"
+                                                       placeholder="{{ item.base_price or '—' }}">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="1" min="0" class="form-control form-control-sm"
+                                                   name="branch_order_{{ bd.branch.id }}"
+                                                   value="{{ bd.display_order if bd.display_order else '' }}"
+                                                   placeholder="0">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <input type="hidden" name="branch_ids" value="{{ branches_data|map(attribute='branch')|map(attribute='id')|list|join(',') }}">
+                        {% endif %}
                     </div>
 
                     <!-- Advanced Settings Tab -->

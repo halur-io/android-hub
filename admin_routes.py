@@ -1428,11 +1428,33 @@ def edit_menu_item(id=None):
         
         if not id:
             db.session.add(item)
-        
+            db.session.flush()
+
+        branch_ids_str = request.form.get('branch_ids', '')
+        if branch_ids_str and item.id:
+            branch_ids = [int(bid) for bid in branch_ids_str.split(',') if bid.strip().isdigit()]
+            existing_overrides = {o.branch_id: o for o in BranchMenuItem.query.filter_by(menu_item_id=item.id).all()}
+            for bid in branch_ids:
+                is_avail = request.form.get(f'branch_available_{bid}') == '1'
+                price_val = request.form.get(f'branch_price_{bid}', '').strip()
+                order_val = request.form.get(f'branch_order_{bid}', '').strip()
+                custom_price = float(price_val) if price_val else None
+                display_order = int(order_val) if order_val else 0
+                has_override = (not is_avail) or (custom_price is not None) or (display_order != 0)
+                existing = existing_overrides.get(bid)
+                if has_override:
+                    if not existing:
+                        existing = BranchMenuItem(branch_id=bid, menu_item_id=item.id)
+                        db.session.add(existing)
+                    existing.is_available = is_avail
+                    existing.custom_price = custom_price
+                    existing.display_order = display_order
+                elif existing:
+                    db.session.delete(existing)
+
         db.session.commit()
         flash('המנה נשמרה בהצלחה! ✓', 'success')
         
-        # Redirect back to edit page to show uploaded image
         return redirect(url_for('admin.edit_menu_item', id=item.id))
     
     from models import PrintStation, PrinterStation, Printer
@@ -1445,7 +1467,20 @@ def edit_menu_item(id=None):
         entry = {'name': p.name + (' [לא פעילה]' if not p.is_active else ''), 'ip': p.ip_address, 'branch': p.branch.name_he if p.branch else ''}
         station_printer_map.setdefault(station_name, []).append(entry)
 
-    return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map)
+    branches_data = []
+    if item.id:
+        active_branches = Branch.query.filter_by(is_active=True).order_by(Branch.id).all()
+        overrides = {o.branch_id: o for o in BranchMenuItem.query.filter_by(menu_item_id=item.id).all()}
+        for branch in active_branches:
+            o = overrides.get(branch.id)
+            branches_data.append({
+                'branch': branch,
+                'is_available': o.is_available if o else True,
+                'custom_price': o.custom_price if o else None,
+                'display_order': o.display_order if o else 0,
+            })
+
+    return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map, branches_data=branches_data)
 
 @admin_bp.route('/menu/item/<int:item_id>/upload-image', methods=['POST'])
 @csrf.exempt

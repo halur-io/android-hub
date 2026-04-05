@@ -17,7 +17,7 @@ def _is_secure():
     return request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https' or os.environ.get('REPL_SLUG')
 from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
-    MenuCategory, MenuItem, StockItem, StockLevel, StockTransaction,
+    MenuCategory, MenuItem, BranchMenuItem, StockItem, StockLevel, StockTransaction,
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
     Printer, PrinterStation, PrintStation,
 )
@@ -634,6 +634,7 @@ def update_delivery_time():
 @ops_bp.route('/menu')
 @require_ops_module('menu')
 def menu():
+    effective_branch = _get_effective_branch_id()
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     cat_id = request.args.get('category', type=int)
     search = request.args.get('q', '').strip()
@@ -650,12 +651,19 @@ def menu():
         )
     items = items_query.order_by(MenuItem.display_order).all()
 
+    branch_overrides = {}
+    if effective_branch:
+        for bmi in BranchMenuItem.query.filter_by(branch_id=effective_branch).all():
+            branch_overrides[bmi.menu_item_id] = bmi
+
     return render_template('ops/menu.html',
         active_tab='menu',
         categories=categories,
         items=items,
         selected_category=cat_id,
         search=search,
+        effective_branch=effective_branch,
+        branch_overrides=branch_overrides,
     )
 
 
@@ -667,6 +675,16 @@ def menu_toggle():
     item = MenuItem.query.get(item_id)
     if not item:
         return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch:
+        bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=item_id).first()
+        if bmi:
+            bmi.is_available = not bmi.is_available
+        else:
+            bmi = BranchMenuItem(branch_id=effective_branch, menu_item_id=item_id, is_available=False)
+            db.session.add(bmi)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'עודכן', 'available': bmi.is_available})
     item.is_available = not item.is_available
     db.session.commit()
     return jsonify({'ok': True, 'message': 'עודכן', 'available': item.is_available})
@@ -682,11 +700,22 @@ def menu_price():
     if not item:
         return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
     try:
-        item.base_price = float(price)
-        db.session.commit()
-        return jsonify({'ok': True, 'message': 'מחיר עודכן'})
+        new_price = float(price)
     except (ValueError, TypeError):
         return jsonify({'ok': False, 'error': 'מחיר לא תקין'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch:
+        bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=item_id).first()
+        if bmi:
+            bmi.custom_price = new_price
+        else:
+            bmi = BranchMenuItem(branch_id=effective_branch, menu_item_id=item_id, custom_price=new_price)
+            db.session.add(bmi)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'מחיר עודכן (סניף)'})
+    item.base_price = new_price
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'מחיר עודכן'})
 
 
 @ops_bp.route('/stock')
@@ -778,6 +807,7 @@ def stock_transaction():
 @ops_bp.route('/deals')
 @require_ops_module('deals')
 def deals():
+    effective_branch = _get_effective_branch_id()
     all_deals = Deal.query.order_by(Deal.display_order).all()
     all_coupons = Coupon.query.order_by(Coupon.created_at.desc()).all()
     filter_type = request.args.get('filter', 'all')
@@ -786,12 +816,15 @@ def deals():
         deals=all_deals,
         coupons=all_coupons,
         filter_type=filter_type,
+        is_readonly=bool(effective_branch),
     )
 
 
 @ops_bp.route('/api/deals/toggle', methods=['POST'])
 @require_ops_module('deals')
 def deal_toggle():
+    if _get_effective_branch_id():
+        return jsonify({'ok': False, 'error': 'אין הרשאה – ניתן לצפות בלבד'})
     data = request.get_json(force=True)
     deal_id = data.get('deal_id')
     deal = Deal.query.get(deal_id)
@@ -805,6 +838,8 @@ def deal_toggle():
 @ops_bp.route('/api/coupons/toggle', methods=['POST'])
 @require_ops_module('deals')
 def coupon_toggle():
+    if _get_effective_branch_id():
+        return jsonify({'ok': False, 'error': 'אין הרשאה – ניתן לצפות בלבד'})
     data = request.get_json(force=True)
     coupon_id = data.get('coupon_id')
     coupon = Coupon.query.get(coupon_id)
@@ -818,6 +853,8 @@ def coupon_toggle():
 @ops_bp.route('/api/coupons/create', methods=['POST'])
 @require_ops_module('deals')
 def coupon_create():
+    if _get_effective_branch_id():
+        return jsonify({'ok': False, 'error': 'אין הרשאה – ניתן לצפות בלבד'})
     data = request.get_json(force=True)
     name = data.get('name', '').strip()
     code = data.get('code', '').strip().upper()
@@ -847,6 +884,8 @@ def coupon_create():
 @ops_bp.route('/api/deals/edit', methods=['POST'])
 @require_ops_module('deals')
 def deal_edit():
+    if _get_effective_branch_id():
+        return jsonify({'ok': False, 'error': 'אין הרשאה – ניתן לצפות בלבד'})
     data = request.get_json(force=True)
     deal_id = data.get('deal_id')
     deal = Deal.query.get(deal_id)

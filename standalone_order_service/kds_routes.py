@@ -785,24 +785,33 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     def statistics():
         now = _get_israel_now()
         today = now.date()
+        worker_branch_id = session.get('order_dashboard_branch_id')
+
+        def _branch_filter(q):
+            if worker_branch_id:
+                q = q.filter(FoodOrder.branch_id == worker_branch_id)
+            return q
+
         days_data = []
         for i in range(6, -1, -1):
             d = today - timedelta(days=i)
-            day_orders = FoodOrder.query.filter(
+            base_q = FoodOrder.query.filter(
                 FoodOrder.created_at >= datetime.combine(d, datetime.min.time()),
                 FoodOrder.created_at < datetime.combine(d + timedelta(days=1), datetime.min.time()),
                 FoodOrder.status != 'cancelled'
-            ).all()
+            )
+            day_orders = _branch_filter(base_q).all()
             days_data.append({
                 'date': d.strftime('%d/%m'),
                 'count': len(day_orders),
                 'revenue': sum(o.total_amount for o in day_orders),
             })
         month_start = today - timedelta(days=30)
-        month_orders = FoodOrder.query.filter(
+        month_q = FoodOrder.query.filter(
             FoodOrder.created_at >= datetime.combine(month_start, datetime.min.time()),
             FoodOrder.status != 'cancelled'
-        ).all()
+        )
+        month_orders = _branch_filter(month_q).all()
         month_revenue = sum(o.total_amount for o in month_orders)
         month_count = len(month_orders)
         avg_order = (month_revenue / month_count) if month_count else 0
@@ -812,9 +821,10 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
                 name = item.get('name_he') or item.get('name_en') or 'פריט'
                 item_counts[name] = item_counts.get(name, 0) + item.get('qty', 1)
         top_items = sorted(item_counts.items(), key=lambda x: x[1], reverse=True)[:8]
-        today_orders = FoodOrder.query.filter(
+        today_q = FoodOrder.query.filter(
             FoodOrder.created_at >= datetime.combine(today, datetime.min.time()),
-        ).all()
+        )
+        today_orders = _branch_filter(today_q).all()
         return render_template('statistics.html',
                                days_data=days_data,
                                month_revenue=month_revenue,

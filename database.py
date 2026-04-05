@@ -32,6 +32,7 @@ def _run_safe_migrations(db):
         ("enrolled_devices", "pending_request_token", "ALTER TABLE enrolled_devices ADD COLUMN pending_request_token VARCHAR(64) UNIQUE"),
         ("menu_items", "print_name", "ALTER TABLE menu_items ADD COLUMN print_name VARCHAR(100)"),
         ("menu_items", "image_hero_path", "ALTER TABLE menu_items ADD COLUMN image_hero_path VARCHAR(500)"),
+        ("manager_pins", "branch_id", "ALTER TABLE manager_pins ADD COLUMN branch_id INTEGER REFERENCES branches(id)"),
     ]
     for table, column, sql in migrations:
         try:

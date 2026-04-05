@@ -755,14 +755,14 @@ def stock_transaction():
     )
     db.session.add(txn)
 
-    lvl = StockLevel.query.filter_by(item_id=item_id, branch_id=branch_id).first()
+    lvl = StockLevel.query.filter_by(item_id=item_id, branch_id=effective_branch).first()
     if lvl:
         lvl.current_quantity = (lvl.current_quantity or 0) + qty
         lvl.available_quantity = lvl.current_quantity - (lvl.reserved_quantity or 0)
     else:
         lvl = StockLevel(
             item_id=item_id,
-            branch_id=branch_id,
+            branch_id=effective_branch,
             current_quantity=qty,
             available_quantity=qty,
         )

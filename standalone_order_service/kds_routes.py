@@ -72,7 +72,6 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     Branch = models['Branch']
     OrderActivityLog = models.get('OrderActivityLog')
     SMSLog = models.get('SMSLog')
-    TimeLog = models.get('TimeLog')
 
     def _settings():
         if get_settings:

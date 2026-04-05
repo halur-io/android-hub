@@ -904,6 +904,8 @@ def deal_edit():
 @ops_bp.route('/api/coupons/edit', methods=['POST'])
 @require_ops_module('deals')
 def coupon_edit():
+    if _get_effective_branch_id():
+        return jsonify({'ok': False, 'error': 'אין הרשאה – ניתן לצפות בלבד'})
     data = request.get_json(force=True)
     coupon_id = data.get('coupon_id')
     coupon = Coupon.query.get(coupon_id)

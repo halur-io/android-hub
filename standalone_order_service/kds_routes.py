@@ -195,7 +195,13 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         data = request.get_json(force=True)
         new_branch = data.get('branch_id')
         if new_branch:
-            session['order_dashboard_branch_id'] = int(new_branch)
+            try:
+                bid = int(new_branch)
+            except (ValueError, TypeError):
+                return jsonify({'ok': False, 'error': 'ערך סניף לא תקין'})
+            if not Branch.query.get(bid):
+                return jsonify({'ok': False, 'error': 'סניף לא נמצא'})
+            session['order_dashboard_branch_id'] = bid
         else:
             session['order_dashboard_branch_id'] = None
         return jsonify({'ok': True})

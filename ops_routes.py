@@ -160,7 +160,13 @@ def switch_branch():
     data = request.get_json(force=True)
     new_branch = data.get('branch_id')
     if new_branch:
-        session['ops_branch_id'] = int(new_branch)
+        try:
+            bid = int(new_branch)
+        except (ValueError, TypeError):
+            return jsonify({'ok': False, 'error': 'ערך סניף לא תקין'})
+        if not Branch.query.get(bid):
+            return jsonify({'ok': False, 'error': 'סניף לא נמצא'})
+        session['ops_branch_id'] = bid
     else:
         session['ops_branch_id'] = None
     return jsonify({'ok': True})

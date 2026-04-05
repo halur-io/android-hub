@@ -162,7 +162,7 @@ try:
         Branch, BranchMenuItem, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
         MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
         ManagerPIN, SiteSettings, Coupon, CouponUsage, Deal, UpsellRule,
-        OrderActivityLog, SMSLog
+        OrderActivityLog, SMSLog, TimeLog
     )
     from services.order.order_service import DeliveryZone
     from database import db as order_db
@@ -187,6 +187,7 @@ try:
         'UpsellRule': UpsellRule,
         'OrderActivityLog': OrderActivityLog,
         'SMSLog': SMSLog,
+        'TimeLog': TimeLog,
     }
 
     def get_site_settings():

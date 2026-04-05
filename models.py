@@ -1,5 +1,5 @@
 from database import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -2859,3 +2859,50 @@ class PrinterStation(db.Model):
 
     def __repr__(self):
         return f'<PrinterStation {self.station_name} -> Printer#{self.printer_id}>'
+
+
+class TimeLog(db.Model):
+    __tablename__ = 'time_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    worker_id = db.Column(db.Integer, db.ForeignKey('manager_pins.id'), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
+    clock_in = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    clock_out = db.Column(db.DateTime, nullable=True)
+    source = db.Column(db.String(20), default='kds')
+
+    worker = db.relationship('ManagerPIN', backref='time_logs', foreign_keys=[worker_id])
+    branch = db.relationship('Branch', foreign_keys=[branch_id])
+
+    @property
+    def duration_seconds(self):
+        end = self.clock_out or datetime.utcnow()
+        return max(0, int((end - self.clock_in).total_seconds()))
+
+    @property
+    def duration_display(self):
+        s = self.duration_seconds
+        h, remainder = divmod(s, 3600)
+        m, _ = divmod(remainder, 60)
+        return f'{h}:{m:02d}'
+
+    @property
+    def is_open(self):
+        return self.clock_out is None
+
+    def close_shift(self):
+        if self.clock_out is None:
+            self.clock_out = datetime.utcnow()
+
+    @staticmethod
+    def auto_close_stale(threshold_hours=12):
+        cutoff = datetime.utcnow() - timedelta(hours=threshold_hours)
+        stale = TimeLog.query.filter(
+            TimeLog.clock_out.is_(None),
+            TimeLog.clock_in < cutoff,
+        ).all()
+        for tl in stale:
+            tl.clock_out = tl.clock_in + timedelta(hours=threshold_hours)
+        return len(stale)
+
+    def __repr__(self):
+        return f'<TimeLog worker={self.worker_id} in={self.clock_in} out={self.clock_out}>'

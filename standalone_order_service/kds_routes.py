@@ -72,6 +72,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
     Branch = models['Branch']
     OrderActivityLog = models.get('OrderActivityLog')
     SMSLog = models.get('SMSLog')
+    TimeLog = models.get('TimeLog')
 
     def _settings():
         if get_settings:
@@ -95,11 +96,18 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
                         is_admin = True
         kds_branches = Branch.query.filter_by(is_active=True).all() if is_superadmin else []
         kds_branch_id = session.get('order_dashboard_branch_id')
+        kds_active_time_log = None
+        tl_id = session.get('kds_active_time_log_id')
+        if tl_id and TimeLog:
+            tl = TimeLog.query.get(tl_id)
+            if tl and tl.is_open:
+                kds_active_time_log = tl
         return {
             'is_kds_admin': is_admin,
             'is_kds_superadmin': is_superadmin,
             'kds_branches': kds_branches,
             'kds_branch_id': kds_branch_id,
+            'kds_active_time_log': kds_active_time_log,
         }
 
     def _get_israel_now():
@@ -172,6 +180,19 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         staff_branch_id = getattr(staff, 'branch_id', None)
         session['order_dashboard_branch_id'] = staff_branch_id
         session.permanent = True
+        if TimeLog:
+            try:
+                existing_open = TimeLog.query.filter_by(
+                    worker_id=staff.id, source='kds'
+                ).filter(TimeLog.clock_out.is_(None)).all()
+                for eo in existing_open:
+                    eo.close_shift()
+                tl = TimeLog(worker_id=staff.id, branch_id=staff_branch_id, source='kds')
+                db.session.add(tl)
+                db.session.commit()
+                session['kds_active_time_log_id'] = tl.id
+            except Exception:
+                db.session.rollback()
         redirect_url = url_for('order_dashboard.orders')
         if staff_branch_id:
             redirect_url = url_for('order_dashboard.orders', branch_id=staff_branch_id)
@@ -179,6 +200,15 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
 
     @bp.route('/logout')
     def logout():
+        tl_id = session.pop('kds_active_time_log_id', None)
+        if tl_id and TimeLog:
+            try:
+                tl = TimeLog.query.get(tl_id)
+                if tl and tl.is_open:
+                    tl.close_shift()
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
         session.pop('order_dashboard_authenticated', None)
         session.pop('order_dashboard_staff_name', None)
         session.pop('order_dashboard_staff_id', None)

@@ -19,7 +19,7 @@ from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
     MenuCategory, MenuItem, BranchMenuItem, StockItem, StockLevel, StockTransaction,
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
-    Printer, PrinterStation, PrintStation,
+    Printer, PrinterStation, PrintStation, TimeLog,
 )
 
 ops_bp = Blueprint(
@@ -142,6 +142,12 @@ def inject_ops_context():
             branch_name = branch.name_he
     is_ops_superadmin = user.is_ops_superadmin if user else False
     all_branches = Branch.query.filter_by(is_active=True).all() if is_ops_superadmin else []
+    active_time_log = None
+    tl_id = session.get('ops_active_time_log_id')
+    if tl_id:
+        active_time_log = TimeLog.query.get(tl_id)
+        if active_time_log and not active_time_log.is_open:
+            active_time_log = None
     return dict(
         ops_modules=modules,
         ops_user=user,
@@ -150,6 +156,7 @@ def inject_ops_context():
         is_ops_superadmin=is_ops_superadmin,
         can_switch_branch=is_ops_superadmin,
         all_branches=all_branches,
+        active_time_log=active_time_log,
     )
 
 
@@ -289,7 +296,18 @@ def login():
                 device = _check_device()
                 if device:
                     device.last_pin_id = p.id
-                db.session.commit()
+                try:
+                    existing_open = TimeLog.query.filter_by(
+                        worker_id=p.id, source='ops'
+                    ).filter(TimeLog.clock_out.is_(None)).all()
+                    for eo in existing_open:
+                        eo.close_shift()
+                    tl = TimeLog(worker_id=p.id, branch_id=getattr(p, 'branch_id', None), source='ops')
+                    db.session.add(tl)
+                    db.session.commit()
+                    session['ops_active_time_log_id'] = tl.id
+                except Exception:
+                    db.session.rollback()
                 return redirect(url_for('ops.index'))
             error = 'קוד PIN שגוי'
         else:
@@ -302,7 +320,18 @@ def login():
                     device = _check_device()
                     if device:
                         device.last_pin_id = p.id
-                    db.session.commit()
+                    try:
+                        existing_open = TimeLog.query.filter_by(
+                            worker_id=p.id, source='ops'
+                        ).filter(TimeLog.clock_out.is_(None)).all()
+                        for eo in existing_open:
+                            eo.close_shift()
+                        tl = TimeLog(worker_id=p.id, branch_id=getattr(p, 'branch_id', None), source='ops')
+                        db.session.add(tl)
+                        db.session.commit()
+                        session['ops_active_time_log_id'] = tl.id
+                    except Exception:
+                        db.session.rollback()
                     return redirect(url_for('ops.index'))
             error = 'קוד PIN שגוי'
     return render_template('ops/login.html', error=error, users=users)
@@ -310,6 +339,15 @@ def login():
 
 @ops_bp.route('/logout')
 def logout():
+    tl_id = session.pop('ops_active_time_log_id', None)
+    if tl_id:
+        try:
+            tl = TimeLog.query.get(tl_id)
+            if tl and tl.is_open:
+                tl.close_shift()
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
     session.pop('ops_pin_id', None)
     session.pop('ops_user_name', None)
     session.pop('ops_branch_id', None)

@@ -168,6 +168,9 @@ ROUTE_PERMISSIONS = {
     'admin.create_manager_pin': 'system.admin',
     'admin.edit_manager_pin': 'system.admin',
     'admin.delete_manager_pin': 'system.admin',
+    'admin.time_logs': 'system.admin',
+    'admin.time_log_clock_out': 'system.admin',
+    'admin.time_log_auto_close': 'system.admin',
 }
 
 @admin_bp.before_request
@@ -9876,3 +9879,83 @@ def delete_manager_pin(pin_id):
     db.session.commit()
     flash('ה-PIN נמחק', 'success')
     return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/time-logs')
+@login_required
+def time_logs():
+    from datetime import timedelta as td
+    worker_id = request.args.get('worker_id', type=int)
+    branch_id = request.args.get('branch_id', type=int)
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+
+    query = TimeLog.query
+    if worker_id:
+        query = query.filter_by(worker_id=worker_id)
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(TimeLog.clock_in >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.strptime(date_to, '%Y-%m-%d') + td(days=1)
+            query = query.filter(TimeLog.clock_in < dt)
+        except ValueError:
+            pass
+
+    logs = query.order_by(TimeLog.clock_in.desc()).limit(500).all()
+
+    worker_totals = {}
+    for log in logs:
+        wid = log.worker_id
+        if wid not in worker_totals:
+            worker_totals[wid] = {'name': log.worker.name if log.worker else f'#{wid}', 'seconds': 0, 'shifts': 0}
+        worker_totals[wid]['seconds'] += log.duration_seconds
+        worker_totals[wid]['shifts'] += 1
+    for wt in worker_totals.values():
+        h, remainder = divmod(wt['seconds'], 3600)
+        m, _ = divmod(remainder, 60)
+        wt['display'] = f'{h}:{m:02d}'
+
+    workers = ManagerPIN.query.filter_by(is_active=True).order_by(ManagerPIN.name).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    open_shifts = TimeLog.query.filter(TimeLog.clock_out.is_(None)).all()
+
+    return render_template('admin/time_logs.html',
+        logs=logs,
+        workers=workers,
+        branches=branches,
+        open_shifts=open_shifts,
+        worker_totals=worker_totals,
+        filter_worker_id=worker_id,
+        filter_branch_id=branch_id,
+        filter_date_from=date_from,
+        filter_date_to=date_to,
+    )
+
+
+@admin_bp.route('/time-logs/clock-out/<int:log_id>', methods=['POST'])
+@login_required
+def time_log_clock_out(log_id):
+    tl = TimeLog.query.get_or_404(log_id)
+    if tl.is_open:
+        tl.close_shift()
+        db.session.commit()
+        flash(f'המשמרת של {tl.worker.name if tl.worker else "עובד"} נסגרה', 'success')
+    else:
+        flash('המשמרת כבר סגורה', 'info')
+    return redirect(url_for('admin.time_logs'))
+
+
+@admin_bp.route('/time-logs/auto-close', methods=['POST'])
+@login_required
+def time_log_auto_close():
+    count = TimeLog.auto_close_stale(threshold_hours=12)
+    db.session.commit()
+    flash(f'{count} משמרות ישנות נסגרו אוטומטית', 'success')
+    return redirect(url_for('admin.time_logs'))

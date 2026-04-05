@@ -1,0 +1,192 @@
+{% extends "admin/base.html" %}
+{% set he = (admin_language or 'he') == 'he' %}
+{% block title %}{{ 'מעקב שעות עובדים' if he else 'Worker Time Logs' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-clock me-2"></i>{{ 'מעקב שעות עובדים' if he else 'Worker Time Logs' }}</h2>
+        <form method="post" action="{{ url_for('admin.time_log_auto_close') }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-warning btn-sm">
+                <i class="fas fa-stopwatch me-1"></i>{{ 'סגור משמרות ישנות' if he else 'Auto-close stale shifts' }}
+            </button>
+        </form>
+    </div>
+
+    {% if open_shifts %}
+    <div class="card mb-4 border-success">
+        <div class="card-header bg-success bg-opacity-10">
+            <i class="fas fa-user-clock me-1"></i>
+            {{ 'עובדים פעילים כרגע' if he else 'Currently clocked in' }}
+            <span class="badge bg-success ms-1">{{ open_shifts|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'סניף' if he else 'Branch' }}</th>
+                            <th>{{ 'מקור' if he else 'Source' }}</th>
+                            <th>{{ 'כניסה' if he else 'Clock In' }}</th>
+                            <th>{{ 'משך' if he else 'Duration' }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tl in open_shifts %}
+                        <tr>
+                            <td><i class="fas fa-circle text-success me-1" style="font-size:0.5rem;"></i>{{ tl.worker.name if tl.worker else '#' ~ tl.worker_id }}</td>
+                            <td>{{ tl.branch.name_he if tl.branch else '-' }}</td>
+                            <td><span class="badge bg-secondary">{{ tl.source or 'kds' }}</span></td>
+                            <td>{{ tl.clock_in.strftime('%d/%m %H:%M') }}</td>
+                            <td><span class="badge bg-success">{{ tl.duration_display }}</span></td>
+                            <td>
+                                <form method="post" action="{{ url_for('admin.time_log_clock_out', log_id=tl.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="fas fa-sign-out-alt me-1"></i>{{ 'סגור משמרת' if he else 'Clock out' }}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter me-1"></i>{{ 'סינון' if he else 'Filters' }}
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">{{ 'עובד' if he else 'Worker' }}</label>
+                    <select name="worker_id" class="form-select form-select-sm">
+                        <option value="">{{ 'הכל' if he else 'All' }}</option>
+                        {% for w in workers %}
+                        <option value="{{ w.id }}" {% if filter_worker_id == w.id %}selected{% endif %}>{{ w.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">{{ 'סניף' if he else 'Branch' }}</label>
+                    <select name="branch_id" class="form-select form-select-sm">
+                        <option value="">{{ 'הכל' if he else 'All' }}</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}" {% if filter_branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">{{ 'מתאריך' if he else 'From' }}</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="{{ filter_date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">{{ 'עד תאריך' if he else 'To' }}</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="{{ filter_date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-search me-1"></i>{{ 'סנן' if he else 'Filter' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if worker_totals %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-chart-bar me-1"></i>{{ 'סיכום שעות' if he else 'Hours Summary' }}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'משמרות' if he else 'Shifts' }}</th>
+                            <th>{{ 'סה"כ שעות' if he else 'Total Hours' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wid, wt in worker_totals.items() %}
+                        <tr>
+                            <td>{{ wt.name }}</td>
+                            <td>{{ wt.shifts }}</td>
+                            <td><span class="badge bg-primary">{{ wt.display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-list me-1"></i>{{ 'יומן משמרות' if he else 'Shift Log' }}</span>
+            <span class="badge bg-secondary">{{ logs|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'סניף' if he else 'Branch' }}</th>
+                            <th>{{ 'מקור' if he else 'Source' }}</th>
+                            <th>{{ 'כניסה' if he else 'Clock In' }}</th>
+                            <th>{{ 'יציאה' if he else 'Clock Out' }}</th>
+                            <th>{{ 'משך' if he else 'Duration' }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.id }}</td>
+                            <td>{{ log.worker.name if log.worker else '#' ~ log.worker_id }}</td>
+                            <td>{{ log.branch.name_he if log.branch else '-' }}</td>
+                            <td><span class="badge bg-secondary">{{ log.source or 'kds' }}</span></td>
+                            <td>{{ log.clock_in.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                {% if log.clock_out %}
+                                    {{ log.clock_out.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                    <span class="badge bg-success">{{ 'פעיל' if he else 'Active' }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.duration_display }}</td>
+                            <td>
+                                {% if log.is_open %}
+                                <form method="post" action="{{ url_for('admin.time_log_clock_out', log_id=log.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not logs %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">{{ 'אין רשומות' if he else 'No records found' }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

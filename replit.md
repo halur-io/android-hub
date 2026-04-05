@@ -68,7 +68,8 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 ### System Design Choices
 - **Modularity:** Separation of concerns (e.g., `standalone_order_service` for ordering).
 - **Print Stations as Entities:** `PrintStation` model is a standalone first-class entity (name + display_name). Managed via admin tab at `/admin/printers` (עמדות הדפסה). `PrinterStation` remains as a join table linking printers to stations. Menu item edit form shows real stations with their linked printer info (name + IP). No hardcoded station fallbacks.
-- **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`, `Printer`, `PrinterStation`, `PrintStation`.
+- **Worker Time Tracking:** `TimeLog` model (worker_id FK→ManagerPIN, branch_id, clock_in, clock_out, source). Auto clock-in on PIN login in KDS and Ops. Clock-out on logout. Session key `active_time_log_id`. Active shift indicator (green badge with elapsed time) in KDS top bar and Ops header. Admin page at `/admin/time-logs` with filters (worker, branch, date range), hours summary, open shifts display, manual clock-out, and auto-close stale shifts (12h threshold). RBAC: `system.admin` permission required.
+- **Database Schema:** Includes models for `FoodOrder`, `FoodOrderItem`, `MenuItemOptionGroup`, `MenuItemOptionChoice`, `ManagerPIN`, `Deal`, `Coupon`, `UpsellRule`, `OrderActivityLog`, `SMSLog`, `EnrolledDevice`, `Branch`, `Role`, `Permission`, `AdminUser`, `Printer`, `PrinterStation`, `PrintStation`, `TimeLog`.
 - **API Endpoints:** Dedicated endpoints for order validation, coupon validation, upsell suggestions, and print agent polling.
 
 ## External Dependencies

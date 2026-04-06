@@ -516,23 +516,34 @@ def delivery_delete():
 @require_ops_module('employees')
 def employees():
     user = _get_ops_user()
-    if not user or not user.is_ops_superadmin:
-        if request.is_json:
-            return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
-        flash('רק סופר אדמין יכול לנהל עובדים', 'danger')
-        return redirect(url_for('ops.home'))
+    if not user:
+        return redirect(url_for('ops.login'))
     effective_branch = _get_effective_branch_id()
-    query = ManagerPIN.query
-    if effective_branch:
-        query = query.filter(
-            db.or_(ManagerPIN.branch_id == effective_branch, ManagerPIN.branch_id.is_(None))
-        )
+    if user.is_ops_superadmin:
+        query = ManagerPIN.query
+        if effective_branch:
+            query = query.filter(
+                db.or_(ManagerPIN.branch_id == effective_branch, ManagerPIN.branch_id.is_(None))
+            )
+        branches_list = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    else:
+        if effective_branch:
+            query = ManagerPIN.query.filter(
+                ManagerPIN.branch_id == effective_branch,
+                ManagerPIN.is_ops_superadmin == False,
+            )
+        else:
+            query = ManagerPIN.query.filter(ManagerPIN.id < 0)
+        branches_list = []
+        if effective_branch:
+            b = Branch.query.get(effective_branch)
+            if b:
+                branches_list = [b]
     pins = query.order_by(ManagerPIN.name).all()
-    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
     return render_template('ops/employees.html',
         active_tab='employees',
         pins=pins,
-        branches=branches,
+        branches=branches_list,
         all_modules=ManagerPIN.OPS_MODULES,
     )
 
@@ -541,8 +552,9 @@ def employees():
 @require_ops_module('employees')
 def employees_save():
     user = _get_ops_user()
-    if not user or not user.is_ops_superadmin:
+    if not user:
         return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    effective_branch = _get_effective_branch_id()
     data = request.get_json(force=True)
     pin_id = data.get('id')
     name = (data.get('name') or '').strip()
@@ -553,6 +565,11 @@ def employees_save():
     raw_permissions = data.get('ops_permissions') or []
     valid_modules = set(ManagerPIN.OPS_MODULES)
     ops_permissions = [p for p in raw_permissions if isinstance(p, str) and p in valid_modules]
+    if not user.is_ops_superadmin:
+        if is_superadmin:
+            return jsonify({'ok': False, 'error': 'אין הרשאה ליצור סופר אדמין'}), 403
+        if not effective_branch:
+            return jsonify({'ok': False, 'error': 'אין סניף משויך - לא ניתן לנהל עובדים'}), 403
     if not name:
         return jsonify({'ok': False, 'error': 'שם עובד הוא שדה חובה'})
     resolved_branch_id = None
@@ -563,12 +580,21 @@ def employees_save():
             return jsonify({'ok': False, 'error': 'סניף לא תקין'})
         if not Branch.query.get(resolved_branch_id):
             return jsonify({'ok': False, 'error': 'סניף לא נמצא'})
+    if not user.is_ops_superadmin:
+        if resolved_branch_id and resolved_branch_id != effective_branch:
+            return jsonify({'ok': False, 'error': 'אין הרשאה לנהל עובדים בסניף אחר'}), 403
+        resolved_branch_id = effective_branch
     if pin_code and (not pin_code.isdigit() or len(pin_code) < 4 or len(pin_code) > 8):
         return jsonify({'ok': False, 'error': 'קוד PIN חייב להיות 4-8 ספרות בלבד'})
     if pin_id:
         mp = ManagerPIN.query.get(pin_id)
         if not mp:
             return jsonify({'ok': False, 'error': 'עובד לא נמצא'})
+        if not user.is_ops_superadmin:
+            if mp.is_ops_superadmin:
+                return jsonify({'ok': False, 'error': 'אין הרשאה לערוך סופר אדמין'}), 403
+            if mp.branch_id != effective_branch:
+                return jsonify({'ok': False, 'error': 'אין הרשאה לערוך עובד מסניף אחר'}), 403
         if mp.is_ops_superadmin and not is_superadmin:
             other_superadmins = ManagerPIN.query.filter(
                 ManagerPIN.is_ops_superadmin == True,
@@ -579,8 +605,8 @@ def employees_save():
                 return jsonify({'ok': False, 'error': 'לא ניתן להסיר סופר אדמין אחרון'})
         mp.name = name
         mp.description = description
-        mp.is_ops_superadmin = is_superadmin
-        mp.ops_permissions = ops_permissions if not is_superadmin else []
+        mp.is_ops_superadmin = is_superadmin if user.is_ops_superadmin else mp.is_ops_superadmin
+        mp.ops_permissions = ops_permissions if not mp.is_ops_superadmin else []
         mp.branch_id = resolved_branch_id
         if pin_code:
             mp.set_pin(pin_code)
@@ -592,7 +618,7 @@ def employees_save():
         mp = ManagerPIN(
             name=name,
             description=description,
-            is_ops_superadmin=is_superadmin,
+            is_ops_superadmin=is_superadmin if user.is_ops_superadmin else False,
             ops_permissions=ops_permissions if not is_superadmin else [],
             branch_id=resolved_branch_id,
         )
@@ -606,8 +632,9 @@ def employees_save():
 @require_ops_module('employees')
 def employees_toggle():
     user = _get_ops_user()
-    if not user or not user.is_ops_superadmin:
+    if not user:
         return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    effective_branch = _get_effective_branch_id()
     data = request.get_json(force=True)
     pin_id = data.get('id')
     if not pin_id:
@@ -617,6 +644,11 @@ def employees_toggle():
         return jsonify({'ok': False, 'error': 'עובד לא נמצא'})
     if mp.id == user.id:
         return jsonify({'ok': False, 'error': 'לא ניתן לשנות סטטוס של עצמך'})
+    if not user.is_ops_superadmin:
+        if mp.is_ops_superadmin:
+            return jsonify({'ok': False, 'error': 'אין הרשאה לשנות סטטוס סופר אדמין'}), 403
+        if mp.branch_id != effective_branch:
+            return jsonify({'ok': False, 'error': 'אין הרשאה לשנות עובד מסניף אחר'}), 403
     if mp.is_active and mp.is_ops_superadmin:
         other_superadmins = ManagerPIN.query.filter(
             ManagerPIN.is_ops_superadmin == True,
@@ -1322,14 +1354,22 @@ def coupon_edit():
 @ops_bp.route('/branches')
 @require_ops_module('branches')
 def branches():
-    all_branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    user = _get_ops_user()
+    effective_branch = _get_effective_branch_id()
+    if user and user.is_ops_superadmin:
+        branch_list = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    elif effective_branch:
+        branch_list = Branch.query.filter_by(id=effective_branch, is_active=True).all()
+    else:
+        branch_list = []
     hours = {}
-    for h in WorkingHours.query.all():
+    branch_ids = [b.id for b in branch_list]
+    for h in WorkingHours.query.filter(WorkingHours.branch_id.in_(branch_ids)).all():
         hours.setdefault(h.branch_id, []).append(h)
-    settings = _settings()
+    settings = _settings() if (user and user.is_ops_superadmin) else None
     return render_template('ops/branches.html',
         active_tab='branches',
-        branches=all_branches,
+        branches=branch_list,
         hours=hours,
         settings=settings,
     )
@@ -1338,6 +1378,8 @@ def branches():
 @ops_bp.route('/api/branches/toggle', methods=['POST'])
 @require_ops_module('branches')
 def branch_toggle():
+    user = _get_ops_user()
+    effective_branch = _get_effective_branch_id()
     data = request.get_json(force=True)
     field = data.get('field')
     branch_id = data.get('branch_id')
@@ -1345,6 +1387,8 @@ def branch_toggle():
     allowed_branch = ['is_active', 'enable_delivery', 'enable_pickup']
     allowed_global = ['enable_delivery', 'enable_pickup']
     if field in allowed_global and not branch_id:
+        if not user or not user.is_ops_superadmin:
+            return jsonify({'ok': False, 'error': 'רק סופר אדמין יכול לשנות הגדרות כלליות'}), 403
         settings = _settings()
         if settings:
             setattr(settings, field, bool(value))
@@ -1356,6 +1400,8 @@ def branch_toggle():
     branch = Branch.query.get(branch_id)
     if not branch:
         return jsonify({'ok': False, 'error': 'סניף לא נמצא'})
+    if not user or (not user.is_ops_superadmin and (not effective_branch or branch.id != effective_branch)):
+        return jsonify({'ok': False, 'error': 'אין הרשאה לשנות סניף זה'}), 403
     setattr(branch, field, bool(value))
     db.session.commit()
     return jsonify({'ok': True, 'message': 'עודכן'})
@@ -1364,6 +1410,8 @@ def branch_toggle():
 @ops_bp.route('/api/branches/hours', methods=['POST'])
 @require_ops_module('branches')
 def branch_hours():
+    user = _get_ops_user()
+    effective_branch = _get_effective_branch_id()
     data = request.get_json(force=True)
     hour_id = data.get('hour_id')
     open_time = data.get('open_time')
@@ -1373,6 +1421,8 @@ def branch_hours():
     wh = WorkingHours.query.get(hour_id)
     if not wh:
         return jsonify({'ok': False, 'error': 'שעות לא נמצאו'})
+    if not user or (not user.is_ops_superadmin and (not effective_branch or wh.branch_id != effective_branch)):
+        return jsonify({'ok': False, 'error': 'אין הרשאה לשנות שעות סניף זה'}), 403
     if open_time is not None:
         wh.open_time = open_time
     if close_time is not None:

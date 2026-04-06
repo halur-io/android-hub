@@ -155,10 +155,12 @@
         <div style="margin-bottom:10px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                 <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;">הרשאות</label>
+                {% if is_ops_superadmin %}
                 <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.72rem;color:#f59e0b;font-weight:700;">
                     <input type="checkbox" id="em-superadmin" onchange="toggleSuperadmin()">
                     <i class="fas fa-star"></i> סופר אדמין
                 </label>
+                {% endif %}
             </div>
             <div id="em-permissions" style="display:flex;flex-wrap:wrap;gap:6px;">
                 {% set module_labels = {'home':'בית','orders':'הזמנות','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
@@ -201,7 +203,8 @@ function openEmpModal(id, name, description, branchId, superadmin, permissions) 
     document.getElementById('em-pin').value = '';
     document.getElementById('em-description').value = description || '';
     document.getElementById('em-branch').value = branchId || '';
-    document.getElementById('em-superadmin').checked = !!superadmin;
+    var saEl = document.getElementById('em-superadmin');
+    if (saEl) saEl.checked = !!superadmin;
     document.getElementById('em-title').textContent = id ? 'עריכת עובד' : 'עובד חדש';
     document.getElementById('em-pin-hint').style.display = id ? 'inline' : 'none';
     document.getElementById('em-error').style.display = 'none';
@@ -224,7 +227,9 @@ document.getElementById('emp-modal').addEventListener('click', function(e) {
 });
 
 function toggleSuperadmin() {
-    var sa = document.getElementById('em-superadmin').checked;
+    var saEl = document.getElementById('em-superadmin');
+    if (!saEl) return;
+    var sa = saEl.checked;
     document.getElementById('em-permissions').style.opacity = sa ? '0.4' : '1';
     document.getElementById('em-permissions').style.pointerEvents = sa ? 'none' : 'auto';
 }
@@ -241,8 +246,10 @@ function saveEmployee() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     var idVal = document.getElementById('em-id').value;
+    var saEl = document.getElementById('em-superadmin');
+    var isSuperadmin = saEl ? saEl.checked : false;
     var permissions = [];
-    if (!document.getElementById('em-superadmin').checked) {
+    if (!isSuperadmin) {
         document.querySelectorAll('.em-perm-cb:checked').forEach(function(cb) {
             permissions.push(cb.value);
         });
@@ -254,7 +261,7 @@ function saveEmployee() {
         pin: document.getElementById('em-pin').value,
         description: document.getElementById('em-description').value.trim(),
         branch_id: document.getElementById('em-branch').value || null,
-        is_ops_superadmin: document.getElementById('em-superadmin').checked,
+        is_ops_superadmin: isSuperadmin,
         ops_permissions: permissions,
     };
 

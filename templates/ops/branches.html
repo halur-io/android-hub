@@ -3,6 +3,7 @@
 {% block title %}סניפים - לוח בקרה{% endblock %}
 
 {% block content %}
+{% if settings and is_ops_superadmin %}
 <div class="ops-card" style="margin-bottom: 16px;">
     <div class="ops-section-title"><i class="fas fa-sliders-h"></i> הגדרות כלליות</div>
     <div class="ops-item-row">
@@ -11,7 +12,7 @@
             <div class="ops-item-sub">הפעלת/השבתת משלוחים גלובלית</div>
         </div>
         <label class="ops-switch">
-            <input type="checkbox" {% if settings and settings.enable_delivery %}checked{% endif %}
+            <input type="checkbox" {% if settings.enable_delivery %}checked{% endif %}
                    onchange="toggleGlobal('enable_delivery', this.checked)">
             <span class="ops-switch-slider"></span>
         </label>
@@ -22,12 +23,13 @@
             <div class="ops-item-sub">הפעלת/השבתת איסוף עצמי גלובלית</div>
         </div>
         <label class="ops-switch">
-            <input type="checkbox" {% if settings and settings.enable_pickup %}checked{% endif %}
+            <input type="checkbox" {% if settings.enable_pickup %}checked{% endif %}
                    onchange="toggleGlobal('enable_pickup', this.checked)">
             <span class="ops-switch-slider"></span>
         </label>
     </div>
 </div>
+{% endif %}
 
 {% for branch in branches %}
 <div class="ops-card" style="margin-bottom: 16px;">

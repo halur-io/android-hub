@@ -944,41 +944,52 @@ def _auto_send_sms_for_status(order, new_status):
     phone = order.customer_phone
     if not phone:
         return 0
+
+    branch_trigger = None
+    global_trigger = None
+    for trigger in triggers:
+        if trigger.branch_id and trigger.branch_id == order.branch_id:
+            branch_trigger = trigger
+            break
+        elif not trigger.branch_id:
+            global_trigger = trigger
+
+    effective_trigger = branch_trigger or global_trigger
+    if not effective_trigger:
+        return 0
+    template = effective_trigger.template
+    if not template or not template.is_active:
+        return 0
+
     send_fn = create_sender_from_env()
     branch = Branch.query.get(order.branch_id) if order.branch_id else None
     user = _get_ops_user()
+    message = template.render(order=order, branch=branch)
+    status = 'sent'
+    error_msg = None
     sent_count = 0
-    for trigger in triggers:
-        if trigger.branch_id and trigger.branch_id != order.branch_id:
-            continue
-        template = trigger.template
-        if not template or not template.is_active:
-            continue
-        message = template.render(order=order, branch=branch)
-        status = 'sent'
-        error_msg = None
-        if send_fn:
-            try:
-                send_fn(phone, message)
-                sent_count += 1
-            except Exception as e:
-                status = 'failed'
-                error_msg = str(e)
-                import logging
-                logging.error(f'Auto-SMS send failed for order {order.id}, trigger {trigger.id}: {e}')
-        else:
+    if send_fn:
+        try:
+            send_fn(phone, message)
+            sent_count = 1
+        except Exception as e:
             status = 'failed'
-            error_msg = 'SMS provider not configured'
-        log = SMSLog(
-            order_id=order.id,
-            recipient_phone=phone,
-            message_type='auto_trigger',
-            message_text=message,
-            status=status,
-            error_message=error_msg,
-            staff_name=user.name if user else 'Auto',
-        )
-        db.session.add(log)
+            error_msg = str(e)
+            import logging
+            logging.error(f'Auto-SMS send failed for order {order.id}, trigger {effective_trigger.id}: {e}')
+    else:
+        status = 'failed'
+        error_msg = 'SMS provider not configured'
+    log = SMSLog(
+        order_id=order.id,
+        recipient_phone=phone,
+        message_type='auto_trigger',
+        message_text=message,
+        status=status,
+        error_message=error_msg,
+        staff_name=user.name if user else 'Auto',
+    )
+    db.session.add(log)
     db.session.commit()
     return sent_count
 

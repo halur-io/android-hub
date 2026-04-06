@@ -177,6 +177,8 @@ ROUTE_PERMISSIONS = {
     'admin.edit_delivery_zone': 'branches.edit',
     'admin.delete_delivery_zone': 'branches.edit',
     'admin.toggle_delivery_zone': 'branches.edit',
+    'admin.sms_templates': 'system.admin',
+    'admin.sms_logs': 'system.admin',
     'admin.sms_center': 'system.admin',
     'admin.sms_template_save': 'system.admin',
     'admin.sms_template_toggle': 'system.admin',
@@ -10214,6 +10216,18 @@ def toggle_delivery_zone(zone_id):
     return redirect(url_for('admin.delivery_zones'))
 
 
+@admin_bp.route('/sms-templates')
+@login_required
+def sms_templates():
+    return redirect(url_for('admin.sms_center'))
+
+
+@admin_bp.route('/sms-logs')
+@login_required
+def sms_logs():
+    return redirect(url_for('admin.sms_center', tab='logs'))
+
+
 @admin_bp.route('/sms-center')
 @login_required
 def sms_center():
@@ -10229,6 +10243,7 @@ def sms_center():
             'name_en': t.name_en or '',
             'content_he': t.content_he,
             'template_type': t.template_type,
+            'branch_id': t.branch_id or '',
         }
 
     active_tab = request.args.get('tab', 'templates')
@@ -10299,6 +10314,8 @@ def sms_template_save():
     tpl.content_he = data.get('content_he', '').strip()
     tpl.template_type = data.get('template_type', 'order_update')
     tpl.available_variables = ','.join([v for v, _ in SMSTemplate.PLACEHOLDERS])
+    branch_id = data.get('branch_id')
+    tpl.branch_id = int(branch_id) if branch_id else None
     if not tpl.name_he or not tpl.content_he:
         return jsonify(ok=False, error='נא למלא שם ותוכן')
     if not tpl_id:
@@ -10350,9 +10367,9 @@ def sms_trigger_save():
             branch_id = int(data['branch_id'])
         except (TypeError, ValueError):
             return jsonify(ok=False, error='סניף לא תקין')
-    existing = SMSAutoTrigger.query.filter_by(order_status=order_status, template_id=template_id, branch_id=branch_id).first()
+    existing = SMSAutoTrigger.query.filter_by(order_status=order_status, branch_id=branch_id).first()
     if existing:
-        return jsonify(ok=False, error='טריגר זהה כבר קיים')
+        return jsonify(ok=False, error='כבר קיים טריגר לסטטוס זה בסניף זה. ערוך או מחק את הקיים.')
     trigger = SMSAutoTrigger()
     trigger.order_status = order_status
     trigger.template_id = template_id

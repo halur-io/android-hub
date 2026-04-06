@@ -835,7 +835,14 @@ def orders():
     categories = {c.id: c.name_he for c in MenuCategory.query.all()}
 
     from models import SMSTemplate
-    sms_tpls = SMSTemplate.query.filter_by(is_active=True).order_by(SMSTemplate.id).all()
+    from sqlalchemy import or_
+    effective_branch = _get_effective_branch_id()
+    sms_tpl_q = SMSTemplate.query.filter_by(is_active=True)
+    if effective_branch:
+        sms_tpl_q = sms_tpl_q.filter(or_(SMSTemplate.branch_id.is_(None), SMSTemplate.branch_id == effective_branch))
+    else:
+        sms_tpl_q = sms_tpl_q.filter(SMSTemplate.branch_id.is_(None))
+    sms_tpls = sms_tpl_q.order_by(SMSTemplate.id).all()
     sms_templates_data = [{'id': t.id, 'name_he': t.name_he, 'content_he': t.content_he or ''} for t in sms_tpls]
 
     return render_template('ops/orders.html',

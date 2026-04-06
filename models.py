@@ -2929,8 +2929,11 @@ class SMSTemplate(db.Model):
     description = db.Column(db.Text)
     template_type = db.Column(db.String(30), default='order_update')
     available_variables = db.Column(db.Text)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id', ondelete='SET NULL'), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    branch = db.relationship('Branch', backref=db.backref('sms_templates', lazy='dynamic'))
 
     CATEGORIES = [
         ('order_update', 'עדכון הזמנה'),

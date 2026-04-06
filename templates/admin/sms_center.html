@@ -33,6 +33,7 @@
                             <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
                             <th>{{ 'תוכן' if (admin_language or 'he') == 'he' else 'Content' }}</th>
                             <th>{{ 'קטגוריה' if (admin_language or 'he') == 'he' else 'Category' }}</th>
+                            <th>{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</th>
                             <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
                             <th></th>
                         </tr>
@@ -43,6 +44,7 @@
                             <td class="fw-bold">{{ t.name_he }}</td>
                             <td><small class="text-muted" style="max-width:300px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.content_he }}</small></td>
                             <td><span class="badge bg-info">{{ dict(categories)[t.template_type] if t.template_type in dict(categories) else t.template_type }}</span></td>
+                            <td><small>{{ t.branch.name_he if t.branch else ('גלובלי' if (admin_language or 'he') == 'he' else 'Global') }}</small></td>
                             <td>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" {% if t.is_active %}checked{% endif %} onchange="toggleTemplate({{ t.id }}, this.checked)">
@@ -60,7 +62,7 @@
                         </tr>
                         {% endfor %}
                         {% if not templates %}
-                        <tr><td colspan="5" class="text-center text-muted py-4">{{ 'אין תבניות' if (admin_language or 'he') == 'he' else 'No templates' }}</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-4">{{ 'אין תבניות' if (admin_language or 'he') == 'he' else 'No templates' }}</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -282,6 +284,15 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'סניף (אופציונלי)' if (admin_language or 'he') == 'he' else 'Branch (optional)' }}</label>
+                    <select class="form-select" id="tpl-branch">
+                        <option value="">{{ 'כל הסניפים (גלובלי)' if (admin_language or 'he') == 'he' else 'All Branches (Global)' }}</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}">{{ b.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="alert alert-info small">
                     <strong>{{ 'משתנים זמינים:' if (admin_language or 'he') == 'he' else 'Available variables:' }}</strong><br>
                     {% for var, desc in placeholders %}
@@ -363,6 +374,7 @@ function openTemplateModal(id) {
     document.getElementById('tpl-name-en').value = '';
     document.getElementById('tpl-content-he').value = '';
     document.getElementById('tpl-type').value = 'order_update';
+    document.getElementById('tpl-branch').value = '';
     document.getElementById('templateModalTitle').textContent = '{{ "תבנית חדשה" if (admin_language or "he") == "he" else "New Template" }}';
     new bootstrap.Modal(document.getElementById('templateModal')).show();
 }
@@ -375,6 +387,7 @@ function editTemplate(id) {
     document.getElementById('tpl-name-en').value = t.name_en || '';
     document.getElementById('tpl-content-he').value = t.content_he;
     document.getElementById('tpl-type').value = t.template_type;
+    document.getElementById('tpl-branch').value = t.branch_id || '';
     document.getElementById('templateModalTitle').textContent = '{{ "עריכת תבנית" if (admin_language or "he") == "he" else "Edit Template" }}';
     new bootstrap.Modal(document.getElementById('templateModal')).show();
 }
@@ -386,6 +399,7 @@ function saveTemplate() {
         name_en: document.getElementById('tpl-name-en').value,
         content_he: document.getElementById('tpl-content-he').value,
         template_type: document.getElementById('tpl-type').value,
+        branch_id: document.getElementById('tpl-branch').value || null,
     };
     if (!data.name_he || !data.content_he) { alert('נא למלא שם ותוכן'); return; }
     apiCall('{{ url_for("admin.sms_template_save") }}', data);

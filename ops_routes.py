@@ -563,6 +563,8 @@ def employees_save():
             return jsonify({'ok': False, 'error': 'סניף לא תקין'})
         if not Branch.query.get(resolved_branch_id):
             return jsonify({'ok': False, 'error': 'סניף לא נמצא'})
+    if pin_code and (not pin_code.isdigit() or len(pin_code) < 4 or len(pin_code) > 8):
+        return jsonify({'ok': False, 'error': 'קוד PIN חייב להיות 4-8 ספרות בלבד'})
     if pin_id:
         mp = ManagerPIN.query.get(pin_id)
         if not mp:
@@ -581,14 +583,12 @@ def employees_save():
         mp.ops_permissions = ops_permissions if not is_superadmin else []
         mp.branch_id = resolved_branch_id
         if pin_code:
-            if len(pin_code) < 4:
-                return jsonify({'ok': False, 'error': 'קוד PIN חייב להיות לפחות 4 ספרות'})
             mp.set_pin(pin_code)
         db.session.commit()
         return jsonify({'ok': True, 'message': f'עובד "{name}" עודכן'})
     else:
-        if not pin_code or len(pin_code) < 4:
-            return jsonify({'ok': False, 'error': 'קוד PIN חייב להיות לפחות 4 ספרות'})
+        if not pin_code:
+            return jsonify({'ok': False, 'error': 'קוד PIN הוא שדה חובה'})
         mp = ManagerPIN(
             name=name,
             description=description,

@@ -243,6 +243,10 @@
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'מספר הזמנה (אופציונלי)' if (admin_language or 'he') == 'he' else 'Order ID (optional)' }}</label>
+                    <input type="number" class="form-control" id="qs-order-id" placeholder="{{ 'לשיוך ליומן' if (admin_language or 'he') == 'he' else 'Link to log' }}" dir="ltr">
+                </div>
+                <div class="mb-3">
                     <label class="form-label fw-bold">{{ 'הודעה' if (admin_language or 'he') == 'he' else 'Message' }}</label>
                     <textarea class="form-control" id="qs-message" rows="4" maxlength="500" required></textarea>
                     <div class="form-text"><span id="qs-charcount">0</span>/500</div>
@@ -458,7 +462,8 @@ document.getElementById('quickSendForm').addEventListener('submit', function(e) 
     var btn = this.querySelector('button[type="submit"]');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> שולח...';
-    apiCall('{{ url_for("admin.sms_quick_send") }}', {phone: phone, message: message}, function(d) {
+    var orderId = document.getElementById('qs-order-id').value.trim() || null;
+    apiCall('{{ url_for("admin.sms_quick_send") }}', {phone: phone, message: message, order_id: orderId}, function(d) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> {{ "שלח SMS" if (admin_language or "he") == "he" else "Send SMS" }}';
         alert(d.message || 'SMS נשלח בהצלחה!');

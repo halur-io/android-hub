@@ -916,11 +916,12 @@ def update_order_status(order_id):
     db.session.commit()
 
     auto_sms_sent = 0
-    try:
-        auto_sms_sent = _auto_send_sms_for_status(order, new_status)
-    except Exception as e:
-        import logging
-        logging.error(f'Auto-SMS failed for order {order.id} status {new_status}: {e}')
+    if old_status != new_status:
+        try:
+            auto_sms_sent = _auto_send_sms_for_status(order, new_status)
+        except Exception as e:
+            import logging
+            logging.error(f'Auto-SMS failed for order {order.id} status {new_status}: {e}')
 
     msg = f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}'
     if auto_sms_sent:

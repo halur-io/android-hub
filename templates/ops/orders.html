@@ -762,9 +762,9 @@ function showSmsModal(order) {
             text = text.replace('{customer_name}', order.customer_name || '');
             text = text.replace('{order_number}', order.order_number || String(order.id));
             text = text.replace('{branch_name}', order.branch_name || '');
-            text = text.replace('{total_amount}', order.total ? String(Math.round(order.total)) : '0');
+            text = text.replace('{total_amount}', order.total_amount ? String(Math.round(order.total_amount)) : '0');
             text = text.replace('{order_type}', order.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי');
-            text = text.replace('{estimated_time}', order.estimated_ready || '');
+            text = text.replace('{estimated_time}', order.estimated_ready_at || '');
             document.getElementById('smsMessageText').value = text;
             updateSmsCharCount();
         };

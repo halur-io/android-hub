@@ -10253,6 +10253,9 @@ def sms_center():
             pass
     if log_status:
         logs_query = logs_query.filter(SMSLog.status == log_status)
+    message_type = request.args.get('message_type', '')
+    if message_type:
+        logs_query = logs_query.filter(SMSLog.message_type == message_type)
     if phone_search:
         logs_query = logs_query.filter(SMSLog.recipient_phone.contains(phone_search))
 
@@ -10276,6 +10279,7 @@ def sms_center():
         date_from=date_from,
         date_to=date_to,
         log_status=log_status,
+        message_type=message_type,
         phone_search=phone_search,
     )
 
@@ -10400,12 +10404,21 @@ def sms_quick_send():
     if not phone or not message:
         return jsonify(ok=False, error='נא למלא טלפון והודעה')
 
+    order_id = data.get('order_id')
+    order_id_val = None
+    if order_id:
+        try:
+            order_id_val = int(order_id)
+        except (TypeError, ValueError):
+            pass
+
     send_fn = create_sender_from_env()
     if not send_fn:
         log = SMSLog(
             recipient_phone=phone,
             message_type='quick_send',
             message_text=message,
+            order_id=order_id_val,
             status='failed',
             error_message='SMS provider not configured',
             staff_name=current_user.username,
@@ -10420,6 +10433,7 @@ def sms_quick_send():
             recipient_phone=phone,
             message_type='quick_send',
             message_text=message,
+            order_id=order_id_val,
             status='sent',
             staff_name=current_user.username,
         )
@@ -10431,6 +10445,7 @@ def sms_quick_send():
             recipient_phone=phone,
             message_type='quick_send',
             message_text=message,
+            order_id=order_id_val,
             status='failed',
             error_message=str(e),
             staff_name=current_user.username,

@@ -908,17 +908,23 @@ def update_order_status(order_id):
 
     db.session.commit()
 
+    auto_sms_sent = 0
     try:
-        _auto_send_sms_for_status(order, new_status)
+        auto_sms_sent = _auto_send_sms_for_status(order, new_status)
     except Exception as e:
         import logging
         logging.error(f'Auto-SMS failed for order {order.id} status {new_status}: {e}')
 
+    msg = f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}'
+    if auto_sms_sent:
+        msg += f' | SMS נשלח ({auto_sms_sent})'
+
     return jsonify({
         'ok': True,
-        'message': f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}',
+        'message': msg,
         'new_status': new_status,
         'label': OPS_STATUS_LABELS.get(new_status, new_status),
+        'auto_sms_sent': auto_sms_sent,
     })
 
 
@@ -927,13 +933,14 @@ def _auto_send_sms_for_status(order, new_status):
     from standalone_order_service.sms_helpers import create_sender_from_env
     triggers = SMSAutoTrigger.query.filter_by(order_status=new_status, is_active=True).all()
     if not triggers:
-        return
+        return 0
     phone = order.customer_phone
     if not phone:
-        return
+        return 0
     send_fn = create_sender_from_env()
     branch = Branch.query.get(order.branch_id) if order.branch_id else None
     user = _get_ops_user()
+    sent_count = 0
     for trigger in triggers:
         if trigger.branch_id and trigger.branch_id != order.branch_id:
             continue
@@ -946,9 +953,12 @@ def _auto_send_sms_for_status(order, new_status):
         if send_fn:
             try:
                 send_fn(phone, message)
+                sent_count += 1
             except Exception as e:
                 status = 'failed'
                 error_msg = str(e)
+                import logging
+                logging.error(f'Auto-SMS send failed for order {order.id}, trigger {trigger.id}: {e}')
         else:
             status = 'failed'
             error_msg = 'SMS provider not configured'
@@ -963,6 +973,7 @@ def _auto_send_sms_for_status(order, new_status):
         )
         db.session.add(log)
     db.session.commit()
+    return sent_count
 
 
 @ops_bp.route('/api/orders/<int:order_id>/send-sms', methods=['POST'])

@@ -251,6 +251,13 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+try:
+    with app.app_context():
+        from models import SMSTemplate
+        SMSTemplate.seed_defaults()
+except Exception as e:
+    logging.debug(f"SMS template seeding: {e}")
+
 _last_stale_check = 0
 
 @app.before_request

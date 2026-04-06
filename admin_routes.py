@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from app import csrf
 # from flask_wtf.csrf import exempt  # Not available in this version
@@ -169,6 +169,7 @@ ROUTE_PERMISSIONS = {
     'admin.edit_manager_pin': 'system.admin',
     'admin.delete_manager_pin': 'system.admin',
     'admin.time_logs': 'system.admin',
+    'admin.time_logs_export': 'system.admin',
     'admin.time_log_clock_out': 'system.admin',
     'admin.time_log_auto_close': 'system.admin',
     'admin.api_cities': 'branches.view',
@@ -9886,15 +9887,12 @@ def delete_manager_pin(pin_id):
     return redirect(url_for('admin.enrolled_devices'))
 
 
-@admin_bp.route('/time-logs')
-@login_required
-def time_logs():
+def _build_time_logs_query():
     from datetime import timedelta as td
     worker_id = request.args.get('worker_id', type=int)
     branch_id = request.args.get('branch_id', type=int)
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
-
     query = TimeLog.query
     if worker_id:
         query = query.filter_by(worker_id=worker_id)
@@ -9908,14 +9906,16 @@ def time_logs():
             pass
     if date_to:
         try:
-            dt = datetime.strptime(date_to, '%Y-%m-%d') + td(days=1)
-            query = query.filter(TimeLog.clock_in < dt)
+            dt_end = datetime.strptime(date_to, '%Y-%m-%d') + td(days=1)
+            query = query.filter(TimeLog.clock_in < dt_end)
         except ValueError:
             pass
+    return query, worker_id, branch_id, date_from, date_to
 
-    all_logs = query.order_by(TimeLog.clock_in.desc()).all()
-    logs = all_logs[:500]
 
+def _compute_time_totals(all_logs):
+    from datetime import timedelta as td
+    from utilities.israeli_labor import calc_overtime_for_day, weighted_hours, format_hours
     worker_totals = {}
     daily_totals = {}
     weekly_totals = {}
@@ -9930,7 +9930,8 @@ def time_logs():
         day_key = log.clock_in.strftime('%Y-%m-%d')
         dt_key = (wid, day_key)
         if dt_key not in daily_totals:
-            daily_totals[dt_key] = {'name': wname, 'date': day_key, 'seconds': 0, 'shifts': 0}
+            daily_totals[dt_key] = {'name': wname, 'date': day_key, 'seconds': 0, 'shifts': 0,
+                                    'branch': log.branch.name_he if log.branch else '', 'worker_id': wid}
         daily_totals[dt_key]['seconds'] += dur
         daily_totals[dt_key]['shifts'] += 1
         iso_year, iso_week, _ = log.clock_in.isocalendar()
@@ -9944,26 +9945,58 @@ def time_logs():
             }
         weekly_totals[wk_key]['seconds'] += dur
         weekly_totals[wk_key]['shifts'] += 1
-    for wt in worker_totals.values():
+    for dt_val in daily_totals.values():
+        total_h = dt_val['seconds'] / 3600
+        reg, ot125, ot150 = calc_overtime_for_day(total_h, dt_val['date'])
+        dt_val['total_hours'] = total_h
+        dt_val['regular'] = reg
+        dt_val['ot_125'] = ot125
+        dt_val['ot_150'] = ot150
+        dt_val['weighted'] = weighted_hours(reg, ot125, ot150)
+        dt_val['display'] = format_hours(total_h)
+        dt_val['regular_display'] = format_hours(reg)
+        dt_val['ot_125_display'] = format_hours(ot125)
+        dt_val['ot_150_display'] = format_hours(ot150)
+        dt_val['weighted_display'] = format_hours(dt_val['weighted'])
+    for wid, wt in worker_totals.items():
         h, remainder = divmod(wt['seconds'], 3600)
         m, _ = divmod(remainder, 60)
         wt['display'] = f'{h}:{m:02d}'
-    for dt in daily_totals.values():
-        h, remainder = divmod(dt['seconds'], 3600)
-        m, _ = divmod(remainder, 60)
-        dt['display'] = f'{h}:{m:02d}'
+        w_reg = w_125 = w_150 = w_weighted = 0.0
+        for (dwid, _), dv in daily_totals.items():
+            if dwid == wid:
+                w_reg += dv['regular']
+                w_125 += dv['ot_125']
+                w_150 += dv['ot_150']
+                w_weighted += dv['weighted']
+        wt['regular'] = round(w_reg, 2)
+        wt['ot_125'] = round(w_125, 2)
+        wt['ot_150'] = round(w_150, 2)
+        wt['weighted'] = round(w_weighted, 2)
+        wt['regular_display'] = format_hours(w_reg)
+        wt['ot_125_display'] = format_hours(w_125)
+        wt['ot_150_display'] = format_hours(w_150)
+        wt['weighted_display'] = format_hours(w_weighted)
     daily_list = sorted(daily_totals.values(), key=lambda x: (x['date'], x['name']), reverse=True)
     for wt in weekly_totals.values():
         h, remainder = divmod(wt['seconds'], 3600)
         m, _ = divmod(remainder, 60)
         wt['display'] = f'{h}:{m:02d}'
     weekly_list = sorted(weekly_totals.values(), key=lambda x: x['week_label'], reverse=True)
+    return worker_totals, daily_list, weekly_list
 
+
+@admin_bp.route('/time-logs')
+@login_required
+def time_logs():
+    query, worker_id, branch_id, date_from, date_to = _build_time_logs_query()
+    all_logs = query.order_by(TimeLog.clock_in.desc()).all()
+    logs = all_logs[:500]
+    worker_totals, daily_list, weekly_list = _compute_time_totals(all_logs)
     workers = ManagerPIN.query.filter_by(is_active=True).order_by(ManagerPIN.name).all()
     branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
     open_shifts = TimeLog.query.filter(TimeLog.clock_out.is_(None)).all()
     auto_close_hours = TimeLog.get_auto_close_hours()
-
     return render_template('admin/time_logs.html',
         logs=logs,
         workers=workers,
@@ -9978,6 +10011,89 @@ def time_logs():
         filter_date_from=date_from,
         filter_date_to=date_to,
     )
+
+
+@admin_bp.route('/time-logs/export')
+@login_required
+def time_logs_export():
+    import io
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        flash('חבילת openpyxl חסרה, לא ניתן לייצא', 'error')
+        return redirect(url_for('admin.time_logs'))
+    from utilities.israeli_labor import format_hours
+    query, worker_id, branch_id, date_from, date_to = _build_time_logs_query()
+    all_logs = query.order_by(TimeLog.clock_in.desc()).all()
+    worker_totals, daily_list, _ = _compute_time_totals(all_logs)
+    wb = openpyxl.Workbook()
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+    header_align = Alignment(horizontal='center', vertical='center')
+    ws1 = wb.active
+    ws1.title = 'פירוט יומי'
+    ws1.sheet_view.rightToLeft = True
+    daily_headers = ['תאריך', 'עובד', 'סניף', 'משמרות', 'שעות גולמיות', 'שעות רגילות', 'שעות 125%', 'שעות 150%', 'סה"כ משוקלל']
+    for ci, h in enumerate(daily_headers, 1):
+        cell = ws1.cell(row=1, column=ci, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_align
+    for ri, dt_val in enumerate(daily_list, 2):
+        ws1.cell(row=ri, column=1, value=dt_val['date'])
+        ws1.cell(row=ri, column=2, value=dt_val['name'])
+        ws1.cell(row=ri, column=3, value=dt_val.get('branch', ''))
+        ws1.cell(row=ri, column=4, value=dt_val['shifts'])
+        ws1.cell(row=ri, column=5, value=round(dt_val['total_hours'], 2))
+        ws1.cell(row=ri, column=6, value=round(dt_val['regular'], 2))
+        ws1.cell(row=ri, column=7, value=round(dt_val['ot_125'], 2))
+        ws1.cell(row=ri, column=8, value=round(dt_val['ot_150'], 2))
+        ws1.cell(row=ri, column=9, value=round(dt_val['weighted'], 2))
+    for ci in range(1, len(daily_headers) + 1):
+        col_letter = get_column_letter(ci)
+        max_len = len(daily_headers[ci - 1])
+        for row in ws1.iter_rows(min_col=ci, max_col=ci, min_row=2):
+            val = str(row[0].value) if row[0].value else ''
+            max_len = max(max_len, len(val))
+        ws1.column_dimensions[col_letter].width = min(max_len + 3, 30)
+    ws2 = wb.create_sheet(title='סיכום עובדים')
+    ws2.sheet_view.rightToLeft = True
+    summary_headers = ['עובד', 'משמרות', 'שעות גולמיות', 'שעות רגילות', 'שעות 125%', 'שעות 150%', 'סה"כ משוקלל']
+    for ci, h in enumerate(summary_headers, 1):
+        cell = ws2.cell(row=1, column=ci, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_align
+    for ri, (wid, wt) in enumerate(worker_totals.items(), 2):
+        ws2.cell(row=ri, column=1, value=wt['name'])
+        ws2.cell(row=ri, column=2, value=wt['shifts'])
+        ws2.cell(row=ri, column=3, value=round(wt['seconds'] / 3600, 2))
+        ws2.cell(row=ri, column=4, value=wt['regular'])
+        ws2.cell(row=ri, column=5, value=wt['ot_125'])
+        ws2.cell(row=ri, column=6, value=wt['ot_150'])
+        ws2.cell(row=ri, column=7, value=wt['weighted'])
+    for ci in range(1, len(summary_headers) + 1):
+        col_letter = get_column_letter(ci)
+        max_len = len(summary_headers[ci - 1])
+        for row in ws2.iter_rows(min_col=ci, max_col=ci, min_row=2):
+            val = str(row[0].value) if row[0].value else ''
+            max_len = max(max_len, len(val))
+        ws2.column_dimensions[col_letter].width = min(max_len + 3, 30)
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    fname = 'time_logs'
+    if date_from:
+        fname += f'_{date_from}'
+    if date_to:
+        fname += f'_to_{date_to}'
+    fname += '.xlsx'
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename={fname}'
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    return response
 
 
 @admin_bp.route('/time-logs/clock-out/<int:log_id>', methods=['POST'])

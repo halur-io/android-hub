@@ -6,12 +6,17 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-clock me-2"></i>{{ 'מעקב שעות עובדים' if he else 'Worker Time Logs' }}</h2>
-        <form method="post" action="{{ url_for('admin.time_log_auto_close') }}" class="d-inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-warning btn-sm">
-                <i class="fas fa-stopwatch me-1"></i>{{ 'סגור משמרות ישנות' if he else 'Auto-close stale shifts' }}
-            </button>
-        </form>
+        <div>
+            <a href="{{ url_for('admin.time_logs_export', worker_id=filter_worker_id or '', branch_id=filter_branch_id or '', date_from=filter_date_from or '', date_to=filter_date_to or '') }}" class="btn btn-success btn-sm me-2">
+                <i class="fas fa-file-excel me-1"></i>{{ 'ייצוא לאקסל' if he else 'Export to Excel' }}
+            </a>
+            <form method="post" action="{{ url_for('admin.time_log_auto_close') }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-warning btn-sm">
+                    <i class="fas fa-stopwatch me-1"></i>{{ 'סגור משמרות ישנות' if he else 'Auto-close stale shifts' }}
+                </button>
+            </form>
+        </div>
     </div>
 
     {% if open_shifts %}
@@ -113,6 +118,10 @@
                             <th>{{ 'עובד' if he else 'Worker' }}</th>
                             <th>{{ 'משמרות' if he else 'Shifts' }}</th>
                             <th>{{ 'סה"כ שעות' if he else 'Total Hours' }}</th>
+                            <th>{{ 'רגיל' if he else 'Regular' }}</th>
+                            <th>{{ '125%' }}</th>
+                            <th>{{ '150%' }}</th>
+                            <th>{{ 'משוקלל' if he else 'Weighted' }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -121,6 +130,10 @@
                             <td>{{ wt.name }}</td>
                             <td>{{ wt.shifts }}</td>
                             <td><span class="badge bg-primary">{{ wt.display }}</span></td>
+                            <td><span class="badge bg-secondary">{{ wt.regular_display }}</span></td>
+                            <td>{% if wt.ot_125 > 0 %}<span class="badge bg-warning text-dark">{{ wt.ot_125_display }}</span>{% else %}-{% endif %}</td>
+                            <td>{% if wt.ot_150 > 0 %}<span class="badge bg-danger">{{ wt.ot_150_display }}</span>{% else %}-{% endif %}</td>
+                            <td><span class="badge bg-dark">{{ wt.weighted_display }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -144,6 +157,10 @@
                             <th>{{ 'עובד' if he else 'Worker' }}</th>
                             <th>{{ 'משמרות' if he else 'Shifts' }}</th>
                             <th>{{ 'שעות' if he else 'Hours' }}</th>
+                            <th>{{ 'רגיל' if he else 'Regular' }}</th>
+                            <th>{{ '125%' }}</th>
+                            <th>{{ '150%' }}</th>
+                            <th>{{ 'משוקלל' if he else 'Weighted' }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -153,6 +170,10 @@
                             <td>{{ dt.name }}</td>
                             <td>{{ dt.shifts }}</td>
                             <td><span class="badge bg-info">{{ dt.display }}</span></td>
+                            <td><span class="badge bg-secondary">{{ dt.regular_display }}</span></td>
+                            <td>{% if dt.ot_125 > 0 %}<span class="badge bg-warning text-dark">{{ dt.ot_125_display }}</span>{% else %}-{% endif %}</td>
+                            <td>{% if dt.ot_150 > 0 %}<span class="badge bg-danger">{{ dt.ot_150_display }}</span>{% else %}-{% endif %}</td>
+                            <td><span class="badge bg-dark">{{ dt.weighted_display }}</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>

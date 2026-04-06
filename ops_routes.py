@@ -409,7 +409,11 @@ def delivery():
             db.or_(DeliveryZone.branch_id == effective_branch, DeliveryZone.branch_id.is_(None))
         )
     zones = query.order_by(DeliveryZone.display_order, DeliveryZone.city_name).all()
-    return render_template('ops/delivery.html', active_tab='delivery', zones=zones)
+    user = _get_ops_user()
+    is_super = user and user.is_ops_superadmin
+    branches = Branch.query.order_by(Branch.id).all() if is_super else []
+    return render_template('ops/delivery.html', active_tab='delivery', zones=zones,
+                           is_superadmin=is_super, branches=branches, effective_branch=effective_branch)
 
 
 @ops_bp.route('/api/cities')
@@ -433,15 +437,29 @@ def delivery_save():
     user = _get_ops_user()
     is_super = user and user.is_ops_superadmin
 
+    submitted_branch_id = data.get('branch_id')
+    if submitted_branch_id:
+        try:
+            submitted_branch_id = int(submitted_branch_id)
+        except (TypeError, ValueError):
+            submitted_branch_id = None
+
     if zone_id:
         zone = DeliveryZone.query.get(zone_id)
         if not zone:
             return jsonify({'ok': False, 'error': 'אזור לא נמצא'})
         if not is_super and effective_branch and zone.branch_id != effective_branch:
             return jsonify({'ok': False, 'error': 'אין הרשאה לערוך אזור זה'})
+        if is_super and submitted_branch_id:
+            zone.branch_id = submitted_branch_id
     else:
         zone = DeliveryZone()
-        zone.branch_id = effective_branch
+        if effective_branch:
+            zone.branch_id = effective_branch
+        elif is_super and submitted_branch_id:
+            zone.branch_id = submitted_branch_id
+        elif is_super and not submitted_branch_id:
+            return jsonify({'ok': False, 'error': 'יש לבחור סניף'})
         db.session.add(zone)
 
     zone.city_name = city_name

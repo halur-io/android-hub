@@ -28,6 +28,7 @@
              data-free="{{ zone.free_delivery_above if zone.free_delivery_above is not none else '' }}"
              data-time="{{ zone.estimated_minutes or 30 }}"
              data-order="{{ zone.display_order or 0 }}"
+             data-branch="{{ zone.branch_id or '' }}"
              style="background:var(--ops-card);border-radius:12px;padding:14px 16px;
                     border:1px solid {% if zone.is_active %}var(--ops-border){% else %}rgba(239,68,68,0.3){% endif %};
                     {% if not zone.is_active %}opacity:0.6;{% endif %}">
@@ -36,6 +37,9 @@
                     <div style="font-size:0.9rem;font-weight:700;color:var(--ops-text);">
                         {{ zone.city_name }}
                         {% if zone.name %}<span style="color:var(--ops-muted);font-weight:400;font-size:0.75rem;margin-right:4px;">({{ zone.name }})</span>{% endif %}
+                        {% if is_superadmin and zone.branch %}
+                        <span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:600;margin-right:4px;">{{ zone.branch.name_he }}</span>
+                        {% endif %}
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
                         <span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:700;">
@@ -95,6 +99,21 @@
             <div style="font-size:1rem;font-weight:800;color:var(--ops-text);" id="zm-title">הוספת אזור משלוח</div>
         </div>
         <input type="hidden" id="zm-id" value="">
+
+        {% if is_superadmin and not effective_branch %}
+        <div style="margin-bottom:10px;" id="zm-branch-wrap">
+            <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">סניף *</label>
+            <select id="zm-branch"
+                    style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                           background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                           box-sizing:border-box;">
+                <option value="">— בחר סניף —</option>
+                {% for b in branches %}
+                <option value="{{ b.id }}">{{ b.name_he }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
 
         <div style="margin-bottom:10px;position:relative;">
             <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">שם עיר / יישוב *</label>
@@ -181,7 +200,7 @@
 
 {% block scripts %}
 <script>
-function openZoneModal(id, city, name, fee, min, free, time, order) {
+function openZoneModal(id, city, name, fee, min, free, time, order, branchId) {
     document.getElementById('zm-id').value = id || '';
     document.getElementById('zm-city').value = city || '';
     document.getElementById('zm-name').value = name || '';
@@ -190,6 +209,8 @@ function openZoneModal(id, city, name, fee, min, free, time, order) {
     document.getElementById('zm-free').value = (free !== null && free !== undefined) ? free : '';
     document.getElementById('zm-time').value = time || 30;
     document.getElementById('zm-order').value = order || 0;
+    var branchSel = document.getElementById('zm-branch');
+    if (branchSel) branchSel.value = branchId || '';
     document.getElementById('zm-title').textContent = id ? 'עריכת אזור משלוח' : 'הוספת אזור משלוח';
     document.getElementById('zm-error').style.display = 'none';
     document.getElementById('zone-modal').style.display = 'flex';
@@ -208,7 +229,8 @@ document.addEventListener('click', function(e) {
                 parseFloat(card.getAttribute('data-min')) || 0,
                 card.getAttribute('data-free') ? parseFloat(card.getAttribute('data-free')) : null,
                 parseInt(card.getAttribute('data-time')) || 30,
-                parseInt(card.getAttribute('data-order')) || 0
+                parseInt(card.getAttribute('data-order')) || 0,
+                card.getAttribute('data-branch') || ''
             );
         }
         return;
@@ -245,6 +267,8 @@ function saveZone() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     var idVal = document.getElementById('zm-id').value;
+    var branchSel = document.getElementById('zm-branch');
+    var branchVal = branchSel ? branchSel.value : '';
     var data = {
         id: idVal ? parseInt(idVal) : null,
         city_name: city,
@@ -254,6 +278,7 @@ function saveZone() {
         free_delivery_above: document.getElementById('zm-free').value ? parseFloat(document.getElementById('zm-free').value) : null,
         estimated_minutes: parseInt(document.getElementById('zm-time').value) || 30,
         display_order: parseInt(document.getElementById('zm-order').value) || 0,
+        branch_id: branchVal ? parseInt(branchVal) : null,
     };
 
     fetch('{{ url_for("ops.delivery_save") }}', {

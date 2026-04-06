@@ -173,3 +173,63 @@ def build_export_response(data, columns, format_type='csv', filename_base='expor
         return export_to_excel(data, columns, f'{filename_base}.xlsx')
     else:
         return export_to_csv(data, columns, f'{filename_base}.csv')
+
+
+def export_to_excel_multi_sheet(sheets, filename='export.xlsx'):
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return export_to_csv(sheets[0]['data'], sheets[0]['columns'], filename.replace('.xlsx', '.csv'))
+
+    wb = openpyxl.Workbook()
+    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+    header_alignment = Alignment(horizontal='center', vertical='center')
+
+    for idx, sheet_def in enumerate(sheets):
+        if idx == 0:
+            ws = wb.active
+        else:
+            ws = wb.create_sheet()
+        ws.title = sheet_def.get('title', f'Sheet {idx + 1}')
+        if sheet_def.get('rtl', False):
+            ws.sheet_view.rightToLeft = True
+        columns = sheet_def['columns']
+        data = sheet_def['data']
+
+        for col_idx, col in enumerate(columns, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=col['header'])
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+
+        for row_idx, item in enumerate(data, start=2):
+            for col_idx, col in enumerate(columns, start=1):
+                if isinstance(item, dict):
+                    value = item.get(col['field'])
+                else:
+                    value = getattr(item, col['field'], None)
+                if 'formatter' in col and col['formatter']:
+                    value = col['formatter'](value)
+                else:
+                    value = format_value(value)
+                ws.cell(row=row_idx, column=col_idx, value=value)
+
+        for col_idx, col in enumerate(columns, start=1):
+            column_letter = get_column_letter(col_idx)
+            max_length = len(str(col['header']))
+            for row in ws.iter_rows(min_col=col_idx, max_col=col_idx, min_row=2):
+                cell_value = str(row[0].value) if row[0].value else ''
+                max_length = max(max_length, len(cell_value))
+            ws.column_dimensions[column_letter].width = min(max_length + 3, 50)
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    return response

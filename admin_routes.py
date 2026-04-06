@@ -10016,84 +10016,77 @@ def time_logs():
 @admin_bp.route('/time-logs/export')
 @login_required
 def time_logs_export():
-    import io
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
-        from openpyxl.utils import get_column_letter
-    except ImportError:
-        flash('חבילת openpyxl חסרה, לא ניתן לייצא', 'error')
-        return redirect(url_for('admin.time_logs'))
-    from utilities.israeli_labor import format_hours
+    from utilities.exporting import export_to_excel_multi_sheet
+    from utilities.israeli_labor import calc_overtime_for_day, weighted_hours
     query, worker_id, branch_id, date_from, date_to = _build_time_logs_query()
-    all_logs = query.order_by(TimeLog.clock_in.desc()).all()
-    worker_totals, daily_list, _ = _compute_time_totals(all_logs)
-    wb = openpyxl.Workbook()
-    header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
-    header_font = Font(bold=True, color='FFFFFF')
-    header_align = Alignment(horizontal='center', vertical='center')
-    ws1 = wb.active
-    ws1.title = 'פירוט יומי'
-    ws1.sheet_view.rightToLeft = True
-    daily_headers = ['תאריך', 'עובד', 'סניף', 'משמרות', 'שעות גולמיות', 'שעות רגילות', 'שעות 125%', 'שעות 150%', 'סה"כ משוקלל']
-    for ci, h in enumerate(daily_headers, 1):
-        cell = ws1.cell(row=1, column=ci, value=h)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_align
-    for ri, dt_val in enumerate(daily_list, 2):
-        ws1.cell(row=ri, column=1, value=dt_val['date'])
-        ws1.cell(row=ri, column=2, value=dt_val['name'])
-        ws1.cell(row=ri, column=3, value=dt_val.get('branch', ''))
-        ws1.cell(row=ri, column=4, value=dt_val['shifts'])
-        ws1.cell(row=ri, column=5, value=round(dt_val['total_hours'], 2))
-        ws1.cell(row=ri, column=6, value=round(dt_val['regular'], 2))
-        ws1.cell(row=ri, column=7, value=round(dt_val['ot_125'], 2))
-        ws1.cell(row=ri, column=8, value=round(dt_val['ot_150'], 2))
-        ws1.cell(row=ri, column=9, value=round(dt_val['weighted'], 2))
-    for ci in range(1, len(daily_headers) + 1):
-        col_letter = get_column_letter(ci)
-        max_len = len(daily_headers[ci - 1])
-        for row in ws1.iter_rows(min_col=ci, max_col=ci, min_row=2):
-            val = str(row[0].value) if row[0].value else ''
-            max_len = max(max_len, len(val))
-        ws1.column_dimensions[col_letter].width = min(max_len + 3, 30)
-    ws2 = wb.create_sheet(title='סיכום עובדים')
-    ws2.sheet_view.rightToLeft = True
-    summary_headers = ['עובד', 'משמרות', 'שעות גולמיות', 'שעות רגילות', 'שעות 125%', 'שעות 150%', 'סה"כ משוקלל']
-    for ci, h in enumerate(summary_headers, 1):
-        cell = ws2.cell(row=1, column=ci, value=h)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_align
-    for ri, (wid, wt) in enumerate(worker_totals.items(), 2):
-        ws2.cell(row=ri, column=1, value=wt['name'])
-        ws2.cell(row=ri, column=2, value=wt['shifts'])
-        ws2.cell(row=ri, column=3, value=round(wt['seconds'] / 3600, 2))
-        ws2.cell(row=ri, column=4, value=wt['regular'])
-        ws2.cell(row=ri, column=5, value=wt['ot_125'])
-        ws2.cell(row=ri, column=6, value=wt['ot_150'])
-        ws2.cell(row=ri, column=7, value=wt['weighted'])
-    for ci in range(1, len(summary_headers) + 1):
-        col_letter = get_column_letter(ci)
-        max_len = len(summary_headers[ci - 1])
-        for row in ws2.iter_rows(min_col=ci, max_col=ci, min_row=2):
-            val = str(row[0].value) if row[0].value else ''
-            max_len = max(max_len, len(val))
-        ws2.column_dimensions[col_letter].width = min(max_len + 3, 30)
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
+    all_logs = query.order_by(TimeLog.clock_in.asc()).all()
+    day_groups = {}
+    for log in all_logs:
+        wid = log.worker_id
+        day_key = log.clock_in.strftime('%Y-%m-%d')
+        key = (wid, day_key)
+        if key not in day_groups:
+            day_groups[key] = []
+        day_groups[key].append(log)
+    daily_rows = []
+    for (wid, day_key), logs_group in sorted(day_groups.items(), key=lambda x: (x[0][1], x[0][0]), reverse=True):
+        first_log = logs_group[0]
+        last_log = logs_group[-1]
+        wname = first_log.worker.name if first_log.worker else f'#{wid}'
+        branch_name = first_log.branch.name_he if first_log.branch else ''
+        clock_in_str = first_log.clock_in.strftime('%d/%m/%Y %H:%M')
+        clock_out_str = last_log.clock_out.strftime('%d/%m/%Y %H:%M') if last_log.clock_out else ''
+        raw_seconds = sum(l.duration_seconds for l in logs_group)
+        raw_hours = round(raw_seconds / 3600, 2)
+        reg, ot125, ot150 = calc_overtime_for_day(raw_hours, day_key)
+        wt = weighted_hours(reg, ot125, ot150)
+        daily_rows.append({
+            'date': day_key, 'worker': wname, 'branch': branch_name,
+            'clock_in': clock_in_str, 'clock_out': clock_out_str,
+            'raw_hours': raw_hours,
+            'regular': round(reg, 2), 'ot_125': round(ot125, 2),
+            'ot_150': round(ot150, 2), 'weighted': round(wt, 2),
+        })
+    worker_totals, _, _ = _compute_time_totals(all_logs)
+    summary_rows = []
+    for wid, wt in worker_totals.items():
+        summary_rows.append({
+            'worker': wt['name'], 'shifts': wt['shifts'],
+            'raw_hours': round(wt['seconds'] / 3600, 2),
+            'regular': wt['regular'], 'ot_125': wt['ot_125'],
+            'ot_150': wt['ot_150'], 'weighted': wt['weighted'],
+        })
+    sheet1_columns = [
+        {'field': 'date', 'header': 'תאריך'},
+        {'field': 'worker', 'header': 'עובד'},
+        {'field': 'branch', 'header': 'סניף'},
+        {'field': 'clock_in', 'header': 'כניסה'},
+        {'field': 'clock_out', 'header': 'יציאה'},
+        {'field': 'raw_hours', 'header': 'שעות גולמיות'},
+        {'field': 'regular', 'header': 'שעות רגילות'},
+        {'field': 'ot_125', 'header': 'שעות 125%'},
+        {'field': 'ot_150', 'header': 'שעות 150%'},
+        {'field': 'weighted', 'header': 'סה"כ משוקלל'},
+    ]
+    sheet2_columns = [
+        {'field': 'worker', 'header': 'עובד'},
+        {'field': 'shifts', 'header': 'משמרות'},
+        {'field': 'raw_hours', 'header': 'שעות גולמיות'},
+        {'field': 'regular', 'header': 'שעות רגילות'},
+        {'field': 'ot_125', 'header': 'שעות 125%'},
+        {'field': 'ot_150', 'header': 'שעות 150%'},
+        {'field': 'weighted', 'header': 'סה"כ משוקלל'},
+    ]
     fname = 'time_logs'
     if date_from:
         fname += f'_{date_from}'
     if date_to:
         fname += f'_to_{date_to}'
     fname += '.xlsx'
-    response = make_response(output.getvalue())
-    response.headers['Content-Disposition'] = f'attachment; filename={fname}'
-    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    return response
+    return export_to_excel_multi_sheet([
+        {'title': 'פירוט יומי', 'columns': sheet1_columns, 'data': daily_rows, 'rtl': True},
+        {'title': 'סיכום עובדים', 'columns': sheet2_columns, 'data': summary_rows, 'rtl': True},
+    ], filename=fname)
 
 
 @admin_bp.route('/time-logs/clock-out/<int:log_id>', methods=['POST'])

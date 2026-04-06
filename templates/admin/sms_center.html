@@ -1,0 +1,469 @@
+{% extends "admin/base.html" %}
+{% block title %}מרכז SMS - Admin{% endblock %}
+{% block content %}
+<div class="section-header">
+    <h1 class="section-title"><i class="fas fa-sms" style="color:var(--sumo-coral);"></i> {{ 'מרכז SMS' if (admin_language or 'he') == 'he' else 'SMS Center' }}</h1>
+    <p class="section-description">{{ 'ניהול תבניות SMS, טריגרים אוטומטיים ולוג הודעות' if (admin_language or 'he') == 'he' else 'Manage SMS templates, auto-triggers and message logs' }}</p>
+</div>
+
+<div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+    <span id="smsStatusBadge" class="badge bg-secondary"><i class="fas fa-circle-notch fa-spin"></i> בודק חיבור...</span>
+</div>
+
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#templatesTab"><i class="fas fa-file-alt me-1"></i> {{ 'תבניות' if (admin_language or 'he') == 'he' else 'Templates' }}</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#triggersTab"><i class="fas fa-bolt me-1"></i> {{ 'טריגרים אוטומטיים' if (admin_language or 'he') == 'he' else 'Auto Triggers' }}</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#logsTab"><i class="fas fa-history me-1"></i> {{ 'לוג הודעות' if (admin_language or 'he') == 'he' else 'Message Log' }}</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#quickSendTab"><i class="fas fa-paper-plane me-1"></i> {{ 'שליחה מהירה' if (admin_language or 'he') == 'he' else 'Quick Send' }}</a></li>
+</ul>
+
+<div class="tab-content">
+
+<div class="tab-pane fade show active" id="templatesTab">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">{{ 'תבניות SMS' if (admin_language or 'he') == 'he' else 'SMS Templates' }}</h5>
+        <button class="btn btn-primary btn-sm" onclick="openTemplateModal()"><i class="fas fa-plus me-1"></i> {{ 'תבנית חדשה' if (admin_language or 'he') == 'he' else 'New Template' }}</button>
+    </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
+                            <th>{{ 'תוכן' if (admin_language or 'he') == 'he' else 'Content' }}</th>
+                            <th>{{ 'קטגוריה' if (admin_language or 'he') == 'he' else 'Category' }}</th>
+                            <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in templates %}
+                        <tr>
+                            <td class="fw-bold">{{ t.name_he }}</td>
+                            <td><small class="text-muted" style="max-width:300px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.content_he }}</small></td>
+                            <td><span class="badge bg-info">{{ dict(categories)[t.template_type] if t.template_type in dict(categories) else t.template_type }}</span></td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" {% if t.is_active %}checked{% endif %} onchange="toggleTemplate({{ t.id }}, this.checked)">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-link p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="editTemplate({{ t.id }})"><i class="fas fa-edit me-2"></i>{{ 'עריכה' if (admin_language or 'he') == 'he' else 'Edit' }}</a></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteTemplate({{ t.id }})"><i class="fas fa-trash me-2"></i>{{ 'מחיקה' if (admin_language or 'he') == 'he' else 'Delete' }}</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not templates %}
+                        <tr><td colspan="5" class="text-center text-muted py-4">{{ 'אין תבניות' if (admin_language or 'he') == 'he' else 'No templates' }}</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card mt-3">
+        <div class="card-header"><i class="fas fa-info-circle me-2"></i>{{ 'משתנים זמינים' if (admin_language or 'he') == 'he' else 'Available Variables' }}</div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                {% for var, desc in placeholders %}
+                <span class="badge bg-light text-dark border" style="font-family:monospace;">{{ var }} <small class="text-muted">— {{ desc }}</small></span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-pane fade" id="triggersTab">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">{{ 'טריגרים אוטומטיים' if (admin_language or 'he') == 'he' else 'Auto Triggers' }}</h5>
+        <button class="btn btn-primary btn-sm" onclick="openTriggerModal()"><i class="fas fa-plus me-1"></i> {{ 'טריגר חדש' if (admin_language or 'he') == 'he' else 'New Trigger' }}</button>
+    </div>
+    <p class="text-muted small">{{ 'הגדר שליחת SMS אוטומטית כאשר סטטוס הזמנה משתנה' if (admin_language or 'he') == 'he' else 'Configure automatic SMS when order status changes' }}</p>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>{{ 'סטטוס הזמנה' if (admin_language or 'he') == 'he' else 'Order Status' }}</th>
+                            <th>{{ 'תבנית' if (admin_language or 'he') == 'he' else 'Template' }}</th>
+                            <th>{{ 'סניף' if (admin_language or 'he') == 'he' else 'Branch' }}</th>
+                            <th>{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tr in triggers %}
+                        <tr>
+                            <td><span class="badge bg-warning text-dark">{{ dict(order_statuses)[tr.order_status] if tr.order_status in dict(order_statuses) else tr.order_status }}</span></td>
+                            <td>{{ tr.template.name_he if tr.template else '—' }}</td>
+                            <td>{{ tr.branch.name_he if tr.branch else 'כל הסניפים' }}</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" {% if tr.is_active %}checked{% endif %} onchange="toggleTrigger({{ tr.id }}, this.checked)">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-link p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteTrigger({{ tr.id }})"><i class="fas fa-trash me-2"></i>{{ 'מחיקה' if (admin_language or 'he') == 'he' else 'Delete' }}</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not triggers %}
+                        <tr><td colspan="5" class="text-center text-muted py-4">{{ 'אין טריגרים' if (admin_language or 'he') == 'he' else 'No triggers' }}</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-pane fade" id="logsTab">
+    <h5 class="mb-3">{{ 'לוג הודעות SMS' if (admin_language or 'he') == 'he' else 'SMS Message Log' }}</h5>
+    <form method="GET" class="row g-2 mb-3">
+        <input type="hidden" name="tab" value="logs">
+        <div class="col-md-3">
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" placeholder="מתאריך">
+        </div>
+        <div class="col-md-3">
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" placeholder="עד תאריך">
+        </div>
+        <div class="col-md-2">
+            <select name="log_status" class="form-select form-select-sm">
+                <option value="">{{ 'כל הסטטוסים' if (admin_language or 'he') == 'he' else 'All Statuses' }}</option>
+                <option value="sent" {% if log_status == 'sent' %}selected{% endif %}>{{ 'נשלח' if (admin_language or 'he') == 'he' else 'Sent' }}</option>
+                <option value="failed" {% if log_status == 'failed' %}selected{% endif %}>{{ 'נכשל' if (admin_language or 'he') == 'he' else 'Failed' }}</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="phone_search" class="form-control form-control-sm" value="{{ phone_search or '' }}" placeholder="{{ 'חיפוש טלפון' if (admin_language or 'he') == 'he' else 'Phone search' }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-search me-1"></i>{{ 'סנן' if (admin_language or 'he') == 'he' else 'Filter' }}</button>
+        </div>
+    </form>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</th>
+                            <th>{{ 'נמען' if (admin_language or 'he') == 'he' else 'Recipient' }}</th>
+                            <th>{{ 'סוג' if (admin_language or 'he') == 'he' else 'Type' }}</th>
+                            <th>{{ 'הודעה' if (admin_language or 'he') == 'he' else 'Message' }}</th>
+                            <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                            <th>{{ 'הזמנה' if (admin_language or 'he') == 'he' else 'Order' }}</th>
+                            <th>{{ 'שולח' if (admin_language or 'he') == 'he' else 'Sender' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in sms_logs %}
+                        <tr>
+                            <td class="small">{{ log.created_at.strftime('%d/%m/%y %H:%M') if log.created_at else '' }}</td>
+                            <td style="direction:ltr;text-align:right;">{{ log.recipient_phone }}</td>
+                            <td><small>{{ log.message_type }}</small></td>
+                            <td><small class="text-muted" style="max-width:250px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.message_text }}">{{ log.message_text[:80] }}</small></td>
+                            <td>
+                                {% if log.status == 'sent' %}
+                                <span class="badge bg-success">{{ 'נשלח' if (admin_language or 'he') == 'he' else 'Sent' }}</span>
+                                {% else %}
+                                <span class="badge bg-danger" title="{{ log.error_message or '' }}">{{ 'נכשל' if (admin_language or 'he') == 'he' else 'Failed' }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.order_id %}
+                                <a href="{{ url_for('admin.food_order_detail', order_id=log.order_id) }}" class="text-decoration-none">#{{ log.order.order_number if log.order else log.order_id }}</a>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td><small>{{ log.staff_name or '—' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                        {% if not sms_logs %}
+                        <tr><td colspan="7" class="text-center text-muted py-4">{{ 'אין הודעות' if (admin_language or 'he') == 'he' else 'No messages' }}</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% if total_log_pages > 1 %}
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center">
+            {% for p in range(1, total_log_pages + 1) %}
+            <li class="page-item {% if p == log_page %}active{% endif %}">
+                <a class="page-link" href="?tab=logs&page={{ p }}&date_from={{ date_from or '' }}&date_to={{ date_to or '' }}&log_status={{ log_status or '' }}&phone_search={{ phone_search or '' }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<div class="tab-pane fade" id="quickSendTab">
+    <h5 class="mb-3">{{ 'שליחת SMS מהירה' if (admin_language or 'he') == 'he' else 'Quick SMS Send' }}</h5>
+    <div class="card">
+        <div class="card-body">
+            <form id="quickSendForm">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'מספר טלפון' if (admin_language or 'he') == 'he' else 'Phone Number' }}</label>
+                    <input type="text" class="form-control" id="qs-phone" placeholder="050-1234567" required dir="ltr">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'תבנית (אופציונלי)' if (admin_language or 'he') == 'he' else 'Template (optional)' }}</label>
+                    <select class="form-select" id="qs-template" onchange="loadQuickTemplate()">
+                        <option value="">{{ 'ללא תבנית — טקסט חופשי' if (admin_language or 'he') == 'he' else 'No template — free text' }}</option>
+                        {% for t in templates %}
+                        {% if t.is_active %}
+                        <option value="{{ t.id }}" data-body="{{ t.content_he }}">{{ t.name_he }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'הודעה' if (admin_language or 'he') == 'he' else 'Message' }}</label>
+                    <textarea class="form-control" id="qs-message" rows="4" maxlength="500" required></textarea>
+                    <div class="form-text"><span id="qs-charcount">0</span>/500</div>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i> {{ 'שלח SMS' if (admin_language or 'he') == 'he' else 'Send SMS' }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="templateModalTitle">{{ 'תבנית חדשה' if (admin_language or 'he') == 'he' else 'New Template' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="tpl-id" value="">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'שם (עברית)' if (admin_language or 'he') == 'he' else 'Name (Hebrew)' }}</label>
+                    <input type="text" class="form-control" id="tpl-name-he" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'שם (אנגלית)' if (admin_language or 'he') == 'he' else 'Name (English)' }}</label>
+                    <input type="text" class="form-control" id="tpl-name-en" dir="ltr">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'תוכן (עברית)' if (admin_language or 'he') == 'he' else 'Content (Hebrew)' }}</label>
+                    <textarea class="form-control" id="tpl-content-he" rows="4" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'קטגוריה' if (admin_language or 'he') == 'he' else 'Category' }}</label>
+                    <select class="form-select" id="tpl-type">
+                        {% for val, label in categories %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="alert alert-info small">
+                    <strong>{{ 'משתנים זמינים:' if (admin_language or 'he') == 'he' else 'Available variables:' }}</strong><br>
+                    {% for var, desc in placeholders %}
+                    <code>{{ var }}</code> — {{ desc }}<br>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                <button type="button" class="btn btn-primary" onclick="saveTemplate()"><i class="fas fa-save me-1"></i> {{ 'שמור' if (admin_language or 'he') == 'he' else 'Save' }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="triggerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ 'טריגר חדש' if (admin_language or 'he') == 'he' else 'New Trigger' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'כאשר סטטוס הזמנה משתנה ל:' if (admin_language or 'he') == 'he' else 'When order status changes to:' }}</label>
+                    <select class="form-select" id="trg-status">
+                        {% for val, label in order_statuses %}
+                        <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'שלח תבנית:' if (admin_language or 'he') == 'he' else 'Send template:' }}</label>
+                    <select class="form-select" id="trg-template">
+                        {% for t in templates %}
+                        <option value="{{ t.id }}">{{ t.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ 'סניף (אופציונלי):' if (admin_language or 'he') == 'he' else 'Branch (optional):' }}</label>
+                    <select class="form-select" id="trg-branch">
+                        <option value="">{{ 'כל הסניפים' if (admin_language or 'he') == 'he' else 'All Branches' }}</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}">{{ b.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                <button type="button" class="btn btn-primary" onclick="saveTrigger()"><i class="fas fa-save me-1"></i> {{ 'שמור' if (admin_language or 'he') == 'he' else 'Save' }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+var templateData = {{ template_data|tojson }};
+
+function apiCall(url, data, onSuccess) {
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+        body: JSON.stringify(data)
+    })
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if(d.ok) { if(onSuccess) onSuccess(d); else location.reload(); }
+        else alert(d.error || 'שגיאה');
+    })
+    .catch(function(){alert('שגיאת תקשורת');});
+}
+
+function openTemplateModal(id) {
+    document.getElementById('tpl-id').value = '';
+    document.getElementById('tpl-name-he').value = '';
+    document.getElementById('tpl-name-en').value = '';
+    document.getElementById('tpl-content-he').value = '';
+    document.getElementById('tpl-type').value = 'order_update';
+    document.getElementById('templateModalTitle').textContent = '{{ "תבנית חדשה" if (admin_language or "he") == "he" else "New Template" }}';
+    new bootstrap.Modal(document.getElementById('templateModal')).show();
+}
+
+function editTemplate(id) {
+    var t = templateData[id];
+    if (!t) return;
+    document.getElementById('tpl-id').value = id;
+    document.getElementById('tpl-name-he').value = t.name_he;
+    document.getElementById('tpl-name-en').value = t.name_en || '';
+    document.getElementById('tpl-content-he').value = t.content_he;
+    document.getElementById('tpl-type').value = t.template_type;
+    document.getElementById('templateModalTitle').textContent = '{{ "עריכת תבנית" if (admin_language or "he") == "he" else "Edit Template" }}';
+    new bootstrap.Modal(document.getElementById('templateModal')).show();
+}
+
+function saveTemplate() {
+    var data = {
+        id: document.getElementById('tpl-id').value || null,
+        name_he: document.getElementById('tpl-name-he').value,
+        name_en: document.getElementById('tpl-name-en').value,
+        content_he: document.getElementById('tpl-content-he').value,
+        template_type: document.getElementById('tpl-type').value,
+    };
+    if (!data.name_he || !data.content_he) { alert('נא למלא שם ותוכן'); return; }
+    apiCall('{{ url_for("admin.sms_template_save") }}', data);
+}
+
+function toggleTemplate(id, active) {
+    apiCall('{{ url_for("admin.sms_template_toggle") }}', {id: id, is_active: active});
+}
+
+function deleteTemplate(id) {
+    if (!confirm('{{ "למחוק תבנית?" if (admin_language or "he") == "he" else "Delete template?" }}')) return;
+    apiCall('{{ url_for("admin.sms_template_delete") }}', {id: id});
+}
+
+function openTriggerModal() {
+    new bootstrap.Modal(document.getElementById('triggerModal')).show();
+}
+
+function saveTrigger() {
+    var data = {
+        order_status: document.getElementById('trg-status').value,
+        template_id: document.getElementById('trg-template').value,
+        branch_id: document.getElementById('trg-branch').value || null,
+    };
+    apiCall('{{ url_for("admin.sms_trigger_save") }}', data);
+}
+
+function toggleTrigger(id, active) {
+    apiCall('{{ url_for("admin.sms_trigger_toggle") }}', {id: id, is_active: active});
+}
+
+function deleteTrigger(id) {
+    if (!confirm('{{ "למחוק טריגר?" if (admin_language or "he") == "he" else "Delete trigger?" }}')) return;
+    apiCall('{{ url_for("admin.sms_trigger_delete") }}', {id: id});
+}
+
+function loadQuickTemplate() {
+    var sel = document.getElementById('qs-template');
+    var opt = sel.options[sel.selectedIndex];
+    if (opt.dataset.body) {
+        document.getElementById('qs-message').value = opt.dataset.body;
+        updateCharCount();
+    }
+}
+
+function updateCharCount() {
+    document.getElementById('qs-charcount').textContent = document.getElementById('qs-message').value.length;
+}
+document.getElementById('qs-message').addEventListener('input', updateCharCount);
+
+document.getElementById('quickSendForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var phone = document.getElementById('qs-phone').value.trim();
+    var message = document.getElementById('qs-message').value.trim();
+    if (!phone || !message) { alert('נא למלא טלפון והודעה'); return; }
+    var btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> שולח...';
+    apiCall('{{ url_for("admin.sms_quick_send") }}', {phone: phone, message: message}, function(d) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> {{ "שלח SMS" if (admin_language or "he") == "he" else "Send SMS" }}';
+        alert(d.message || 'SMS נשלח בהצלחה!');
+    });
+});
+
+fetch('{{ url_for("admin.sms_health_check") }}')
+.then(function(r){return r.json();})
+.then(function(d){
+    var badge = document.getElementById('smsStatusBadge');
+    if(d.configured) {
+        badge.className = 'badge bg-success';
+        badge.innerHTML = '<i class="fas fa-check-circle me-1"></i> SMS מוגדר';
+    } else {
+        badge.className = 'badge bg-danger';
+        badge.innerHTML = '<i class="fas fa-times-circle me-1"></i> SMS לא מוגדר';
+    }
+})
+.catch(function(){
+    var badge = document.getElementById('smsStatusBadge');
+    badge.className = 'badge bg-warning';
+    badge.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> לא ניתן לבדוק';
+});
+
+var activeTab = '{{ active_tab or "templates" }}';
+if (activeTab === 'logs') {
+    var el = document.querySelector('a[href="#logsTab"]');
+    if (el) new bootstrap.Tab(el).show();
+}
+</script>
+{% endblock %}

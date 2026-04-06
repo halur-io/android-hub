@@ -834,6 +834,10 @@ def orders():
 
     categories = {c.id: c.name_he for c in MenuCategory.query.all()}
 
+    from models import SMSTemplate
+    sms_tpls = SMSTemplate.query.filter_by(is_active=True).order_by(SMSTemplate.id).all()
+    sms_templates_data = [{'id': t.id, 'name_he': t.name_he, 'content_he': t.content_he or ''} for t in sms_tpls]
+
     return render_template('ops/orders.html',
         active_tab='orders',
         orders=order_list,
@@ -844,6 +848,7 @@ def orders():
         status_labels=OPS_STATUS_LABELS,
         status_colors=OPS_STATUS_COLORS,
         categories=categories,
+        sms_templates=sms_templates_data,
     )
 
 
@@ -902,12 +907,110 @@ def update_order_status(order_id):
         pass
 
     db.session.commit()
+
+    try:
+        _auto_send_sms_for_status(order, new_status)
+    except Exception as e:
+        import logging
+        logging.error(f'Auto-SMS failed for order {order.id} status {new_status}: {e}')
+
     return jsonify({
         'ok': True,
         'message': f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}',
         'new_status': new_status,
         'label': OPS_STATUS_LABELS.get(new_status, new_status),
     })
+
+
+def _auto_send_sms_for_status(order, new_status):
+    from models import SMSAutoTrigger, SMSLog, Branch
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    triggers = SMSAutoTrigger.query.filter_by(order_status=new_status, is_active=True).all()
+    if not triggers:
+        return
+    phone = order.customer_phone
+    if not phone:
+        return
+    send_fn = create_sender_from_env()
+    branch = Branch.query.get(order.branch_id) if order.branch_id else None
+    user = _get_ops_user()
+    for trigger in triggers:
+        if trigger.branch_id and trigger.branch_id != order.branch_id:
+            continue
+        template = trigger.template
+        if not template or not template.is_active:
+            continue
+        message = template.render(order=order, branch=branch)
+        status = 'sent'
+        error_msg = None
+        if send_fn:
+            try:
+                send_fn(phone, message)
+            except Exception as e:
+                status = 'failed'
+                error_msg = str(e)
+        else:
+            status = 'failed'
+            error_msg = 'SMS provider not configured'
+        log = SMSLog(
+            order_id=order.id,
+            recipient_phone=phone,
+            message_type='auto_trigger',
+            message_text=message,
+            status=status,
+            error_message=error_msg,
+            staff_name=user.name if user else 'Auto',
+        )
+        db.session.add(log)
+    db.session.commit()
+
+
+@ops_bp.route('/api/orders/<int:order_id>/send-sms', methods=['POST'])
+@require_ops_module('orders')
+def send_order_sms(order_id):
+    from models import SMSLog, Branch
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
+    phone = order.customer_phone
+    if not phone:
+        return jsonify({'ok': False, 'error': 'אין מספר טלפון להזמנה'})
+    data = request.get_json(force=True)
+    message = data.get('message', '').strip()
+    if not message:
+        return jsonify({'ok': False, 'error': 'נא לכתוב הודעה'})
+    send_fn = create_sender_from_env()
+    user = _get_ops_user()
+    status = 'sent'
+    error_msg = None
+    if send_fn:
+        try:
+            send_fn(phone, message)
+        except Exception as e:
+            status = 'failed'
+            error_msg = str(e)
+    else:
+        status = 'failed'
+        error_msg = 'SMS provider not configured'
+    log = SMSLog(
+        order_id=order.id,
+        recipient_phone=phone,
+        message_type='manual_ops',
+        message_text=message,
+        status=status,
+        error_message=error_msg,
+        staff_name=user.name if user else 'Ops',
+    )
+    db.session.add(log)
+    db.session.commit()
+    if status == 'sent':
+        return jsonify({'ok': True, 'message': f'SMS נשלח ל-{phone}'})
+    else:
+        return jsonify({'ok': False, 'error': f'שליחה נכשלה: {error_msg}'})
 
 
 @ops_bp.route('/api/orders/<int:order_id>')

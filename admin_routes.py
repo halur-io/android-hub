@@ -177,6 +177,15 @@ ROUTE_PERMISSIONS = {
     'admin.edit_delivery_zone': 'branches.edit',
     'admin.delete_delivery_zone': 'branches.edit',
     'admin.toggle_delivery_zone': 'branches.edit',
+    'admin.sms_center': 'system.admin',
+    'admin.sms_template_save': 'system.admin',
+    'admin.sms_template_toggle': 'system.admin',
+    'admin.sms_template_delete': 'system.admin',
+    'admin.sms_trigger_save': 'system.admin',
+    'admin.sms_trigger_toggle': 'system.admin',
+    'admin.sms_trigger_delete': 'system.admin',
+    'admin.sms_quick_send': 'system.admin',
+    'admin.sms_health_check': 'system.admin',
 }
 
 @admin_bp.before_request
@@ -10203,3 +10212,237 @@ def toggle_delivery_zone(zone_id):
     status = 'פעיל' if zone.is_active else 'מושבת'
     flash(f'{zone.city_name}: {status}', 'success')
     return redirect(url_for('admin.delivery_zones'))
+
+
+@admin_bp.route('/sms-center')
+@login_required
+def sms_center():
+    from models import SMSTemplate, SMSAutoTrigger, SMSLog, Branch
+    templates = SMSTemplate.query.order_by(SMSTemplate.id).all()
+    triggers = SMSAutoTrigger.query.order_by(SMSAutoTrigger.id).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+
+    template_data = {}
+    for t in templates:
+        template_data[t.id] = {
+            'name_he': t.name_he,
+            'name_en': t.name_en or '',
+            'content_he': t.content_he,
+            'template_type': t.template_type,
+        }
+
+    active_tab = request.args.get('tab', 'templates')
+    log_page = request.args.get('page', 1, type=int)
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    log_status = request.args.get('log_status', '')
+    phone_search = request.args.get('phone_search', '')
+
+    logs_query = SMSLog.query.order_by(SMSLog.created_at.desc())
+    if date_from:
+        try:
+            from datetime import datetime as dt
+            logs_query = logs_query.filter(SMSLog.created_at >= dt.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime as dt, timedelta
+            logs_query = logs_query.filter(SMSLog.created_at < dt.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
+    if log_status:
+        logs_query = logs_query.filter(SMSLog.status == log_status)
+    if phone_search:
+        logs_query = logs_query.filter(SMSLog.recipient_phone.contains(phone_search))
+
+    per_page = 50
+    total_logs = logs_query.count()
+    total_log_pages = max(1, (total_logs + per_page - 1) // per_page)
+    sms_logs = logs_query.offset((log_page - 1) * per_page).limit(per_page).all()
+
+    return render_template('admin/sms_center.html',
+        templates=templates,
+        triggers=triggers,
+        branches=branches,
+        template_data=template_data,
+        categories=SMSTemplate.CATEGORIES,
+        placeholders=SMSTemplate.PLACEHOLDERS,
+        order_statuses=SMSAutoTrigger.ORDER_STATUSES,
+        sms_logs=sms_logs,
+        log_page=log_page,
+        total_log_pages=total_log_pages,
+        active_tab=active_tab,
+        date_from=date_from,
+        date_to=date_to,
+        log_status=log_status,
+        phone_search=phone_search,
+    )
+
+
+@admin_bp.route('/sms-center/template/save', methods=['POST'])
+@login_required
+def sms_template_save():
+    from models import SMSTemplate
+    data = request.get_json(force=True)
+    tpl_id = data.get('id')
+    if tpl_id:
+        tpl = SMSTemplate.query.get_or_404(int(tpl_id))
+    else:
+        tpl = SMSTemplate()
+    tpl.name_he = data.get('name_he', '').strip()
+    tpl.name_en = data.get('name_en', '').strip() or None
+    tpl.content_he = data.get('content_he', '').strip()
+    tpl.template_type = data.get('template_type', 'order_update')
+    tpl.available_variables = ','.join([v for v, _ in SMSTemplate.PLACEHOLDERS])
+    if not tpl.name_he or not tpl.content_he:
+        return jsonify(ok=False, error='נא למלא שם ותוכן')
+    if not tpl_id:
+        db.session.add(tpl)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/template/toggle', methods=['POST'])
+@login_required
+def sms_template_toggle():
+    from models import SMSTemplate
+    data = request.get_json(force=True)
+    tpl = SMSTemplate.query.get_or_404(data['id'])
+    tpl.is_active = bool(data.get('is_active', True))
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/template/delete', methods=['POST'])
+@login_required
+def sms_template_delete():
+    from models import SMSTemplate
+    data = request.get_json(force=True)
+    tpl = SMSTemplate.query.get_or_404(data['id'])
+    db.session.delete(tpl)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/trigger/save', methods=['POST'])
+@login_required
+def sms_trigger_save():
+    from models import SMSAutoTrigger, SMSTemplate
+    data = request.get_json(force=True)
+    order_status = data.get('order_status', '').strip()
+    valid_statuses = [s for s, _ in SMSAutoTrigger.ORDER_STATUSES]
+    if order_status not in valid_statuses:
+        return jsonify(ok=False, error='סטטוס לא תקין')
+    try:
+        template_id = int(data.get('template_id'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='תבנית לא תקינה')
+    if not SMSTemplate.query.get(template_id):
+        return jsonify(ok=False, error='תבנית לא נמצאה')
+    branch_id = None
+    if data.get('branch_id'):
+        try:
+            branch_id = int(data['branch_id'])
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error='סניף לא תקין')
+    existing = SMSAutoTrigger.query.filter_by(order_status=order_status, template_id=template_id, branch_id=branch_id).first()
+    if existing:
+        return jsonify(ok=False, error='טריגר זהה כבר קיים')
+    trigger = SMSAutoTrigger()
+    trigger.order_status = order_status
+    trigger.template_id = template_id
+    trigger.branch_id = branch_id
+    trigger.is_active = True
+    db.session.add(trigger)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/trigger/toggle', methods=['POST'])
+@login_required
+def sms_trigger_toggle():
+    from models import SMSAutoTrigger
+    data = request.get_json(force=True)
+    try:
+        trigger_id = int(data.get('id'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='מזהה לא תקין')
+    trigger = SMSAutoTrigger.query.get_or_404(trigger_id)
+    trigger.is_active = bool(data.get('is_active', True))
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/trigger/delete', methods=['POST'])
+@login_required
+def sms_trigger_delete():
+    from models import SMSAutoTrigger
+    data = request.get_json(force=True)
+    try:
+        trigger_id = int(data.get('id'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='מזהה לא תקין')
+    trigger = SMSAutoTrigger.query.get_or_404(trigger_id)
+    db.session.delete(trigger)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/quick-send', methods=['POST'])
+@login_required
+def sms_quick_send():
+    from models import SMSLog
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    data = request.get_json(force=True)
+    phone = data.get('phone', '').strip()
+    message = data.get('message', '').strip()
+    if not phone or not message:
+        return jsonify(ok=False, error='נא למלא טלפון והודעה')
+
+    send_fn = create_sender_from_env()
+    if not send_fn:
+        log = SMSLog(
+            recipient_phone=phone,
+            message_type='quick_send',
+            message_text=message,
+            status='failed',
+            error_message='SMS provider not configured',
+            staff_name=current_user.username,
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(ok=False, error='ספק SMS לא מוגדר. הודעה נשמרה בלוג.')
+
+    try:
+        result = send_fn(phone, message)
+        log = SMSLog(
+            recipient_phone=phone,
+            message_type='quick_send',
+            message_text=message,
+            status='sent',
+            staff_name=current_user.username,
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(ok=True, message='SMS נשלח בהצלחה!')
+    except Exception as e:
+        log = SMSLog(
+            recipient_phone=phone,
+            message_type='quick_send',
+            message_text=message,
+            status='failed',
+            error_message=str(e),
+            staff_name=current_user.username,
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(ok=False, error=f'שליחה נכשלה: {str(e)}')
+
+
+@admin_bp.route('/sms-center/health-check')
+@login_required
+def sms_health_check():
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_fn = create_sender_from_env()
+    return jsonify(configured=send_fn is not None)

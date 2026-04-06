@@ -737,6 +737,9 @@
             <a class="nav-link {% if request.endpoint in ['admin.time_logs', 'admin.time_log_clock_out', 'admin.time_log_auto_close'] %}active{% endif %}" href="{{ url_for('admin.time_logs') }}">
                 <i class="fas fa-user-clock me-2"></i> {{ 'מעקב שעות' if (admin_language or 'he') == 'he' else 'Time Tracking' }}
             </a>
+            <a class="nav-link {% if request.endpoint == 'admin.sms_center' %}active{% endif %}" href="{{ url_for('admin.sms_center') }}">
+                <i class="fas fa-sms me-2"></i> {{ 'מרכז SMS' if (admin_language or 'he') == 'he' else 'SMS Center' }}
+            </a>
             {% endif %}
             {% if has_permission('kitchen.view') or has_permission('system.admin') %}
             <hr class="my-3">

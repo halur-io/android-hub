@@ -512,6 +512,125 @@ def delivery_delete():
     return jsonify({'ok': True, 'message': f'אזור {name} נמחק'})
 
 
+@ops_bp.route('/employees')
+@require_ops_module('employees')
+def employees():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        if request.is_json:
+            return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+        flash('רק סופר אדמין יכול לנהל עובדים', 'danger')
+        return redirect(url_for('ops.home'))
+    effective_branch = _get_effective_branch_id()
+    query = ManagerPIN.query
+    if effective_branch:
+        query = query.filter(
+            db.or_(ManagerPIN.branch_id == effective_branch, ManagerPIN.branch_id.is_(None))
+        )
+    pins = query.order_by(ManagerPIN.name).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    return render_template('ops/employees.html',
+        active_tab='employees',
+        pins=pins,
+        branches=branches,
+        all_modules=ManagerPIN.OPS_MODULES,
+    )
+
+
+@ops_bp.route('/api/employees/save', methods=['POST'])
+@require_ops_module('employees')
+def employees_save():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    data = request.get_json(force=True)
+    pin_id = data.get('id')
+    name = (data.get('name') or '').strip()
+    pin_code = (data.get('pin') or '').strip()
+    description = (data.get('description') or '').strip()
+    branch_id = data.get('branch_id')
+    is_superadmin = bool(data.get('is_ops_superadmin'))
+    raw_permissions = data.get('ops_permissions') or []
+    valid_modules = set(ManagerPIN.OPS_MODULES)
+    ops_permissions = [p for p in raw_permissions if isinstance(p, str) and p in valid_modules]
+    if not name:
+        return jsonify({'ok': False, 'error': 'שם עובד הוא שדה חובה'})
+    resolved_branch_id = None
+    if branch_id:
+        try:
+            resolved_branch_id = int(branch_id)
+        except (ValueError, TypeError):
+            return jsonify({'ok': False, 'error': 'סניף לא תקין'})
+        if not Branch.query.get(resolved_branch_id):
+            return jsonify({'ok': False, 'error': 'סניף לא נמצא'})
+    if pin_id:
+        mp = ManagerPIN.query.get(pin_id)
+        if not mp:
+            return jsonify({'ok': False, 'error': 'עובד לא נמצא'})
+        if mp.is_ops_superadmin and not is_superadmin:
+            other_superadmins = ManagerPIN.query.filter(
+                ManagerPIN.is_ops_superadmin == True,
+                ManagerPIN.is_active == True,
+                ManagerPIN.id != mp.id,
+            ).count()
+            if other_superadmins == 0:
+                return jsonify({'ok': False, 'error': 'לא ניתן להסיר סופר אדמין אחרון'})
+        mp.name = name
+        mp.description = description
+        mp.is_ops_superadmin = is_superadmin
+        mp.ops_permissions = ops_permissions if not is_superadmin else []
+        mp.branch_id = resolved_branch_id
+        if pin_code:
+            if len(pin_code) < 4:
+                return jsonify({'ok': False, 'error': 'קוד PIN חייב להיות לפחות 4 ספרות'})
+            mp.set_pin(pin_code)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': f'עובד "{name}" עודכן'})
+    else:
+        if not pin_code or len(pin_code) < 4:
+            return jsonify({'ok': False, 'error': 'קוד PIN חייב להיות לפחות 4 ספרות'})
+        mp = ManagerPIN(
+            name=name,
+            description=description,
+            is_ops_superadmin=is_superadmin,
+            ops_permissions=ops_permissions if not is_superadmin else [],
+            branch_id=resolved_branch_id,
+        )
+        mp.set_pin(pin_code)
+        db.session.add(mp)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': f'עובד "{name}" נוצר בהצלחה'})
+
+
+@ops_bp.route('/api/employees/toggle', methods=['POST'])
+@require_ops_module('employees')
+def employees_toggle():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    data = request.get_json(force=True)
+    pin_id = data.get('id')
+    if not pin_id:
+        return jsonify({'ok': False, 'error': 'חסר מזהה'})
+    mp = ManagerPIN.query.get(pin_id)
+    if not mp:
+        return jsonify({'ok': False, 'error': 'עובד לא נמצא'})
+    if mp.id == user.id:
+        return jsonify({'ok': False, 'error': 'לא ניתן לשנות סטטוס של עצמך'})
+    if mp.is_active and mp.is_ops_superadmin:
+        other_superadmins = ManagerPIN.query.filter(
+            ManagerPIN.is_ops_superadmin == True,
+            ManagerPIN.is_active == True,
+            ManagerPIN.id != mp.id,
+        ).count()
+        if other_superadmins == 0:
+            return jsonify({'ok': False, 'error': 'לא ניתן להשבית סופר אדמין אחרון'})
+    mp.is_active = not mp.is_active
+    db.session.commit()
+    status = 'פעיל' if mp.is_active else 'מושבת'
+    return jsonify({'ok': True, 'message': f'{mp.name}: {status}', 'is_active': mp.is_active})
+
+
 @ops_bp.route('/auto-print')
 @require_ops_module('orders')
 def auto_print():

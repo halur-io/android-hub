@@ -2639,7 +2639,7 @@ class ManagerPIN(db.Model):
 
     branch = db.relationship('Branch', foreign_keys=[branch_id])
 
-    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches', 'shifts', 'delivery']
+    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches', 'shifts', 'delivery', 'employees']
 
     def set_pin(self, pin):
         self.pin_hash = generate_password_hash(pin)

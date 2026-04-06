@@ -69,6 +69,9 @@
             {% if 'delivery' in ops_modules %}
                 {% set _ = tabs.append(('delivery', 'משלוחים', 'fas fa-truck', url_for('ops.delivery'))) %}
             {% endif %}
+            {% if is_ops_superadmin and 'employees' in ops_modules %}
+                {% set _ = tabs.append(('employees', 'עובדים', 'fas fa-users', url_for('ops.employees'))) %}
+            {% endif %}
             {% if is_ops_superadmin %}
                 {% set _ = tabs.append(('settings', 'הגדרות', 'fas fa-cog', url_for('ops.settings'))) %}
             {% endif %}

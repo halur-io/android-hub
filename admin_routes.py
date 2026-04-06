@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session, make_response
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
 from app import csrf
 # from flask_wtf.csrf import exempt  # Not available in this version
@@ -10037,13 +10037,13 @@ def time_logs_export():
         clock_in_str = first_log.clock_in.strftime('%d/%m/%Y %H:%M')
         clock_out_str = last_log.clock_out.strftime('%d/%m/%Y %H:%M') if last_log.clock_out else ''
         raw_seconds = sum(l.duration_seconds for l in logs_group)
-        raw_hours = round(raw_seconds / 3600, 2)
-        reg, ot125, ot150 = calc_overtime_for_day(raw_hours, day_key)
+        raw_hours_exact = raw_seconds / 3600
+        reg, ot125, ot150 = calc_overtime_for_day(raw_hours_exact, day_key)
         wt = weighted_hours(reg, ot125, ot150)
         daily_rows.append({
             'date': day_key, 'worker': wname, 'branch': branch_name,
             'clock_in': clock_in_str, 'clock_out': clock_out_str,
-            'raw_hours': raw_hours,
+            'raw_hours': round(raw_hours_exact, 2),
             'regular': round(reg, 2), 'ot_125': round(ot125, 2),
             'ot_150': round(ot150, 2), 'weighted': round(wt, 2),
         })

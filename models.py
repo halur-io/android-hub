@@ -442,6 +442,7 @@ class BranchMenuItem(db.Model):
     custom_price = db.Column(db.Float, nullable=True)
     is_available = db.Column(db.Boolean, default=True)
     display_order = db.Column(db.Integer, default=0)
+    print_station = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -786,8 +786,14 @@ def get_order_detail(order_id):
         menu_item_id = item.get('menu_item_id') or item.get('item_id')
         if menu_item_id:
             mi = MenuItem.query.get(menu_item_id)
-            if mi and mi.print_station:
-                item['print_station'] = mi.print_station
+            if mi:
+                station = mi.print_station
+                if order.branch_id:
+                    bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
+                    if bmi and bmi.print_station:
+                        station = bmi.print_station
+                if station:
+                    item['print_station'] = station
 
     by_category = {}
     for item in items:
@@ -890,6 +896,8 @@ def menu():
         for bmi in BranchMenuItem.query.filter_by(branch_id=effective_branch).all():
             branch_overrides[bmi.menu_item_id] = bmi
 
+    stations = PrintStation.query.order_by(PrintStation.name).all()
+
     return render_template('ops/menu.html',
         active_tab='menu',
         categories=categories,
@@ -898,6 +906,7 @@ def menu():
         search=search,
         effective_branch=effective_branch,
         branch_overrides=branch_overrides,
+        stations=stations,
     )
 
 
@@ -943,13 +952,47 @@ def menu_price():
         if bmi:
             bmi.custom_price = new_price
         else:
-            bmi = BranchMenuItem(branch_id=effective_branch, menu_item_id=item_id, custom_price=new_price)
+            bmi = BranchMenuItem(
+                branch_id=effective_branch,
+                menu_item_id=item_id,
+                custom_price=new_price,
+                is_available=item.is_available,
+            )
             db.session.add(bmi)
         db.session.commit()
         return jsonify({'ok': True, 'message': 'מחיר עודכן (סניף)'})
     item.base_price = new_price
     db.session.commit()
     return jsonify({'ok': True, 'message': 'מחיר עודכן'})
+
+
+@ops_bp.route('/api/menu/station', methods=['POST'])
+@require_ops_module('menu')
+def menu_station():
+    data = request.get_json(force=True)
+    item_id = data.get('item_id')
+    station = (data.get('station') or '').strip() or None
+    item = MenuItem.query.get(item_id)
+    if not item:
+        return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch:
+        bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=item_id).first()
+        if bmi:
+            bmi.print_station = station
+        else:
+            bmi = BranchMenuItem(
+                branch_id=effective_branch,
+                menu_item_id=item_id,
+                print_station=station,
+                is_available=item.is_available,
+            )
+            db.session.add(bmi)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'עמדת הדפסה עודכנה (סניף)', 'station': station})
+    item.print_station = station
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'עמדת הדפסה עודכנה', 'station': station})
 
 
 @ops_bp.route('/stock')
@@ -1495,8 +1538,12 @@ def direct_print():
             st = 'כללי'
             if menu_item_id:
                 mi = MenuItem.query.get(menu_item_id)
-                if mi and mi.print_station:
-                    st = mi.print_station
+                if mi:
+                    st = mi.print_station or 'כללי'
+                    if order.branch_id:
+                        bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
+                        if bmi and bmi.print_station:
+                            st = bmi.print_station
             if st not in by_station:
                 by_station[st] = []
             by_station[st].append(item)
@@ -1548,6 +1595,10 @@ def get_unprinted_orders():
                 if mi:
                     if mi.print_station:
                         st = mi.print_station
+                    if o.branch_id:
+                        bmi = BranchMenuItem.query.filter_by(branch_id=o.branch_id, menu_item_id=menu_item_id).first()
+                        if bmi and bmi.print_station:
+                            st = bmi.print_station
                     if mi.print_name:
                         item['print_name'] = mi.print_name
             if st not in by_station:

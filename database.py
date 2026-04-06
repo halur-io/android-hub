@@ -33,6 +33,7 @@ def _run_safe_migrations(db):
         ("menu_items", "print_name", "ALTER TABLE menu_items ADD COLUMN print_name VARCHAR(100)"),
         ("menu_items", "image_hero_path", "ALTER TABLE menu_items ADD COLUMN image_hero_path VARCHAR(500)"),
         ("manager_pins", "branch_id", "ALTER TABLE manager_pins ADD COLUMN branch_id INTEGER REFERENCES branches(id)"),
+        ("branch_menu_items", "print_station", "ALTER TABLE branch_menu_items ADD COLUMN print_station VARCHAR(50)"),
     ]
     for table, column, sql in migrations:
         try:

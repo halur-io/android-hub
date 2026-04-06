@@ -27,6 +27,14 @@
     {% endfor %}
 </div>
 
+{% if effective_branch %}
+<div style="padding:4px 16px;display:flex;align-items:center;gap:6px;">
+    <span style="font-size:0.65rem;color:var(--ops-muted);font-weight:600;">
+        <i class="fas fa-code-branch" style="margin-left:4px;"></i>מחירים והדפסה לפי סניף
+    </span>
+</div>
+{% endif %}
+
 {% if items %}
 <div id="menuItems">
 {% for item in items %}
@@ -34,12 +42,16 @@
     {% if bmi %}
         {% set eff_available = bmi.is_available %}
         {% set eff_price = bmi.custom_price if bmi.custom_price is not none else item.base_price %}
+        {% set eff_station = bmi.print_station if bmi.print_station else item.print_station %}
+        {% set has_branch_station = bmi.print_station is not none and bmi.print_station %}
     {% else %}
         {% set eff_available = item.is_available %}
         {% set eff_price = item.base_price %}
+        {% set eff_station = item.print_station %}
+        {% set has_branch_station = false %}
     {% endif %}
-    <div class="ops-item-row" id="item-{{ item.id }}">
-        <div class="ops-item-info">
+    <div class="ops-item-row" id="item-{{ item.id }}" style="flex-wrap:wrap;">
+        <div class="ops-item-info" style="flex:1;min-width:0;">
             <div class="ops-item-name">{{ item.name_he }}</div>
             <div class="ops-item-sub">
                 {{ item.category.name_he if item.category else '' }}
@@ -49,16 +61,38 @@
                 {% if bmi and bmi.custom_price is not none %}
                 <span class="ops-badge" style="margin-right:6px;background:#3b82f6;color:#fff;">מחיר סניף</span>
                 {% endif %}
+                {% if has_branch_station %}
+                <span class="ops-badge" style="margin-right:6px;background:#8b5cf6;color:#fff;">הדפסה סניף</span>
+                {% endif %}
             </div>
+            {% if bmi and bmi.custom_price is not none and item.base_price != eff_price %}
+            <div style="font-size:0.65rem;color:var(--ops-muted);margin-top:2px;">
+                מחיר בסיס: ₪{{ item.base_price|int }}
+            </div>
+            {% endif %}
         </div>
-        <input type="number" class="ops-price-edit" value="{{ eff_price or 0 }}"
-               onchange="updatePrice({{ item.id }}, this.value)"
-               step="0.5" min="0" inputmode="decimal">
-        <label class="ops-switch">
-            <input type="checkbox" {% if eff_available %}checked{% endif %}
-                   onchange="toggleItem({{ item.id }})">
-            <span class="ops-switch-slider"></span>
-        </label>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <select class="ops-station-select" data-item-id="{{ item.id }}"
+                    onchange="updateStation({{ item.id }}, this.value)"
+                    style="background:var(--ops-card);border:1px solid var(--ops-border);color:var(--ops-text);
+                           border-radius:8px;padding:4px 6px;font-size:0.7rem;font-family:'Heebo',sans-serif;
+                           min-width:80px;max-width:110px;appearance:auto;">
+                <option value="" {% if not eff_station %}selected{% endif %}>כללי</option>
+                {% for st in stations %}
+                <option value="{{ st.name }}" {% if eff_station == st.name %}selected{% endif %}>
+                    {{ st.display_name or st.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <input type="number" class="ops-price-edit" value="{{ eff_price or 0 }}"
+                   onchange="updatePrice({{ item.id }}, this.value)"
+                   step="0.5" min="0" inputmode="decimal">
+            <label class="ops-switch">
+                <input type="checkbox" {% if eff_available %}checked{% endif %}
+                       onchange="toggleItem({{ item.id }})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
     </div>
 {% endfor %}
 </div>
@@ -75,11 +109,15 @@
 function toggleItem(itemId) {
     opsPost('{{ url_for('ops.menu_toggle') }}', {item_id: itemId}, function(d) {
         var row = document.getElementById('item-' + itemId);
-        var badge = row.querySelector('.ops-badge');
+        var sub = row.querySelector('.ops-item-sub');
+        var badge = sub.querySelector('.ops-badge-red');
         if (!d.available) {
             if (!badge) {
-                var sub = row.querySelector('.ops-item-sub');
-                sub.insertAdjacentHTML('beforeend', '<span class="ops-badge ops-badge-red" style="margin-right:6px;">לא זמין</span>');
+                var span = document.createElement('span');
+                span.className = 'ops-badge ops-badge-red';
+                span.style.marginRight = '6px';
+                span.textContent = 'לא זמין';
+                sub.appendChild(span);
             }
         } else {
             if (badge) badge.remove();
@@ -89,6 +127,10 @@ function toggleItem(itemId) {
 
 function updatePrice(itemId, price) {
     opsPost('{{ url_for('ops.menu_price') }}', {item_id: itemId, price: price});
+}
+
+function updateStation(itemId, station) {
+    opsPost('{{ url_for('ops.menu_station') }}', {item_id: itemId, station: station});
 }
 </script>
 {% endblock %}

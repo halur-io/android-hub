@@ -415,30 +415,10 @@ def delivery():
 @ops_bp.route('/api/cities')
 @require_ops_module('delivery')
 def api_cities():
-    import urllib.request
-    import urllib.parse
+    from city_autocomplete import fetch_cities
     q = request.args.get('q', '').strip()
-    if not q or len(q) < 2:
-        return jsonify({'cities': []})
-    try:
-        params = urllib.parse.urlencode({
-            'resource_id': 'd4901968-dad3-4f15-a5f8-ced45e4e8e5c',
-            'q': q, 'limit': 100,
-            'fields': 'שם_ישוב'
-        })
-        url = f'https://data.gov.il/api/3/action/datastore_search?{params}'
-        req = urllib.request.Request(url, headers={'User-Agent': 'RestaurantApp/1.0'})
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read())
-        records = data.get('result', {}).get('records', [])
-        cities = sorted(set(
-            r.get('שם_ישוב', '').strip()
-            for r in records
-            if r.get('שם_ישוב', '').strip()
-        ))
-        return jsonify({'cities': cities})
-    except Exception:
-        return jsonify({'cities': []})
+    cities = fetch_cities(q)
+    return jsonify({'cities': cities})
 
 
 @ops_bp.route('/api/delivery/save', methods=['POST'])

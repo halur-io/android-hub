@@ -171,6 +171,7 @@ ROUTE_PERMISSIONS = {
     'admin.time_logs': 'system.admin',
     'admin.time_log_clock_out': 'system.admin',
     'admin.time_log_auto_close': 'system.admin',
+    'admin.api_cities': 'branches.view',
     'admin.delivery_zones': 'branches.view',
     'admin.edit_delivery_zone': 'branches.edit',
     'admin.delete_delivery_zone': 'branches.edit',
@@ -10004,32 +10005,10 @@ def time_log_auto_close():
 @admin_bp.route('/api/cities')
 @login_required
 def api_cities():
-    import urllib.request
-    import urllib.parse
+    from city_autocomplete import fetch_cities
     q = request.args.get('q', '').strip()
-    if not q or len(q) < 2:
-        return jsonify({'cities': []})
-    try:
-        params = urllib.parse.urlencode({
-            'resource_id': 'd4901968-dad3-4f15-a5f8-ced45e4e8e5c',
-            'q': q, 'limit': 100,
-            'fields': 'שם_ישוב'
-        })
-        url = f'https://data.gov.il/api/3/action/datastore_search?{params}'
-        req = urllib.request.Request(url, headers={'User-Agent': 'RestaurantApp/1.0'})
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read())
-        records = data.get('result', {}).get('records', [])
-        cities = sorted(set(
-            r.get('שם_ישוב', '').strip()
-            for r in records
-            if r.get('שם_ישוב', '').strip()
-        ))
-        return jsonify({'cities': cities, 'count': len(cities)})
-    except Exception as e:
-        import logging
-        logging.warning(f"Cities API error for '{q}': {e}")
-        return jsonify({'cities': [], 'error': 'API unavailable'})
+    cities = fetch_cities(q)
+    return jsonify({'cities': cities, 'count': len(cities)})
 
 
 @admin_bp.route('/delivery-zones')

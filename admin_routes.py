@@ -171,6 +171,10 @@ ROUTE_PERMISSIONS = {
     'admin.time_logs': 'system.admin',
     'admin.time_log_clock_out': 'system.admin',
     'admin.time_log_auto_close': 'system.admin',
+    'admin.delivery_zones': 'branches.view',
+    'admin.edit_delivery_zone': 'branches.edit',
+    'admin.delete_delivery_zone': 'branches.edit',
+    'admin.toggle_delivery_zone': 'branches.edit',
 }
 
 @admin_bp.before_request
@@ -9995,3 +9999,119 @@ def time_log_auto_close():
     db.session.commit()
     flash(f'{count} משמרות ישנות נסגרו אוטומטית', 'success')
     return redirect(url_for('admin.time_logs'))
+
+
+@admin_bp.route('/api/cities')
+@login_required
+def api_cities():
+    import urllib.request
+    import urllib.parse
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify({'cities': []})
+    try:
+        params = urllib.parse.urlencode({
+            'resource_id': 'd4901968-dad3-4f15-a5f8-ced45e4e8e5c',
+            'q': q, 'limit': 100,
+            'fields': 'שם_ישוב'
+        })
+        url = f'https://data.gov.il/api/3/action/datastore_search?{params}'
+        req = urllib.request.Request(url, headers={'User-Agent': 'RestaurantApp/1.0'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read())
+        records = data.get('result', {}).get('records', [])
+        cities = sorted(set(
+            r.get('שם_ישוב', '').strip()
+            for r in records
+            if r.get('שם_ישוב', '').strip()
+        ))
+        return jsonify({'cities': cities, 'count': len(cities)})
+    except Exception as e:
+        import logging
+        logging.warning(f"Cities API error for '{q}': {e}")
+        return jsonify({'cities': [], 'error': 'API unavailable'})
+
+
+@admin_bp.route('/delivery-zones')
+@login_required
+def delivery_zones():
+    from services.order.order_service import DeliveryZone
+    branch_id = request.args.get('branch_id', type=int)
+    query = DeliveryZone.query
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    zones = query.order_by(DeliveryZone.display_order, DeliveryZone.city_name).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    return render_template('admin/delivery_zones.html',
+        zones=zones,
+        branches=branches,
+        filter_branch_id=branch_id,
+    )
+
+
+@admin_bp.route('/delivery-zones/edit/<int:zone_id>', methods=['GET', 'POST'])
+@admin_bp.route('/delivery-zones/add', methods=['GET', 'POST'], defaults={'zone_id': 0})
+@login_required
+def edit_delivery_zone(zone_id):
+    from services.order.order_service import DeliveryZone
+    form = FlaskForm()
+
+    if zone_id:
+        zone = DeliveryZone.query.get_or_404(zone_id)
+    else:
+        zone = DeliveryZone()
+
+    if request.method == 'POST' and form.validate_on_submit():
+        zone.branch_id = request.form.get('branch_id', type=int) or None
+        zone.city_name = request.form.get('city_name', '').strip()
+        zone.name = request.form.get('name', '').strip() or None
+        zone.description = request.form.get('description', '').strip() or None
+        fee_val = request.form.get('delivery_fee', '0')
+        zone.delivery_fee = float(fee_val) if fee_val and str(fee_val).lower() != 'nan' else 0
+        min_val = request.form.get('minimum_order', '0')
+        zone.minimum_order = float(min_val) if min_val and str(min_val).lower() != 'nan' else 0
+        free_val = request.form.get('free_delivery_above', '')
+        zone.free_delivery_above = float(free_val) if free_val and str(free_val).lower() != 'nan' else None
+        est_val = request.form.get('estimated_minutes', '30')
+        zone.estimated_minutes = int(est_val) if est_val else 30
+        zone.estimated_delivery_time = request.form.get('estimated_delivery_time', '').strip() or None
+        zone.is_active = request.form.get('is_active') == 'on'
+        order_val = request.form.get('display_order', '0')
+        zone.display_order = int(order_val) if order_val else 0
+
+        if not zone.city_name:
+            flash('יש להזין שם עיר', 'error')
+            branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+            return render_template('admin/edit_delivery_zone.html', form=form, zone=zone, branches=branches)
+
+        if not zone_id:
+            db.session.add(zone)
+        db.session.commit()
+        flash('אזור משלוח נשמר בהצלחה! ✓', 'success')
+        return redirect(url_for('admin.delivery_zones'))
+
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    return render_template('admin/edit_delivery_zone.html', form=form, zone=zone, branches=branches)
+
+
+@admin_bp.route('/delivery-zones/delete/<int:zone_id>', methods=['POST'])
+@login_required
+def delete_delivery_zone(zone_id):
+    from services.order.order_service import DeliveryZone
+    zone = DeliveryZone.query.get_or_404(zone_id)
+    db.session.delete(zone)
+    db.session.commit()
+    flash('אזור משלוח נמחק', 'success')
+    return redirect(url_for('admin.delivery_zones'))
+
+
+@admin_bp.route('/delivery-zones/toggle/<int:zone_id>', methods=['POST'])
+@login_required
+def toggle_delivery_zone(zone_id):
+    from services.order.order_service import DeliveryZone
+    zone = DeliveryZone.query.get_or_404(zone_id)
+    zone.is_active = not zone.is_active
+    db.session.commit()
+    status = 'פעיל' if zone.is_active else 'מושבת'
+    flash(f'{zone.city_name}: {status}', 'success')
+    return redirect(url_for('admin.delivery_zones'))

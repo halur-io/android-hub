@@ -66,6 +66,9 @@
             {% if 'shifts' in ops_modules %}
                 {% set _ = tabs.append(('shifts', 'נוכחות', 'fas fa-user-clock', url_for('ops.shifts'))) %}
             {% endif %}
+            {% if 'delivery' in ops_modules %}
+                {% set _ = tabs.append(('delivery', 'משלוחים', 'fas fa-truck', url_for('ops.delivery'))) %}
+            {% endif %}
             {% if is_ops_superadmin %}
                 {% set _ = tabs.append(('settings', 'הגדרות', 'fas fa-cog', url_for('ops.settings'))) %}
             {% endif %}

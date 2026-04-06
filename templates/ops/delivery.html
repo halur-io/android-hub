@@ -1,0 +1,334 @@
+{% extends "ops/base.html" %}
+{% block title %}אזורי משלוח{% endblock %}
+{% block header_title %}אזורי משלוח{% endblock %}
+
+{% block content %}
+<div style="padding:16px;max-width:800px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--ops-muted);">
+            <i class="fas fa-truck" style="margin-left:4px;"></i>
+            אזורי משלוח ({{ zones|length }})
+        </div>
+        <button onclick="openZoneModal()"
+                style="background:var(--ops-accent);border:none;color:#fff;border-radius:10px;padding:8px 16px;
+                       font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">
+            <i class="fas fa-plus" style="margin-left:4px;"></i>הוסף אזור
+        </button>
+    </div>
+
+    {% if zones %}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for zone in zones %}
+        <div id="zone-card-{{ zone.id }}" class="zone-card"
+             data-id="{{ zone.id }}"
+             data-city="{{ zone.city_name }}"
+             data-name="{{ zone.name or '' }}"
+             data-fee="{{ zone.delivery_fee or 0 }}"
+             data-min="{{ zone.minimum_order or 0 }}"
+             data-free="{{ zone.free_delivery_above if zone.free_delivery_above is not none else '' }}"
+             data-time="{{ zone.estimated_minutes or 30 }}"
+             data-order="{{ zone.display_order or 0 }}"
+             style="background:var(--ops-card);border-radius:12px;padding:14px 16px;
+                    border:1px solid {% if zone.is_active %}var(--ops-border){% else %}rgba(239,68,68,0.3){% endif %};
+                    {% if not zone.is_active %}opacity:0.6;{% endif %}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.9rem;font-weight:700;color:var(--ops-text);">
+                        {{ zone.city_name }}
+                        {% if zone.name %}<span style="color:var(--ops-muted);font-weight:400;font-size:0.75rem;margin-right:4px;">({{ zone.name }})</span>{% endif %}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+                        <span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:700;">
+                            ₪{{ zone.delivery_fee|int }} משלוח
+                        </span>
+                        <span style="background:rgba(16,185,129,0.15);color:#10b981;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:700;">
+                            {{ zone.estimated_minutes or 30 }} דק'
+                        </span>
+                        {% if zone.minimum_order %}
+                        <span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:700;">
+                            מינ' ₪{{ zone.minimum_order|int }}
+                        </span>
+                        {% endif %}
+                        {% if zone.free_delivery_above %}
+                        <span style="background:rgba(16,185,129,0.15);color:#10b981;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:700;">
+                            חינם מ-₪{{ zone.free_delivery_above|int }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;margin-right:8px;">
+                    <button class="zone-edit-btn" data-id="{{ zone.id }}"
+                            style="background:var(--ops-bg);border:1px solid var(--ops-border);color:var(--ops-accent);
+                                   border-radius:8px;padding:6px 10px;font-size:0.7rem;cursor:pointer;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="zone-toggle-btn" data-id="{{ zone.id }}"
+                            style="background:var(--ops-bg);border:1px solid var(--ops-border);
+                                   color:{% if zone.is_active %}#f59e0b{% else %}#10b981{% endif %};
+                                   border-radius:8px;padding:6px 10px;font-size:0.7rem;cursor:pointer;">
+                        <i class="fas fa-{% if zone.is_active %}eye-slash{% else %}eye{% endif %}"></i>
+                    </button>
+                    <button class="zone-delete-btn" data-id="{{ zone.id }}" data-name="{{ zone.city_name }}"
+                            style="background:var(--ops-bg);border:1px solid var(--ops-border);color:#ef4444;
+                                   border-radius:8px;padding:6px 10px;font-size:0.7rem;cursor:pointer;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px 20px;color:var(--ops-muted);">
+        <i class="fas fa-truck" style="font-size:2rem;margin-bottom:12px;opacity:0.3;display:block;"></i>
+        <div style="font-size:0.85rem;">אין אזורי משלוח מוגדרים</div>
+        <div style="font-size:0.75rem;margin-top:4px;">לחצו "הוסף אזור" כדי להתחיל</div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="zone-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+                            background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+    <div style="background:var(--ops-bg);border-radius:20px;padding:20px;width:92%;max-width:420px;
+                box-shadow:0 20px 60px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
+        <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:1rem;font-weight:800;color:var(--ops-text);" id="zm-title">הוספת אזור משלוח</div>
+        </div>
+        <input type="hidden" id="zm-id" value="">
+
+        <div style="margin-bottom:10px;position:relative;">
+            <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">שם עיר / יישוב *</label>
+            <input type="text" id="zm-city" autocomplete="off"
+                   style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                          background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                          box-sizing:border-box;">
+            <div id="zm-city-sugg" style="display:none;position:absolute;z-index:9999;background:var(--ops-card);
+                 border:1px solid var(--ops-border);border-radius:0 0 10px 10px;max-height:160px;overflow-y:auto;
+                 width:100%;box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">שם מותאם (אופציונלי)</label>
+            <input type="text" id="zm-name"
+                   style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                          background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                          box-sizing:border-box;">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">דמי משלוח (₪)</label>
+                <input type="number" step="0.5" min="0" id="zm-fee" value="0"
+                       style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                              background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                              box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">זמן משלוח (דק')</label>
+                <input type="number" step="1" min="0" id="zm-time" value="30"
+                       style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                              background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                              box-sizing:border-box;">
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">הזמנה מינימלית (₪)</label>
+                <input type="number" step="0.5" min="0" id="zm-min" value="0"
+                       style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                              background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                              box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">חינם מסכום (₪)</label>
+                <input type="number" step="0.5" min="0" id="zm-free" value=""
+                       placeholder="ריק = ללא"
+                       style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                              background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                              box-sizing:border-box;">
+            </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">סדר תצוגה</label>
+            <input type="number" step="1" min="0" id="zm-order" value="0"
+                   style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                          background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                          box-sizing:border-box;">
+        </div>
+
+        <div id="zm-error" style="display:none;background:#450a0a;border:1px solid #ef4444;color:#fca5a5;
+                                  border-radius:10px;padding:8px 12px;font-size:0.8rem;margin-bottom:12px;
+                                  text-align:center;"></div>
+
+        <div style="display:flex;gap:8px;">
+            <button onclick="closeZoneModal()" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--ops-border);
+                                                       background:var(--ops-card);color:var(--ops-muted);font-size:0.85rem;
+                                                       font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">
+                ביטול
+            </button>
+            <button id="zm-save-btn" onclick="saveZone()"
+                    style="flex:1;padding:12px;border-radius:12px;border:none;
+                           background:var(--ops-accent);color:#fff;font-size:0.85rem;
+                           font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">
+                שמירה
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openZoneModal(id, city, name, fee, min, free, time, order) {
+    document.getElementById('zm-id').value = id || '';
+    document.getElementById('zm-city').value = city || '';
+    document.getElementById('zm-name').value = name || '';
+    document.getElementById('zm-fee').value = fee || 0;
+    document.getElementById('zm-min').value = min || 0;
+    document.getElementById('zm-free').value = (free !== null && free !== undefined) ? free : '';
+    document.getElementById('zm-time').value = time || 30;
+    document.getElementById('zm-order').value = order || 0;
+    document.getElementById('zm-title').textContent = id ? 'עריכת אזור משלוח' : 'הוספת אזור משלוח';
+    document.getElementById('zm-error').style.display = 'none';
+    document.getElementById('zone-modal').style.display = 'flex';
+}
+
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.zone-edit-btn');
+    if (btn) {
+        var card = btn.closest('.zone-card');
+        if (card) {
+            openZoneModal(
+                parseInt(card.getAttribute('data-id')),
+                card.getAttribute('data-city'),
+                card.getAttribute('data-name'),
+                parseFloat(card.getAttribute('data-fee')) || 0,
+                parseFloat(card.getAttribute('data-min')) || 0,
+                card.getAttribute('data-free') ? parseFloat(card.getAttribute('data-free')) : null,
+                parseInt(card.getAttribute('data-time')) || 30,
+                parseInt(card.getAttribute('data-order')) || 0
+            );
+        }
+        return;
+    }
+    btn = e.target.closest('.zone-toggle-btn');
+    if (btn) {
+        toggleZone(parseInt(btn.getAttribute('data-id')));
+        return;
+    }
+    btn = e.target.closest('.zone-delete-btn');
+    if (btn) {
+        deleteZone(parseInt(btn.getAttribute('data-id')), btn.getAttribute('data-name'));
+        return;
+    }
+});
+
+function closeZoneModal() {
+    document.getElementById('zone-modal').style.display = 'none';
+}
+
+document.getElementById('zone-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeZoneModal();
+});
+
+function saveZone() {
+    var city = document.getElementById('zm-city').value.trim();
+    if (!city) {
+        document.getElementById('zm-error').textContent = 'יש להזין שם עיר';
+        document.getElementById('zm-error').style.display = 'block';
+        return;
+    }
+    var btn = document.getElementById('zm-save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    var idVal = document.getElementById('zm-id').value;
+    var data = {
+        id: idVal ? parseInt(idVal) : null,
+        city_name: city,
+        name: document.getElementById('zm-name').value.trim(),
+        delivery_fee: parseFloat(document.getElementById('zm-fee').value) || 0,
+        minimum_order: parseFloat(document.getElementById('zm-min').value) || 0,
+        free_delivery_above: document.getElementById('zm-free').value ? parseFloat(document.getElementById('zm-free').value) : null,
+        estimated_minutes: parseInt(document.getElementById('zm-time').value) || 30,
+        display_order: parseInt(document.getElementById('zm-order').value) || 0,
+    };
+
+    fetch('{{ url_for("ops.delivery_save") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            closeZoneModal();
+            location.reload();
+        } else {
+            document.getElementById('zm-error').textContent = d.error || 'שגיאה';
+            document.getElementById('zm-error').style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = 'שמירה';
+        }
+    })
+    .catch(function() {
+        document.getElementById('zm-error').textContent = 'שגיאת תקשורת';
+        document.getElementById('zm-error').style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = 'שמירה';
+    });
+}
+
+function toggleZone(id) {
+    opsPost('{{ url_for("ops.delivery_toggle") }}', {id: id}, function() {
+        location.reload();
+    });
+}
+
+function deleteZone(id, name) {
+    if (!confirm('למחוק את אזור המשלוח ' + name + '?')) return;
+    opsPost('{{ url_for("ops.delivery_delete") }}', {id: id}, function() {
+        location.reload();
+    });
+}
+
+(function() {
+    var cityInput = document.getElementById('zm-city');
+    var sugg = document.getElementById('zm-city-sugg');
+    var debounce = null;
+
+    cityInput.addEventListener('input', function() {
+        clearTimeout(debounce);
+        var q = cityInput.value.trim();
+        if (q.length < 2) { sugg.style.display = 'none'; return; }
+        debounce = setTimeout(function() {
+            fetch('{{ url_for("ops.api_cities") }}?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var cities = d.cities || [];
+                    if (!cities.length) { sugg.style.display = 'none'; return; }
+                    sugg.innerHTML = '';
+                    cities.forEach(function(c) {
+                        var div = document.createElement('div');
+                        div.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--ops-border);font-size:0.82rem;color:var(--ops-text);';
+                        div.textContent = c;
+                        div.addEventListener('mousedown', function() {
+                            cityInput.value = c;
+                            sugg.style.display = 'none';
+                        });
+                        sugg.appendChild(div);
+                    });
+                    sugg.style.display = '';
+                })
+                .catch(function() { sugg.style.display = 'none'; });
+        }, 300);
+    });
+
+    cityInput.addEventListener('blur', function() {
+        setTimeout(function() { sugg.style.display = 'none'; }, 200);
+    });
+})();
+</script>
+{% endblock %}

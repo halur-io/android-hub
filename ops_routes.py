@@ -21,6 +21,7 @@ from models import (
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
     Printer, PrinterStation, PrintStation, TimeLog,
 )
+from services.order.order_service import DeliveryZone
 
 ops_bp = Blueprint(
     'ops',
@@ -396,6 +397,139 @@ def shift_clock_out():
     open_log.close_shift()
     db.session.commit()
     return jsonify({'ok': True, 'message': f'{worker.name} יצא/ה מהמשמרת ({open_log.duration_display})'})
+
+
+@ops_bp.route('/delivery')
+@require_ops_module('delivery')
+def delivery():
+    effective_branch = _get_effective_branch_id()
+    query = DeliveryZone.query
+    if effective_branch:
+        query = query.filter(
+            db.or_(DeliveryZone.branch_id == effective_branch, DeliveryZone.branch_id.is_(None))
+        )
+    zones = query.order_by(DeliveryZone.display_order, DeliveryZone.city_name).all()
+    return render_template('ops/delivery.html', active_tab='delivery', zones=zones)
+
+
+@ops_bp.route('/api/cities')
+@require_ops_module('delivery')
+def api_cities():
+    import urllib.request
+    import urllib.parse
+    q = request.args.get('q', '').strip()
+    if not q or len(q) < 2:
+        return jsonify({'cities': []})
+    try:
+        params = urllib.parse.urlencode({
+            'resource_id': 'd4901968-dad3-4f15-a5f8-ced45e4e8e5c',
+            'q': q, 'limit': 100,
+            'fields': 'שם_ישוב'
+        })
+        url = f'https://data.gov.il/api/3/action/datastore_search?{params}'
+        req = urllib.request.Request(url, headers={'User-Agent': 'RestaurantApp/1.0'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read())
+        records = data.get('result', {}).get('records', [])
+        cities = sorted(set(
+            r.get('שם_ישוב', '').strip()
+            for r in records
+            if r.get('שם_ישוב', '').strip()
+        ))
+        return jsonify({'cities': cities})
+    except Exception:
+        return jsonify({'cities': []})
+
+
+@ops_bp.route('/api/delivery/save', methods=['POST'])
+@require_ops_module('delivery')
+def delivery_save():
+    data = request.get_json(force=True)
+    zone_id = data.get('id')
+    city_name = (data.get('city_name') or '').strip()
+    if not city_name:
+        return jsonify({'ok': False, 'error': 'חסר שם עיר'})
+    effective_branch = _get_effective_branch_id()
+    user = _get_ops_user()
+    is_super = user and user.is_ops_superadmin
+
+    if zone_id:
+        zone = DeliveryZone.query.get(zone_id)
+        if not zone:
+            return jsonify({'ok': False, 'error': 'אזור לא נמצא'})
+        if not is_super and effective_branch and zone.branch_id != effective_branch:
+            return jsonify({'ok': False, 'error': 'אין הרשאה לערוך אזור זה'})
+    else:
+        zone = DeliveryZone()
+        zone.branch_id = effective_branch
+        db.session.add(zone)
+
+    zone.city_name = city_name
+    zone.name = (data.get('name') or '').strip() or None
+    try:
+        zone.delivery_fee = float(data.get('delivery_fee', 0) or 0)
+    except (ValueError, TypeError):
+        zone.delivery_fee = 0
+    try:
+        zone.minimum_order = float(data.get('minimum_order', 0) or 0)
+    except (ValueError, TypeError):
+        zone.minimum_order = 0
+    free_val = data.get('free_delivery_above')
+    try:
+        zone.free_delivery_above = float(free_val) if free_val else None
+    except (ValueError, TypeError):
+        zone.free_delivery_above = None
+    try:
+        zone.estimated_minutes = int(data.get('estimated_minutes', 30) or 30)
+    except (ValueError, TypeError):
+        zone.estimated_minutes = 30
+    try:
+        zone.display_order = int(data.get('display_order', 0) or 0)
+    except (ValueError, TypeError):
+        zone.display_order = 0
+
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'אזור {city_name} נשמר', 'id': zone.id})
+
+
+@ops_bp.route('/api/delivery/toggle', methods=['POST'])
+@require_ops_module('delivery')
+def delivery_toggle():
+    data = request.get_json(force=True)
+    zone_id = data.get('id')
+    if not zone_id:
+        return jsonify({'ok': False, 'error': 'חסר מזהה'})
+    zone = DeliveryZone.query.get(zone_id)
+    if not zone:
+        return jsonify({'ok': False, 'error': 'אזור לא נמצא'})
+    effective_branch = _get_effective_branch_id()
+    user = _get_ops_user()
+    if not (user and user.is_ops_superadmin) and effective_branch and zone.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'})
+    zone.is_active = not zone.is_active
+    db.session.commit()
+    status = 'פעיל' if zone.is_active else 'מושבת'
+    return jsonify({'ok': True, 'message': f'{zone.city_name}: {status}', 'is_active': zone.is_active})
+
+
+@ops_bp.route('/api/delivery/delete', methods=['POST'])
+@require_ops_module('delivery')
+def delivery_delete():
+    data = request.get_json(force=True)
+    zone_id = data.get('id')
+    if not zone_id:
+        return jsonify({'ok': False, 'error': 'חסר מזהה'})
+    zone = DeliveryZone.query.get(zone_id)
+    if not zone:
+        return jsonify({'ok': False, 'error': 'אזור לא נמצא'})
+    effective_branch = _get_effective_branch_id()
+    user = _get_ops_user()
+    if not (user and user.is_ops_superadmin) and effective_branch and zone.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'})
+    name = zone.city_name
+    db.session.delete(zone)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'אזור {name} נמחק'})
 
 
 @ops_bp.route('/auto-print')

@@ -698,6 +698,9 @@
             <a class="nav-link {% if request.endpoint == 'admin.branches' %}active{% endif %}" href="{{ url_for('admin.branches') }}">
                 <i class="fas fa-store me-2"></i> {{ 'סניפים' if (admin_language or 'he') == 'he' else 'Branches' }}
             </a>
+            <a class="nav-link {% if request.endpoint in ['admin.delivery_zones', 'admin.edit_delivery_zone'] %}active{% endif %}" href="{{ url_for('admin.delivery_zones') }}">
+                <i class="fas fa-truck me-2"></i> {{ 'אזורי משלוח' if (admin_language or 'he') == 'he' else 'Delivery Zones' }}
+            </a>
             {% endif %}
             {% if has_permission('menu.view') %}
             <a class="nav-link {% if request.endpoint == 'admin.menu' %}active{% endif %}" href="{{ url_for('admin.menu') }}">

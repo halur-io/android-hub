@@ -73,7 +73,8 @@
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
             <select class="ops-station-select" data-item-id="{{ item.id }}"
-                    onchange="updateStation({{ item.id }}, this.value)"
+                    data-original-value="{{ eff_station or '' }}"
+                    onchange="onStationChange({{ item.id }}, this)"
                     style="background:var(--ops-card);border:1px solid var(--ops-border);color:var(--ops-text);
                            border-radius:8px;padding:4px 6px;font-size:0.7rem;font-family:'Heebo',sans-serif;
                            min-width:80px;max-width:110px;appearance:auto;">
@@ -84,6 +85,12 @@
                 </option>
                 {% endfor %}
             </select>
+            <button type="button" class="ops-btn ops-btn-primary ops-station-confirm"
+                    id="confirm-station-{{ item.id }}"
+                    onclick="confirmStation({{ item.id }})"
+                    style="display:none;padding:4px 10px;font-size:0.65rem;min-width:auto;white-space:nowrap;">
+                <i class="fas fa-check" style="margin-left:4px;"></i>אישור
+            </button>
             <input type="number" class="ops-price-edit" value="{{ eff_price or 0 }}"
                    onchange="updatePrice({{ item.id }}, this.value)"
                    step="0.5" min="0" inputmode="decimal">
@@ -129,8 +136,45 @@ function updatePrice(itemId, price) {
     opsPost('{{ url_for('ops.menu_price') }}', {item_id: itemId, price: price});
 }
 
-function updateStation(itemId, station) {
-    opsPost('{{ url_for('ops.menu_station') }}', {item_id: itemId, station: station});
+function onStationChange(itemId, selectEl) {
+    var original = selectEl.getAttribute('data-original-value');
+    var current = selectEl.value;
+    var btn = document.getElementById('confirm-station-' + itemId);
+    if (current !== original) {
+        btn.style.display = 'inline-flex';
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+function confirmStation(itemId) {
+    var selectEl = document.querySelector('#item-' + itemId + ' .ops-station-select');
+    var submittedStation = selectEl.value;
+    var btn = document.getElementById('confirm-station-' + itemId);
+    btn.disabled = true;
+    selectEl.disabled = true;
+    fetch('{{ url_for('ops.menu_station') }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({item_id: itemId, station: submittedStation})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        selectEl.disabled = false;
+        btn.disabled = false;
+        if (d.ok || d.success) {
+            showToast(d.message || 'עודכן בהצלחה');
+            selectEl.setAttribute('data-original-value', submittedStation);
+            btn.style.display = 'none';
+        } else {
+            showToast(d.message || d.error || 'שגיאה', true);
+        }
+    })
+    .catch(function() {
+        showToast('שגיאת תקשורת', true);
+        selectEl.disabled = false;
+        btn.disabled = false;
+    });
 }
 </script>
 {% endblock %}

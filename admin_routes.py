@@ -22,7 +22,7 @@ from utilities.exporting import build_export_response
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # Security: Protect all admin routes at the blueprint level
-PUBLIC_ADMIN_ROUTES = ['admin.login', 'admin.admin_redirect', 'admin.api_settings', 'admin.api_branches', 'admin.api_gallery', 'admin.api_menu']
+PUBLIC_ADMIN_ROUTES = ['admin.login', 'admin.admin_redirect', 'admin.api_settings', 'admin.api_branches', 'admin.api_gallery', 'admin.api_menu', 'admin.archived_orders_dashboard', 'admin.archived_order_restore']
 
 # Route to permission mapping for RBAC enforcement
 ROUTE_PERMISSIONS = {
@@ -5824,12 +5824,11 @@ def food_order_send_receipt(order_id):
 
 
 @admin_bp.route('/archived-orders')
-@login_required
 def archived_orders_dashboard():
     """Hidden archive dashboard. Requires superadmin + enrolled device."""
     from models import ArchivedOrder, FoodOrder, EnrolledDevice
 
-    if not getattr(current_user, 'is_superadmin', False):
+    if not current_user.is_authenticated or not getattr(current_user, 'is_superadmin', False):
         abort(404)
 
     device_token = request.cookies.get('ops_device_token')
@@ -5890,13 +5889,12 @@ def archived_orders_dashboard():
 
 
 @admin_bp.route('/archived-orders/<int:archive_id>/restore', methods=['POST'])
-@login_required
 def archived_order_restore(archive_id):
     """Restore an archived order back to the main database."""
     from models import ArchivedOrder, FoodOrder, FoodOrderItem, EnrolledDevice
     import json as _json
 
-    if not getattr(current_user, 'is_superadmin', False):
+    if not current_user.is_authenticated or not getattr(current_user, 'is_superadmin', False):
         abort(404)
 
     device_token = request.cookies.get('ops_device_token')

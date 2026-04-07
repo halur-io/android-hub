@@ -125,6 +125,27 @@ def require_ops_module(module_name):
         return decorated
     return decorator
 
+def require_ops_any_module(*module_names):
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            device = _check_device()
+            if not device:
+                return redirect(url_for('ops.not_enrolled'))
+            user = _get_ops_user()
+            if not user:
+                return redirect(url_for('ops.login'))
+            if not any(user.has_ops_permission(m) for m in module_names):
+                if request.is_json:
+                    return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+                modules = user.get_ops_modules()
+                if modules:
+                    return redirect(url_for('ops.' + modules[0]))
+                return render_template('ops/not_enrolled.html', enrollment_code=None), 403
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
 def _get_current_pin():
     return _get_ops_user()
 
@@ -2163,7 +2184,7 @@ def reorder(order_id):
 
 
 @ops_bp.route('/api/orders/<int:order_id>/send-receipt', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_any_module('orders', 'history')
 def send_receipt(order_id):
     from models import FoodOrder, SMSLog
     order = FoodOrder.query.get(order_id)
@@ -2224,7 +2245,7 @@ def send_receipt(order_id):
 
 
 @ops_bp.route('/api/orders/<int:order_id>/delete', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_any_module('orders', 'history')
 def delete_order(order_id):
     import json as _json
     from models import FoodOrder, ArchivedOrder

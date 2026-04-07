@@ -5764,7 +5764,14 @@ def food_order_delete(order_id):
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Failed to delete order {order_id}: {e}")
+        flash('שגיאה במחיקת ההזמנה', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
 
     flash(f'הזמנה #{order.order_number} נמחקה והועברה לארכיון', 'success')
     return redirect(url_for('admin.food_orders_list'))

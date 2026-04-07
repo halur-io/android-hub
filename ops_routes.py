@@ -2338,6 +2338,12 @@ def delete_order(order_id):
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Failed to delete order {order_id}: {e}")
+        return jsonify({'ok': False, 'error': 'שגיאה במחיקת ההזמנה'})
 
     return jsonify({'ok': True, 'message': f'הזמנה #{order.order_number} נמחקה'})

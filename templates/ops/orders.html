@@ -522,6 +522,22 @@
     <div class="bon-scroll" id="bonPreviewContent"></div>
 </div>
 
+<div class="modal-backdrop" id="deleteConfirmModal" onclick="if(event.target===this)closeDeleteModal()" style="z-index:10001;">
+    <div class="modal-sheet" style="max-width:400px;text-align:center;padding:24px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:18px;font-weight:800;color:#ef4444;margin-bottom:8px;">מחיקת הזמנה</div>
+        <div id="deleteConfirmOrderNum" style="font-size:15px;color:#94a3b8;margin-bottom:16px;"></div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">ההזמנה תימחק לצמיתות ותועבר לארכיון.<br>פעולה זו אינה ניתנת לביטול.</div>
+        <div style="margin-bottom:20px;">
+            <input type="text" id="deleteReasonInput" placeholder="סיבת מחיקה (אופציונלי)" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:14px;text-align:right;direction:rtl;">
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="confirmDeleteOrder()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#ef4444;color:#fff;font-weight:700;font-size:15px;cursor:pointer;">מחק הזמנה</button>
+            <button onclick="closeDeleteModal()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#334155;color:#e2e8f0;font-weight:700;font-size:15px;cursor:pointer;">ביטול</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -1124,9 +1140,7 @@ function _setupDeleteGesture(orderId, orderNum, paymentMethod) {
         e.preventDefault(); e.stopPropagation();
         st.lpTimer = setTimeout(function() {
             st.armed = false;
-            var reason = prompt('סיבת מחיקה (אופציונלי) להזמנה #' + orderNum + ':');
-            if (reason === null) return;
-            deleteOrderFromOps(orderId, orderNum, reason);
+            showDeleteModal(orderId, orderNum);
         }, 800);
     }
     function onUp(e) {
@@ -1158,10 +1172,34 @@ function sendReceipt(id) {
         .catch(function() { alert('שגיאת רשת'); });
 }
 
+var _pendingDeleteId = null;
+var _pendingDeleteNum = '';
+
+function showDeleteModal(id, orderNum) {
+    _pendingDeleteId = id;
+    _pendingDeleteNum = orderNum;
+    document.getElementById('deleteConfirmOrderNum').textContent = 'הזמנה #' + orderNum;
+    document.getElementById('deleteReasonInput').value = '';
+    document.getElementById('deleteConfirmModal').classList.add('show');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').classList.remove('show');
+    _pendingDeleteId = null;
+    _pendingDeleteNum = '';
+}
+
+function confirmDeleteOrder() {
+    if (!_pendingDeleteId) return;
+    var reason = document.getElementById('deleteReasonInput').value.trim();
+    deleteOrderFromOps(_pendingDeleteId, _pendingDeleteNum, reason);
+    closeDeleteModal();
+}
+
 function deleteOrderFromOps(id, orderNum, reason) {
     if (reason === undefined) {
-        reason = prompt('סיבת מחיקה (אופציונלי) להזמנה ' + orderNum + ':');
-        if (reason === null) return;
+        showDeleteModal(id, orderNum);
+        return;
     }
     fetch('/ops/api/orders/' + id + '/delete', {
         method: 'POST',

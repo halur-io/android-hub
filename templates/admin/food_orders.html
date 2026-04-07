@@ -2,117 +2,349 @@
 
 {% block title %}{{ 'ניהול הזמנות' if (admin_language or 'he') == 'he' else 'Manage Orders' }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.orders-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    color: #fff;
+}
+.orders-header h2 {
+    font-weight: 800;
+    font-size: 1.5rem;
+    margin: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.orders-header .subtitle {
+    font-size: .85rem;
+    opacity: .8;
+    margin-top: 2px;
+}
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.header-actions .btn-kds {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: .85rem;
+    text-decoration: none;
+    transition: background .2s;
+    white-space: nowrap;
+}
+.header-actions .btn-kds:hover { background: rgba(255,255,255,.3); }
+.search-section {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    border: 1px solid #e5e7eb;
+}
+.search-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.search-bar input {
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: .9rem;
+    background: #f9fafb;
+    transition: border-color .2s, box-shadow .2s;
+}
+.search-bar input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    background: #fff;
+}
+.search-bar .btn-search {
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .2s;
+}
+.search-bar .btn-search:hover { background: #4f46e5; }
+.status-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+.status-chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: .8rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+    background: #fff;
+    transition: all .2s;
+}
+.status-chip:hover { background: #f3f4f6; color: #374151; }
+.status-chip.active { border-color: transparent; color: #fff; }
+.status-chip.active-all { background: #6366f1; }
+.status-chip.active-pending { background: #f59e0b; color: #000; }
+.status-chip.active-confirmed { background: #06b6d4; color: #000; }
+.status-chip.active-preparing { background: #6366f1; }
+.status-chip.active-ready { background: #22c55e; color: #000; }
+.status-chip.active-delivered { background: #64748b; }
+.status-chip.active-cancelled { background: #ef4444; }
+.order-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.order-row {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 18px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: all .2s;
+    gap: 16px;
+}
+.order-row:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 2px 8px rgba(99,102,241,.1);
+    transform: translateY(-1px);
+}
+.order-row .order-id {
+    font-weight: 800;
+    color: #6366f1;
+    font-size: .95rem;
+    min-width: 50px;
+}
+.order-row .order-number {
+    font-weight: 700;
+    color: #374151;
+    font-size: .85rem;
+    min-width: 110px;
+}
+.order-row .customer-info {
+    flex: 1;
+    min-width: 0;
+}
+.order-row .customer-name {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: .9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.order-row .customer-phone {
+    color: #9ca3af;
+    font-size: .8rem;
+}
+.order-row .order-amount {
+    font-weight: 800;
+    color: #059669;
+    font-size: 1rem;
+    min-width: 70px;
+    text-align: center;
+}
+.order-row .order-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 180px;
+}
+.order-row .order-date {
+    color: #9ca3af;
+    font-size: .8rem;
+    min-width: 90px;
+    text-align: left;
+}
+.badge-sm {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.bg-status-pending { background: #fef3c7; color: #92400e; }
+.bg-status-confirmed { background: #cffafe; color: #155e75; }
+.bg-status-preparing { background: #e0e7ff; color: #3730a3; }
+.bg-status-ready { background: #dcfce7; color: #166534; }
+.bg-status-delivered { background: #f1f5f9; color: #475569; }
+.bg-status-cancelled { background: #fee2e2; color: #991b1b; }
+.bg-type-delivery { background: #dbeafe; color: #1e40af; }
+.bg-type-pickup { background: #f3e8ff; color: #6b21a8; }
+.bg-pay-paid { background: #dcfce7; color: #166534; }
+.bg-pay-pending { background: #fef3c7; color: #92400e; }
+.bg-pay-other { background: #f1f5f9; color: #475569; }
+.results-info {
+    color: #9ca3af;
+    font-size: .85rem;
+    margin-bottom: 10px;
+    padding: 0 4px;
+}
+.empty-orders {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+}
+.empty-orders i { font-size: 3rem; color: #d1d5db; margin-bottom: 16px; }
+.empty-orders h5 { color: #6b7280; font-weight: 600; }
+.empty-orders p { color: #9ca3af; font-size: .9rem; }
+.pagination-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+.pagination-wrap .page-link {
+    border-radius: 8px;
+    margin: 0 2px;
+    font-weight: 600;
+    font-size: .85rem;
+}
+@media (max-width: 768px) {
+    .order-row {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 14px;
+    }
+    .order-row .order-badges { min-width: auto; }
+    .order-row .order-date { min-width: auto; }
+    .order-row .order-number { min-width: auto; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-shopping-bag me-2"></i>{{ 'ניהול הזמנות אונליין' if (admin_language or 'he') == 'he' else 'Online Order Management' }}</h2>
-        <a href="/order-dashboard/login" target="_blank" class="btn btn-primary">
-            <i class="fas fa-tv me-2"></i>{{ 'פתח מסך מטבח' if (admin_language or 'he') == 'he' else 'Open KDS' }}
-        </a>
-    </div>
-
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex gap-2 flex-wrap">
-                <a href="{{ url_for('admin.food_orders_list') }}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-                    {{ 'הכל' if (admin_language or 'he') == 'he' else 'All' }}
-                </a>
-                <a href="{{ url_for('admin.food_orders_list', status='pending') }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
-                    {{ 'ממתינות' if (admin_language or 'he') == 'he' else 'Pending' }}
-                </a>
-                <a href="{{ url_for('admin.food_orders_list', status='confirmed') }}" class="btn btn-sm {% if status_filter == 'confirmed' %}btn-info{% else %}btn-outline-info{% endif %}">
-                    {{ 'אושרו' if (admin_language or 'he') == 'he' else 'Confirmed' }}
-                </a>
-                <a href="{{ url_for('admin.food_orders_list', status='preparing') }}" class="btn btn-sm {% if status_filter == 'preparing' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                    {{ 'בהכנה' if (admin_language or 'he') == 'he' else 'Preparing' }}
-                </a>
-                <a href="{{ url_for('admin.food_orders_list', status='ready') }}" class="btn btn-sm {% if status_filter == 'ready' %}btn-success{% else %}btn-outline-success{% endif %}">
-                    {{ 'מוכנות' if (admin_language or 'he') == 'he' else 'Ready' }}
-                </a>
-                <a href="{{ url_for('admin.food_orders_list', status='delivered') }}" class="btn btn-sm {% if status_filter == 'delivered' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
-                    {{ 'נמסרו' if (admin_language or 'he') == 'he' else 'Delivered' }}
-                </a>
-                <a href="{{ url_for('admin.food_orders_list', status='cancelled') }}" class="btn btn-sm {% if status_filter == 'cancelled' %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                    {{ 'בוטלו' if (admin_language or 'he') == 'he' else 'Cancelled' }}
+    <div class="orders-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 id="ordersTitle"><i class="fas fa-shopping-bag me-2"></i>{{ 'ניהול הזמנות' if (admin_language or 'he') == 'he' else 'Order Management' }}</h2>
+                <div class="subtitle">{{ orders.total }} {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'orders' }}</div>
+            </div>
+            <div class="header-actions">
+                <a href="/order-dashboard/login" target="_blank" class="btn-kds">
+                    <i class="fas fa-tv me-1"></i>{{ 'מסך מטבח' if (admin_language or 'he') == 'he' else 'KDS' }}
                 </a>
             </div>
         </div>
     </div>
 
+    <div class="search-section">
+        <form method="get" action="{{ url_for('admin.food_orders_list') }}">
+            {% if status_filter %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            {% endif %}
+            <div class="search-bar">
+                <input type="text" name="q" placeholder="{{ 'חפש לפי שם, טלפון, מספר הזמנה...' if (admin_language or 'he') == 'he' else 'Search by name, phone, order number...' }}" value="{{ search_q or '' }}">
+                <button type="submit" class="btn-search" id="searchBtn"><i class="fas fa-search me-1"></i>{{ 'חפש' if (admin_language or 'he') == 'he' else 'Search' }}</button>
+            </div>
+            <div class="status-filters">
+                <a href="{{ url_for('admin.food_orders_list', q=search_q or '') }}" class="status-chip {% if not status_filter %}active active-all{% endif %}">
+                    {{ 'הכל' if (admin_language or 'he') == 'he' else 'All' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='pending', q=search_q or '') }}" class="status-chip {% if status_filter == 'pending' %}active active-pending{% endif %}">
+                    {{ 'ממתינות' if (admin_language or 'he') == 'he' else 'Pending' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='confirmed', q=search_q or '') }}" class="status-chip {% if status_filter == 'confirmed' %}active active-confirmed{% endif %}">
+                    {{ 'אושרו' if (admin_language or 'he') == 'he' else 'Confirmed' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='preparing', q=search_q or '') }}" class="status-chip {% if status_filter == 'preparing' %}active active-preparing{% endif %}">
+                    {{ 'בהכנה' if (admin_language or 'he') == 'he' else 'Preparing' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='ready', q=search_q or '') }}" class="status-chip {% if status_filter == 'ready' %}active active-ready{% endif %}">
+                    {{ 'מוכנות' if (admin_language or 'he') == 'he' else 'Ready' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='delivered', q=search_q or '') }}" class="status-chip {% if status_filter == 'delivered' %}active active-delivered{% endif %}">
+                    {{ 'נמסרו' if (admin_language or 'he') == 'he' else 'Delivered' }}
+                </a>
+                <a href="{{ url_for('admin.food_orders_list', status='cancelled', q=search_q or '') }}" class="status-chip {% if status_filter == 'cancelled' %}active active-cancelled{% endif %}">
+                    {{ 'בוטלו' if (admin_language or 'he') == 'he' else 'Cancelled' }}
+                </a>
+            </div>
+        </form>
+    </div>
+
+    {% if search_q %}
+    <div class="results-info">
+        <i class="fas fa-filter me-1"></i>{{ 'תוצאות חיפוש עבור' if (admin_language or 'he') == 'he' else 'Search results for' }} "{{ search_q }}"
+        <a href="{{ url_for('admin.food_orders_list', status=status_filter) }}" style="margin-right:8px;color:#6366f1;">{{ 'נקה' if (admin_language or 'he') == 'he' else 'Clear' }}</a>
+    </div>
+    {% endif %}
+
     {% if orders.items %}
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>{{ 'לקוח' if (admin_language or 'he') == 'he' else 'Customer' }}</th>
-                        <th>{{ 'טלפון' if (admin_language or 'he') == 'he' else 'Phone' }}</th>
-                        <th>{{ 'סוג' if (admin_language or 'he') == 'he' else 'Type' }}</th>
-                        <th>{{ 'סכום' if (admin_language or 'he') == 'he' else 'Total' }}</th>
-                        <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
-                        <th>{{ 'תשלום' if (admin_language or 'he') == 'he' else 'Payment' }}</th>
-                        <th>{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders.items %}
-                    <tr style="cursor:pointer" onclick="window.location='{{ url_for('admin.food_order_detail', order_id=order.id) }}'">
-                        <td><strong>{{ order.id }}</strong></td>
-                        <td>{{ order.customer_name or '-' }}</td>
-                        <td>{{ order.customer_phone or '-' }}</td>
-                        <td>
-                            {% if order.order_type == 'delivery' %}
-                                <span class="badge bg-info">{{ 'משלוח' if (admin_language or 'he') == 'he' else 'Delivery' }}</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ 'איסוף' if (admin_language or 'he') == 'he' else 'Pickup' }}</span>
-                            {% endif %}
-                        </td>
-                        <td><strong>₪{{ '%.0f' % (order.total_amount or 0) }}</strong></td>
-                        <td>
-                            {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'cancelled': 'danger'} %}
-                            {% set status_labels_he = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'cancelled': 'בוטלה'} %}
-                            <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
-                                {{ status_labels_he.get(order.status, order.status) if (admin_language or 'he') == 'he' else order.status }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if order.payment_status == 'paid' %}
-                                <span class="badge bg-success">{{ 'שולם' if (admin_language or 'he') == 'he' else 'Paid' }}</span>
-                            {% elif order.payment_status == 'pending' %}
-                                <span class="badge bg-warning">{{ 'ממתין' if (admin_language or 'he') == 'he' else 'Pending' }}</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ order.payment_status or '-' }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ order.created_at.strftime('%d/%m %H:%M') if order.created_at else '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="order-card-list">
+        {% set status_labels_he = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'cancelled': 'בוטלה', 'new': 'חדשה'} %}
+        {% for order in orders.items %}
+        <div class="order-row" onclick="window.location='{{ url_for('admin.food_order_detail', order_id=order.id) }}'">
+            <div class="order-id">#{{ order.id }}</div>
+            <div class="order-number">{{ order.order_number or '-' }}</div>
+            <div class="customer-info">
+                <div class="customer-name">{{ order.customer_name or '-' }}</div>
+                <div class="customer-phone">{{ order.customer_phone or '-' }}</div>
+            </div>
+            <div class="order-amount">₪{{ '%.0f' % (order.total_amount or 0) }}</div>
+            <div class="order-badges">
+                <span class="badge-sm bg-status-{{ order.status }}">{{ status_labels_he.get(order.status, order.status) if (admin_language or 'he') == 'he' else order.status }}</span>
+                {% if order.order_type == 'delivery' %}
+                    <span class="badge-sm bg-type-delivery">{{ 'משלוח' if (admin_language or 'he') == 'he' else 'Delivery' }}</span>
+                {% else %}
+                    <span class="badge-sm bg-type-pickup">{{ 'איסוף' if (admin_language or 'he') == 'he' else 'Pickup' }}</span>
+                {% endif %}
+                {% if order.payment_status == 'paid' %}
+                    <span class="badge-sm bg-pay-paid">{{ 'שולם' if (admin_language or 'he') == 'he' else 'Paid' }}</span>
+                {% elif order.payment_status == 'pending' %}
+                    <span class="badge-sm bg-pay-pending">{{ 'ממתין' if (admin_language or 'he') == 'he' else 'Pending' }}</span>
+                {% else %}
+                    <span class="badge-sm bg-pay-other">{{ order.payment_status or '-' }}</span>
+                {% endif %}
+            </div>
+            <div class="order-date">{{ order.created_at.strftime('%d/%m %H:%M') if order.created_at else '-' }}</div>
         </div>
+        {% endfor %}
     </div>
 
     {% if orders.pages > 1 %}
-    <nav class="mt-3">
-        <ul class="pagination justify-content-center">
+    <nav class="pagination-wrap">
+        <ul class="pagination">
             {% if orders.has_prev %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('admin.food_orders_list', page=orders.prev_num, status=status_filter) }}">‹</a>
+                <a class="page-link" href="{{ url_for('admin.food_orders_list', page=orders.prev_num, status=status_filter, q=search_q or '') }}">&lsaquo;</a>
             </li>
             {% endif %}
             {% for p in orders.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                 {% if p %}
                 <li class="page-item {% if p == orders.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('admin.food_orders_list', page=p, status=status_filter) }}">{{ p }}</a>
+                    <a class="page-link" href="{{ url_for('admin.food_orders_list', page=p, status=status_filter, q=search_q or '') }}">{{ p }}</a>
                 </li>
                 {% else %}
-                <li class="page-item disabled"><span class="page-link">…</span></li>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
                 {% endif %}
             {% endfor %}
             {% if orders.has_next %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('admin.food_orders_list', page=orders.next_num, status=status_filter) }}">›</a>
+                <a class="page-link" href="{{ url_for('admin.food_orders_list', page=orders.next_num, status=status_filter, q=search_q or '') }}">&rsaquo;</a>
             </li>
             {% endif %}
         </ul>
@@ -120,15 +352,13 @@
     {% endif %}
 
     {% else %}
-    <div class="card">
-        <div class="card-body text-center py-5">
-            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-            <h5 class="text-muted">{{ 'אין הזמנות עדיין' if (admin_language or 'he') == 'he' else 'No orders yet' }}</h5>
-            <p class="text-muted mb-3">{{ 'הזמנות חדשות יופיעו כאן כאשר לקוחות יבצעו הזמנות דרך האתר.' if (admin_language or 'he') == 'he' else 'New orders will appear here when customers place orders through the website.' }}</p>
-            <a href="/order/" target="_blank" class="btn btn-outline-primary">
-                <i class="fas fa-external-link-alt me-2"></i>{{ 'עמוד הזמנות' if (admin_language or 'he') == 'he' else 'Order Page' }}
-            </a>
-        </div>
+    <div class="empty-orders">
+        <i class="fas fa-inbox d-block"></i>
+        <h5>{{ 'אין הזמנות' if (admin_language or 'he') == 'he' else 'No orders' }}</h5>
+        <p>{{ 'הזמנות חדשות יופיעו כאן כאשר לקוחות יבצעו הזמנות.' if (admin_language or 'he') == 'he' else 'New orders will appear here when customers place orders.' }}</p>
+        <a href="/order/" target="_blank" class="btn btn-outline-primary btn-sm mt-2">
+            <i class="fas fa-external-link-alt me-1"></i>{{ 'עמוד הזמנות' if (admin_language or 'he') == 'he' else 'Order Page' }}
+        </a>
     </div>
     {% endif %}
 </div>
@@ -139,12 +369,9 @@
 (function(){
     var tapCount = 0, tapTimer = null, armTimer = null, armed = false;
     var lpTimer = null;
-    var h = document.querySelector('h2');
-    var kdsBtn = document.querySelector('a.btn-primary[href*="order-dashboard"]');
-    if (!h || !kdsBtn) return;
-
-    h.style.userSelect = 'none';
-    h.style.webkitUserSelect = 'none';
+    var h = document.getElementById('ordersTitle');
+    var searchBtn = document.getElementById('searchBtn');
+    if (!h || !searchBtn) return;
 
     h.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -173,18 +400,18 @@
         if (armed) { e.preventDefault(); e.stopPropagation(); }
     }
 
-    kdsBtn.addEventListener('mousedown', onDown);
-    kdsBtn.addEventListener('mouseup', onUp);
-    kdsBtn.addEventListener('mouseleave', onUp);
-    kdsBtn.addEventListener('touchstart', onDown, {passive: false});
-    kdsBtn.addEventListener('touchend', onUp);
-    kdsBtn.addEventListener('touchcancel', onUp);
-    kdsBtn.addEventListener('click', function(e) {
+    searchBtn.addEventListener('mousedown', onDown);
+    searchBtn.addEventListener('mouseup', onUp);
+    searchBtn.addEventListener('mouseleave', onUp);
+    searchBtn.addEventListener('touchstart', onDown, {passive: false});
+    searchBtn.addEventListener('touchend', onUp);
+    searchBtn.addEventListener('touchcancel', onUp);
+    searchBtn.addEventListener('click', function(e) {
         if (armed) { e.preventDefault(); e.stopPropagation(); return false; }
     }, true);
 
     document.addEventListener('click', function(e) {
-        if (e.target !== h && !h.contains(e.target) && e.target !== kdsBtn && !kdsBtn.contains(e.target)) {
+        if (e.target !== h && !h.contains(e.target) && e.target !== searchBtn && !searchBtn.contains(e.target)) {
             tapCount = 0; armed = false;
             if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
             if (armTimer) { clearTimeout(armTimer); armTimer = null; }

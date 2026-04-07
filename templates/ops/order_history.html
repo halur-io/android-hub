@@ -4,164 +4,281 @@
 
 {% block head %}
 <style>
-.history-search {
-    background: #1e293b;
-    border-radius: 14px;
+.hist-container {
     padding: 16px;
+    padding-bottom: 100px;
+}
+.hist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 16px;
 }
-.history-search input,
-.history-search select {
+.hist-header h2 {
+    font-weight: 800;
+    font-size: 1.3rem;
+    color: #e2e8f0;
+    margin: 0;
+}
+.hist-header .result-count {
+    font-size: .8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+.search-panel {
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+    border: 1px solid #334155;
+}
+.search-main {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.search-main input {
+    flex: 1;
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: .9rem;
+}
+.search-main input::placeholder { color: #475569; }
+.search-main input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99,102,241,.2);
+}
+.search-main .search-go {
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 0 18px;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+}
+.search-main .search-go:active { background: #4f46e5; }
+.filter-toggle {
+    background: none;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition: all .2s;
+}
+.filter-toggle.open { border-color: #6366f1; color: #818cf8; }
+.filter-drawer {
+    display: none;
+    margin-top: 10px;
+}
+.filter-drawer.open { display: block; }
+.filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.filter-grid label {
+    color: #64748b;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 3px;
+    display: block;
+}
+.filter-grid input,
+.filter-grid select {
     background: #0f172a;
     border: 1px solid #334155;
     color: #e2e8f0;
     border-radius: 10px;
-    padding: 10px 14px;
-    font-size: .9rem;
+    padding: 9px 12px;
+    font-size: .85rem;
     width: 100%;
 }
-.history-search input::placeholder { color: #64748b; }
-.history-search input:focus,
-.history-search select:focus {
+.filter-grid input:focus,
+.filter-grid select:focus {
     outline: none;
     border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99,102,241,.25);
 }
-.history-search label {
-    color: #94a3b8;
-    font-size: .75rem;
-    margin-bottom: 4px;
-    display: block;
-}
-.search-btn {
-    background: #6366f1;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-weight: 700;
-    cursor: pointer;
-    width: 100%;
-}
-.search-btn:hover { background: #4f46e5; }
-.order-card {
-    background: #1e293b;
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 10px;
-    border: 1px solid #334155;
-    transition: border-color .2s;
-}
-.order-card:active { border-color: #6366f1; }
-.order-num { font-weight: 800; color: #e2e8f0; font-size: 1rem; }
-.order-customer { color: #94a3b8; font-size: .85rem; }
-.order-amount { font-weight: 800; color: #22c55e; font-size: 1.1rem; }
-.order-date { color: #64748b; font-size: .8rem; }
-.order-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.badge-status {
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: .75rem;
-    font-weight: 700;
-}
-.badge-pending { background: #f59e0b; color: #000; }
-.badge-confirmed { background: #06b6d4; color: #000; }
-.badge-preparing { background: #6366f1; color: #fff; }
-.badge-ready { background: #22c55e; color: #000; }
-.badge-delivered, .badge-pickedup { background: #64748b; color: #fff; }
-.badge-cancelled { background: #ef4444; color: #fff; }
-.badge-type {
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: .75rem;
-    font-weight: 600;
-    background: #334155;
-    color: #94a3b8;
-}
-.badge-cash { background: #065f46; color: #6ee7b7; }
-.badge-card { background: #1e3a5f; color: #93c5fd; }
-.action-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-}
-.btn-reorder {
-    background: #6366f1;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-size: .8rem;
-    font-weight: 700;
-    cursor: pointer;
-    flex: 1;
-}
-.btn-reorder:hover { background: #4f46e5; }
-.btn-receipt {
-    background: #059669;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-size: .8rem;
-    font-weight: 700;
-    cursor: pointer;
-}
-.btn-receipt:hover { background: #047857; }
-.btn-delete-order {
-    background: #dc2626;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-size: .8rem;
-    font-weight: 700;
-    cursor: pointer;
-}
-.btn-delete-order:hover { background: #b91c1c; }
-.order-detail-panel {
-    display: none;
-    background: #0f172a;
-    border-radius: 10px;
-    padding: 14px;
-    margin-top: 10px;
-    border: 1px solid #334155;
-}
-.order-detail-panel.open { display: block; }
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    border-bottom: 1px solid #1e293b;
-    color: #cbd5e1;
-    font-size: .85rem;
-}
-.detail-item:last-child { border-bottom: none; }
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #64748b;
-}
-.empty-state i { font-size: 3rem; margin-bottom: 16px; }
-.result-count { color: #64748b; font-size: .85rem; margin-bottom: 12px; }
-.filter-chips {
+.status-pills {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
-.filter-chip {
-    background: #334155;
-    color: #94a3b8;
-    border: none;
+.status-pill {
+    padding: 5px 12px;
     border-radius: 20px;
-    padding: 6px 14px;
-    font-size: .8rem;
-    font-weight: 600;
+    font-size: .75rem;
+    font-weight: 700;
+    border: none;
     cursor: pointer;
     text-decoration: none;
+    background: #0f172a;
+    color: #64748b;
+    border: 1px solid #334155;
+    transition: all .2s;
 }
-.filter-chip.active { background: #6366f1; color: #fff; }
+.status-pill:hover { border-color: #6366f1; color: #a5b4fc; }
+.status-pill.active { border-color: transparent; }
+.sp-all.active { background: #6366f1; color: #fff; }
+.sp-pending.active { background: #f59e0b; color: #000; }
+.sp-confirmed.active { background: #06b6d4; color: #000; }
+.sp-preparing.active { background: #6366f1; color: #fff; }
+.sp-ready.active { background: #22c55e; color: #000; }
+.sp-delivered.active { background: #64748b; color: #fff; }
+.sp-cancelled.active { background: #ef4444; color: #fff; }
+.ocard {
+    background: #1e293b;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    border: 1px solid #334155;
+    overflow: hidden;
+    transition: border-color .2s;
+}
+.ocard:active { border-color: #6366f1; }
+.ocard-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 10px;
+    cursor: pointer;
+}
+.ocard-left { flex: 1; min-width: 0; }
+.ocard-num {
+    font-weight: 800;
+    color: #e2e8f0;
+    font-size: 1rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.ocard-customer {
+    color: #94a3b8;
+    font-size: .82rem;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ocard-right {
+    text-align: left;
+    flex-shrink: 0;
+}
+.ocard-amount {
+    font-weight: 800;
+    color: #22c55e;
+    font-size: 1.1rem;
+}
+.ocard-date {
+    color: #475569;
+    font-size: .75rem;
+    margin-top: 1px;
+}
+.ocard-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 0 16px 12px;
+}
+.otag {
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+.otag-pending { background: rgba(245,158,11,.15); color: #f59e0b; }
+.otag-confirmed { background: rgba(6,182,212,.15); color: #22d3ee; }
+.otag-preparing { background: rgba(99,102,241,.15); color: #a5b4fc; }
+.otag-ready { background: rgba(34,197,94,.15); color: #4ade80; }
+.otag-delivered, .otag-pickedup { background: rgba(100,116,139,.15); color: #94a3b8; }
+.otag-cancelled { background: rgba(239,68,68,.15); color: #f87171; }
+.otag-new { background: rgba(99,102,241,.15); color: #a5b4fc; }
+.otag-delivery { background: rgba(59,130,246,.1); color: #60a5fa; }
+.otag-pickup { background: rgba(168,85,247,.1); color: #c084fc; }
+.otag-cash { background: rgba(16,185,129,.1); color: #34d399; }
+.otag-card { background: rgba(59,130,246,.1); color: #93c5fd; }
+.otag-branch { background: rgba(148,163,184,.1); color: #94a3b8; }
+.ocard-detail {
+    display: none;
+    background: #0f172a;
+    border-top: 1px solid #334155;
+    padding: 14px 16px;
+}
+.ocard-detail.open { display: block; }
+.detail-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    color: #cbd5e1;
+    font-size: .85rem;
+}
+.detail-line + .detail-line { border-top: 1px solid #1e293b; }
+.detail-total {
+    font-weight: 800;
+    color: #22c55e;
+    border-top: 1px solid #334155 !important;
+    padding-top: 10px;
+    margin-top: 4px;
+}
+.detail-address {
+    color: #64748b;
+    font-size: .8rem;
+    margin-top: 8px;
+}
+.detail-notes {
+    color: #f59e0b;
+    font-size: .8rem;
+    margin-top: 4px;
+}
+.ocard-actions {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 14px;
+}
+.act-btn {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 700;
+    font-size: .82rem;
+    cursor: pointer;
+    text-align: center;
+    transition: opacity .2s;
+}
+.act-btn:active { opacity: .8; }
+.act-reorder { background: #6366f1; color: #fff; }
+.act-receipt { background: #059669; color: #fff; }
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #475569;
+}
+.empty-state i {
+    font-size: 3rem;
+    color: #334155;
+    margin-bottom: 14px;
+}
+.empty-state h3 {
+    color: #94a3b8;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.empty-state p { font-size: .85rem; }
 .modal-backdrop {
     display: none;
     position: fixed;
@@ -184,130 +301,136 @@
 {% endblock %}
 
 {% block content %}
-<div style="padding: 16px; padding-bottom: 100px;">
-    <h2 style="color:#e2e8f0;font-weight:800;font-size:1.4rem;margin-bottom:16px;">
-        <i class="fas fa-clock-rotate-left me-2" style="color:#6366f1;"></i>היסטוריית הזמנות
-    </h2>
+<div class="hist-container">
+    <div class="hist-header">
+        <h2><i class="fas fa-clock-rotate-left me-2" style="color:#6366f1;"></i>היסטוריה</h2>
+        {% if orders %}
+        <span class="result-count">{{ orders|length }} הזמנות</span>
+        {% endif %}
+    </div>
 
     <form method="get" action="{{ url_for('ops.order_history') }}">
-        <div class="history-search">
-            <div style="margin-bottom:10px;">
-                <input type="text" name="q" placeholder="🔍 חפש לפי שם, טלפון או מספר הזמנה..." value="{{ q }}">
+        <div class="search-panel">
+            <div class="search-main">
+                <input type="text" name="q" placeholder="חפש שם, טלפון, מספר הזמנה..." value="{{ q }}">
+                <button type="submit" class="search-go"><i class="fas fa-search"></i></button>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                <div>
-                    <label>מתאריך</label>
-                    <input type="date" name="date_from" value="{{ date_from }}">
-                </div>
-                <div>
-                    <label>עד תאריך</label>
-                    <input type="date" name="date_to" value="{{ date_to }}">
-                </div>
+
+            <div class="status-pills">
+                <a href="{{ url_for('ops.order_history', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-all {% if not status_filter %}active{% endif %}">הכל</a>
+                <a href="{{ url_for('ops.order_history', status='pending', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-pending {% if status_filter == 'pending' %}active{% endif %}">ממתינה</a>
+                <a href="{{ url_for('ops.order_history', status='confirmed', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-confirmed {% if status_filter == 'confirmed' %}active{% endif %}">אושרה</a>
+                <a href="{{ url_for('ops.order_history', status='preparing', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-preparing {% if status_filter == 'preparing' %}active{% endif %}">בהכנה</a>
+                <a href="{{ url_for('ops.order_history', status='ready', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-ready {% if status_filter == 'ready' %}active{% endif %}">מוכנה</a>
+                <a href="{{ url_for('ops.order_history', status='delivered', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-delivered {% if status_filter == 'delivered' %}active{% endif %}">נמסרה</a>
+                <a href="{{ url_for('ops.order_history', status='pickedup', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-delivered {% if status_filter == 'pickedup' %}active{% endif %}">נאספה</a>
+                <a href="{{ url_for('ops.order_history', status='cancelled', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-cancelled {% if status_filter == 'cancelled' %}active{% endif %}">בוטלה</a>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                <div>
-                    <label>סוג</label>
-                    <select name="type">
-                        <option value="">הכל</option>
-                        <option value="delivery" {% if type_filter == 'delivery' %}selected{% endif %}>משלוח</option>
-                        <option value="pickup" {% if type_filter == 'pickup' %}selected{% endif %}>איסוף</option>
-                    </select>
+
+            <button type="button" class="filter-toggle" id="filterToggle" onclick="toggleFilters()">
+                <i class="fas fa-sliders-h me-1"></i>מסננים מתקדמים
+            </button>
+            <div class="filter-drawer" id="filterDrawer">
+                <div class="filter-grid">
+                    <div>
+                        <label>מתאריך</label>
+                        <input type="date" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div>
+                        <label>עד תאריך</label>
+                        <input type="date" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div>
+                        <label>סוג</label>
+                        <select name="type">
+                            <option value="">הכל</option>
+                            <option value="delivery" {% if type_filter == 'delivery' %}selected{% endif %}>משלוח</option>
+                            <option value="pickup" {% if type_filter == 'pickup' %}selected{% endif %}>איסוף</option>
+                        </select>
+                    </div>
+                    {% if is_superadmin and branches|length > 1 %}
+                    <div>
+                        <label>סניף</label>
+                        <select name="branch_id">
+                            <option value="">כל הסניפים</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
                 </div>
-                <div>
-                    <label>סטטוס</label>
-                    <select name="status">
-                        <option value="">הכל</option>
-                        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>ממתינה</option>
-                        <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>אושרה</option>
-                        <option value="preparing" {% if status_filter == 'preparing' %}selected{% endif %}>בהכנה</option>
-                        <option value="ready" {% if status_filter == 'ready' %}selected{% endif %}>מוכנה</option>
-                        <option value="delivered" {% if status_filter == 'delivered' %}selected{% endif %}>נמסרה</option>
-                        <option value="pickedup" {% if status_filter == 'pickedup' %}selected{% endif %}>נאספה</option>
-                        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>בוטלה</option>
-                    </select>
-                </div>
+                <button type="submit" class="search-go" style="width:100%;border-radius:10px;padding:10px;"><i class="fas fa-search me-1"></i>חפש עם מסננים</button>
             </div>
-            {% if is_superadmin and branches|length > 1 %}
-            <div style="margin-bottom:10px;">
-                <label>סניף</label>
-                <select name="branch_id">
-                    <option value="">כל הסניפים</option>
-                    {% for b in branches %}
-                    <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            {% if status_filter %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
             {% endif %}
-            <button type="submit" class="search-btn"><i class="fas fa-search me-2"></i>חפש</button>
         </div>
     </form>
 
     {% if orders %}
-    <div class="result-count">{{ orders|length }} הזמנות נמצאו</div>
-
     {% for order in orders %}
-    <div class="order-card" id="card-{{ order.id }}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;" onclick="toggleDetail({{ order.id }})">
-            <div>
-                <div class="order-num" id="histOrderTitle_{{ order.id }}" style="user-select:none;-webkit-user-select:none;">{{ order.order_number }}</div>
-                <div class="order-customer">{{ order.customer_name }} &bull; {{ order.customer_phone }}</div>
+    <div class="ocard" id="card-{{ order.id }}">
+        <div class="ocard-top" onclick="toggleDetail({{ order.id }})">
+            <div class="ocard-left">
+                <div class="ocard-num" id="histOrderTitle_{{ order.id }}">{{ order.order_number }}</div>
+                <div class="ocard-customer">{{ order.customer_name }} &bull; {{ order.customer_phone }}</div>
             </div>
-            <div style="text-align:left;">
-                <div class="order-amount">₪{{ '%.0f' % (order.total_amount or 0) }}</div>
-                <div class="order-date">{{ order.created_at.strftime('%d/%m/%y %H:%M') if order.created_at else '-' }}</div>
+            <div class="ocard-right">
+                <div class="ocard-amount">₪{{ '%.0f' % (order.total_amount or 0) }}</div>
+                <div class="ocard-date">{{ order.created_at.strftime('%d/%m/%y %H:%M') if order.created_at else '-' }}</div>
             </div>
         </div>
-        <div class="order-meta">
-            {% set status_map = {'pending':'ממתינה','confirmed':'אושרה','preparing':'בהכנה','ready':'מוכנה','delivered':'נמסרה','pickedup':'נאספה','cancelled':'בוטלה'} %}
-            <span class="badge-status badge-{{ order.status }}">{{ status_map.get(order.status, order.status) }}</span>
-            <span class="badge-type">{{ 'משלוח' if order.order_type == 'delivery' else 'איסוף' }}</span>
+        <div class="ocard-tags">
+            {% set status_map = {'pending':'ממתינה','confirmed':'אושרה','preparing':'בהכנה','ready':'מוכנה','delivered':'נמסרה','pickedup':'נאספה','cancelled':'בוטלה','new':'חדשה'} %}
+            <span class="otag otag-{{ order.status }}">{{ status_map.get(order.status, order.status) }}</span>
+            <span class="otag otag-{{ order.order_type }}">{{ 'משלוח' if order.order_type == 'delivery' else 'איסוף' }}</span>
             {% if order.payment_method in ('cash', none, '') %}
-                <span class="badge-status badge-cash">מזומן</span>
+                <span class="otag otag-cash">מזומן</span>
             {% else %}
-                <span class="badge-status badge-card">כרטיס</span>
+                <span class="otag otag-card">כרטיס</span>
             {% endif %}
             {% if order.branch_name %}
-                <span class="badge-type">{{ order.branch_name }}</span>
+                <span class="otag otag-branch">{{ order.branch_name }}</span>
             {% endif %}
         </div>
 
-        <div class="order-detail-panel" id="detail-{{ order.id }}">
+        <div class="ocard-detail" id="detail-{{ order.id }}">
             {% set items = order.get_items() %}
             {% for it in items %}
-            <div class="detail-item">
+            <div class="detail-line">
                 <span>{{ it.get('name_he', it.get('item_name_he', '?')) }} x{{ it.get('qty', it.get('quantity', 1)) }}</span>
                 <span>₪{{ '%.0f' % (it.get('price', it.get('unit_price', 0)) * it.get('qty', it.get('quantity', 1))) }}</span>
             </div>
             {% endfor %}
             {% if order.delivery_fee and order.delivery_fee > 0 %}
-            <div class="detail-item" style="color:#64748b;">
+            <div class="detail-line" style="color:#475569;">
                 <span>דמי משלוח</span>
                 <span>₪{{ '%.0f' % order.delivery_fee }}</span>
             </div>
             {% endif %}
-            <div class="detail-item" style="font-weight:800;color:#22c55e;border-top:1px solid #334155;padding-top:10px;">
+            <div class="detail-line detail-total">
                 <span>סה"כ</span>
                 <span>₪{{ '%.0f' % (order.total_amount or 0) }}</span>
             </div>
-
             {% if order.delivery_address %}
-            <div style="color:#64748b;font-size:.8rem;margin-top:8px;">
+            <div class="detail-address">
                 <i class="fas fa-map-marker-alt me-1"></i>{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}
             </div>
             {% endif %}
             {% if order.customer_notes %}
-            <div style="color:#f59e0b;font-size:.8rem;margin-top:4px;">
+            <div class="detail-notes">
                 <i class="fas fa-comment me-1"></i>{{ order.customer_notes }}
             </div>
             {% endif %}
         </div>
 
-        <div class="action-row">
-            <button class="btn-reorder" onclick="reorder({{ order.id }})">
+        <div class="ocard-actions">
+            <button class="act-btn act-reorder" onclick="reorder({{ order.id }})">
                 <i class="fas fa-redo me-1"></i>הזמנה חוזרת
             </button>
             {% if order.payment_method in ('cash', none, '') %}
-            <button class="btn-receipt" id="histReceiptBtn_{{ order.id }}" onclick="sendReceipt({{ order.id }})">
+            <button class="act-btn act-receipt" id="histReceiptBtn_{{ order.id }}" onclick="sendReceipt({{ order.id }})">
                 <i class="fas fa-receipt me-1"></i>קבלה
             </button>
             {% endif %}
@@ -317,8 +440,8 @@
 
     {% else %}
     <div class="empty-state">
-        <i class="fas fa-inbox"></i>
-        <h3 style="color:#94a3b8;font-size:1.1rem;">אין הזמנות</h3>
+        <i class="fas fa-inbox d-block"></i>
+        <h3>אין הזמנות</h3>
         <p>נסה לשנות את מסנני החיפוש</p>
     </div>
     {% endif %}
@@ -326,7 +449,7 @@
 
 <div class="modal-backdrop" id="deleteConfirmModal" onclick="if(event.target===this)closeDeleteModal()" style="z-index:10001;">
     <div class="modal-sheet" style="max-width:400px;text-align:center;padding:24px 20px;">
-        <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:48px;margin-bottom:12px;">&#9888;&#65039;</div>
         <div style="font-size:18px;font-weight:800;color:#ef4444;margin-bottom:8px;">מחיקת הזמנה</div>
         <div id="deleteConfirmOrderNum" style="font-size:15px;color:#94a3b8;margin-bottom:16px;"></div>
         <div style="font-size:13px;color:#64748b;margin-bottom:20px;">ההזמנה תימחק לצמיתות ותועבר לארכיון.<br>פעולה זו אינה ניתנת לביטול.</div>
@@ -347,6 +470,20 @@ function toggleDetail(id) {
     var el = document.getElementById('detail-' + id);
     if (el) el.classList.toggle('open');
 }
+
+function toggleFilters() {
+    var d = document.getElementById('filterDrawer');
+    var t = document.getElementById('filterToggle');
+    d.classList.toggle('open');
+    t.classList.toggle('open');
+}
+
+{% if date_from or date_to or type_filter %}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('filterDrawer').classList.add('open');
+    document.getElementById('filterToggle').classList.add('open');
+});
+{% endif %}
 
 function reorder(orderId) {
     if (!confirm('לפתוח הזמנה חוזרת עם אותם פריטים?')) return;
@@ -413,14 +550,18 @@ function deleteOrder(orderId, orderNum, reason) {
     .then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.ok) {
-            alert(d.message);
             var card = document.getElementById('card-' + orderId);
-            if (card) card.remove();
+            if (card) {
+                card.style.transition = 'opacity .3s, transform .3s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(.95)';
+                setTimeout(function() { card.remove(); }, 300);
+            }
         } else {
             alert(d.error || 'שגיאה');
         }
     })
-    .catch(function() { alert('שגיאת רשت'); });
+    .catch(function() { alert('שגיאת רשת'); });
 }
 
 {% if is_superadmin %}

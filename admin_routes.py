@@ -5654,11 +5654,22 @@ def food_orders_list():
     from models import FoodOrder
     page = request.args.get('page', 1, type=int)
     status_filter = request.args.get('status', '')
+    search_q = request.args.get('q', '').strip()
     query = FoodOrder.query
     if status_filter:
         query = query.filter_by(status=status_filter)
+    if search_q:
+        search_term = f'%{search_q}%'
+        query = query.filter(
+            db.or_(
+                FoodOrder.customer_name.ilike(search_term),
+                FoodOrder.customer_phone.ilike(search_term),
+                FoodOrder.order_number.ilike(search_term),
+                FoodOrder.customer_email.ilike(search_term),
+            )
+        )
     orders = query.order_by(FoodOrder.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
-    return render_template('admin/food_orders.html', orders=orders, status_filter=status_filter)
+    return render_template('admin/food_orders.html', orders=orders, status_filter=status_filter, search_q=search_q)
 
 @admin_bp.route('/food-orders/<int:order_id>')
 @login_required

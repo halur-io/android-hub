@@ -5959,7 +5959,9 @@ def archived_order_restore(archive_id):
         )
         db.session.add(oi)
 
-    db.session.delete(archived)
+    archived.restored_at = datetime.utcnow()
+    archived.restored_by = current_user.username
+    archived.restored_order_id = new_order.id
     db.session.commit()
 
     flash(f'הזמנה #{new_order.order_number} שוחזרה בהצלחה', 'success')

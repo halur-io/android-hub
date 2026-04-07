@@ -2055,10 +2055,16 @@ def order_history():
     type_filter = request.args.get('type', '')
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
+    branch_filter = request.args.get('branch_id', '')
 
     query = FoodOrder.query
     if effective_branch:
         query = query.filter_by(branch_id=effective_branch)
+    elif branch_filter:
+        try:
+            query = query.filter_by(branch_id=int(branch_filter))
+        except (ValueError, TypeError):
+            pass
     if q:
         query = query.filter(
             db.or_(
@@ -2100,6 +2106,7 @@ def order_history():
         type_filter=type_filter,
         date_from=date_from,
         date_to=date_to,
+        branch_filter=branch_filter,
         branches=branches,
         is_superadmin=is_superadmin,
     )

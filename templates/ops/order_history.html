@@ -209,6 +209,17 @@
                     </select>
                 </div>
             </div>
+            {% if is_superadmin and branches|length > 1 %}
+            <div style="margin-bottom:10px;">
+                <label>סניף</label>
+                <select name="branch_id">
+                    <option value="">כל הסניפים</option>
+                    {% for b in branches %}
+                    <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <button type="submit" class="search-btn"><i class="fas fa-search me-2"></i>חפש</button>
         </div>
     </form>

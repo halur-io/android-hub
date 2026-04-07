@@ -163,9 +163,14 @@
                         <td>{{ a.deleted_at.strftime('%d/%m/%Y %H:%M') if a.deleted_at else '-' }}</td>
                         <td class="text-muted">{{ a.deletion_reason or '-' }}</td>
                         <td>
+                            {% if not a.restored_at %}
                             <form action="{{ url_for('admin.archived_order_restore', archive_id=a.id) }}" method="post" style="display:inline" onsubmit="return confirm('לשחזר הזמנה זו למסד הנתונים?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="restore-btn"><i class="fas fa-undo me-1"></i>שחזר</button>
                             </form>
+                            {% else %}
+                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>שוחזר</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

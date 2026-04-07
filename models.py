@@ -3056,6 +3056,9 @@ class ArchivedOrder(db.Model):
     deleted_at = db.Column(db.DateTime, default=datetime.utcnow)
     deletion_reason = db.Column(db.Text)
     original_created_at = db.Column(db.DateTime)
+    restored_at = db.Column(db.DateTime, nullable=True)
+    restored_by = db.Column(db.String(100), nullable=True)
+    restored_order_id = db.Column(db.Integer, nullable=True)
 
     def __repr__(self):
         return f'<ArchivedOrder #{self.order_number}>'

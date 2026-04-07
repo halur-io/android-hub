@@ -73,7 +73,7 @@
         <div class="ops-item-name">{{ txn.item.name_he if txn.item else '?' }}</div>
         <div class="ops-item-sub">
             {% if txn.transaction_type == 'delivery' %}קבלה{% elif txn.transaction_type == 'usage' %}שימוש{% elif txn.transaction_type == 'waste' %}פחת{% elif txn.transaction_type == 'adjustment' %}התאמה{% else %}{{ txn.transaction_type }}{% endif %}
-            · {{ txn.transaction_date.strftime('%d/%m %H:%M') if txn.transaction_date else '' }}
+            · {{ txn.transaction_date|il_time_short if txn.transaction_date else '' }}
         </div>
     </div>
     <span class="ops-badge {% if txn.quantity > 0 %}ops-badge-green{% else %}ops-badge-red{% endif %}">

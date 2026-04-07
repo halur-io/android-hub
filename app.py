@@ -105,10 +105,44 @@ def inject_permissions():
 
 # Add custom Jinja2 filters
 import json
+from datetime import datetime, timedelta
+
+def _to_israel_time(dt):
+    if dt is None:
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+        utc_tz = ZoneInfo('UTC')
+        il_tz = ZoneInfo('Asia/Jerusalem')
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=utc_tz)
+        return dt.astimezone(il_tz)
+    except Exception:
+        return dt + timedelta(hours=3)
+
+@app.template_filter('il_time')
+def il_time_filter(dt, fmt='%d/%m/%Y %H:%M'):
+    if dt is None:
+        return '-'
+    converted = _to_israel_time(dt)
+    return converted.strftime(fmt)
+
+@app.template_filter('il_time_short')
+def il_time_short_filter(dt):
+    if dt is None:
+        return '-'
+    converted = _to_israel_time(dt)
+    return converted.strftime('%d/%m %H:%M')
+
+@app.template_filter('il_hour')
+def il_hour_filter(dt):
+    if dt is None:
+        return ''
+    converted = _to_israel_time(dt)
+    return converted.strftime('%H:%M')
 
 @app.template_filter('fromjson')
 def fromjson_filter(value):
-    """Convert JSON string to Python object"""
     if not value or value == '[]' or value == '{}':
         return []
     try:

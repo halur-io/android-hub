@@ -422,12 +422,12 @@
             <div class="row-status {{ s_class }}">{{ s_label }}</div>
             <div class="row-time-block">
                 {% if order.estimated_ready_at %}
-                <span class="row-time-badge {% if order.status == 'preparing' %}urgent{% elif order.status == 'ready' %}normal{% else %}normal{% endif %}">{{ order.estimated_ready_at.strftime('%H:%M') }}</span>
+                <span class="row-time-badge {% if order.status == 'preparing' %}urgent{% elif order.status == 'ready' %}normal{% else %}normal{% endif %}">{{ order.estimated_ready_at|il_hour }}</span>
                 {% endif %}
                 {% if order.status == 'preparing' and order.estimated_ready_at %}
-                <div class="row-prep-time">{{ order.estimated_ready_at.strftime('%H:%M') }}</div>
+                <div class="row-prep-time">{{ order.estimated_ready_at|il_hour }}</div>
                 {% endif %}
-                <div class="row-order-time">{{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</div>
+                <div class="row-order-time">{{ order.created_at|il_hour }}</div>
             </div>
             <div class="row-amount">₪{{ "%.2f"|format(order.total_amount) }}</div>
         </div>

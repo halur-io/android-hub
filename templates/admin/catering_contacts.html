@@ -47,7 +47,7 @@
                                 <i class="fas fa-eye"></i> {{ 'צפה' if (admin_language or 'he') == 'he' else 'View' }}
                             </button>
                         </td>
-                        <td>{{ contact.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ contact.created_at|il_time }}</td>
                         <td>
                             {% if not contact.is_read %}
                             <button class="btn btn-sm btn-success mark-read" data-id="{{ contact.id }}">

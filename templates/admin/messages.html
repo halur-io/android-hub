@@ -78,7 +78,7 @@
                                 <td><a href="mailto:{{ message.email }}">{{ message.email }}</a></td>
                                 <td>{{ message.phone or '-' }}</td>
                                 <td>{{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}</td>
-                                <td>{{ message.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>{{ message.created_at|il_time }}</td>
                                 <td>
                                     <div class="dropdown">
                                         <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -174,7 +174,7 @@
                                 <td>{{ contact.event_type or '-' }}</td>
                                 <td>{{ contact.event_date or '-' }}</td>
                                 <td>{{ contact.guest_count or '-' }}</td>
-                                <td>{{ contact.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>{{ contact.created_at|il_time }}</td>
                                 <td>
                                     <div class="dropdown">
                                         <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -269,7 +269,7 @@
                                 <td>{{ application.phone or '-' }}</td>
                                 <td>{{ application.position_applied or '-' }}</td>
                                 <td>{{ application.message[:100] if application.message else '-' }}{% if application.message and application.message|length > 100 %}...{% endif %}</td>
-                                <td>{{ application.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>{{ application.created_at|il_time }}</td>
                                 <td>
                                     <div class="dropdown">
                                         <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">

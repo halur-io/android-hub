@@ -187,7 +187,7 @@
                             {% endif %}
                         </td>
                         <td><span class="badge bg-dark">{{ a.deleted_by or '-' }}</span></td>
-                        <td>{{ a.deleted_at.strftime('%d/%m/%Y %H:%M') if a.deleted_at else '-' }}</td>
+                        <td>{{ a.deleted_at|il_time }}</td>
                         <td class="text-muted">{{ a.deletion_reason or '-' }}</td>
                         <td onclick="event.stopPropagation()">
                             {% if not a.restored_at %}
@@ -252,7 +252,7 @@
                             {% endif %}
                         </td>
                         <td><span class="badge bg-{{ status_colors.get(o.status, 'secondary') }}">{{ status_labels.get(o.status, o.status) }}</span></td>
-                        <td>{{ o.created_at.strftime('%d/%m/%Y %H:%M') if o.created_at else '-' }}</td>
+                        <td>{{ o.created_at|il_time }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -283,8 +283,8 @@ archiveData[{{ a.id }}] = {
     discount_amount: {{ a.discount_amount or 0 }},
     branch_name: {{ (a.branch_name or '-')|tojson }},
     deleted_by: {{ (a.deleted_by or '-')|tojson }},
-    deleted_at: {{ (a.deleted_at.strftime('%d/%m/%Y %H:%M') if a.deleted_at else '-')|tojson }},
-    original_created_at: {{ (a.original_created_at.strftime('%d/%m/%Y %H:%M') if a.original_created_at else '-')|tojson }},
+    deleted_at: {{ (a.deleted_at|il_time)|tojson }},
+    original_created_at: {{ (a.original_created_at|il_time)|tojson }},
     deletion_reason: {{ (a.deletion_reason or '-')|tojson }},
     items: JSON.parse({{ (a.items_snapshot or '[]')|tojson }}),
     full_data: JSON.parse({{ (a.full_order_json or '{}')|tojson }})

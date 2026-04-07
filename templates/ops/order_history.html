@@ -378,7 +378,7 @@
             </div>
             <div class="ocard-right">
                 <div class="ocard-amount">₪{{ '%.0f' % (order.total_amount or 0) }}</div>
-                <div class="ocard-date">{{ order.created_at.strftime('%d/%m/%y %H:%M') if order.created_at else '-' }}</div>
+                <div class="ocard-date">{{ order.created_at|il_time('%d/%m/%y %H:%M') }}</div>
             </div>
         </div>
         <div class="ocard-tags">

@@ -51,11 +51,11 @@
                                 -
                             {% endif %}
                         </td>
-                        <td>{{ reservation.date.strftime('%d/%m/%Y') }}</td>
-                        <td>{{ reservation.time.strftime('%H:%M') }}</td>
+                        <td>{{ reservation.date|il_time('%d/%m/%Y') }}</td>
+                        <td>{{ reservation.time.strftime('%H:%M') if reservation.time else '-' }}</td>
                         <td>{{ reservation.guests }}</td>
                         <td>{{ reservation.special_requests or '-' }}</td>
-                        <td>{{ reservation.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ reservation.created_at|il_time }}</td>
                         <td>
                             <select class="form-select form-select-sm status-select" data-id="{{ reservation.id }}">
                                 <option value="pending" {% if reservation.status == 'pending' %}selected{% endif %}>ממתינה</option>

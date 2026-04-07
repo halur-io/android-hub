@@ -447,7 +447,7 @@
                         </td>
                         <td>{{ tl.branch.name_he if tl.branch else '-' }}</td>
                         <td><span class="tl-badge tl-badge-source">{{ tl.source or 'kds' }}</span></td>
-                        <td>{{ tl.clock_in.strftime('%d/%m %H:%M') }}</td>
+                        <td>{{ tl.clock_in|il_time_short }}</td>
                         <td><span class="tl-badge tl-badge-active">{{ tl.duration_display }}</span></td>
                         <td>
                             <form method="post" action="{{ url_for('admin.time_log_clock_out', log_id=tl.id) }}" class="d-inline">
@@ -661,10 +661,10 @@
                         <td><span class="tl-worker-name">{% if log.is_open %}<i class="fas fa-circle text-success me-1" style="font-size:0.4rem;vertical-align:middle;"></i>{% endif %}{{ log.worker.name if log.worker else '#' ~ log.worker_id }}</span></td>
                         <td>{{ log.branch.name_he if log.branch else '-' }}</td>
                         <td><span class="tl-badge tl-badge-source">{{ log.source or 'kds' }}</span></td>
-                        <td>{{ log.clock_in.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ log.clock_in|il_time }}</td>
                         <td>
                             {% if log.clock_out %}
-                                {{ log.clock_out.strftime('%d/%m/%Y %H:%M') }}
+                                {{ log.clock_out|il_time }}
                             {% else %}
                                 <span class="tl-badge tl-badge-active">{{ 'פעיל' if he else 'Active' }}</span>
                             {% endif %}

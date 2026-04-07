@@ -40,6 +40,32 @@ def _get_israel_now():
     except Exception:
         return datetime.now()
 
+def _israel_today_start_utc():
+    il_now = _get_israel_now()
+    il_midnight = il_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        from zoneinfo import ZoneInfo
+        return il_midnight.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+    except Exception:
+        return il_midnight.replace(tzinfo=None) - timedelta(hours=3)
+
+def _to_il(dt, fmt='%d/%m %H:%M'):
+    if dt is None:
+        return ''
+    try:
+        from zoneinfo import ZoneInfo
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+        return dt.astimezone(ZoneInfo('Asia/Jerusalem')).strftime(fmt)
+    except Exception:
+        return (dt + timedelta(hours=3)).strftime(fmt)
+
+def _to_il_hour(dt):
+    return _to_il(dt, '%H:%M')
+
+def _to_il_full(dt):
+    return _to_il(dt, '%d/%m/%Y %H:%M')
+
 def _check_device():
     token = request.cookies.get('ops_device_token')
     if not token:
@@ -361,8 +387,8 @@ def shifts():
     open_shifts = open_shifts.all()
     open_worker_ids = {tl.worker_id for tl in open_shifts}
     now = _get_israel_now()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_logs = TimeLog.query.filter(TimeLog.clock_in >= today_start)
+    today_start_utc = _israel_today_start_utc()
+    today_logs = TimeLog.query.filter(TimeLog.clock_in >= today_start_utc)
     if effective_branch:
         today_logs = today_logs.filter_by(branch_id=effective_branch)
     today_logs = today_logs.order_by(TimeLog.clock_in.desc()).all()
@@ -740,10 +766,10 @@ def settings():
 def home():
     settings = _settings()
     now = _get_israel_now()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_utc = _israel_today_start_utc()
     effective_branch = _get_effective_branch_id()
 
-    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
+    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start_utc)
     if effective_branch:
         today_q = today_q.filter_by(branch_id=effective_branch)
     today_orders = today_q.all()
@@ -784,7 +810,7 @@ def home():
     else:
         unavailable_items = MenuItem.query.filter_by(is_available=False).count()
 
-    recent_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
+    recent_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start_utc)
     if effective_branch:
         recent_q = recent_q.filter_by(branch_id=effective_branch)
     recent_orders = recent_q.order_by(FoodOrder.created_at.desc()).limit(8).all()
@@ -856,8 +882,8 @@ def orders():
     order_list = query.order_by(FoodOrder.created_at.desc()).limit(100).all()
 
     now = _get_israel_now()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start)
+    today_start_utc = _israel_today_start_utc()
+    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start_utc)
     if effective_branch:
         today_q = today_q.filter_by(branch_id=effective_branch)
     if type_filter == 'delivery':
@@ -1158,12 +1184,12 @@ def get_order_detail(order_id):
             'total_amount': order.total_amount,
             'payment_method': order.payment_method or '',
             'payment_status': order.payment_status or '',
-            'created_at': order.created_at.strftime('%H:%M') if order.created_at else '',
+            'created_at': _to_il_hour(order.created_at),
             'items': items,
             'items_by_category': by_category,
             'items_by_station': by_station,
             'branch_name': order.branch_name or '',
-            'estimated_ready_at': order.estimated_ready_at.strftime('%H:%M') if order.estimated_ready_at else '',
+            'estimated_ready_at': _to_il_hour(order.estimated_ready_at),
         }
     })
 
@@ -1687,7 +1713,7 @@ def _build_checker_bon(p, o):
     p.font('double')
     p.text(f'#{o.order_number}')
     p.font('normal')
-    p.text(o.created_at.strftime('%d/%m %H:%M') if o.created_at else '')
+    p.text(_to_il(o.created_at) if o.created_at else '')
     p.thick()
     p.align('right')
 
@@ -1738,8 +1764,7 @@ def _build_checker_bon(p, o):
     p.bold(False)
     p.font('normal')
     p.align('center')
-    from datetime import datetime as dt
-    p.text(f'צ׳קר | {dt.now().strftime("%H:%M")}')
+    p.text(f'צ׳קר | {_to_il_hour(datetime.utcnow())}')
     p.cut()
 
 
@@ -1754,7 +1779,7 @@ def _build_payment_bon(p, o):
     p.text(f'#{o.order_number}')
     p.font('normal')
     type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
-    p.text(f'{type_he} | {o.created_at.strftime("%d/%m %H:%M") if o.created_at else ""}')
+    p.text(f'{type_he} | {_to_il(o.created_at) if o.created_at else ""}')
     p.thick()
     p.align('right')
     p.font('double_h')
@@ -1797,8 +1822,7 @@ def _build_payment_bon(p, o):
     p.font('normal')
     p.align('center')
     p.text(f'תשלום: {o.payment_method or "—"}')
-    from datetime import datetime as dt
-    p.text(dt.now().strftime('%H:%M'))
+    p.text(_to_il_hour(datetime.utcnow()))
     p.cut()
 
 
@@ -1813,7 +1837,7 @@ def _build_station_bon(p, o, station_name, station_items):
     p.text(f'#{o.order_number}')
     p.font('normal')
     type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
-    p.text(f'{type_he} | {o.created_at.strftime("%d/%m %H:%M") if o.created_at else ""}')
+    p.text(f'{type_he} | {_to_il(o.created_at) if o.created_at else ""}')
     p.thick()
     p.align('right')
 
@@ -1840,8 +1864,7 @@ def _build_station_bon(p, o, station_name, station_items):
 
     p.align('center')
     p.dashed()
-    from datetime import datetime as dt
-    p.text(f'#{o.order_number} | {station_name} | {dt.now().strftime("%H:%M")}')
+    p.text(f'#{o.order_number} | {station_name} | {_to_il_hour(datetime.utcnow())}')
     p.cut()
 
 
@@ -1967,7 +1990,7 @@ def get_unprinted_orders():
             'total_amount': o.total_amount or 0,
             'payment_method': o.payment_method or '',
             'coupon_code': o.coupon_code or '',
-            'created_at': o.created_at.strftime('%d/%m %H:%M') if o.created_at else '',
+            'created_at': _to_il(o.created_at) if o.created_at else '',
             'items': items,
             'items_by_station': by_station,
         })
@@ -2054,8 +2077,7 @@ def direct_print_test():
     p.font('normal')
     p.text('בדיקת מדפסת')
     p.dashed()
-    from datetime import datetime as dt
-    p.text(dt.now().strftime('%Y-%m-%d %H:%M:%S'))
+    p.text(_to_il(datetime.utcnow(), '%Y-%m-%d %H:%M:%S'))
     p.text('החיבור תקין!')
     p.cut()
     success = p.send()
@@ -2100,16 +2122,24 @@ def order_history():
         query = query.filter_by(order_type=type_filter)
     if date_from:
         try:
-            from datetime import datetime as _dt
-            df = _dt.strptime(date_from, '%Y-%m-%d')
-            query = query.filter(FoodOrder.created_at >= df)
+            df_local = datetime.strptime(date_from, '%Y-%m-%d')
+            try:
+                from zoneinfo import ZoneInfo
+                df_utc = df_local.replace(tzinfo=ZoneInfo('Asia/Jerusalem')).astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+            except Exception:
+                df_utc = df_local - timedelta(hours=3)
+            query = query.filter(FoodOrder.created_at >= df_utc)
         except ValueError:
             pass
     if date_to:
         try:
-            from datetime import datetime as _dt
-            dt_to = _dt.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
-            query = query.filter(FoodOrder.created_at <= dt_to)
+            dt_local = datetime.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            try:
+                from zoneinfo import ZoneInfo
+                dt_utc = dt_local.replace(tzinfo=ZoneInfo('Asia/Jerusalem')).astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+            except Exception:
+                dt_utc = dt_local - timedelta(hours=3)
+            query = query.filter(FoodOrder.created_at <= dt_utc)
         except ValueError:
             pass
 
@@ -2211,7 +2241,7 @@ def send_receipt(order_id):
     msg = (
         f"קבלה - {branch_name}\n"
         f"הזמנה: {order.order_number}\n"
-        f"תאריך: {order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '-'}\n"
+        f"תאריך: {_to_il_full(order.created_at) if order.created_at else '-'}\n"
         f"---\n"
         f"{items_text}\n"
         f"---\n"

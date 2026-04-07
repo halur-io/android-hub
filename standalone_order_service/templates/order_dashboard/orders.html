@@ -769,7 +769,7 @@
   <div class="list-card st-{{ order.status }}">
     <div class="card-header-strip">
       <div class="card-header-left">
-        <div class="order-num">{{ order.order_number }} · {{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</div>
+        <div class="order-num">{{ order.order_number }} · {{ order.created_at|il_hour }}</div>
         <div class="cust-name">{{ order.customer_name }}</div>
         <div class="cust-phone">
           <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;">{{ order.customer_phone }}</a>

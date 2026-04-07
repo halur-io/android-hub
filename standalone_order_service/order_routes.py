@@ -24,6 +24,17 @@ from flask import (
 )
 
 
+def _to_il_hour(dt):
+    if dt is None:
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+        return dt.astimezone(ZoneInfo('Asia/Jerusalem')).strftime('%H:%M')
+    except Exception:
+        return (dt + timedelta(hours=3)).strftime('%H:%M')
+
 def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_settings=None, max_payment=None):
     """
     Factory that returns a configured Blueprint.
@@ -1109,10 +1120,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             'status': order.status,
             'status_he': order.status_display_he,
             'badge_class': order.status_badge_class,
-            'confirmed_at': order.confirmed_at.strftime('%H:%M') if order.confirmed_at else None,
-            'ready_at': order.ready_at.strftime('%H:%M') if order.ready_at else None,
-            'preparing_at': order.preparing_at.strftime('%H:%M') if order.preparing_at else None,
-            'estimated_ready_at': order.estimated_ready_at.strftime('%H:%M') if order.estimated_ready_at else None,
+            'confirmed_at': _to_il_hour(order.confirmed_at),
+            'ready_at': _to_il_hour(order.ready_at),
+            'preparing_at': _to_il_hour(order.preparing_at),
+            'estimated_ready_at': _to_il_hour(order.estimated_ready_at),
             'ready_by_time': ready_by_time,
         })
 

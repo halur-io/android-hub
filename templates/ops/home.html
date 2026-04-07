@@ -297,7 +297,7 @@
             <strong>#{{ order.order_number }}</strong> — {{ label }}
             <span style="color:#999;">• {{ order.customer_name }}</span>
         </div>
-        <div class="dash-activity-time">{{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</div>
+        <div class="dash-activity-time">{{ order.created_at|il_hour }}</div>
     </div>
     {% endfor %}
 </div>

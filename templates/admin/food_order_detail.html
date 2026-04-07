@@ -62,7 +62,7 @@
                         {% if order.customer_notes %}
                         <tr><td class="fw-bold">{{ 'הערות' if (admin_language or 'he') == 'he' else 'Notes' }}</td><td>{{ order.customer_notes }}</td></tr>
                         {% endif %}
-                        <tr><td class="fw-bold">{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</td><td>{{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '-' }}</td></tr>
+                        <tr><td class="fw-bold">{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</td><td>{{ order.created_at|il_time }}</td></tr>
                     </table>
                 </div>
             </div>
@@ -148,7 +148,7 @@
                                         <div class="text-muted small mt-1">{{ log.note }}</div>
                                     {% endif %}
                                 </div>
-                                <small class="text-muted">{{ log.created_at.strftime('%d/%m %H:%M') if log.created_at else '' }}</small>
+                                <small class="text-muted">{{ log.created_at|il_time_short if log.created_at else '' }}</small>
                             </div>
                         </div>
                         {% endfor %}
@@ -189,7 +189,7 @@
                                         <div class="text-danger small mt-1"><i class="fas fa-exclamation-triangle me-1"></i>{{ sms.error_message[:100] }}</div>
                                     {% endif %}
                                 </div>
-                                <small class="text-muted">{{ sms.created_at.strftime('%d/%m %H:%M') if sms.created_at else '' }}</small>
+                                <small class="text-muted">{{ sms.created_at|il_time_short if sms.created_at else '' }}</small>
                             </div>
                         </div>
                         {% endfor %}

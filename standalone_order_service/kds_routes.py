@@ -109,6 +109,17 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         except Exception:
             return datetime.now()
 
+    def _to_il_hour(dt):
+        if dt is None:
+            return ''
+        try:
+            from zoneinfo import ZoneInfo
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+            return dt.astimezone(ZoneInfo('Asia/Jerusalem')).strftime('%H:%M')
+        except Exception:
+            return (dt + timedelta(hours=3)).strftime('%H:%M')
+
     def _authenticated():
         return session.get('order_dashboard_authenticated', False)
 
@@ -227,9 +238,19 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
                 selected_date = today
         else:
             selected_date = today
+        day_start_local = datetime.combine(selected_date, datetime.min.time())
+        day_end_local = datetime.combine(selected_date + timedelta(days=1), datetime.min.time())
+        try:
+            from zoneinfo import ZoneInfo
+            il_tz = ZoneInfo('Asia/Jerusalem')
+            day_start_utc = day_start_local.replace(tzinfo=il_tz).astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+            day_end_utc = day_end_local.replace(tzinfo=il_tz).astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+        except Exception:
+            day_start_utc = day_start_local - timedelta(hours=3)
+            day_end_utc = day_end_local - timedelta(hours=3)
         q = FoodOrder.query.filter(
-            FoodOrder.created_at >= datetime.combine(selected_date, datetime.min.time()),
-            FoodOrder.created_at < datetime.combine(selected_date + timedelta(days=1), datetime.min.time())
+            FoodOrder.created_at >= day_start_utc,
+            FoodOrder.created_at < day_end_utc
         )
         if branch_filter:
             try:
@@ -484,7 +505,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             'status_label': STATUS_LABELS.get(o.status, o.status),
             'total_amount': o.total_amount,
             'pickup_time': o.pickup_time or '',
-            'created_at': o.created_at.strftime('%H:%M') if o.created_at else '',
+            'created_at': _to_il_hour(o.created_at),
         } for o in ords])
 
     # ── Settings ──────────────────────────────────────────────────────

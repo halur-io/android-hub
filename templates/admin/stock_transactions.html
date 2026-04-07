@@ -89,7 +89,7 @@
                     <tbody>
                         {% for transaction in transactions %}
                         <tr>
-                            <td>{{ transaction.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ transaction.created_at|il_time }}</td>
                             <td>
                                 {% if transaction.item %}
                                 <div>

@@ -52,7 +52,7 @@
                                     <td><i class="fas fa-tablet-alt me-1 text-warning"></i> {{ device.device_name }}</td>
                                     <td><code style="font-size:0.75rem;">{{ device.pending_request_token[:16] }}...</code></td>
                                     <td style="font-size:0.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis;">{{ device.user_agent[:80] if device.user_agent else '—' }}</td>
-                                    <td>{{ device.created_at.strftime('%d/%m/%Y %H:%M') if device.created_at else '—' }}</td>
+                                    <td>{{ device.created_at|il_time if device.created_at else '—' }}</td>
                                     <td>
                                         <form method="POST" action="{{ url_for('admin.approve_enrolled_device', device_id=device.id) }}" class="d-flex gap-2 align-items-center">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -157,8 +157,8 @@
                                         <span class="text-muted">—</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ device.created_at.strftime('%d/%m/%Y %H:%M') if device.created_at else '—' }}</td>
-                                    <td>{{ device.last_seen.strftime('%d/%m/%Y %H:%M') if device.last_seen else '—' }}</td>
+                                    <td>{{ device.created_at|il_time if device.created_at else '—' }}</td>
+                                    <td>{{ device.last_seen|il_time if device.last_seen else '—' }}</td>
                                     <td>
                                         <div class="action-menu">
                                             <button class="btn-dots" onclick="toggleActionMenu(event, this)">
@@ -336,7 +336,7 @@
                                         <span class="badge bg-danger">{{ 'מושבת' if (admin_language or 'he') == 'he' else 'Inactive' }}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ pin.last_used_at.strftime('%d/%m/%Y %H:%M') if pin.last_used_at else '—' }}</td>
+                                    <td>{{ pin.last_used_at|il_time if pin.last_used_at else '—' }}</td>
                                     <td>
                                         <div class="action-menu">
                                             <button class="btn-dots" onclick="toggleActionMenu(event, this)">

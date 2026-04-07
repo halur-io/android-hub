@@ -18,7 +18,7 @@
                 <i class="fas fa-user-circle" style="color:#10b981;font-size:1.2rem;"></i>
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:0.85rem;font-weight:700;color:var(--ops-text);">{{ tl.worker.name if tl.worker else '?' }}</div>
-                    <div style="font-size:0.7rem;color:#10b981;" class="shift-elapsed" data-start="{{ tl.clock_in.strftime('%Y-%m-%dT%H:%M:%SZ') }}">--:--</div>
+                    <div style="font-size:0.7rem;color:#10b981;" class="shift-elapsed" data-start="{{ tl.clock_in|il_time('%Y-%m-%dT%H:%M:%S') }}">--:--</div>
                 </div>
                 <button onclick="openClockOut({{ tl.worker_id }}, '{{ tl.worker.name if tl.worker else '' }}')"
                         style="background:#ef4444;border:none;color:#fff;border-radius:8px;padding:6px 10px;
@@ -73,10 +73,10 @@
                     {% for log in today_logs %}
                     <tr style="border-bottom:1px solid var(--ops-border);">
                         <td style="padding:8px 12px;font-weight:600;">{{ log.worker.name if log.worker else '?' }}</td>
-                        <td style="padding:8px 12px;">{{ log.clock_in.strftime('%H:%M') }}</td>
+                        <td style="padding:8px 12px;">{{ log.clock_in|il_hour }}</td>
                         <td style="padding:8px 12px;">
                             {% if log.clock_out %}
-                                {{ log.clock_out.strftime('%H:%M') }}
+                                {{ log.clock_out|il_hour }}
                             {% else %}
                                 <span style="color:#10b981;font-weight:700;">פעיל</span>
                             {% endif %}

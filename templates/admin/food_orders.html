@@ -320,7 +320,7 @@
                     <span class="badge-sm bg-pay-other">{{ order.payment_status or '-' }}</span>
                 {% endif %}
             </div>
-            <div class="order-date">{{ order.created_at.strftime('%d/%m %H:%M') if order.created_at else '-' }}</div>
+            <div class="order-date">{{ order.created_at|il_time_short }}</div>
         </div>
         {% endfor %}
     </div>

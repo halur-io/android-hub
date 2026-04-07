@@ -267,7 +267,7 @@
                                 <div><i class="fas fa-truck"></i> {{ item.primary_supplier.name if item.primary_supplier else 'ללא ספק' }}</div>
                                 <div><i class="fas fa-shekel-sign"></i> ₪{{ "%.2f"|format(item.cost_per_unit or 0) }}</div>
                                 {% if item.last_purchase_date %}
-                                <div><i class="fas fa-clock"></i> {{ item.last_purchase_date.strftime('%d/%m') }}</div>
+                                <div><i class="fas fa-clock"></i> {{ item.last_purchase_date|il_time('%d/%m') }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -326,7 +326,7 @@
                             <td contenteditable="true" data-field="cost_per_unit" data-type="number">{{ "%.2f"|format(item.cost_per_unit or 0) }}</td>
                             <td contenteditable="true" data-field="min_stock" data-type="number">{{ item.min_stock_level or 0 }}</td>
                             <td contenteditable="true" data-field="max_stock" data-type="number">{{ item.max_stock_level or 0 }}</td>
-                            <td>{{ item.last_purchase_date.strftime('%d/%m') if item.last_purchase_date else '-' }}</td>
+                            <td>{{ item.last_purchase_date|il_time('%d/%m') if item.last_purchase_date else '-' }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <a href="{{ url_for('admin.item_details', item_id=item.id) }}" class="btn btn-outline-primary" title="פרטים">

@@ -8,9 +8,22 @@ from models import *
 from permissions import require_permission, require_role, superadmin_required, has_permission
 from app import mail
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from urllib.parse import urlparse
+
+
+def _to_il_full(dt_val):
+    if dt_val is None:
+        return '-'
+    try:
+        from zoneinfo import ZoneInfo
+        if dt_val.tzinfo is None:
+            dt_val = dt_val.replace(tzinfo=ZoneInfo('UTC'))
+        return dt_val.astimezone(ZoneInfo('Asia/Jerusalem')).strftime('%d/%m/%Y %H:%M')
+    except Exception:
+        return (dt_val + timedelta(hours=3)).strftime('%d/%m/%Y %H:%M')
+
 import pandas as pd
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, SubmitField, BooleanField, DecimalField, IntegerField
@@ -5813,7 +5826,7 @@ def food_order_send_receipt(order_id):
     msg = (
         f"קבלה - {branch_name}\n"
         f"הזמנה: {order.order_number}\n"
-        f"תאריך: {order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '-'}\n"
+        f"תאריך: {_to_il_full(order.created_at) if order.created_at else '-'}\n"
         f"---\n"
         f"{items_text}\n"
         f"---\n"
@@ -5866,10 +5879,19 @@ def archived_orders_dashboard():
     from sqlalchemy import func
     from datetime import timedelta
 
-    now = datetime.utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    week_start = today_start - timedelta(days=today_start.weekday())
-    month_start = today_start.replace(day=1)
+    try:
+        from zoneinfo import ZoneInfo
+        il_now = datetime.now(ZoneInfo('Asia/Jerusalem'))
+        il_midnight = il_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = il_midnight.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+        il_weekday = il_now.weekday()
+        il_day = il_now.day
+    except Exception:
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=3)
+        il_weekday = datetime.utcnow().weekday()
+        il_day = datetime.utcnow().day
+    week_start = today_start - timedelta(days=il_weekday)
+    month_start = today_start - timedelta(days=il_day - 1)
 
     main_orders = FoodOrder.query.all()
     archived_orders = ArchivedOrder.query.order_by(ArchivedOrder.deleted_at.desc()).all()

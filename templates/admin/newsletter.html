@@ -248,7 +248,7 @@
                         <td>{{ subscriber.email }}</td>
                         <td>{{ subscriber.name or '-' }}</td>
                         <td>{{ subscriber.source }}</td>
-                        <td>{{ subscriber.subscribed_at.strftime('%d/%m/%Y %H:%M') if subscriber.subscribed_at else '-' }}</td>
+                        <td>{{ subscriber.subscribed_at|il_time }}</td>
                         <td>
                             {% if subscriber.is_active %}
                             <span class="status-badge status-active">פעיל</span>

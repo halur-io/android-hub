@@ -181,7 +181,7 @@
                             </td>
                             <td>
                                 {% if receipt.receipt_date %}
-                                {{ receipt.receipt_date.strftime('%d/%m/%Y') }}
+                                {{ receipt.receipt_date|il_time('%d/%m/%Y') }}
                                 {% else %}
                                 <span class="text-muted">לא זוהה</span>
                                 {% endif %}
@@ -220,7 +220,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <small>{{ receipt.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                <small>{{ receipt.created_at|il_time }}</small>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">

@@ -62,7 +62,7 @@
                     <tbody>
                         {% for shopping_list in shopping_lists %}
                         <tr>
-                            <td>{{ shopping_list.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ shopping_list.created_at|il_time }}</td>
                             <td>
                                 {% if shopping_list.branch %}
                                 <span class="badge bg-info">{{ shopping_list.branch.name_he }}</span>

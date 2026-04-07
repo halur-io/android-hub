@@ -14,6 +14,7 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Popup Designer:** Split-screen interface with live preview, collapsible controls, drag-and-drop element reordering, and responsive previews.
 
 ### Technical Implementations
+- **Timezone Handling:** All datetimes stored as naive UTC in the database (`datetime.utcnow`). Display uses Jinja2 filters (`|il_time`, `|il_time_short`, `|il_hour`) that convert UTC to `Asia/Jerusalem` via `zoneinfo.ZoneInfo`. Server-side "today" queries convert Israel midnight to UTC before filtering. Helper: `_israel_today_start_utc()` in `ops_routes.py`, `_to_il_hour()` in order/KDS routes.
 - **Core Website:** Built with Python/Flask, supporting static content and dynamic pages.
 - **Online Ordering System:** Integrated from a `standalone_order_service` for menu display, cart management, multi-branch operations, and real-time KDS.
 - **Popup System:** Comprehensive announcement system with design controls, multiple triggers (time delay, scroll, exit intent), device targeting, and display frequency.

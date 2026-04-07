@@ -55,7 +55,7 @@
                             <th>רכישה אחרונה:</th>
                             <td>
                                 {% if last_purchase %}
-                                {{ last_purchase.strftime('%d/%m/%Y') }}
+                                {{ last_purchase|il_time('%d/%m/%Y') }}
                                 {% else %}
                                 <span class="text-muted">אין נתונים</span>
                                 {% endif %}
@@ -198,7 +198,7 @@
                         {% for i in range(price_history|length) %}
                         {% set purchase = price_history[i] %}
                         <tr>
-                            <td>{{ purchase.transaction_date.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ purchase.transaction_date|il_time('%d/%m/%Y') }}</td>
                             <td>₪{{ "%.2f"|format(purchase.unit_cost or 0) }}</td>
                             <td>
                                 {% if i < (price_history|length - 1) %}
@@ -239,7 +239,7 @@ new Chart(ctx, {
     data: {
         labels: [
             {% for purchase in price_history|reverse %}
-            '{{ purchase.transaction_date.strftime("%d/%m") }}'{% if not loop.last %},{% endif %}
+            '{{ purchase.transaction_date|il_time("%d/%m") }}'{% if not loop.last %},{% endif %}
             {% endfor %}
         ],
         datasets: [{

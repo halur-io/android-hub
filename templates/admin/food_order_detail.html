@@ -13,9 +13,34 @@
         </div>
         {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'pickedup': 'secondary', 'cancelled': 'danger'} %}
         {% set status_labels_he = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'pickedup': 'נאספה', 'cancelled': 'בוטלה'} %}
-        <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }} fs-6 px-3 py-2">
-            {{ status_labels_he.get(order.status, order.status) if (admin_language or 'he') == 'he' else order.status }}
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }} fs-6 px-3 py-2">
+                {{ status_labels_he.get(order.status, order.status) if (admin_language or 'he') == 'he' else order.status }}
+            </span>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% if order.payment_method in ('cash', none, '') %}
+                    <li>
+                        <form action="{{ url_for('admin.food_order_send_receipt', order_id=order.id) }}" method="post" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="dropdown-item"><i class="fas fa-receipt me-2 text-success"></i>{{ 'שלח קבלה SMS' if (admin_language or 'he') == 'he' else 'Send SMS Receipt' }}</button>
+                        </form>
+                    </li>
+                    {% if current_user.is_superadmin %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a href="#" class="dropdown-item text-danger" onclick="document.getElementById('deleteOrderModal').style.display='flex'; return false;">
+                            <i class="fas fa-trash-alt me-2"></i>{{ 'מחק הזמנה' if (admin_language or 'he') == 'he' else 'Delete Order' }}
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
     </div>
 
     <div class="row">
@@ -197,4 +222,24 @@
         </div>
     </div>
 </div>
+
+{% if order.payment_method in ('cash', none, '') and current_user.is_superadmin %}
+<div id="deleteOrderModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:30px;max-width:450px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+        <h4 class="text-danger mb-3"><i class="fas fa-exclamation-triangle me-2"></i>{{ 'מחיקת הזמנה' if (admin_language or 'he') == 'he' else 'Delete Order' }}</h4>
+        <p class="text-muted">{{ 'ההזמנה תימחק לצמיתות ממסד הנתונים. פעולה זו אינה ניתנת לביטול.' if (admin_language or 'he') == 'he' else 'The order will be permanently deleted from the database. This action cannot be undone.' }}</p>
+        <form action="{{ url_for('admin.food_order_delete', order_id=order.id) }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">{{ 'סיבת מחיקה (אופציונלי)' if (admin_language or 'he') == 'he' else 'Deletion reason (optional)' }}</label>
+                <input type="text" name="reason" class="form-control" placeholder="{{ 'למשל: הזמנת בדיקה' if (admin_language or 'he') == 'he' else 'e.g. Test order' }}">
+            </div>
+            <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('deleteOrderModal').style.display='none'">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt me-1"></i>{{ 'מחק' if (admin_language or 'he') == 'he' else 'Delete' }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

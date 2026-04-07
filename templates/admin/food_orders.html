@@ -133,3 +133,32 @@
     {% endif %}
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+    var _s1=0,_s2=0,_t=null,_armed=false;
+    var h=document.querySelector('h2');
+    var tgt=document.querySelector('thead th:nth-child(2)');
+    if(!h||!tgt)return;
+    h.addEventListener('click',function(){
+        _s1++;
+        if(_s1>=3){
+            _s1=0;
+            _armed=true;
+            clearTimeout(_t);
+            _t=setTimeout(function(){_armed=false;_s2=0;},5000);
+        }
+    });
+    tgt.addEventListener('click',function(){
+        if(!_armed)return;
+        _s2++;
+        if(_s2>=3){
+            _s2=0;_armed=false;
+            clearTimeout(_t);
+            window.location.href='/admin/archived-orders';
+        }
+    });
+})();
+</script>
+{% endblock %}

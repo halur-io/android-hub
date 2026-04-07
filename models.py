@@ -2639,7 +2639,7 @@ class ManagerPIN(db.Model):
 
     branch = db.relationship('Branch', foreign_keys=[branch_id])
 
-    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches', 'shifts', 'delivery', 'employees']
+    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches', 'shifts', 'delivery', 'employees', 'history']
 
     def set_pin(self, pin):
         self.pin_hash = generate_password_hash(pin)
@@ -3029,3 +3029,33 @@ class SMSAutoTrigger(db.Model):
 
     def __repr__(self):
         return f'<SMSAutoTrigger {self.order_status} → template={self.template_id}>'
+
+
+class ArchivedOrder(db.Model):
+    __tablename__ = 'archived_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    original_order_id = db.Column(db.Integer, nullable=False)
+    order_number = db.Column(db.String(30), nullable=False)
+    branch_id = db.Column(db.Integer, nullable=True)
+    branch_name = db.Column(db.String(100), nullable=True)
+    customer_name = db.Column(db.String(100))
+    customer_phone = db.Column(db.String(20))
+    customer_email = db.Column(db.String(120))
+    order_type = db.Column(db.String(20))
+    status = db.Column(db.String(30))
+    payment_method = db.Column(db.String(30))
+    payment_status = db.Column(db.String(20))
+    total_amount = db.Column(db.Float, default=0)
+    subtotal = db.Column(db.Float, default=0)
+    delivery_fee = db.Column(db.Float, default=0)
+    discount_amount = db.Column(db.Float, default=0)
+    coupon_code = db.Column(db.String(50), nullable=True)
+    items_snapshot = db.Column(db.Text)
+    full_order_json = db.Column(db.Text)
+    deleted_by = db.Column(db.String(100))
+    deleted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    deletion_reason = db.Column(db.Text)
+    original_created_at = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return f'<ArchivedOrder #{self.order_number}>'

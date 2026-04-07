@@ -72,6 +72,9 @@
             {% if 'employees' in ops_modules %}
                 {% set _ = tabs.append(('employees', 'עובדים', 'fas fa-users', url_for('ops.employees'))) %}
             {% endif %}
+            {% if 'history' in ops_modules %}
+                {% set _ = tabs.append(('history', 'היסטוריה', 'fas fa-clock-rotate-left', url_for('ops.order_history'))) %}
+            {% endif %}
             {% if is_ops_superadmin %}
                 {% set _ = tabs.append(('settings', 'הגדרות', 'fas fa-cog', url_for('ops.settings'))) %}
             {% endif %}

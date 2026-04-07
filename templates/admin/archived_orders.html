@@ -1,0 +1,231 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Archive{% endblock %}
+
+{% block extra_css %}
+<style>
+.archive-header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: rgba(255,255,255,.1);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+.stat-card .stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.stat-card .stat-label {
+    font-size: .8rem;
+    opacity: .8;
+    margin-top: 4px;
+}
+.archive-table th { font-size: .85rem; }
+.archive-table td { font-size: .9rem; vertical-align: middle; }
+.restore-btn {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+}
+.restore-btn:hover { background: #16a34a; }
+.section-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #374151;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="archive-header">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h3 class="mb-1"><i class="fas fa-vault me-2"></i>מרכז ארכיון</h3>
+                <p class="mb-0 opacity-75" style="font-size:.9rem;">תמונה מלאה — כל ההזמנות כולל נמחקות</p>
+            </div>
+            <a href="{{ url_for('admin.food_orders_list') }}" class="btn btn-sm btn-outline-light">
+                <i class="fas fa-arrow-right me-1"></i>חזרה
+            </a>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_orders }}</div>
+                    <div class="stat-label">סה"כ הזמנות</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">₪{{ '%.0f' % stats.combined_revenue }}</div>
+                    <div class="stat-label">הכנסה כוללת</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color:#ef4444;">{{ stats.archived_count }}</div>
+                    <div class="stat-label">הזמנות שנמחקו</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color:#f59e0b;">₪{{ '%.0f' % stats.archived_revenue }}</div>
+                    <div class="stat-label">סכום נמחק</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-4 col-md-2">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;">₪{{ '%.0f' % stats.today_total }}</div>
+                    <div class="stat-label">היום</div>
+                </div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;">₪{{ '%.0f' % stats.week_total }}</div>
+                    <div class="stat-label">השבוע</div>
+                </div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;">₪{{ '%.0f' % stats.month_total }}</div>
+                    <div class="stat-label">החודש</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;color:#22c55e;">₪{{ '%.0f' % stats.cash_total }}</div>
+                    <div class="stat-label">מזומן (כולל)</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;color:#3b82f6;">₪{{ '%.0f' % stats.card_total }}</div>
+                    <div class="stat-label">כרטיס (כולל)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if archived_orders %}
+    <div class="section-title"><i class="fas fa-trash-alt me-2 text-danger"></i>הזמנות שנמחקו ({{ archived_orders|length }})</div>
+    <div class="card mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 archive-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>לקוח</th>
+                        <th>טלפון</th>
+                        <th>סכום</th>
+                        <th>תשלום</th>
+                        <th>נמחק ע"י</th>
+                        <th>תאריך מחיקה</th>
+                        <th>סיבה</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in archived_orders %}
+                    <tr>
+                        <td><strong>{{ a.order_number }}</strong></td>
+                        <td>{{ a.customer_name or '-' }}</td>
+                        <td>{{ a.customer_phone or '-' }}</td>
+                        <td><strong>₪{{ '%.0f' % (a.total_amount or 0) }}</strong></td>
+                        <td>
+                            {% if a.payment_method in ('cash', none, '') %}
+                                <span class="badge bg-success">מזומן</span>
+                            {% else %}
+                                <span class="badge bg-primary">כרטיס</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-dark">{{ a.deleted_by or '-' }}</span></td>
+                        <td>{{ a.deleted_at.strftime('%d/%m/%Y %H:%M') if a.deleted_at else '-' }}</td>
+                        <td class="text-muted">{{ a.deletion_reason or '-' }}</td>
+                        <td>
+                            <form action="{{ url_for('admin.archived_order_restore', archive_id=a.id) }}" method="post" style="display:inline" onsubmit="return confirm('לשחזר הזמנה זו למסד הנתונים?')">
+                                <button type="submit" class="restore-btn"><i class="fas fa-undo me-1"></i>שחזר</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card mb-4">
+        <div class="card-body text-center py-4 text-muted">
+            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+            <p class="mb-0">אין הזמנות שנמחקו</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="section-title"><i class="fas fa-database me-2 text-primary"></i>הזמנות פעילות ({{ main_orders|length }})</div>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 archive-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>לקוח</th>
+                        <th>סוג</th>
+                        <th>סכום</th>
+                        <th>תשלום</th>
+                        <th>סטטוס</th>
+                        <th>תאריך</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'pickedup': 'secondary', 'cancelled': 'danger'} %}
+                    {% set status_labels = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'pickedup': 'נאספה', 'cancelled': 'בוטלה'} %}
+                    {% for o in main_orders %}
+                    <tr>
+                        <td><strong>{{ o.order_number }}</strong></td>
+                        <td>{{ o.customer_name or '-' }}</td>
+                        <td>
+                            {% if o.order_type == 'delivery' %}
+                                <span class="badge bg-info">משלוח</span>
+                            {% else %}
+                                <span class="badge bg-secondary">איסוף</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>₪{{ '%.0f' % (o.total_amount or 0) }}</strong></td>
+                        <td>
+                            {% if o.payment_method in ('cash', none, '') %}
+                                <span class="badge bg-success">מזומן</span>
+                            {% else %}
+                                <span class="badge bg-primary">כרטיס</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-{{ status_colors.get(o.status, 'secondary') }}">{{ status_labels.get(o.status, o.status) }}</span></td>
+                        <td>{{ o.created_at.strftime('%d/%m/%Y %H:%M') if o.created_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -125,6 +125,9 @@ def require_ops_module(module_name):
         return decorated
     return decorator
 
+def _get_current_pin():
+    return _get_ops_user()
+
 def _get_effective_branch_id():
     worker_branch = session.get('ops_branch_id')
     if worker_branch:
@@ -2039,3 +2042,291 @@ def direct_print_test():
         return jsonify({'ok': True, 'message': 'הדפסת בדיקה נשלחה'})
     else:
         return jsonify({'ok': False, 'error': 'שגיאת חיבור'})
+
+
+@ops_bp.route('/history')
+@require_ops_module('history')
+def order_history():
+    from models import FoodOrder, Branch
+    effective_branch = _get_effective_branch_id()
+
+    q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '')
+    type_filter = request.args.get('type', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+
+    query = FoodOrder.query
+    if effective_branch:
+        query = query.filter_by(branch_id=effective_branch)
+    if q:
+        query = query.filter(
+            db.or_(
+                FoodOrder.customer_name.ilike(f'%{q}%'),
+                FoodOrder.customer_phone.ilike(f'%{q}%'),
+                FoodOrder.order_number.ilike(f'%{q}%'),
+            )
+        )
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if type_filter:
+        query = query.filter_by(order_type=type_filter)
+    if date_from:
+        try:
+            from datetime import datetime as _dt
+            df = _dt.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(FoodOrder.created_at >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime as _dt
+            dt_to = _dt.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            query = query.filter(FoodOrder.created_at <= dt_to)
+        except ValueError:
+            pass
+
+    orders = query.order_by(FoodOrder.created_at.desc()).limit(200).all()
+    branches = Branch.query.order_by(Branch.name_he).all()
+
+    pin = _get_current_pin()
+    is_superadmin = pin.is_ops_superadmin if pin else False
+
+    return render_template('ops/order_history.html',
+        active_tab='history',
+        orders=orders,
+        q=q,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        date_from=date_from,
+        date_to=date_to,
+        branches=branches,
+        is_superadmin=is_superadmin,
+    )
+
+
+@ops_bp.route('/api/orders/<int:order_id>/reorder', methods=['POST'])
+@require_ops_module('history')
+def reorder(order_id):
+    import json as _json
+    from models import FoodOrder, FoodOrderItem
+    original = FoodOrder.query.get(order_id)
+    if not original:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and original.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
+
+    new_order = FoodOrder(
+        order_type=original.order_type or 'pickup',
+        status='pending',
+        customer_name=original.customer_name or '',
+        customer_phone=original.customer_phone or '',
+        customer_email=original.customer_email,
+        delivery_address=original.delivery_address,
+        delivery_city=original.delivery_city,
+        delivery_notes=original.delivery_notes,
+        subtotal=original.subtotal,
+        delivery_fee=original.delivery_fee,
+        total_amount=original.total_amount,
+        payment_method='cash',
+        payment_status='pending',
+        branch_id=original.branch_id,
+        branch_name=original.branch_name,
+        items_json=original.items_json,
+    )
+    new_order.set_order_number()
+    import secrets
+    new_order.tracking_token = secrets.token_urlsafe(32)
+
+    db.session.add(new_order)
+    db.session.flush()
+
+    items = original.get_items()
+    for it in items:
+        oi = FoodOrderItem(
+            order_id=new_order.id,
+            menu_item_id=it.get('menu_item_id'),
+            item_name_he=it.get('item_name_he', it.get('name_he', '?')),
+            item_name_en=it.get('item_name_en', it.get('name_en', '')),
+            quantity=it.get('quantity', it.get('qty', 1)),
+            unit_price=it.get('unit_price', it.get('price', 0)),
+            total_price=it.get('total_price', (it.get('unit_price', 0) * it.get('quantity', 1))),
+            special_instructions=it.get('special_instructions', ''),
+            options_json=it.get('options_json'),
+        )
+        db.session.add(oi)
+
+    db.session.commit()
+
+    pin = _get_current_pin()
+    from models import OrderActivityLog
+    log = OrderActivityLog(
+        order_id=new_order.id,
+        action='order_created',
+        new_value='pending',
+        staff_name=pin.name if pin else 'Ops',
+        note=f'הזמנה חוזרת מ-#{original.order_number}',
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    return jsonify({'ok': True, 'order_id': new_order.id, 'order_number': new_order.order_number})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/send-receipt', methods=['POST'])
+@require_ops_module('orders')
+def send_receipt(order_id):
+    from models import FoodOrder, SMSLog
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
+
+    if order.payment_method not in ('cash', None, ''):
+        return jsonify({'ok': False, 'error': 'קבלות זמינות רק להזמנות מזומן'})
+
+    if not order.customer_phone:
+        return jsonify({'ok': False, 'error': 'אין מספר טלפון'})
+
+    items = order.get_items()
+    items_text = '\n'.join([
+        f"  {it.get('name_he', it.get('item_name_he', '?'))} x{it.get('qty', it.get('quantity', 1))} - ₪{(it.get('price', it.get('unit_price', 0)) * it.get('qty', it.get('quantity', 1))):.0f}"
+        for it in items
+    ])
+
+    branch_name = order.branch_name or 'SUMO'
+    msg = (
+        f"קבלה - {branch_name}\n"
+        f"הזמנה: {order.order_number}\n"
+        f"תאריך: {order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '-'}\n"
+        f"---\n"
+        f"{items_text}\n"
+        f"---\n"
+        f"סה\"כ: ₪{order.total_amount:.0f}\n"
+        f"תשלום: מזומן\n"
+        f"תודה רבה! 🙏"
+    )
+
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_sms = create_sender_from_env()
+    if not send_sms:
+        return jsonify({'ok': False, 'error': 'ספק SMS לא מוגדר'})
+
+    success = send_sms(order.customer_phone, msg)
+    pin = _get_current_pin()
+
+    sms_log = SMSLog(
+        recipient_phone=order.customer_phone,
+        message_text=msg,
+        message_type='receipt',
+        status='sent' if success else 'failed',
+        order_id=order.id,
+        staff_name=pin.name if pin else 'Ops',
+    )
+    db.session.add(sms_log)
+    db.session.commit()
+
+    if success:
+        return jsonify({'ok': True, 'message': 'קבלה נשלחה בהצלחה'})
+    return jsonify({'ok': False, 'error': 'שליחה נכשלה'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/delete', methods=['POST'])
+@require_ops_module('orders')
+def delete_order(order_id):
+    import json as _json
+    from models import FoodOrder, ArchivedOrder
+
+    pin = _get_current_pin()
+    if not pin or not pin.is_ops_superadmin:
+        return jsonify({'ok': False, 'error': 'הרשאת מנהל נדרשת'})
+
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+
+    if order.payment_method not in ('cash', None, ''):
+        return jsonify({'ok': False, 'error': 'ניתן למחוק רק הזמנות מזומן'})
+
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
+
+    data = request.get_json(force=True) if request.is_json else {}
+    reason = data.get('reason', '')
+
+    items_list = order.get_items()
+    if not items_list:
+        items_list = []
+        for item in order.items:
+            items_list.append({
+                'item_name_he': item.item_name_he,
+                'item_name_en': item.item_name_en,
+                'quantity': item.quantity,
+                'unit_price': item.unit_price,
+                'total_price': item.total_price,
+                'special_instructions': item.special_instructions,
+                'options_json': item.options_json,
+            })
+
+    full_data = {
+        'id': order.id,
+        'order_number': order.order_number,
+        'branch_id': order.branch_id,
+        'branch_name': order.branch_name,
+        'order_type': order.order_type,
+        'status': order.status,
+        'customer_name': order.customer_name,
+        'customer_phone': order.customer_phone,
+        'customer_email': order.customer_email,
+        'delivery_address': order.delivery_address,
+        'delivery_city': order.delivery_city,
+        'subtotal': order.subtotal,
+        'delivery_fee': order.delivery_fee,
+        'discount_amount': order.discount_amount,
+        'total_amount': order.total_amount,
+        'payment_method': order.payment_method,
+        'payment_status': order.payment_status,
+        'coupon_code': order.coupon_code,
+        'customer_notes': order.customer_notes,
+        'admin_notes': order.admin_notes,
+        'created_at': order.created_at.isoformat() if order.created_at else None,
+        'items': items_list,
+    }
+
+    archived = ArchivedOrder(
+        original_order_id=order.id,
+        order_number=order.order_number,
+        branch_id=order.branch_id,
+        branch_name=order.branch_name,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        customer_email=order.customer_email,
+        order_type=order.order_type,
+        status=order.status,
+        payment_method=order.payment_method,
+        payment_status=order.payment_status,
+        total_amount=order.total_amount,
+        subtotal=order.subtotal,
+        delivery_fee=order.delivery_fee,
+        discount_amount=order.discount_amount,
+        coupon_code=order.coupon_code,
+        items_snapshot=_json.dumps(items_list, ensure_ascii=False),
+        full_order_json=_json.dumps(full_data, ensure_ascii=False),
+        deleted_by=pin.name if pin else 'Ops',
+        deletion_reason=reason or None,
+        original_created_at=order.created_at,
+    )
+
+    db.session.add(archived)
+    for item in order.items:
+        db.session.delete(item)
+    db.session.delete(order)
+    db.session.commit()
+
+    return jsonify({'ok': True, 'message': f'הזמנה #{order.order_number} נמחקה'})

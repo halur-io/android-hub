@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from app import csrf
 # from flask_wtf.csrf import exempt  # Not available in this version
@@ -5666,6 +5666,305 @@ def food_order_detail(order_id):
     sms_logs = SMSLog.query.filter_by(order_id=order_id).order_by(SMSLog.created_at.desc()).all()
     items = order.get_items()
     return render_template('admin/food_order_detail.html', order=order, items=items, activity_logs=activity_logs, sms_logs=sms_logs)
+
+@admin_bp.route('/food-orders/<int:order_id>/delete', methods=['POST'])
+@login_required
+def food_order_delete(order_id):
+    """Hard-delete a cash order after archiving it. Superadmin only."""
+    from models import FoodOrder, FoodOrderItem, ArchivedOrder
+    import json as _json
+
+    user = current_user
+    if not getattr(user, 'is_superadmin', False):
+        flash('אין הרשאה למחיקת הזמנות', 'danger')
+        return redirect(url_for('admin.food_orders_list'))
+
+    order = FoodOrder.query.get_or_404(order_id)
+
+    if order.payment_method not in ('cash', None, ''):
+        flash('ניתן למחוק רק הזמנות מזומן', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    reason = request.form.get('reason', '').strip()
+
+    items_list = order.get_items()
+    if not items_list:
+        items_list = []
+        for item in order.items:
+            items_list.append({
+                'item_name_he': item.item_name_he,
+                'item_name_en': item.item_name_en,
+                'quantity': item.quantity,
+                'unit_price': item.unit_price,
+                'total_price': item.total_price,
+                'special_instructions': item.special_instructions,
+                'options_json': item.options_json,
+            })
+
+    full_data = {
+        'id': order.id,
+        'order_number': order.order_number,
+        'branch_id': order.branch_id,
+        'branch_name': order.branch_name,
+        'order_type': order.order_type,
+        'status': order.status,
+        'customer_name': order.customer_name,
+        'customer_phone': order.customer_phone,
+        'customer_email': order.customer_email,
+        'delivery_address': order.delivery_address,
+        'delivery_city': order.delivery_city,
+        'delivery_notes': order.delivery_notes,
+        'pickup_time': order.pickup_time,
+        'subtotal': order.subtotal,
+        'delivery_fee': order.delivery_fee,
+        'discount_amount': order.discount_amount,
+        'total_amount': order.total_amount,
+        'payment_method': order.payment_method,
+        'payment_status': order.payment_status,
+        'coupon_code': order.coupon_code,
+        'coupon_discount': order.coupon_discount,
+        'customer_notes': order.customer_notes,
+        'admin_notes': order.admin_notes,
+        'created_at': order.created_at.isoformat() if order.created_at else None,
+        'items': items_list,
+    }
+
+    archived = ArchivedOrder(
+        original_order_id=order.id,
+        order_number=order.order_number,
+        branch_id=order.branch_id,
+        branch_name=order.branch_name,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        customer_email=order.customer_email,
+        order_type=order.order_type,
+        status=order.status,
+        payment_method=order.payment_method,
+        payment_status=order.payment_status,
+        total_amount=order.total_amount,
+        subtotal=order.subtotal,
+        delivery_fee=order.delivery_fee,
+        discount_amount=order.discount_amount,
+        coupon_code=order.coupon_code,
+        items_snapshot=_json.dumps(items_list, ensure_ascii=False),
+        full_order_json=_json.dumps(full_data, ensure_ascii=False),
+        deleted_by=user.username,
+        deletion_reason=reason or None,
+        original_created_at=order.created_at,
+    )
+
+    db.session.add(archived)
+    for item in order.items:
+        db.session.delete(item)
+    db.session.delete(order)
+    db.session.commit()
+
+    flash(f'הזמנה #{order.order_number} נמחקה והועברה לארכיון', 'success')
+    return redirect(url_for('admin.food_orders_list'))
+
+
+@admin_bp.route('/food-orders/<int:order_id>/send-receipt', methods=['POST'])
+@login_required
+def food_order_send_receipt(order_id):
+    """Send an SMS receipt for a cash order."""
+    from models import FoodOrder, SMSLog
+    order = FoodOrder.query.get_or_404(order_id)
+
+    if order.payment_method not in ('cash', None, ''):
+        flash('קבלות SMS זמינות רק להזמנות מזומן', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    if not order.customer_phone:
+        flash('אין מספר טלפון ללקוח', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    items = order.get_items()
+    items_text = '\n'.join([
+        f"  {it.get('name_he', it.get('item_name_he', '?'))} x{it.get('qty', it.get('quantity', 1))} - ₪{(it.get('price', it.get('unit_price', 0)) * it.get('qty', it.get('quantity', 1))):.0f}"
+        for it in items
+    ])
+
+    branch_name = order.branch_name or 'SUMO'
+    msg = (
+        f"קבלה - {branch_name}\n"
+        f"הזמנה: {order.order_number}\n"
+        f"תאריך: {order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '-'}\n"
+        f"---\n"
+        f"{items_text}\n"
+        f"---\n"
+        f"סה\"כ: ₪{order.total_amount:.0f}\n"
+        f"תשלום: מזומן\n"
+        f"תודה רבה! 🙏"
+    )
+
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_sms = create_sender_from_env()
+    if not send_sms:
+        flash('ספק SMS לא מוגדר', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    success = send_sms(order.customer_phone, msg)
+
+    sms_log = SMSLog(
+        recipient_phone=order.customer_phone,
+        message_text=msg,
+        message_type='receipt',
+        status='sent' if success else 'failed',
+        order_id=order.id,
+        staff_name=current_user.username,
+    )
+    db.session.add(sms_log)
+    db.session.commit()
+
+    if success:
+        flash('קבלה נשלחה בהצלחה!', 'success')
+    else:
+        flash('שליחת קבלה נכשלה', 'danger')
+    return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+
+@admin_bp.route('/archived-orders')
+@login_required
+def archived_orders_dashboard():
+    """Hidden archive dashboard. Requires superadmin + enrolled device."""
+    from models import ArchivedOrder, FoodOrder, EnrolledDevice
+
+    if not getattr(current_user, 'is_superadmin', False):
+        abort(404)
+
+    device_token = request.cookies.get('ops_device_token')
+    if not device_token:
+        abort(404)
+    device = EnrolledDevice.query.filter_by(device_token=device_token, is_active=True).first()
+    if not device:
+        abort(404)
+
+    from sqlalchemy import func
+    from datetime import timedelta
+
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=today_start.weekday())
+    month_start = today_start.replace(day=1)
+
+    main_orders = FoodOrder.query.all()
+    archived_orders = ArchivedOrder.query.order_by(ArchivedOrder.deleted_at.desc()).all()
+
+    main_total = sum(o.total_amount or 0 for o in main_orders)
+    archived_total = sum(o.total_amount or 0 for o in archived_orders)
+    combined_total = main_total + archived_total
+
+    main_cash = sum(o.total_amount or 0 for o in main_orders if o.payment_method in ('cash', None, ''))
+    main_card = sum(o.total_amount or 0 for o in main_orders if o.payment_method not in ('cash', None, ''))
+    arch_cash = sum(o.total_amount or 0 for o in archived_orders if o.payment_method in ('cash', None, ''))
+    arch_card = sum(o.total_amount or 0 for o in archived_orders if o.payment_method not in ('cash', None, ''))
+
+    main_today = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= today_start)
+    arch_today = sum(o.total_amount or 0 for o in archived_orders if o.original_created_at and o.original_created_at >= today_start)
+
+    main_week = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= week_start)
+    arch_week = sum(o.total_amount or 0 for o in archived_orders if o.original_created_at and o.original_created_at >= week_start)
+
+    main_month = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= month_start)
+    arch_month = sum(o.total_amount or 0 for o in archived_orders if o.original_created_at and o.original_created_at >= month_start)
+
+    stats = {
+        'total_orders': len(main_orders) + len(archived_orders),
+        'main_count': len(main_orders),
+        'archived_count': len(archived_orders),
+        'combined_revenue': combined_total,
+        'main_revenue': main_total,
+        'archived_revenue': archived_total,
+        'cash_total': main_cash + arch_cash,
+        'card_total': main_card + arch_card,
+        'today_total': main_today + arch_today,
+        'week_total': main_week + arch_week,
+        'month_total': main_month + arch_month,
+    }
+
+    return render_template('admin/archived_orders.html',
+        stats=stats,
+        archived_orders=archived_orders,
+        main_orders=main_orders,
+    )
+
+
+@admin_bp.route('/archived-orders/<int:archive_id>/restore', methods=['POST'])
+@login_required
+def archived_order_restore(archive_id):
+    """Restore an archived order back to the main database."""
+    from models import ArchivedOrder, FoodOrder, FoodOrderItem, EnrolledDevice
+    import json as _json
+
+    if not getattr(current_user, 'is_superadmin', False):
+        abort(404)
+
+    device_token = request.cookies.get('ops_device_token')
+    if not device_token:
+        abort(404)
+    device = EnrolledDevice.query.filter_by(device_token=device_token, is_active=True).first()
+    if not device:
+        abort(404)
+
+    archived = ArchivedOrder.query.get_or_404(archive_id)
+    full_data = _json.loads(archived.full_order_json) if archived.full_order_json else {}
+
+    new_order = FoodOrder(
+        order_number=archived.order_number,
+        branch_id=archived.branch_id,
+        branch_name=archived.branch_name,
+        order_type=archived.order_type or 'pickup',
+        status=archived.status or 'pending',
+        customer_name=archived.customer_name or '',
+        customer_phone=archived.customer_phone or '',
+        customer_email=archived.customer_email,
+        delivery_address=full_data.get('delivery_address'),
+        delivery_city=full_data.get('delivery_city'),
+        delivery_notes=full_data.get('delivery_notes'),
+        pickup_time=full_data.get('pickup_time'),
+        subtotal=archived.subtotal,
+        delivery_fee=archived.delivery_fee,
+        discount_amount=archived.discount_amount,
+        total_amount=archived.total_amount,
+        payment_method=archived.payment_method,
+        payment_status=archived.payment_status,
+        coupon_code=archived.coupon_code,
+        customer_notes=full_data.get('customer_notes'),
+        admin_notes=full_data.get('admin_notes'),
+        created_at=archived.original_created_at,
+        items_json=archived.items_snapshot,
+    )
+
+    existing = FoodOrder.query.filter_by(order_number=archived.order_number).first()
+    if existing:
+        import random
+        suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+        new_order.order_number = f"{archived.order_number}-R{suffix}"
+
+    db.session.add(new_order)
+    db.session.flush()
+
+    items_data = _json.loads(archived.items_snapshot) if archived.items_snapshot else []
+    for it in items_data:
+        oi = FoodOrderItem(
+            order_id=new_order.id,
+            menu_item_id=it.get('menu_item_id'),
+            item_name_he=it.get('item_name_he', it.get('name_he', '?')),
+            item_name_en=it.get('item_name_en', it.get('name_en', '')),
+            quantity=it.get('quantity', it.get('qty', 1)),
+            unit_price=it.get('unit_price', it.get('price', 0)),
+            total_price=it.get('total_price', (it.get('unit_price', 0) * it.get('quantity', 1))),
+            special_instructions=it.get('special_instructions', ''),
+            options_json=it.get('options_json'),
+        )
+        db.session.add(oi)
+
+    db.session.delete(archived)
+    db.session.commit()
+
+    flash(f'הזמנה #{new_order.order_number} שוחזרה בהצלחה', 'success')
+    return redirect(url_for('admin.archived_orders_dashboard'))
+
 
 @admin_bp.route('/customers-management')
 @login_required

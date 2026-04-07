@@ -22,7 +22,11 @@ from utilities.exporting import build_export_response
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # Security: Protect all admin routes at the blueprint level
-PUBLIC_ADMIN_ROUTES = ['admin.login', 'admin.admin_redirect', 'admin.api_settings', 'admin.api_branches', 'admin.api_gallery', 'admin.api_menu', 'admin.archived_orders_dashboard', 'admin.archived_order_restore']
+PUBLIC_ADMIN_ROUTES = [
+    'admin.login', 'admin.admin_redirect', 'admin.api_settings',
+    'admin.api_branches', 'admin.api_gallery', 'admin.api_menu',
+    'admin.archived_orders_dashboard', 'admin.archived_order_restore',
+]
 
 # Route to permission mapping for RBAC enforcement
 ROUTE_PERMISSIONS = {

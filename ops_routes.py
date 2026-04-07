@@ -2157,13 +2157,7 @@ def reorder(order_id):
         'notes': original.delivery_notes or '',
     }
 
-    branch_slug = ''
-    if original.branch_id:
-        branch = BranchModel.query.get(original.branch_id)
-        if branch:
-            branch_slug = getattr(branch, 'slug', '') or ''
-
-    order_url = url_for('order_page.order_page', branch=branch_slug) if branch_slug else url_for('order_page.order_page')
+    order_url = url_for('order_page.order_page', branch_id=original.branch_id) if original.branch_id else url_for('order_page.order_page')
 
     return jsonify({'ok': True, 'redirect': order_url, 'message': f'מפנה להזמנה חוזרת מ-#{original.order_number}'})
 

@@ -9,7 +9,7 @@
             <a href="{{ url_for('admin.food_orders_list') }}" class="btn btn-sm btn-outline-secondary mb-2">
                 <i class="fas fa-arrow-right me-1"></i>{{ 'חזרה להזמנות' if (admin_language or 'he') == 'he' else 'Back to Orders' }}
             </a>
-            <h2><i class="fas fa-receipt me-2"></i>{{ 'הזמנה' if (admin_language or 'he') == 'he' else 'Order' }} #{{ order.order_number }}</h2>
+            <h2 id="orderTitle"><i class="fas fa-receipt me-2"></i>{{ 'הזמנה' if (admin_language or 'he') == 'he' else 'Order' }} #{{ order.order_number }}</h2>
         </div>
         {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'pickedup': 'secondary', 'cancelled': 'danger'} %}
         {% set status_labels_he = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'pickedup': 'נאספה', 'cancelled': 'בוטלה'} %}
@@ -24,19 +24,11 @@
                 <ul class="dropdown-menu dropdown-menu-end">
                     {% if order.payment_method in ('cash', none, '') %}
                     <li>
-                        <form action="{{ url_for('admin.food_order_send_receipt', order_id=order.id) }}" method="post" style="display:inline">
+                        <form id="receiptForm" action="{{ url_for('admin.food_order_send_receipt', order_id=order.id) }}" method="post" style="display:inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="dropdown-item"><i class="fas fa-receipt me-2 text-success"></i>{{ 'שלח קבלה SMS' if (admin_language or 'he') == 'he' else 'Send SMS Receipt' }}</button>
+                            <button type="submit" id="receiptBtn" class="dropdown-item"><i class="fas fa-receipt me-2 text-success"></i>{{ 'שלח קבלה SMS' if (admin_language or 'he') == 'he' else 'Send SMS Receipt' }}</button>
                         </form>
                     </li>
-                    {% if current_user.is_superadmin %}
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <a href="#" class="dropdown-item text-danger" onclick="document.getElementById('deleteOrderModal').style.display='flex'; return false;">
-                            <i class="fas fa-trash-alt me-2"></i>{{ 'מחק הזמנה' if (admin_language or 'he') == 'he' else 'Delete Order' }}
-                        </a>
-                    </li>
-                    {% endif %}
                     {% endif %}
                 </ul>
             </div>
@@ -241,5 +233,89 @@
         </form>
     </div>
 </div>
+<script>
+(function(){
+    var tapCount = 0;
+    var tapTimer = null;
+    var armed = false;
+    var armTimer = null;
+    var longPressTimer = null;
+    var LONG_PRESS_MS = 800;
+
+    var title = document.getElementById('orderTitle');
+    var receiptBtn = document.getElementById('receiptBtn');
+    var receiptForm = document.getElementById('receiptForm');
+
+    if (!title || !receiptBtn || !receiptForm) return;
+
+    function resetAll() {
+        tapCount = 0;
+        armed = false;
+        if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+        if (armTimer) { clearTimeout(armTimer); armTimer = null; }
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+
+    title.style.cursor = 'default';
+    title.style.userSelect = 'none';
+    title.style.webkitUserSelect = 'none';
+
+    title.addEventListener('click', function(e) {
+        e.preventDefault();
+        tapCount++;
+        if (tapTimer) clearTimeout(tapTimer);
+        tapTimer = setTimeout(function() { tapCount = 0; }, 3000);
+
+        if (tapCount >= 5) {
+            armed = true;
+            tapCount = 0;
+            if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+            armTimer = setTimeout(function() { armed = false; }, 8000);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (armed && !title.contains(e.target) && !receiptBtn.contains(e.target) && e.target.id !== 'deleteOrderModal' && !e.target.closest('#deleteOrderModal')) {
+            resetAll();
+        }
+    });
+
+    function onDown(e) {
+        if (!armed) return;
+        e.preventDefault();
+        e.stopPropagation();
+        longPressTimer = setTimeout(function() {
+            resetAll();
+            document.getElementById('deleteOrderModal').style.display = 'flex';
+        }, LONG_PRESS_MS);
+    }
+
+    function onUp(e) {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        if (armed) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    receiptBtn.addEventListener('mousedown', onDown);
+    receiptBtn.addEventListener('mouseup', onUp);
+    receiptBtn.addEventListener('mouseleave', onUp);
+    receiptBtn.addEventListener('touchstart', onDown, {passive: false});
+    receiptBtn.addEventListener('touchend', onUp);
+    receiptBtn.addEventListener('touchcancel', onUp);
+
+    receiptBtn.addEventListener('click', function(e) {
+        if (armed) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    });
+})();
+</script>
 {% endif %}
 {% endblock %}

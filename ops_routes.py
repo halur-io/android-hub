@@ -2331,7 +2331,10 @@ def delete_order(order_id):
         original_created_at=order.created_at,
     )
 
+    from models import ReleasedOrderNumber
+    released = ReleasedOrderNumber(order_number=order.order_number)
     db.session.add(archived)
+    db.session.add(released)
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)

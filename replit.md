@@ -33,13 +33,14 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Branch-Specific Print Routing:** Allows per-branch override of menu item print station assignments.
 - **Employee & PIN Management (Ops):** Module for managing employee PINs with branch isolation and superadmin safeguards.
 - **Branch & Settings Isolation (Ops):** Enforces branch-level isolation for settings, allowing non-superadmin users to manage only their assigned branch's details.
-- **Cash Order Management & Hidden Archive:** Allows superadmins to hard-delete cash orders by archiving a snapshot to a separate table. A hidden dashboard provides access to archived orders, financial summaries, and restore capabilities.
-- **Ops Order History Module:** Provides search, filter, re-order, send receipt, and delete functionalities for past orders, with branch-scoped access.
+- **Cash Order Management & Hidden Archive:** Allows superadmins to hard-delete cash orders (credit card orders cannot be deleted) by archiving a snapshot to a separate table. Deleted order numbers are released and recycled for the next new order via `ReleasedOrderNumber` model. A hidden dashboard provides access to archived orders, financial summaries, and restore capabilities.
+- **Order Deletion Secret Gesture:** Delete is hidden from UI — requires 5 taps on order title followed by a long press (~800ms) on the receipt button to trigger the deletion modal/prompt. Applied consistently across admin order detail, Ops orders modal, and Ops order history.
+- **Ops Order History Module:** Provides search, filter, re-order, and send receipt functionalities for past orders, with branch-scoped access.
 
 ### System Design Choices
 - **Modularity:** Achieved through separation of concerns, e.g., `standalone_order_service`.
 - **Print Stations as Entities:** `PrintStation` is a first-class entity for flexible print routing.
-- **Database Schema:** Includes models for `FoodOrder`, `MenuItem`, `ManagerPIN`, `Deal`, `Coupon`, `Printer`, `TimeLog`, `DeliveryZone`, `ArchivedOrder`, among others.
+- **Database Schema:** Includes models for `FoodOrder`, `MenuItem`, `ManagerPIN`, `Deal`, `Coupon`, `Printer`, `TimeLog`, `DeliveryZone`, `ArchivedOrder`, `ReleasedOrderNumber`, among others.
 - **API Endpoints:** Dedicated APIs for order validation, coupon validation, upsell suggestions, and print agent polling.
 
 ## External Dependencies

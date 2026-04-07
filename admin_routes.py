@@ -5757,7 +5757,10 @@ def food_order_delete(order_id):
         original_created_at=order.created_at,
     )
 
+    from models import ReleasedOrderNumber
+    released = ReleasedOrderNumber(order_number=order.order_number)
     db.session.add(archived)
+    db.session.add(released)
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)
@@ -5937,11 +5940,16 @@ def archived_order_restore(archive_id):
         items_json=archived.items_snapshot,
     )
 
+    from models import ReleasedOrderNumber
     existing = FoodOrder.query.filter_by(order_number=archived.order_number).first()
     if existing:
         import random
         suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
         new_order.order_number = f"{archived.order_number}-R{suffix}"
+
+    released_num = ReleasedOrderNumber.query.filter_by(order_number=archived.order_number).first()
+    if released_num:
+        db.session.delete(released_num)
 
     db.session.add(new_order)
     db.session.flush()

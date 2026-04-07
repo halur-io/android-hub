@@ -231,7 +231,7 @@
     <div class="order-card" id="card-{{ order.id }}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;" onclick="toggleDetail({{ order.id }})">
             <div>
-                <div class="order-num">{{ order.order_number }}</div>
+                <div class="order-num" id="histOrderTitle_{{ order.id }}" style="user-select:none;-webkit-user-select:none;">{{ order.order_number }}</div>
                 <div class="order-customer">{{ order.customer_name }} &bull; {{ order.customer_phone }}</div>
             </div>
             <div style="text-align:left;">
@@ -289,13 +289,8 @@
                 <i class="fas fa-redo me-1"></i>הזמנה חוזרת
             </button>
             {% if order.payment_method in ('cash', none, '') %}
-            <button class="btn-receipt" onclick="sendReceipt({{ order.id }})">
+            <button class="btn-receipt" id="histReceiptBtn_{{ order.id }}" onclick="sendReceipt({{ order.id }})">
                 <i class="fas fa-receipt me-1"></i>קבלה
-            </button>
-            {% endif %}
-            {% if is_superadmin and order.payment_method in ('cash', none, '') %}
-            <button class="btn-delete-order" onclick="deleteOrder({{ order.id }}, '{{ order.order_number }}')">
-                <i class="fas fa-trash-alt"></i>
             </button>
             {% endif %}
         </div>
@@ -347,9 +342,11 @@ function sendReceipt(orderId) {
         .catch(function() { alert('שגיאת רשת'); });
 }
 
-function deleteOrder(orderId, orderNum) {
-    var reason = prompt('סיבת מחיקה (אופציונלי) להזמנה ' + orderNum + ':');
-    if (reason === null) return;
+function deleteOrder(orderId, orderNum, reason) {
+    if (reason === undefined) {
+        reason = prompt('סיבת מחיקה (אופציונלי) להזמנה ' + orderNum + ':');
+        if (reason === null) return;
+    }
     fetch('/ops/api/orders/' + orderId + '/delete', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -365,7 +362,64 @@ function deleteOrder(orderId, orderNum) {
             alert(d.error || 'שגיאה');
         }
     })
-    .catch(function() { alert('שגיאת רשת'); });
+    .catch(function() { alert('שגיאת רשت'); });
 }
+
+{% if is_superadmin %}
+(function() {
+    var cashOrders = [
+        {% for order in orders %}
+        {% if order.payment_method in ('cash', none, '') %}
+        { id: {{ order.id }}, orderNumber: {{ order.order_number|tojson }} },
+        {% endif %}
+        {% endfor %}
+    ];
+    cashOrders.forEach(function(order) {
+        var titleEl = document.getElementById('histOrderTitle_' + order.id);
+        var receiptBtn = document.getElementById('histReceiptBtn_' + order.id);
+        if (!titleEl || !receiptBtn) return;
+
+        var tapCount = 0, tapTimer = null, armed = false, armTimer = null, lpTimer = null;
+
+        titleEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            tapCount++;
+            if (tapTimer) clearTimeout(tapTimer);
+            tapTimer = setTimeout(function() { tapCount = 0; }, 3000);
+            if (tapCount >= 5) {
+                armed = true;
+                tapCount = 0;
+                if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+                armTimer = setTimeout(function() { armed = false; }, 8000);
+            }
+        });
+
+        function onDown(e) {
+            if (!armed) return;
+            e.preventDefault(); e.stopPropagation();
+            lpTimer = setTimeout(function() {
+                armed = false;
+                var reason = prompt('סיבת מחיקה (אופציונלי) להזמנה #' + order.orderNumber + ':');
+                if (reason === null) return;
+                deleteOrder(order.id, order.orderNumber, reason);
+            }, 800);
+        }
+        function onUp(e) {
+            if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+            if (armed) { e.preventDefault(); e.stopPropagation(); }
+        }
+
+        receiptBtn.addEventListener('mousedown', onDown);
+        receiptBtn.addEventListener('mouseup', onUp);
+        receiptBtn.addEventListener('mouseleave', onUp);
+        receiptBtn.addEventListener('touchstart', onDown, {passive: false});
+        receiptBtn.addEventListener('touchend', onUp);
+        receiptBtn.addEventListener('touchcancel', onUp);
+        receiptBtn.addEventListener('click', function(e) {
+            if (armed) { e.preventDefault(); e.stopPropagation(); return false; }
+        }, true);
+    });
+})();
+{% endif %}
 </script>
 {% endblock %}

@@ -2549,6 +2549,12 @@ class FoodOrder(db.Model):
     items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
 
     def set_order_number(self):
+        released = ReleasedOrderNumber.query.order_by(ReleasedOrderNumber.order_number.asc()).first()
+        if released:
+            self.order_number = released.order_number
+            db.session.delete(released)
+            return
+
         import random
         ts = datetime.now().strftime('%y%m%d')
         suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
@@ -3062,3 +3068,13 @@ class ArchivedOrder(db.Model):
 
     def __repr__(self):
         return f'<ArchivedOrder #{self.order_number}>'
+
+
+class ReleasedOrderNumber(db.Model):
+    __tablename__ = 'released_order_numbers'
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(30), unique=True, nullable=False)
+    released_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ReleasedOrderNumber {self.order_number}>'

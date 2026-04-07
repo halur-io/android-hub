@@ -655,18 +655,13 @@ function renderDetail(o) {
     actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="openPrintMenu('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-print"></i></button>';
     actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="sendSms('+o.id+')"><i class="fas fa-sms"></i></button>';
     if (o.payment_method === 'cash' || !o.payment_method) {
-        actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#059669;color:#fff;border:none;" onclick="sendReceipt('+o.id+')"><i class="fas fa-receipt"></i></button>';
+        actionsHtml += '<button class="ops-btn ops-btn-sm" id="receiptBtn_'+o.id+'" style="background:#059669;color:#fff;border:none;" onclick="sendReceipt('+o.id+')"><i class="fas fa-receipt"></i></button>';
     }
-    {% if is_ops_superadmin %}
-    if (o.payment_method === 'cash' || !o.payment_method) {
-        actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#dc2626;color:#fff;border:none;" onclick="deleteOrderFromOps('+o.id+',\''+o.order_number+'\')"><i class="fas fa-trash"></i></button>';
-    }
-    {% endif %}
     actionsHtml += '</div>';
 
     document.getElementById('orderDetail').innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-            '<div style="font-size:20px;font-weight:800;">#'+o.order_number+'</div>' +
+            '<div id="opsOrderTitle_'+o.id+'" style="font-size:20px;font-weight:800;user-select:none;-webkit-user-select:none;">#'+o.order_number+'</div>' +
             '<div class="row-status '+({'pending':'s-new','confirmed':'s-new','preparing':'s-preparing','ready':'s-ready','delivered':'s-done','pickedup':'s-done','cancelled':'s-cancelled'}[o.status]||'s-done')+'">'+o.status_label+'</div>' +
         '</div>' + etaHtml +
         '<div class="detail-sec">' +
@@ -677,6 +672,10 @@ function renderDetail(o) {
         '</div>' + addrHtml +
         '<div class="detail-sec"><div class="detail-lbl">פריטים</div>'+catHtml+'</div>' +
         notesHtml + totalsHtml + actionsHtml;
+
+    {% if is_ops_superadmin %}
+    _setupDeleteGesture(o.id, o.order_number, o.payment_method);
+    {% endif %}
 }
 
 function openPrepFromDetail(id, num) {
@@ -1092,7 +1091,63 @@ function closeBonPreview() {
     document.getElementById('bonPreviewScreen').classList.remove('show');
 }
 
+var _deleteGestureState = { tapCount: 0, tapTimer: null, armed: false, armTimer: null, lpTimer: null, activeId: null };
+
+function _setupDeleteGesture(orderId, orderNum, paymentMethod) {
+    if (paymentMethod && paymentMethod !== 'cash') return;
+    var titleEl = document.getElementById('opsOrderTitle_' + orderId);
+    var receiptBtn = document.getElementById('receiptBtn_' + orderId);
+    if (!titleEl || !receiptBtn) return;
+
+    var st = _deleteGestureState;
+    st.tapCount = 0; st.armed = false; st.activeId = orderId;
+    if (st.tapTimer) clearTimeout(st.tapTimer);
+    if (st.armTimer) clearTimeout(st.armTimer);
+    if (st.lpTimer) clearTimeout(st.lpTimer);
+
+    titleEl.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (st.activeId !== orderId) { st.tapCount = 0; st.activeId = orderId; }
+        st.tapCount++;
+        if (st.tapTimer) clearTimeout(st.tapTimer);
+        st.tapTimer = setTimeout(function() { st.tapCount = 0; }, 3000);
+        if (st.tapCount >= 5) {
+            st.armed = true;
+            st.tapCount = 0;
+            if (st.tapTimer) { clearTimeout(st.tapTimer); st.tapTimer = null; }
+            st.armTimer = setTimeout(function() { st.armed = false; }, 8000);
+        }
+    });
+
+    function onDown(e) {
+        if (!st.armed) return;
+        e.preventDefault(); e.stopPropagation();
+        st.lpTimer = setTimeout(function() {
+            st.armed = false;
+            var reason = prompt('סיבת מחיקה (אופציונלי) להזמנה #' + orderNum + ':');
+            if (reason === null) return;
+            deleteOrderFromOps(orderId, orderNum, reason);
+        }, 800);
+    }
+    function onUp(e) {
+        if (st.lpTimer) { clearTimeout(st.lpTimer); st.lpTimer = null; }
+        if (st.armed) { e.preventDefault(); e.stopPropagation(); }
+    }
+
+    receiptBtn.addEventListener('mousedown', onDown);
+    receiptBtn.addEventListener('mouseup', onUp);
+    receiptBtn.addEventListener('mouseleave', onUp);
+    receiptBtn.addEventListener('touchstart', onDown, {passive: false});
+    receiptBtn.addEventListener('touchend', onUp);
+    receiptBtn.addEventListener('touchcancel', onUp);
+
+    receiptBtn.addEventListener('click', function(e) {
+        if (st.armed) { e.preventDefault(); e.stopPropagation(); return false; }
+    }, true);
+}
+
 function sendReceipt(id) {
+    if (_deleteGestureState.armed) return;
     if (!confirm('לשלוח קבלה SMS ללקוח?')) return;
     fetch('/ops/api/orders/' + id + '/send-receipt', { method: 'POST', credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
@@ -1103,9 +1158,11 @@ function sendReceipt(id) {
         .catch(function() { alert('שגיאת רשת'); });
 }
 
-function deleteOrderFromOps(id, orderNum) {
-    var reason = prompt('סיבת מחיקה (אופציונלי) להזמנה ' + orderNum + ':');
-    if (reason === null) return;
+function deleteOrderFromOps(id, orderNum, reason) {
+    if (reason === undefined) {
+        reason = prompt('סיבת מחיקה (אופציונלי) להזמנה ' + orderNum + ':');
+        if (reason === null) return;
+    }
     fetch('/ops/api/orders/' + id + '/delete', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

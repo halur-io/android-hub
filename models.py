@@ -2750,7 +2750,15 @@ class Deal(db.Model):
 
     deal_type = db.Column(db.String(20), default='fixed')
     source_category_id = db.Column(db.Integer, db.ForeignKey('menu_categories.id', ondelete='SET NULL'), nullable=True)
+    source_category_ids = db.Column(db.JSON, default=list)
     pick_count = db.Column(db.Integer, default=0)
+
+    @property
+    def effective_category_ids(self):
+        ids = self.source_category_ids or []
+        if not ids and self.source_category_id:
+            ids = [self.source_category_id]
+        return [int(x) for x in ids if x]
 
     image_path = db.Column(db.String(500))
 

@@ -9910,16 +9910,21 @@ def create_deal():
             display_order=display_order,
         )
         if deal_type == 'customer_picks':
-            try:
-                deal.source_category_id = int(request.form.get('source_category_id', 0)) or None
-            except (ValueError, TypeError):
-                deal.source_category_id = None
+            cat_ids_raw = request.form.getlist('source_category_ids')
+            cat_ids = []
+            for v in cat_ids_raw:
+                try:
+                    cat_ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            deal.source_category_ids = cat_ids
+            deal.source_category_id = cat_ids[0] if cat_ids else None
             try:
                 deal.pick_count = int(request.form.get('pick_count', 0))
             except (ValueError, TypeError):
                 deal.pick_count = 0
-            if not deal.source_category_id or deal.pick_count < 1:
-                flash('עבור מבצע "הלקוח בוחר" חובה לבחור קטגוריה ולהגדיר כמות פריטים (לפחות 1)', 'danger')
+            if not cat_ids or deal.pick_count < 1:
+                flash('עבור מבצע "הלקוח בוחר" חובה לבחור לפחות קטגוריה אחת ולהגדיר כמות פריטים (לפחות 1)', 'danger')
                 categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
                 menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
                 category_items_map = _build_category_items_map(categories)
@@ -9989,22 +9994,28 @@ def edit_deal(deal_id):
         deal_type = request.form.get('deal_type', 'fixed')
         deal.deal_type = deal_type
         if deal_type == 'customer_picks':
-            try:
-                deal.source_category_id = int(request.form.get('source_category_id', 0)) or None
-            except (ValueError, TypeError):
-                deal.source_category_id = None
+            cat_ids_raw = request.form.getlist('source_category_ids')
+            cat_ids = []
+            for v in cat_ids_raw:
+                try:
+                    cat_ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            deal.source_category_ids = cat_ids
+            deal.source_category_id = cat_ids[0] if cat_ids else None
             try:
                 deal.pick_count = int(request.form.get('pick_count', 0))
             except (ValueError, TypeError):
                 deal.pick_count = 0
-            if not deal.source_category_id or deal.pick_count < 1:
-                flash('עבור מבצע "הלקוח בוחר" חובה לבחור קטגוריה ולהגדיר כמות פריטים (לפחות 1)', 'danger')
+            if not cat_ids or deal.pick_count < 1:
+                flash('עבור מבצע "הלקוח בוחר" חובה לבחור לפחות קטגוריה אחת ולהגדיר כמות פריטים (לפחות 1)', 'danger')
                 categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
                 menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
                 category_items_map = _build_category_items_map(categories)
                 return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
             deal.included_items = []
         else:
+            deal.source_category_ids = []
             deal.source_category_id = None
             deal.pick_count = 0
 

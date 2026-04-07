@@ -37,6 +37,7 @@ def _run_safe_migrations(db):
         ("deals", "deal_type", "ALTER TABLE deals ADD COLUMN deal_type VARCHAR(20) DEFAULT 'fixed'"),
         ("deals", "source_category_id", "ALTER TABLE deals ADD COLUMN source_category_id INTEGER"),
         ("deals", "pick_count", "ALTER TABLE deals ADD COLUMN pick_count INTEGER DEFAULT 0"),
+        ("deals", "source_category_ids", "ALTER TABLE deals ADD COLUMN source_category_ids JSON DEFAULT '[]'"),
         ("global_option_group_links", "linked_option_group_id", "ALTER TABLE global_option_group_links ADD COLUMN linked_option_group_id INTEGER REFERENCES menu_item_option_groups(id) ON DELETE SET NULL"),
         ("food_orders", "bon_acked_at", "ALTER TABLE food_orders ADD COLUMN bon_acked_at TIMESTAMP"),
         ("food_orders", "bon_acked_device_id", "ALTER TABLE food_orders ADD COLUMN bon_acked_device_id VARCHAR(128)"),

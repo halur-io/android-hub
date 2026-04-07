@@ -119,20 +119,25 @@
         <div class="card-body">
             <div class="alert alert-info mb-3">
                 <i class="fas fa-info-circle me-2"></i>
-                הלקוח יבחר את הפריטים שלו מתוך הקטגוריה שתבחר. לדוגמה: "בחר 7 רולים מתוך כל הרולים שלנו".
+                הלקוח יבחר את הפריטים שלו מתוך הקטגוריות שתבחר. לדוגמה: "בחר 7 פריטים מתוך רולים, ניגירי ועוד".
             </div>
             <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">קטגוריה מקור *</label>
-                    <select name="source_category_id" class="form-select" id="source-category">
-                        <option value="">-- בחר קטגוריה --</option>
+                <div class="col-md-8">
+                    <label class="form-label">קטגוריות מקור *</label>
+                    <div class="border rounded p-2" style="max-height:200px;overflow-y:auto;background:#fff;">
                         {% for cat in categories %}
-                        <option value="{{ cat.id }}" {% if deal and deal.source_category_id == cat.id %}selected{% endif %}>{{ cat.name_he }}</option>
+                        <div class="form-check">
+                            <input class="form-check-input source-cat-check" type="checkbox"
+                                   name="source_category_ids" value="{{ cat.id }}" id="src-cat-{{ cat.id }}"
+                                   {% if deal and cat.id in (deal.effective_category_ids or []) %}checked{% endif %}
+                                   onchange="updateCategoryPreview()">
+                            <label class="form-check-label" for="src-cat-{{ cat.id }}">{{ cat.name_he }}</label>
+                        </div>
                         {% endfor %}
-                    </select>
-                    <small class="form-text text-muted">מאיזה קטגוריה הלקוח יוכל לבחור פריטים</small>
+                    </div>
+                    <small class="form-text text-muted">מאילו קטגוריות הלקוח יוכל לבחור פריטים</small>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">כמות פריטים לבחירה *</label>
                     <input type="number" name="pick_count" class="form-control" id="pick-count"
                            value="{{ deal.pick_count if deal else '' }}" min="1" placeholder="לדוג׳ 7">
@@ -140,9 +145,9 @@
                 </div>
             </div>
             <div class="mt-3">
-                <label class="form-label fw-bold"><i class="fas fa-eye me-1"></i>תצוגה מקדימה של פריטים בקטגוריה</label>
+                <label class="form-label fw-bold"><i class="fas fa-eye me-1"></i>תצוגה מקדימה של פריטים בקטגוריות שנבחרו</label>
                 <div id="category-preview" class="border rounded p-3" style="background:#f8f9fa;min-height:60px;">
-                    <span class="text-muted">בחר קטגוריה לצפייה בפריטים הזמינים</span>
+                    <span class="text-muted">בחר קטגוריות לצפייה בפריטים הזמינים</span>
                 </div>
             </div>
         </div>
@@ -213,22 +218,26 @@ function addDealItem() {
 }
 
 var _catItems = {{ category_items_map | tojson }};
-function loadCategoryPreview() {
-    var sel = document.getElementById('source-category');
-    var catId = sel.value;
+function updateCategoryPreview() {
+    var checks = document.querySelectorAll('.source-cat-check:checked');
     var preview = document.getElementById('category-preview');
-    if (!catId || !_catItems[catId]) {
-        preview.innerHTML = '<span class="text-muted">בחר קטגוריה לצפייה בפריטים הזמינים</span>';
+    if (checks.length === 0) {
+        preview.innerHTML = '<span class="text-muted">בחר קטגוריות לצפייה בפריטים הזמינים</span>';
         return;
     }
-    var items = _catItems[catId];
-    preview.innerHTML = '<div class="mb-2 fw-bold text-muted" style="font-size:.85rem;">' + items.length + ' פריטים זמינים:</div>' +
-        '<div class="d-flex flex-wrap gap-2">' + items.map(function(it) {
+    var allItems = [];
+    checks.forEach(function(cb) {
+        var catId = cb.value;
+        if (_catItems[catId]) {
+            allItems = allItems.concat(_catItems[catId]);
+        }
+    });
+    preview.innerHTML = '<div class="mb-2 fw-bold text-muted" style="font-size:.85rem;">' + allItems.length + ' פריטים זמינים מ-' + checks.length + ' קטגוריות:</div>' +
+        '<div class="d-flex flex-wrap gap-2">' + allItems.map(function(it) {
             return '<span class="badge bg-light text-dark border" style="font-size:.8rem;padding:6px 10px;">' +
                 it.name + ' <small class="text-muted">₪' + it.price + '</small></span>';
         }).join('') + '</div>';
 }
-document.getElementById('source-category').addEventListener('change', loadCategoryPreview);
-document.addEventListener('DOMContentLoaded', loadCategoryPreview);
+document.addEventListener('DOMContentLoaded', updateCategoryPreview);
 </script>
 {% endblock %}

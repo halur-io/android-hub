@@ -548,15 +548,18 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         deal = Deal.query.get(deal_id)
         if not deal or not deal.is_valid() or getattr(deal, 'deal_type', 'fixed') != 'customer_picks':
             return jsonify({'ok': False, 'error': 'Deal not found'}), 404
-        cat_id = getattr(deal, 'source_category_id', None)
-        if not cat_id:
+        cat_ids = getattr(deal, 'effective_category_ids', [])
+        if not cat_ids:
+            cat_id = getattr(deal, 'source_category_id', None)
+            cat_ids = [cat_id] if cat_id else []
+        if not cat_ids:
             return jsonify({'ok': False, 'error': 'No source category'}), 400
         sel_branch_id = None
         selected_branch = _get_selected_branch()
         if selected_branch:
             sel_branch_id = selected_branch.id
         items_q = MenuItem.query.filter(
-            MenuItem.category_id == cat_id,
+            MenuItem.category_id.in_(cat_ids),
             MenuItem.is_available == True,
             db.or_(MenuItem.show_in_order == True, MenuItem.show_in_order.is_(None))
         ).order_by(MenuItem.display_order).all()
@@ -737,8 +740,11 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                     selected = ci.get('selected_items', [])
                     verified_selected = []
                     pick_count = getattr(deal_obj, 'pick_count', 0) or 0
-                    source_cat = getattr(deal_obj, 'source_category_id', None)
-                    if pick_count < 1 or not source_cat:
+                    source_cats = getattr(deal_obj, 'effective_category_ids', [])
+                    if not source_cats:
+                        source_cat = getattr(deal_obj, 'source_category_id', None)
+                        source_cats = [source_cat] if source_cat else []
+                    if pick_count < 1 or not source_cats:
                         continue
                     total_picked = 0
                     for sel in selected:
@@ -746,7 +752,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                         sel_qty = max(1, int(sel.get('qty', 1)))
                         if sel_id:
                             sel_item = MenuItem.query.get(int(sel_id))
-                            if sel_item and sel_item.is_available and sel_item.category_id == source_cat and (not sel_branch_id or _is_item_available_for_branch(sel_item.id, sel_branch_id)):
+                            if sel_item and sel_item.is_available and sel_item.category_id in source_cats and (not sel_branch_id or _is_item_available_for_branch(sel_item.id, sel_branch_id)):
                                 verified_selected.append({
                                     'item_id': sel_item.id,
                                     'qty': sel_qty,

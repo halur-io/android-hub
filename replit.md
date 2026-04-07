@@ -18,7 +18,7 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Core Website:** Built with Python/Flask, supporting static content and dynamic pages.
 - **Online Ordering System:** Integrated from a `standalone_order_service` for menu display, cart management, multi-branch operations, and real-time KDS.
 - **Popup System:** Comprehensive announcement system with design controls, multiple triggers (time delay, scroll, exit intent), device targeting, and display frequency.
-- **Deals, Coupons & Upsells:** Server-side validated systems for bundled deals, discount coupons, and checkout upsell suggestions.
+- **Deals, Coupons & Upsells:** Server-side validated systems for bundled deals, discount coupons, and checkout upsell suggestions. "Customer picks" deals support multiple source categories via `source_category_ids` JSON column (with backward-compatible `effective_category_ids` property falling back to legacy `source_category_id`).
 - **Role-Based Access Control (RBAC):** Granular permission system for the admin panel, dynamically adjusting UI and enforcing route-level permissions.
 - **XSS Protection:** Implemented safer DOM manipulation using `textContent`.
 

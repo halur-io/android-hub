@@ -914,6 +914,40 @@ function loadCartFromStorage() {
 }
 loadCartFromStorage();
 
+{% if reorder_data %}
+(function() {
+    var rd = {{ reorder_data|tojson }};
+    if (rd && rd.items && rd.items.length) {
+        cart = {};
+        for (var i = 0; i < rd.items.length; i++) {
+            var it = rd.items[i];
+            var key = 'reorder_' + (it.menu_item_id || i);
+            cart[key] = {
+                id: it.menu_item_id,
+                nameHe: it.name_he || '',
+                nameEn: it.name_en || '',
+                price: it.price || 0,
+                qty: it.quantity || 1,
+                instructions: it.special_instructions || '',
+                options: [],
+                excludedIngredients: []
+            };
+        }
+        saveCartToStorage();
+        if (rd.order_type === 'delivery') orderType = 'delivery';
+        else orderType = 'takeaway';
+        window._reorderCustomer = {
+            name: rd.customer_name || '',
+            phone: rd.customer_phone || '',
+            email: rd.customer_email || '',
+            address: rd.delivery_address || '',
+            city: rd.delivery_city || '',
+            notes: rd.delivery_notes || ''
+        };
+    }
+})();
+{% endif %}
+
 const ITEM_OPTIONS = {
 {% for cat in categories %}
   {% for item in cat._order_items %}

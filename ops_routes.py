@@ -2116,7 +2116,7 @@ def order_history():
 @require_ops_module('history')
 def reorder(order_id):
     import json as _json
-    from models import FoodOrder
+    from models import FoodOrder, Branch as BranchModel
     original = FoodOrder.query.get(order_id)
     if not original:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
@@ -2148,10 +2148,18 @@ def reorder(order_id):
     }
 
     session['reorder_data'] = _json.dumps(reorder_data, ensure_ascii=False)
+    session['reorder_customer'] = {
+        'name': original.customer_name or '',
+        'phone': original.customer_phone or '',
+        'email': original.customer_email or '',
+        'address': original.delivery_address or '',
+        'city': original.delivery_city or '',
+        'notes': original.delivery_notes or '',
+    }
 
     branch_slug = ''
     if original.branch_id:
-        branch = Branch.query.get(original.branch_id)
+        branch = BranchModel.query.get(original.branch_id)
         if branch:
             branch_slug = getattr(branch, 'slug', '') or ''
 

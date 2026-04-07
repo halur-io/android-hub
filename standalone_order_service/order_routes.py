@@ -299,6 +299,15 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if Deal:
             active_deals = [d for d in Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all() if d.is_valid()]
 
+        reorder_data = None
+        reorder_json_str = session.pop('reorder_data', None)
+        if reorder_json_str:
+            try:
+                import json as _json
+                reorder_data = _json.loads(reorder_json_str)
+            except Exception:
+                reorder_data = None
+
         return render_template('order_page.html',
                                ordering_disabled=False,
                                ordering_paused=ordering_paused,
@@ -316,7 +325,8 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                multi_branch=multi_branch,
                                need_branch_selection=need_branch_selection,
                                deals=active_deals,
-                               settings=settings)
+                               settings=settings,
+                               reorder_data=reorder_data)
 
     # ── Start checkout ────────────────────────────────────────────────
 
@@ -440,6 +450,20 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         else:
             card_available = _check_hyp_available() or _check_max_available()
 
+        reorder_customer = session.pop('reorder_customer', None)
+        prefill = {}
+        if reorder_customer:
+            name_parts = (reorder_customer.get('name') or '').split(' ', 1)
+            prefill = {
+                'first_name': name_parts[0] if name_parts else '',
+                'last_name': name_parts[1] if len(name_parts) > 1 else '',
+                'phone': reorder_customer.get('phone', ''),
+                'email': reorder_customer.get('email', ''),
+                'address': reorder_customer.get('address', ''),
+                'city': reorder_customer.get('city', ''),
+                'notes': reorder_customer.get('notes', ''),
+            }
+
         return render_template('order_checkout.html',
                                cart_items=cart,
                                cart_json=json.dumps(cart),
@@ -448,14 +472,15 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                subtotal=subtotal,
                                delivery_fee=delivery_fee,
                                total=total,
-                               selected_city='',
+                               selected_city=prefill.get('city', ''),
                                time_slots=time_slots,
                                hyp_enabled=hyp_enabled,
                                hyp_sandbox_mode=hyp_sandbox_mode,
                                card_available=card_available,
                                enable_delivery=getattr(settings, 'enable_delivery', True),
                                enable_pickup=getattr(settings, 'enable_pickup', True),
-                               settings=settings)
+                               settings=settings,
+                               prefill=prefill)
 
     # ── Coupon validation API ──────────────────────────────────────────
 

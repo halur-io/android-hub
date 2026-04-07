@@ -286,55 +286,109 @@ archiveData[{{ a.id }}] = {
     deleted_at: {{ (a.deleted_at.strftime('%d/%m/%Y %H:%M') if a.deleted_at else '-')|tojson }},
     original_created_at: {{ (a.original_created_at.strftime('%d/%m/%Y %H:%M') if a.original_created_at else '-')|tojson }},
     deletion_reason: {{ (a.deletion_reason or '-')|tojson }},
-    items: {{ a.items_snapshot|default('[]', true)|safe }},
-    full_data: {{ a.full_order_json|default('{}', true)|safe }}
+    items: JSON.parse({{ (a.items_snapshot or '[]')|tojson }}),
+    full_data: JSON.parse({{ (a.full_order_json or '{}')|tojson }})
 };
 {% endfor %}
+
+function esc(s) {
+    if (s == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+}
+
+function makeRow(label, value) {
+    var row = document.createElement('div');
+    row.className = 'detail-row';
+    var lbl = document.createElement('span');
+    lbl.className = 'detail-label';
+    lbl.textContent = label;
+    var val = document.createElement('span');
+    val.className = 'detail-value';
+    val.textContent = value;
+    row.appendChild(lbl);
+    row.appendChild(val);
+    return row;
+}
 
 function showArchiveDetail(id) {
     var a = archiveData[id];
     if (!a) return;
-    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
-    html += '<h4 style="margin:0;font-weight:800;">הזמנה #' + a.order_number + '</h4>';
-    html += '<button onclick="document.getElementById(\'archiveDetailModal\').classList.remove(\'show\')" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9ca3af;">&times;</button>';
-    html += '</div>';
+    var container = document.getElementById('archiveDetailContent');
+    container.innerHTML = '';
 
-    html += '<div class="detail-row"><span class="detail-label">לקוח</span><span class="detail-value">' + a.customer_name + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label">טלפון</span><span class="detail-value">' + a.customer_phone + '</span></div>';
-    if (a.customer_email) html += '<div class="detail-row"><span class="detail-label">אימייל</span><span class="detail-value">' + a.customer_email + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label">סניף</span><span class="detail-value">' + a.branch_name + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label">סוג</span><span class="detail-value">' + (a.order_type === 'delivery' ? 'משלוח' : 'איסוף') + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label">סטטוס</span><span class="detail-value">' + a.status + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label">תשלום</span><span class="detail-value">' + (a.payment_method === 'cash' ? 'מזומן' : a.payment_method) + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label">תאריך הזמנה</span><span class="detail-value">' + a.original_created_at + '</span></div>';
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;';
+    var h4 = document.createElement('h4');
+    h4.style.cssText = 'margin:0;font-weight:800;';
+    h4.textContent = 'הזמנה #' + a.order_number;
+    var closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9ca3af;';
+    closeBtn.textContent = '\u00D7';
+    closeBtn.onclick = function() { document.getElementById('archiveDetailModal').classList.remove('show'); };
+    header.appendChild(h4);
+    header.appendChild(closeBtn);
+    container.appendChild(header);
 
-    if (a.full_data.delivery_address) html += '<div class="detail-row"><span class="detail-label">כתובת</span><span class="detail-value">' + a.full_data.delivery_address + '</span></div>';
-    if (a.full_data.customer_notes) html += '<div class="detail-row"><span class="detail-label">הערות</span><span class="detail-value">' + a.full_data.customer_notes + '</span></div>';
+    container.appendChild(makeRow('לקוח', a.customer_name));
+    container.appendChild(makeRow('טלפון', a.customer_phone));
+    if (a.customer_email) container.appendChild(makeRow('אימייל', a.customer_email));
+    container.appendChild(makeRow('סניף', a.branch_name));
+    container.appendChild(makeRow('סוג', a.order_type === 'delivery' ? 'משלוח' : 'איסוף'));
+    container.appendChild(makeRow('סטטוס', a.status));
+    container.appendChild(makeRow('תשלום', a.payment_method === 'cash' ? 'מזומן' : a.payment_method));
+    container.appendChild(makeRow('תאריך הזמנה', a.original_created_at));
 
-    html += '<h5 style="margin:20px 0 10px;font-weight:700;color:#374151;">פריטים</h5>';
+    if (a.full_data.delivery_address) container.appendChild(makeRow('כתובת', a.full_data.delivery_address));
+    if (a.full_data.customer_notes) container.appendChild(makeRow('הערות', a.full_data.customer_notes));
+
+    var itemsTitle = document.createElement('h5');
+    itemsTitle.style.cssText = 'margin:20px 0 10px;font-weight:700;color:#374151;';
+    itemsTitle.textContent = 'פריטים';
+    container.appendChild(itemsTitle);
+
     if (a.items && a.items.length) {
         for (var i = 0; i < a.items.length; i++) {
             var it = a.items[i];
             var name = it.item_name_he || it.name_he || '?';
             var qty = it.quantity || it.qty || 1;
             var price = it.total_price || it.price || (it.unit_price || 0) * qty;
-            html += '<div class="item-row"><span>' + name + ' x' + qty + '</span><span style="font-weight:700;">₪' + Math.round(price) + '</span></div>';
-            if (it.special_instructions) html += '<div style="font-size:.8rem;color:#6b7280;padding:0 8px 4px;">' + it.special_instructions + '</div>';
+            var itemRow = document.createElement('div');
+            itemRow.className = 'item-row';
+            var nameSpan = document.createElement('span');
+            nameSpan.textContent = name + ' x' + qty;
+            var priceSpan = document.createElement('span');
+            priceSpan.style.fontWeight = '700';
+            priceSpan.textContent = '₪' + Math.round(price);
+            itemRow.appendChild(nameSpan);
+            itemRow.appendChild(priceSpan);
+            container.appendChild(itemRow);
+            if (it.special_instructions) {
+                var instrDiv = document.createElement('div');
+                instrDiv.style.cssText = 'font-size:.8rem;color:#6b7280;padding:0 8px 4px;';
+                instrDiv.textContent = it.special_instructions;
+                container.appendChild(instrDiv);
+            }
         }
     }
 
-    html += '<div style="border-top:2px solid #e5e7eb;margin-top:16px;padding-top:12px;">';
-    if (a.subtotal) html += '<div class="detail-row"><span class="detail-label">סיכום ביניים</span><span class="detail-value">₪' + Math.round(a.subtotal) + '</span></div>';
-    if (a.delivery_fee) html += '<div class="detail-row"><span class="detail-label">דמי משלוח</span><span class="detail-value">₪' + Math.round(a.delivery_fee) + '</span></div>';
-    if (a.discount_amount) html += '<div class="detail-row"><span class="detail-label">הנחה</span><span class="detail-value">-₪' + Math.round(a.discount_amount) + '</span></div>';
-    html += '<div class="detail-row"><span class="detail-label" style="font-size:1rem;font-weight:800;">סה"כ</span><span class="detail-value" style="font-size:1.1rem;font-weight:900;color:#059669;">₪' + Math.round(a.total_amount) + '</span></div>';
-    html += '</div>';
+    var totalsDiv = document.createElement('div');
+    totalsDiv.style.cssText = 'border-top:2px solid #e5e7eb;margin-top:16px;padding-top:12px;';
+    if (a.subtotal) totalsDiv.appendChild(makeRow('סיכום ביניים', '₪' + Math.round(a.subtotal)));
+    if (a.delivery_fee) totalsDiv.appendChild(makeRow('דמי משלוח', '₪' + Math.round(a.delivery_fee)));
+    if (a.discount_amount) totalsDiv.appendChild(makeRow('הנחה', '-₪' + Math.round(a.discount_amount)));
+    var totalRow = makeRow('סה"כ', '₪' + Math.round(a.total_amount));
+    totalRow.querySelector('.detail-label').style.cssText = 'font-size:1rem;font-weight:800;';
+    totalRow.querySelector('.detail-value').style.cssText = 'font-size:1.1rem;font-weight:900;color:#059669;';
+    totalsDiv.appendChild(totalRow);
+    container.appendChild(totalsDiv);
 
-    html += '<div style="border-top:1px solid #e5e7eb;margin-top:16px;padding-top:12px;color:#9ca3af;font-size:.8rem;">';
-    html += 'נמחק ע"י: ' + a.deleted_by + ' | תאריך: ' + a.deleted_at + ' | סיבה: ' + a.deletion_reason;
-    html += '</div>';
+    var footerDiv = document.createElement('div');
+    footerDiv.style.cssText = 'border-top:1px solid #e5e7eb;margin-top:16px;padding-top:12px;color:#9ca3af;font-size:.8rem;';
+    footerDiv.textContent = 'נמחק ע"י: ' + a.deleted_by + ' | תאריך: ' + a.deleted_at + ' | סיבה: ' + a.deletion_reason;
+    container.appendChild(footerDiv);
 
-    document.getElementById('archiveDetailContent').innerHTML = html;
     document.getElementById('archiveDetailModal').classList.add('show');
 }
 </script>

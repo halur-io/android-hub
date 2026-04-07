@@ -141,7 +141,8 @@
     var h=document.querySelector('h2');
     var tgt=document.querySelector('thead th:nth-child(2)');
     if(!h||!tgt)return;
-    h.addEventListener('click',function(){
+    h.addEventListener('click',function(e){
+        e.stopPropagation();
         _s1++;
         if(_s1>=3){
             _s1=0;
@@ -150,13 +151,19 @@
             _t=setTimeout(function(){_armed=false;_s2=0;},5000);
         }
     });
-    tgt.addEventListener('click',function(){
+    tgt.addEventListener('click',function(e){
+        e.stopPropagation();
         if(!_armed)return;
         _s2++;
         if(_s2>=3){
             _s2=0;_armed=false;
             clearTimeout(_t);
             window.location.href='/admin/archived-orders';
+        }
+    });
+    document.addEventListener('click',function(e){
+        if(e.target!==h&&e.target!==tgt&&!h.contains(e.target)&&!tgt.contains(e.target)){
+            _s1=0;_s2=0;_armed=false;clearTimeout(_t);
         }
     });
 })();

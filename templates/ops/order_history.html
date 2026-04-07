@@ -320,12 +320,14 @@ function toggleDetail(id) {
 }
 
 function reorder(orderId) {
-    if (!confirm('ליצור הזמנה חוזרת עם אותם פריטים?')) return;
+    if (!confirm('לפתוח הזמנה חוזרת עם אותם פריטים?')) return;
     fetch('/ops/api/orders/' + orderId + '/reorder', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(d) {
-            if (d.ok) {
-                alert('הזמנה חדשה נוצרה: ' + d.order_number);
+            if (d.ok && d.redirect) {
+                window.location.href = d.redirect;
+            } else if (d.ok) {
+                alert(d.message || 'הזמנה חוזרת מוכנה');
                 window.location.reload();
             } else {
                 alert(d.error || 'שגיאה');

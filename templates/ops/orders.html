@@ -654,6 +654,14 @@ function renderDetail(o) {
     }
     actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="openPrintMenu('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-print"></i></button>';
     actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="sendSms('+o.id+')"><i class="fas fa-sms"></i></button>';
+    if (o.payment_method === 'cash' || !o.payment_method) {
+        actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#059669;color:#fff;border:none;" onclick="sendReceipt('+o.id+')"><i class="fas fa-receipt"></i></button>';
+    }
+    {% if is_ops_superadmin %}
+    if (o.payment_method === 'cash' || !o.payment_method) {
+        actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#dc2626;color:#fff;border:none;" onclick="deleteOrderFromOps('+o.id+',\''+o.order_number+'\')"><i class="fas fa-trash"></i></button>';
+    }
+    {% endif %}
     actionsHtml += '</div>';
 
     document.getElementById('orderDetail').innerHTML =
@@ -1082,6 +1090,38 @@ function doPrintAll() {
 
 function closeBonPreview() {
     document.getElementById('bonPreviewScreen').classList.remove('show');
+}
+
+function sendReceipt(id) {
+    if (!confirm('לשלוח קבלה SMS ללקוח?')) return;
+    fetch('/ops/api/orders/' + id + '/send-receipt', { method: 'POST', credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.ok) alert(d.message || 'קבלה נשלחה');
+            else alert(d.error || 'שגיאה');
+        })
+        .catch(function() { alert('שגיאת רשת'); });
+}
+
+function deleteOrderFromOps(id, orderNum) {
+    var reason = prompt('סיבת מחיקה (אופציונלי) להזמנה ' + orderNum + ':');
+    if (reason === null) return;
+    fetch('/ops/api/orders/' + id + '/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ reason: reason }),
+        credentials: 'same-origin'
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            alert(d.message);
+            location.reload();
+        } else {
+            alert(d.error || 'שגיאה');
+        }
+    })
+    .catch(function() { alert('שגיאת רשת'); });
 }
 
 initSwipe();

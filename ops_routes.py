@@ -2116,7 +2116,7 @@ def order_history():
 @require_ops_module('history')
 def reorder(order_id):
     import json as _json
-    from models import FoodOrder, FoodOrderItem
+    from models import FoodOrder
     original = FoodOrder.query.get(order_id)
     if not original:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
@@ -2125,61 +2125,39 @@ def reorder(order_id):
     if effective_branch and original.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
 
-    new_order = FoodOrder(
-        order_type=original.order_type or 'pickup',
-        status='pending',
-        customer_name=original.customer_name or '',
-        customer_phone=original.customer_phone or '',
-        customer_email=original.customer_email,
-        delivery_address=original.delivery_address,
-        delivery_city=original.delivery_city,
-        delivery_notes=original.delivery_notes,
-        subtotal=original.subtotal,
-        delivery_fee=original.delivery_fee,
-        total_amount=original.total_amount,
-        payment_method='cash',
-        payment_status='pending',
-        branch_id=original.branch_id,
-        branch_name=original.branch_name,
-        items_json=original.items_json,
-    )
-    new_order.set_order_number()
-    import secrets
-    new_order.tracking_token = secrets.token_urlsafe(32)
-
-    db.session.add(new_order)
-    db.session.flush()
-
     items = original.get_items()
-    for it in items:
-        oi = FoodOrderItem(
-            order_id=new_order.id,
-            menu_item_id=it.get('menu_item_id'),
-            item_name_he=it.get('item_name_he', it.get('name_he', '?')),
-            item_name_en=it.get('item_name_en', it.get('name_en', '')),
-            quantity=it.get('quantity', it.get('qty', 1)),
-            unit_price=it.get('unit_price', it.get('price', 0)),
-            total_price=it.get('total_price', (it.get('unit_price', 0) * it.get('quantity', 1))),
-            special_instructions=it.get('special_instructions', ''),
-            options_json=it.get('options_json'),
-        )
-        db.session.add(oi)
+    reorder_data = {
+        'source_order': original.order_number,
+        'customer_name': original.customer_name or '',
+        'customer_phone': original.customer_phone or '',
+        'customer_email': original.customer_email or '',
+        'order_type': original.order_type or 'pickup',
+        'delivery_address': original.delivery_address or '',
+        'delivery_city': original.delivery_city or '',
+        'delivery_notes': original.delivery_notes or '',
+        'branch_id': original.branch_id,
+        'items': [{
+            'menu_item_id': it.get('menu_item_id'),
+            'name_he': it.get('item_name_he', it.get('name_he', '?')),
+            'name_en': it.get('item_name_en', it.get('name_en', '')),
+            'quantity': it.get('quantity', it.get('qty', 1)),
+            'price': it.get('unit_price', it.get('price', 0)),
+            'special_instructions': it.get('special_instructions', ''),
+            'options_json': it.get('options_json'),
+        } for it in items]
+    }
 
-    db.session.commit()
+    session['reorder_data'] = _json.dumps(reorder_data, ensure_ascii=False)
 
-    pin = _get_current_pin()
-    from models import OrderActivityLog
-    log = OrderActivityLog(
-        order_id=new_order.id,
-        action='order_created',
-        new_value='pending',
-        staff_name=pin.name if pin else 'Ops',
-        note=f'הזמנה חוזרת מ-#{original.order_number}',
-    )
-    db.session.add(log)
-    db.session.commit()
+    branch_slug = ''
+    if original.branch_id:
+        branch = Branch.query.get(original.branch_id)
+        if branch:
+            branch_slug = getattr(branch, 'slug', '') or ''
 
-    return jsonify({'ok': True, 'order_id': new_order.id, 'order_number': new_order.order_number})
+    order_url = url_for('order_page.order_page', branch=branch_slug) if branch_slug else url_for('order_page.order_page')
+
+    return jsonify({'ok': True, 'redirect': order_url, 'message': f'מפנה להזמנה חוזרת מ-#{original.order_number}'})
 
 
 @ops_bp.route('/api/orders/<int:order_id>/send-receipt', methods=['POST'])

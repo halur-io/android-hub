@@ -5865,34 +5865,28 @@ def archived_orders_dashboard():
 
     main_total = sum(o.total_amount or 0 for o in main_orders)
     archived_total = sum(o.total_amount or 0 for o in archived_orders)
-    combined_total = main_total + archived_total
+    original_total = main_total + archived_total
+    reported_income = main_total
 
     main_cash = sum(o.total_amount or 0 for o in main_orders if o.payment_method in ('cash', None, ''))
     main_card = sum(o.total_amount or 0 for o in main_orders if o.payment_method not in ('cash', None, ''))
-    arch_cash = sum(o.total_amount or 0 for o in archived_orders if o.payment_method in ('cash', None, ''))
-    arch_card = sum(o.total_amount or 0 for o in archived_orders if o.payment_method not in ('cash', None, ''))
 
     main_today = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= today_start)
-    arch_today = sum(o.total_amount or 0 for o in archived_orders if o.original_created_at and o.original_created_at >= today_start)
-
     main_week = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= week_start)
-    arch_week = sum(o.total_amount or 0 for o in archived_orders if o.original_created_at and o.original_created_at >= week_start)
-
     main_month = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= month_start)
-    arch_month = sum(o.total_amount or 0 for o in archived_orders if o.original_created_at and o.original_created_at >= month_start)
 
     stats = {
-        'total_orders': len(main_orders) + len(archived_orders),
+        'total_orders': len(main_orders),
         'main_count': len(main_orders),
         'archived_count': len(archived_orders),
-        'combined_revenue': combined_total,
-        'main_revenue': main_total,
-        'archived_revenue': archived_total,
-        'cash_total': main_cash + arch_cash,
-        'card_total': main_card + arch_card,
-        'today_total': main_today + arch_today,
-        'week_total': main_week + arch_week,
-        'month_total': main_month + arch_month,
+        'original_total': original_total,
+        'reported_income': reported_income,
+        'deleted_amount': archived_total,
+        'cash_total': main_cash,
+        'card_total': main_card,
+        'today_total': main_today,
+        'week_total': main_week,
+        'month_total': main_month,
     }
 
     return render_template('admin/archived_orders.html',

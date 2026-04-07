@@ -137,33 +137,57 @@
 {% block extra_js %}
 <script>
 (function(){
-    var _s1=0,_s2=0,_t=null,_armed=false;
-    var h=document.querySelector('h2');
-    var tgt=document.querySelector('thead th:nth-child(2)');
-    if(!h||!tgt)return;
-    h.addEventListener('click',function(e){
+    var tapCount = 0, tapTimer = null, armTimer = null, armed = false;
+    var lpTimer = null;
+    var h = document.querySelector('h2');
+    var kdsBtn = document.querySelector('a.btn-primary[href*="order-dashboard"]');
+    if (!h || !kdsBtn) return;
+
+    h.style.userSelect = 'none';
+    h.style.webkitUserSelect = 'none';
+
+    h.addEventListener('click', function(e) {
         e.stopPropagation();
-        _s1++;
-        if(_s1>=3){
-            _s1=0;
-            _armed=true;
-            clearTimeout(_t);
-            _t=setTimeout(function(){_armed=false;_s2=0;},5000);
+        tapCount++;
+        if (tapTimer) clearTimeout(tapTimer);
+        tapTimer = setTimeout(function() { tapCount = 0; }, 3000);
+        if (tapCount >= 5) {
+            armed = true;
+            tapCount = 0;
+            if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+            armTimer = setTimeout(function() { armed = false; }, 8000);
         }
     });
-    tgt.addEventListener('click',function(e){
+
+    function onDown(e) {
+        if (!armed) return;
+        e.preventDefault();
         e.stopPropagation();
-        if(!_armed)return;
-        _s2++;
-        if(_s2>=3){
-            _s2=0;_armed=false;
-            clearTimeout(_t);
-            window.location.href='/admin/archived-orders';
-        }
-    });
-    document.addEventListener('click',function(e){
-        if(e.target!==h&&e.target!==tgt&&!h.contains(e.target)&&!tgt.contains(e.target)){
-            _s1=0;_s2=0;_armed=false;clearTimeout(_t);
+        lpTimer = setTimeout(function() {
+            armed = false;
+            window.location.href = '/admin/archived-orders';
+        }, 800);
+    }
+    function onUp(e) {
+        if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+        if (armed) { e.preventDefault(); e.stopPropagation(); }
+    }
+
+    kdsBtn.addEventListener('mousedown', onDown);
+    kdsBtn.addEventListener('mouseup', onUp);
+    kdsBtn.addEventListener('mouseleave', onUp);
+    kdsBtn.addEventListener('touchstart', onDown, {passive: false});
+    kdsBtn.addEventListener('touchend', onUp);
+    kdsBtn.addEventListener('touchcancel', onUp);
+    kdsBtn.addEventListener('click', function(e) {
+        if (armed) { e.preventDefault(); e.stopPropagation(); return false; }
+    }, true);
+
+    document.addEventListener('click', function(e) {
+        if (e.target !== h && !h.contains(e.target) && e.target !== kdsBtn && !kdsBtn.contains(e.target)) {
+            tapCount = 0; armed = false;
+            if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+            if (armTimer) { clearTimeout(armTimer); armTimer = null; }
         }
     });
 })();

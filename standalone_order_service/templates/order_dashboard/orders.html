@@ -556,6 +556,11 @@
               {% if item.get('notes') %}<span class="item-note">⚠ {{ item.notes }}</span>{% endif %}
             </span>
           </div>
+          {% if item.get('selected_items') %}
+          {% for sel in item.get('selected_items') %}
+          <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+          {% endfor %}
+          {% endif %}
           {% endfor %}
         </div>
         {% if order.customer_notes %}
@@ -621,6 +626,11 @@
               {% if item.get('notes') %}<span class="item-note">⚠ {{ item.notes }}</span>{% endif %}
             </span>
           </div>
+          {% if item.get('selected_items') %}
+          {% for sel in item.get('selected_items') %}
+          <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+          {% endfor %}
+          {% endif %}
           {% endfor %}
         </div>
         {% if order.customer_notes %}
@@ -698,6 +708,11 @@
             <span class="item-qty">{{ item.get('qty',1) }}×</span>
             <span class="item-name">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}</span>
           </div>
+          {% if item.get('selected_items') %}
+          {% for sel in item.get('selected_items') %}
+          <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+          {% endfor %}
+          {% endif %}
           {% endfor %}
         </div>
         <div class="card-actions-strip">
@@ -797,6 +812,11 @@
           {% if item.get('notes') %}<span class="item-note">⚠ {{ item.notes }}</span>{% endif %}
         </span>
       </div>
+      {% if item.get('selected_items') %}
+      {% for sel in item.get('selected_items') %}
+      <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+      {% endfor %}
+      {% endif %}
       {% endfor %}
     </div>
     {% if order.customer_notes %}

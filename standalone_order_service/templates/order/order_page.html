@@ -178,11 +178,13 @@
           </div>
           <div class="deals-scroll">
             {% for deal in deals %}
-            <div class="deal-card" onclick="addDealToCart(this)"
+            <div class="deal-card" onclick="handleDealClick(this)"
                  data-deal-id="{{ deal.id }}"
                  data-deal-name-he="{{ deal.name_he | e }}"
                  data-deal-name-en="{{ deal.name_en | e }}"
                  data-deal-price="{{ deal.deal_price }}"
+                 data-deal-type="{{ deal.deal_type or 'fixed' }}"
+                 data-deal-pick-count="{{ deal.pick_count or 0 }}"
                  data-deal-items='{{ deal.included_items | tojson }}'>
               {% if deal.image_path %}
               <img src="{{ deal.image_path }}" alt="" class="deal-img">
@@ -393,6 +395,27 @@
 
 <!-- Floating bubble animation template -->
 <div id="bubble-template" class="add-bubble" style="display:none;">+1</div>
+
+<!-- ─── Deal Picker Overlay ─── -->
+<div id="deal-picker-overlay" style="display:none;" onclick="closeDealPicker()"></div>
+<div id="deal-picker-sheet" style="display:none;">
+  <div class="deal-picker-header">
+    <button class="deal-picker-close" onclick="closeDealPicker()"><i class="fas fa-times"></i></button>
+    <div class="deal-picker-title" id="deal-picker-title"></div>
+    <div class="deal-picker-counter" id="deal-picker-counter">0/0</div>
+  </div>
+  <div class="deal-picker-body" id="deal-picker-body">
+    <div class="deal-picker-loading">
+      <i class="fas fa-spinner fa-spin fa-2x"></i>
+    </div>
+  </div>
+  <div class="deal-picker-footer">
+    <button class="deal-picker-confirm" id="deal-picker-confirm" disabled onclick="confirmDealPicks()">
+      <span>{{ 'אשר בחירה' if language == 'he' else 'Confirm Selection' }}</span>
+      <i class="fas fa-check ms-2"></i>
+    </button>
+  </div>
+</div>
 
 <style>
 /* ─── Hide site's bottom nav on order page — checkout bar replaces it ─── */
@@ -892,6 +915,123 @@ body { overflow-x: hidden; overflow-y: auto; }
 .ingredient-row.ingredient-excluded::after {
   content: 'ללא'; font-size: .7rem; color: #ef4444; font-weight: 600; flex-shrink: 0;
 }
+
+/* ─── Deal Picker Overlay ─── */
+#deal-picker-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 9998;
+  backdrop-filter: blur(4px);
+}
+#deal-picker-sheet {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #fff; display: flex; flex-direction: column;
+  animation: dealPickerSlideUp .3s ease;
+}
+@keyframes dealPickerSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.deal-picker-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+  color: #fff; flex-shrink: 0;
+}
+.deal-picker-close {
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,.15); color: #fff; font-size: 1rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.deal-picker-title {
+  flex: 1; font-weight: 700; font-size: 1.1rem;
+}
+.deal-picker-counter {
+  background: rgba(255,255,255,.2); padding: 6px 14px; border-radius: 20px;
+  font-weight: 800; font-size: 1rem; flex-shrink: 0;
+  min-width: 60px; text-align: center;
+}
+.deal-picker-body {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+  align-content: start;
+}
+.deal-picker-loading {
+  grid-column: 1 / -1; text-align: center; padding: 60px 0; color: #9ca3af;
+}
+.deal-pick-card {
+  border: 2px solid #e5e7eb; border-radius: 14px; overflow: hidden;
+  cursor: pointer; transition: all .2s; position: relative;
+  background: #fff; user-select: none;
+}
+.deal-pick-card:active { transform: scale(.97); }
+.deal-pick-card.selected {
+  border-color: var(--c-primary); box-shadow: 0 0 0 2px rgba(67,56,202,.3);
+}
+.deal-pick-card .pick-img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+  background: #f3f4f6;
+}
+.deal-pick-card .pick-img-placeholder {
+  width: 100%; aspect-ratio: 1; background: #f3f4f6;
+  display: flex; align-items: center; justify-content: center;
+  color: #d1d5db; font-size: 2rem;
+}
+.deal-pick-card .pick-info {
+  padding: 8px 10px; text-align: center;
+}
+.deal-pick-card .pick-name {
+  font-weight: 700; font-size: .82rem; color: #1e1b4b;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.deal-pick-card .pick-price {
+  font-size: .75rem; color: #9ca3af; text-decoration: line-through;
+}
+.deal-pick-card .pick-badge {
+  position: absolute; top: 8px; right: 8px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--c-primary); color: #fff;
+  display: none; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .8rem;
+  box-shadow: 0 2px 8px rgba(67,56,202,.4);
+}
+.deal-pick-card.selected .pick-badge { display: flex; }
+.deal-pick-card .pick-check {
+  position: absolute; top: 8px; left: 8px;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid #d1d5db; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.deal-pick-card.selected .pick-check {
+  border-color: var(--c-primary); background: var(--c-primary); color: #fff;
+}
+.pick-controls {
+  position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.95);
+  border-radius: 20px; padding: 4px 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  z-index: 2;
+}
+.pick-ctrl-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: var(--c-primary); color: #fff; font-size: 1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.pick-ctrl-count { font-weight: 800; font-size: .85rem; min-width: 18px; text-align: center; }
+.deal-picker-footer {
+  padding: 16px 20px; border-top: 1px solid #e5e7eb;
+  flex-shrink: 0; background: #fff;
+}
+.deal-picker-confirm {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  background: var(--c-primary); color: #fff;
+  font-weight: 700; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.deal-picker-confirm:disabled {
+  background: #d1d5db; cursor: not-allowed;
+}
+.deal-picker-confirm:not(:disabled):active { transform: scale(.98); }
 </style>
 
 <script>
@@ -1506,6 +1646,17 @@ function addFromModal() {
   animateAdd(card);
   closeItemModal();
 }
+var _dealPickerState = { dealId: null, pickCount: 0, selections: {}, items: [], dealNameHe: '', dealNameEn: '', dealPrice: 0 };
+
+function handleDealClick(el) {
+  var dealType = el.dataset.dealType || 'fixed';
+  if (dealType === 'customer_picks') {
+    openDealPicker(el);
+  } else {
+    addDealToCart(el);
+  }
+}
+
 function addDealToCart(el) {
   var dealId = el.dataset.dealId;
   var nameHe = el.dataset.dealNameHe;
@@ -1528,6 +1679,128 @@ function addDealToCart(el) {
   renderCart();
   saveCartToStorage();
   animateAdd(el);
+}
+
+function openDealPicker(el) {
+  var dealId = el.dataset.dealId;
+  _dealPickerState = { dealId: dealId, pickCount: parseInt(el.dataset.dealPickCount) || 1, selections: {}, items: [],
+    dealNameHe: el.dataset.dealNameHe, dealNameEn: el.dataset.dealNameEn, dealPrice: parseFloat(el.dataset.dealPrice) };
+  document.getElementById('deal-picker-overlay').style.display = 'block';
+  document.getElementById('deal-picker-sheet').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  var lang = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl') ? 'he' : 'en';
+  document.getElementById('deal-picker-title').textContent = lang === 'he' ? _dealPickerState.dealNameHe : (_dealPickerState.dealNameEn || _dealPickerState.dealNameHe);
+  updateDealPickerCounter();
+  document.getElementById('deal-picker-body').innerHTML = '<div class="deal-picker-loading"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+  fetch('/order/deal-picker-items/' + dealId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok) { closeDealPicker(); return; }
+      _dealPickerState.items = data.items;
+      renderDealPickerItems();
+    })
+    .catch(function() { closeDealPicker(); });
+}
+
+function closeDealPicker() {
+  document.getElementById('deal-picker-overlay').style.display = 'none';
+  document.getElementById('deal-picker-sheet').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderDealPickerItems() {
+  var body = document.getElementById('deal-picker-body');
+  var lang = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl') ? 'he' : 'en';
+  body.innerHTML = '';
+  _dealPickerState.items.forEach(function(item) {
+    var card = document.createElement('div');
+    card.className = 'deal-pick-card' + (_dealPickerState.selections[item.id] ? ' selected' : '');
+    card.dataset.itemId = item.id;
+    card.onclick = function() { toggleDealPick(item.id); };
+    var imgHtml = item.image ? '<img src="' + item.image + '" alt="" class="pick-img" loading="lazy">' :
+      '<div class="pick-img-placeholder"><i class="fas fa-utensils"></i></div>';
+    var count = _dealPickerState.selections[item.id] || 0;
+    var controlsHtml = '';
+    if (count > 0) {
+      controlsHtml = '<div class="pick-controls" onclick="event.stopPropagation()">' +
+        '<button type="button" class="pick-ctrl-btn" onclick="removeDealPick(' + item.id + ')">−</button>' +
+        '<span class="pick-ctrl-count">' + count + '</span>' +
+        '<button type="button" class="pick-ctrl-btn" onclick="addDealPick(' + item.id + ')">+</button></div>';
+    }
+    card.innerHTML = imgHtml +
+      '<div class="pick-check"><i class="fas fa-check" style="font-size:.65rem;"></i></div>' +
+      '<div class="pick-badge">' + count + '</div>' +
+      controlsHtml +
+      '<div class="pick-info"><div class="pick-name">' + (lang === 'he' ? item.name_he : (item.name_en || item.name_he)) + '</div>' +
+      '<div class="pick-price">₪' + Math.round(item.price) + '</div></div>';
+    body.appendChild(card);
+  });
+}
+
+function toggleDealPick(itemId) {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  if (_dealPickerState.selections[itemId]) {
+    _dealPickerState.selections[itemId]--;
+    if (_dealPickerState.selections[itemId] <= 0) delete _dealPickerState.selections[itemId];
+  } else {
+    if (total >= _dealPickerState.pickCount) return;
+    _dealPickerState.selections[itemId] = 1;
+  }
+  renderDealPickerItems();
+  updateDealPickerCounter();
+}
+function addDealPick(itemId) {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  if (total >= _dealPickerState.pickCount) return;
+  _dealPickerState.selections[itemId] = (_dealPickerState.selections[itemId] || 0) + 1;
+  renderDealPickerItems();
+  updateDealPickerCounter();
+}
+function removeDealPick(itemId) {
+  if (!_dealPickerState.selections[itemId]) return;
+  _dealPickerState.selections[itemId]--;
+  if (_dealPickerState.selections[itemId] <= 0) delete _dealPickerState.selections[itemId];
+  renderDealPickerItems();
+  updateDealPickerCounter();
+}
+
+function updateDealPickerCounter() {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  document.getElementById('deal-picker-counter').textContent = total + '/' + _dealPickerState.pickCount;
+  var btn = document.getElementById('deal-picker-confirm');
+  btn.disabled = (total !== _dealPickerState.pickCount);
+}
+
+function confirmDealPicks() {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  if (total !== _dealPickerState.pickCount) return;
+  var selectedItems = [];
+  for (var id in _dealPickerState.selections) {
+    var qty = _dealPickerState.selections[id];
+    var item = _dealPickerState.items.find(function(i) { return i.id == id; });
+    if (item && qty > 0) {
+      selectedItems.push({ item_id: parseInt(id), qty: qty, name_he: item.name_he, name_en: item.name_en });
+    }
+  }
+  var ts = Date.now();
+  var cartKey = 'deal_' + _dealPickerState.dealId + '_' + ts;
+  cart[cartKey] = {
+    id: 'deal_' + _dealPickerState.dealId,
+    name_he: _dealPickerState.dealNameHe,
+    name_en: _dealPickerState.dealNameEn || _dealPickerState.dealNameHe,
+    category: '',
+    price: _dealPickerState.dealPrice,
+    base_price: _dealPickerState.dealPrice,
+    qty: 1,
+    options: [],
+    is_deal: true,
+    deal_id: _dealPickerState.dealId,
+    deal_type: 'customer_picks',
+    selected_items: selectedItems
+  };
+  closeDealPicker();
+  renderCart();
+  saveCartToStorage();
 }
 function changeQty(id, delta) {
   if (!cart[id]) return;
@@ -1571,8 +1844,13 @@ function renderCart() {
         exclStr = '<div style="font-size:.7rem;color:#ef4444;margin-top:2px;">' +
           it.excluded_ingredients.map(ing => 'ללא ' + String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(', ') + '</div>';
       }
+      let selStr = '';
+      if (it.selected_items && it.selected_items.length) {
+        selStr = '<div style="font-size:.7rem;color:#6b7280;margin-top:2px;">' +
+          it.selected_items.map(s => '• ' + (IS_HE ? s.name_he : (s.name_en || s.name_he)) + (s.qty > 1 ? ' ×' + s.qty : '')).join('<br>') + '</div>';
+      }
       return `<div class="cart-row">
-        <div style="flex:1;min-width:0"><div class="fw-semibold text-truncate" style="font-size:.83rem;">${it.name_he}</div>${optStr}${exclStr}
+        <div style="flex:1;min-width:0"><div class="fw-semibold text-truncate" style="font-size:.83rem;">${it.name_he}</div>${optStr}${exclStr}${selStr}
         <div class="text-muted" style="font-size:.75rem;">₪${it.price} × ${it.qty}</div></div>
         <div class="d-flex align-items-center gap-1 flex-shrink-0">
           <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>

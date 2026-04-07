@@ -42,6 +42,9 @@
               {% if item.excluded_ingredients %}
               <div class="item-opts" style="color:#ef4444;font-weight:600;">{% for ing in item.excluded_ingredients %}ללא {{ ing }}{% if not loop.last %}, {% endif %}{% endfor %}</div>
               {% endif %}
+              {% if item.selected_items %}
+              <div class="item-opts" style="color:#6b7280;">{% for sel in item.selected_items %}• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</div>
+              {% endif %}
             </div>
           </div>
           <span class="item-price" id="cart-price-{{ loop.index0 }}">₪{{ (item.price * item.qty) | int }}</span>

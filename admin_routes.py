@@ -84,6 +84,14 @@ ROUTE_PERMISSIONS = {
     'admin.excel_menu_upload': 'menu.edit',
     'admin.excel_upload_simple': 'menu.edit',
     'admin.upload_menu_item_image': 'menu.edit',
+    'admin.global_options': 'menu.edit',
+    'admin.create_global_option_group': 'menu.edit',
+    'admin.edit_global_option_group': 'menu.edit',
+    'admin.delete_global_option_group': 'menu.edit',
+    'admin.attach_global_option_group': 'menu.edit',
+    'admin.detach_global_option_group': 'menu.edit',
+    'admin.api_global_option_groups': 'menu.edit',
+    'admin.api_menu_item_global_links': 'menu.edit',
     # Media/Gallery
     'admin.media': 'settings.view',
     'admin.upload_media': 'settings.edit',
@@ -9865,6 +9873,14 @@ def deals():
     return render_template('admin/deals.html', deals=all_deals)
 
 
+def _build_category_items_map(categories):
+    cat_map = {}
+    for cat in categories:
+        items = MenuItem.query.filter_by(category_id=cat.id, is_available=True).order_by(MenuItem.display_order).all()
+        cat_map[str(cat.id)] = [{'name': i.name_he, 'price': int(i.base_price)} for i in items]
+    return cat_map
+
+
 @admin_bp.route('/deals/create', methods=['GET', 'POST'])
 @login_required
 def create_deal():
@@ -9881,6 +9897,7 @@ def create_deal():
             display_order = int(request.form.get('display_order', 0))
         except (ValueError, TypeError):
             display_order = 0
+        deal_type = request.form.get('deal_type', 'fixed')
         deal = Deal(
             name_he=request.form.get('name_he', '').strip(),
             name_en=request.form.get('name_en', '').strip(),
@@ -9888,9 +9905,25 @@ def create_deal():
             description_en=request.form.get('description_en', '').strip(),
             deal_price=deal_price,
             original_price=original_price,
+            deal_type=deal_type,
             is_active=request.form.get('is_active') == 'on',
             display_order=display_order,
         )
+        if deal_type == 'customer_picks':
+            try:
+                deal.source_category_id = int(request.form.get('source_category_id', 0)) or None
+            except (ValueError, TypeError):
+                deal.source_category_id = None
+            try:
+                deal.pick_count = int(request.form.get('pick_count', 0))
+            except (ValueError, TypeError):
+                deal.pick_count = 0
+            if not deal.source_category_id or deal.pick_count < 1:
+                flash('עבור מבצע "הלקוח בוחר" חובה לבחור קטגוריה ולהגדיר כמות פריטים (לפחות 1)', 'danger')
+                categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+                menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+                category_items_map = _build_category_items_map(categories)
+                return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
         start = request.form.get('start_date', '').strip()
         end = request.form.get('end_date', '').strip()
         if start:
@@ -9903,14 +9936,15 @@ def create_deal():
                 deal.end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M')
             except ValueError:
                 pass
-        item_ids = request.form.getlist('item_ids')
-        item_qtys = request.form.getlist('item_qtys')
-        included = []
-        for i, iid in enumerate(item_ids):
-            if iid:
-                qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
-                included.append({'item_id': int(iid), 'qty': qty})
-        deal.included_items = included
+        if deal_type == 'fixed':
+            item_ids = request.form.getlist('item_ids')
+            item_qtys = request.form.getlist('item_qtys')
+            included = []
+            for i, iid in enumerate(item_ids):
+                if iid:
+                    qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
+                    included.append({'item_id': int(iid), 'qty': qty})
+            deal.included_items = included
 
         img = request.files.get('image')
         if img and img.filename and allowed_image_file(img.filename):
@@ -9925,7 +9959,8 @@ def create_deal():
 
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
-    return render_template('admin/deal_form.html', deal=None, categories=categories, menu_items=menu_items)
+    category_items_map = _build_category_items_map(categories)
+    return render_template('admin/deal_form.html', deal=None, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
 
 
 @admin_bp.route('/deals/edit/<int:deal_id>', methods=['GET', 'POST'])
@@ -9951,19 +9986,42 @@ def edit_deal(deal_id):
         except (ValueError, TypeError):
             deal.display_order = 0
 
+        deal_type = request.form.get('deal_type', 'fixed')
+        deal.deal_type = deal_type
+        if deal_type == 'customer_picks':
+            try:
+                deal.source_category_id = int(request.form.get('source_category_id', 0)) or None
+            except (ValueError, TypeError):
+                deal.source_category_id = None
+            try:
+                deal.pick_count = int(request.form.get('pick_count', 0))
+            except (ValueError, TypeError):
+                deal.pick_count = 0
+            if not deal.source_category_id or deal.pick_count < 1:
+                flash('עבור מבצע "הלקוח בוחר" חובה לבחור קטגוריה ולהגדיר כמות פריטים (לפחות 1)', 'danger')
+                categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+                menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+                category_items_map = _build_category_items_map(categories)
+                return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
+            deal.included_items = []
+        else:
+            deal.source_category_id = None
+            deal.pick_count = 0
+
         start = request.form.get('start_date', '').strip()
         end = request.form.get('end_date', '').strip()
         deal.start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M') if start else None
         deal.end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M') if end else None
 
-        item_ids = request.form.getlist('item_ids')
-        item_qtys = request.form.getlist('item_qtys')
-        included = []
-        for i, iid in enumerate(item_ids):
-            if iid:
-                qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
-                included.append({'item_id': int(iid), 'qty': qty})
-        deal.included_items = included
+        if deal_type == 'fixed':
+            item_ids = request.form.getlist('item_ids')
+            item_qtys = request.form.getlist('item_qtys')
+            included = []
+            for i, iid in enumerate(item_ids):
+                if iid:
+                    qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
+                    included.append({'item_id': int(iid), 'qty': qty})
+            deal.included_items = included
 
         img = request.files.get('image')
         if img and img.filename and allowed_image_file(img.filename):
@@ -9979,7 +10037,8 @@ def edit_deal(deal_id):
 
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
-    return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items)
+    category_items_map = _build_category_items_map(categories)
+    return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
 
 
 @admin_bp.route('/deals/delete/<int:deal_id>', methods=['POST'])
@@ -9998,6 +10057,225 @@ def toggle_deal(deal_id):
     deal.is_active = not deal.is_active
     db.session.commit()
     return jsonify({'success': True, 'is_active': deal.is_active})
+
+
+@admin_bp.route('/global-options')
+@login_required
+def global_options():
+    groups = GlobalOptionGroup.query.order_by(GlobalOptionGroup.id.desc()).all()
+    return render_template('admin/global_options.html', groups=groups)
+
+
+@admin_bp.route('/global-options/create', methods=['GET', 'POST'])
+@login_required
+def create_global_option_group():
+    if request.method == 'POST':
+        group = GlobalOptionGroup(
+            name_he=request.form.get('name_he', '').strip(),
+            name_en=request.form.get('name_en', '').strip() or request.form.get('name_he', '').strip(),
+            selection_type=request.form.get('selection_type', 'single'),
+            is_required=request.form.get('is_required') == 'on',
+            min_selections=max(0, int(request.form.get('min_selections', 0) or 0)),
+            max_selections=max(0, int(request.form.get('max_selections', 0) or 0)),
+            is_active=True,
+        )
+        db.session.add(group)
+        db.session.flush()
+        choice_names_he = request.form.getlist('choice_name_he')
+        choice_names_en = request.form.getlist('choice_name_en')
+        choice_prices = request.form.getlist('choice_price')
+        for i, name_he in enumerate(choice_names_he):
+            if not name_he.strip():
+                continue
+            gc = GlobalOptionChoice(
+                global_group_id=group.id,
+                name_he=name_he.strip(),
+                name_en=(choice_names_en[i].strip() if i < len(choice_names_en) and choice_names_en[i].strip() else name_he.strip()),
+                price_modifier=float(choice_prices[i]) if i < len(choice_prices) and choice_prices[i] else 0,
+                display_order=i,
+            )
+            db.session.add(gc)
+        db.session.commit()
+        flash('תבנית אפשרויות נוצרה בהצלחה!', 'success')
+        return redirect(url_for('admin.global_options'))
+    return render_template('admin/global_option_form.html', group=None)
+
+
+@admin_bp.route('/global-options/edit/<int:group_id>', methods=['GET', 'POST'])
+@login_required
+def edit_global_option_group(group_id):
+    group = GlobalOptionGroup.query.get_or_404(group_id)
+    if request.method == 'POST':
+        group.name_he = request.form.get('name_he', '').strip()
+        group.name_en = request.form.get('name_en', '').strip() or group.name_he
+        group.selection_type = request.form.get('selection_type', 'single')
+        group.is_required = request.form.get('is_required') == 'on'
+        group.min_selections = max(0, int(request.form.get('min_selections', 0) or 0))
+        group.max_selections = max(0, int(request.form.get('max_selections', 0) or 0))
+
+        GlobalOptionChoice.query.filter_by(global_group_id=group.id).delete()
+        choice_names_he = request.form.getlist('choice_name_he')
+        choice_names_en = request.form.getlist('choice_name_en')
+        choice_prices = request.form.getlist('choice_price')
+        for i, name_he in enumerate(choice_names_he):
+            if not name_he.strip():
+                continue
+            gc = GlobalOptionChoice(
+                global_group_id=group.id,
+                name_he=name_he.strip(),
+                name_en=(choice_names_en[i].strip() if i < len(choice_names_en) and choice_names_en[i].strip() else name_he.strip()),
+                price_modifier=float(choice_prices[i]) if i < len(choice_prices) and choice_prices[i] else 0,
+                display_order=i,
+            )
+            db.session.add(gc)
+
+        _sync_global_option_group_to_dishes(group)
+        db.session.commit()
+        flash('תבנית אפשרויות עודכנה בהצלחה!', 'success')
+        return redirect(url_for('admin.global_options'))
+    return render_template('admin/global_option_form.html', group=group)
+
+
+@admin_bp.route('/global-options/delete/<int:group_id>', methods=['POST'])
+@login_required
+def delete_global_option_group(group_id):
+    group = GlobalOptionGroup.query.get_or_404(group_id)
+    for link in group.linked_items:
+        if link.linked_option_group_id:
+            og = MenuItemOptionGroup.query.get(link.linked_option_group_id)
+            if og:
+                db.session.delete(og)
+    db.session.delete(group)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'התבנית נמחקה'})
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/attach-global-group', methods=['POST'])
+@login_required
+def attach_global_option_group(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    data = request.get_json(force=True)
+    global_group_id = data.get('global_group_id')
+    if not global_group_id:
+        return jsonify({'ok': False, 'error': 'Missing global_group_id'}), 400
+    global_group = GlobalOptionGroup.query.get(global_group_id)
+    if not global_group:
+        return jsonify({'ok': False, 'error': 'Global group not found'}), 404
+    existing_link = GlobalOptionGroupLink.query.filter_by(
+        global_group_id=global_group_id, menu_item_id=item_id
+    ).first()
+    if existing_link:
+        return jsonify({'ok': False, 'error': 'Already attached'}), 400
+    max_order = db.session.query(db.func.max(MenuItemOptionGroup.display_order)).filter_by(menu_item_id=item_id).scalar() or 0
+    og = MenuItemOptionGroup(
+        menu_item_id=item_id,
+        name_he=global_group.name_he,
+        name_en=global_group.name_en,
+        selection_type=global_group.selection_type,
+        is_required=global_group.is_required,
+        min_selections=global_group.min_selections,
+        max_selections=global_group.max_selections,
+        display_order=max_order + 1,
+        is_active=True,
+    )
+    db.session.add(og)
+    db.session.flush()
+    link = GlobalOptionGroupLink(
+        global_group_id=global_group_id,
+        menu_item_id=item_id,
+        linked_option_group_id=og.id,
+    )
+    db.session.add(link)
+    for gc in global_group.choices:
+        c = MenuItemOptionChoice(
+            option_group_id=og.id,
+            name_he=gc.name_he,
+            name_en=gc.name_en,
+            price_modifier=gc.price_modifier,
+            is_default=gc.is_default,
+            is_available=gc.is_available,
+            display_order=gc.display_order,
+        )
+        db.session.add(c)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Global option group attached'})
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/detach-global-group/<int:global_group_id>', methods=['POST'])
+@login_required
+def detach_global_option_group(item_id, global_group_id):
+    link = GlobalOptionGroupLink.query.filter_by(
+        global_group_id=global_group_id, menu_item_id=item_id
+    ).first()
+    if not link:
+        return jsonify({'ok': False, 'error': 'Link not found'}), 404
+    if link.linked_option_group_id:
+        og = MenuItemOptionGroup.query.get(link.linked_option_group_id)
+        if og:
+            db.session.delete(og)
+    db.session.delete(link)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Global option group detached'})
+
+
+@admin_bp.route('/api/global-option-groups', methods=['GET'])
+@login_required
+def api_global_option_groups():
+    groups = GlobalOptionGroup.query.filter_by(is_active=True).order_by(GlobalOptionGroup.name_he).all()
+    result = []
+    for g in groups:
+        result.append({
+            'id': g.id,
+            'name_he': g.name_he,
+            'name_en': g.name_en,
+            'selection_type': g.selection_type,
+            'choices_count': len(g.choices),
+        })
+    return jsonify({'ok': True, 'groups': result})
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/global-group-links', methods=['GET'])
+@login_required
+def api_menu_item_global_links(item_id):
+    links = GlobalOptionGroupLink.query.filter_by(menu_item_id=item_id).all()
+    result = []
+    for link in links:
+        g = GlobalOptionGroup.query.get(link.global_group_id)
+        if g:
+            result.append({
+                'global_group_id': g.id,
+                'name_he': g.name_he,
+                'name_en': g.name_en,
+                'choices_count': len(g.choices),
+            })
+    return jsonify({'ok': True, 'links': result})
+
+
+def _sync_global_option_group_to_dishes(group):
+    for link in group.linked_items:
+        if not link.linked_option_group_id:
+            continue
+        matched = MenuItemOptionGroup.query.get(link.linked_option_group_id)
+        if not matched:
+            continue
+        matched.name_he = group.name_he
+        matched.name_en = group.name_en
+        matched.selection_type = group.selection_type
+        matched.is_required = group.is_required
+        matched.min_selections = group.min_selections
+        matched.max_selections = group.max_selections
+        MenuItemOptionChoice.query.filter_by(option_group_id=matched.id).delete()
+        for gc in group.choices:
+            c = MenuItemOptionChoice(
+                option_group_id=matched.id,
+                name_he=gc.name_he,
+                name_en=gc.name_en,
+                price_modifier=gc.price_modifier,
+                is_default=gc.is_default,
+                is_available=gc.is_available,
+                display_order=gc.display_order,
+            )
+            db.session.add(c)
 
 
 @admin_bp.route('/upsell-rules')

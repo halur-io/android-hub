@@ -1,0 +1,92 @@
+{% extends "admin/base.html" %}
+
+{% block title %}תבניות אפשרויות - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-layer-group me-2"></i>תבניות אפשרויות גלובליות</h1>
+    <a href="{{ url_for('admin.create_global_option_group') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>תבנית חדשה
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if not groups %}
+        <div class="text-center py-5 text-muted">
+            <i class="fas fa-layer-group fa-3x mb-3 d-block"></i>
+            <p>אין תבניות אפשרויות עדיין. צור תבנית חדשה כדי לשתף אפשרויות בין מנות שונות.</p>
+        </div>
+        {% else %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>שם</th>
+                        <th>סוג</th>
+                        <th>אפשרויות</th>
+                        <th>מנות מקושרות</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in groups %}
+                    <tr>
+                        <td>
+                            <strong>{{ group.name_he }}</strong>
+                            {% if group.name_en and group.name_en != group.name_he %}
+                            <br><small class="text-muted">{{ group.name_en }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if group.selection_type == 'single' else 'info' }}">
+                                {{ 'בחירה יחידה' if group.selection_type == 'single' else 'בחירה מרובה' }}
+                            </span>
+                            {% if group.is_required %}
+                            <span class="badge bg-warning text-dark">חובה</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for choice in group.choices[:5] %}
+                            <span class="badge bg-light text-dark me-1">
+                                {{ choice.name_he }}
+                                {% if choice.price_modifier > 0 %}(+₪{{ choice.price_modifier | int }}){% endif %}
+                            </span>
+                            {% endfor %}
+                            {% if group.choices | length > 5 %}
+                            <span class="text-muted small">+{{ group.choices | length - 5 }} נוספות</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ group.linked_items | length }} מנות</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.edit_global_option_group', group_id=group.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteGlobalGroup({{ group.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function deleteGlobalGroup(id) {
+    if (!confirm('למחוק תבנית זו? הפעולה תסיר גם את קבוצות האפשרויות המקושרות מכל המנות.')) return;
+    fetch('/admin/global-options/delete/' + id, {
+        method: 'POST',
+        headers: {'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''}
+    }).then(r => r.json()).then(d => {
+        if (d.success) location.reload();
+        else alert(d.message || 'שגיאה');
+    });
+}
+</script>
+{% endblock %}

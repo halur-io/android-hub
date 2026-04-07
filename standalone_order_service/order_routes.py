@@ -541,6 +541,50 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
     # ── Upsell suggestions API ────────────────────────────────────────
 
+    @bp.route('/deal-picker-items/<int:deal_id>')
+    def deal_picker_items(deal_id):
+        if not Deal:
+            return jsonify({'ok': False, 'error': 'Deals not available'}), 404
+        deal = Deal.query.get(deal_id)
+        if not deal or not deal.is_valid() or getattr(deal, 'deal_type', 'fixed') != 'customer_picks':
+            return jsonify({'ok': False, 'error': 'Deal not found'}), 404
+        cat_id = getattr(deal, 'source_category_id', None)
+        if not cat_id:
+            return jsonify({'ok': False, 'error': 'No source category'}), 400
+        sel_branch_id = None
+        selected_branch = _get_selected_branch()
+        if selected_branch:
+            sel_branch_id = selected_branch.id
+        items_q = MenuItem.query.filter(
+            MenuItem.category_id == cat_id,
+            MenuItem.is_available == True,
+            db.or_(MenuItem.show_in_order == True, MenuItem.show_in_order.is_(None))
+        ).order_by(MenuItem.display_order).all()
+        result = []
+        for item in items_q:
+            if sel_branch_id and not _is_item_available_for_branch(item.id, sel_branch_id):
+                continue
+            img = ''
+            if item.image_data:
+                img = url_for('order_page.menu_image', item_id=item.id)
+            elif item.image_path:
+                img = item.image_path
+            result.append({
+                'id': item.id,
+                'name_he': item.name_he,
+                'name_en': item.name_en or '',
+                'image': img,
+                'price': float(_get_branch_price(item, sel_branch_id)),
+            })
+        return jsonify({
+            'ok': True,
+            'items': result,
+            'pick_count': getattr(deal, 'pick_count', 0),
+            'deal_name_he': deal.name_he,
+            'deal_name_en': deal.name_en or deal.name_he,
+            'deal_price': float(deal.deal_price),
+        })
+
     @bp.route('/upsell-suggestions', methods=['POST'])
     def upsell_suggestions():
         if not UpsellRule:
@@ -687,8 +731,36 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 ci['qty'] = qty
                 ci['price'] = float(deal_obj.deal_price)
                 ci['deal_id'] = deal_obj.id
-                ci['included_items'] = deal_obj.included_items or []
-                verified_subtotal_cart += deal_obj.deal_price * qty
+                if getattr(deal_obj, 'deal_type', 'fixed') == 'customer_picks':
+                    ci['deal_type'] = 'customer_picks'
+                    ci['qty'] = 1
+                    selected = ci.get('selected_items', [])
+                    verified_selected = []
+                    pick_count = getattr(deal_obj, 'pick_count', 0) or 0
+                    source_cat = getattr(deal_obj, 'source_category_id', None)
+                    if pick_count < 1 or not source_cat:
+                        continue
+                    total_picked = 0
+                    for sel in selected:
+                        sel_id = sel.get('item_id')
+                        sel_qty = max(1, int(sel.get('qty', 1)))
+                        if sel_id:
+                            sel_item = MenuItem.query.get(int(sel_id))
+                            if sel_item and sel_item.is_available and sel_item.category_id == source_cat and (not sel_branch_id or _is_item_available_for_branch(sel_item.id, sel_branch_id)):
+                                verified_selected.append({
+                                    'item_id': sel_item.id,
+                                    'qty': sel_qty,
+                                    'name_he': sel_item.name_he,
+                                    'name_en': sel_item.name_en or '',
+                                })
+                                total_picked += sel_qty
+                    if total_picked != pick_count:
+                        continue
+                    ci['selected_items'] = verified_selected
+                    ci['included_items'] = []
+                else:
+                    ci['included_items'] = deal_obj.included_items or []
+                verified_subtotal_cart += deal_obj.deal_price * ci['qty']
                 valid_cart.append(ci)
                 continue
             if ci.get('upsell') and UpsellRule:
@@ -814,16 +886,31 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 oi.unit_price = float(item.get('price', 0))
                 oi.total_price = oi.quantity * oi.unit_price
                 oi.special_instructions = item.get('notes', '')
-                included = item.get('included_items', [])
-                included_names = []
-                for inc in included:
-                    inc_id = inc.get('item_id') or inc.get('id')
-                    inc_qty = inc.get('qty') or inc.get('quantity') or 1
-                    if inc_id:
-                        inc_item = MenuItem.query.get(int(inc_id))
-                        if inc_item:
-                            included_names.append({'id': inc_item.id, 'name_he': inc_item.name_he, 'name_en': inc_item.name_en or '', 'qty': inc_qty})
-                oi.options_json = json.dumps({'is_deal': True, 'deal_id': item.get('deal_id'), 'included_items': included_names}, ensure_ascii=False)
+                deal_data = {'is_deal': True, 'deal_id': item.get('deal_id')}
+                if item.get('deal_type') == 'customer_picks':
+                    deal_data['deal_type'] = 'customer_picks'
+                    selected = item.get('selected_items', [])
+                    selected_names = []
+                    for sel in selected:
+                        sel_id = sel.get('item_id')
+                        if sel_id:
+                            sel_item = MenuItem.query.get(int(sel_id))
+                            if sel_item:
+                                selected_names.append({'id': sel_item.id, 'name_he': sel_item.name_he, 'name_en': sel_item.name_en or '', 'qty': sel.get('qty', 1)})
+                    deal_data['selected_items'] = selected_names
+                    deal_data['included_items'] = []
+                else:
+                    included = item.get('included_items', [])
+                    included_names = []
+                    for inc in included:
+                        inc_id = inc.get('item_id') or inc.get('id')
+                        inc_qty = inc.get('qty') or inc.get('quantity') or 1
+                        if inc_id:
+                            inc_item = MenuItem.query.get(int(inc_id))
+                            if inc_item:
+                                included_names.append({'id': inc_item.id, 'name_he': inc_item.name_he, 'name_en': inc_item.name_en or '', 'qty': inc_qty})
+                    deal_data['included_items'] = included_names
+                oi.options_json = json.dumps(deal_data, ensure_ascii=False)
                 verified_subtotal += oi.total_price
                 db.session.add(oi)
                 continue

@@ -2492,6 +2492,47 @@ class MenuItemOptionChoice(db.Model):
     display_order = db.Column(db.Integer, default=0)
 
 
+class GlobalOptionGroup(db.Model):
+    __tablename__ = 'global_option_groups'
+    id = db.Column(db.Integer, primary_key=True)
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    selection_type = db.Column(db.String(20), default='single')
+    is_required = db.Column(db.Boolean, default=False)
+    min_selections = db.Column(db.Integer, default=0)
+    max_selections = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    choices = db.relationship('GlobalOptionChoice', backref='option_group', lazy=True, cascade='all, delete-orphan', order_by='GlobalOptionChoice.display_order')
+    linked_items = db.relationship('GlobalOptionGroupLink', backref='global_group', lazy=True, cascade='all, delete-orphan')
+
+
+class GlobalOptionChoice(db.Model):
+    __tablename__ = 'global_option_choices'
+    id = db.Column(db.Integer, primary_key=True)
+    global_group_id = db.Column(db.Integer, db.ForeignKey('global_option_groups.id', ondelete='CASCADE'), nullable=False)
+    name_he = db.Column(db.String(100), nullable=False)
+    name_en = db.Column(db.String(100), nullable=False)
+    price_modifier = db.Column(db.Float, default=0)
+    is_default = db.Column(db.Boolean, default=False)
+    is_available = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=0)
+
+
+class GlobalOptionGroupLink(db.Model):
+    __tablename__ = 'global_option_group_links'
+    id = db.Column(db.Integer, primary_key=True)
+    global_group_id = db.Column(db.Integer, db.ForeignKey('global_option_groups.id', ondelete='CASCADE'), nullable=False)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id', ondelete='CASCADE'), nullable=False)
+    linked_option_group_id = db.Column(db.Integer, db.ForeignKey('menu_item_option_groups.id', ondelete='SET NULL'), nullable=True)
+    display_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    menu_item = db.relationship('MenuItem', backref='global_option_links')
+    linked_option_group = db.relationship('MenuItemOptionGroup', foreign_keys=[linked_option_group_id])
+    __table_args__ = (db.UniqueConstraint('global_group_id', 'menu_item_id', name='uq_global_group_item'),)
+
+
 class FoodOrder(db.Model):
     __tablename__ = 'food_orders'
     __table_args__ = (
@@ -2704,6 +2745,10 @@ class Deal(db.Model):
     included_items = db.Column(db.JSON, default=list)
     deal_price = db.Column(db.Float, nullable=False)
     original_price = db.Column(db.Float)
+
+    deal_type = db.Column(db.String(20), default='fixed')
+    source_category_id = db.Column(db.Integer, db.ForeignKey('menu_categories.id', ondelete='SET NULL'), nullable=True)
+    pick_count = db.Column(db.Integer, default=0)
 
     image_path = db.Column(db.String(500))
 

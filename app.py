@@ -196,7 +196,8 @@ try:
         Branch, BranchMenuItem, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
         MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
         ManagerPIN, SiteSettings, Coupon, CouponUsage, Deal, UpsellRule,
-        OrderActivityLog, SMSLog, TimeLog
+        OrderActivityLog, SMSLog, TimeLog,
+        GlobalOptionGroup, GlobalOptionChoice, GlobalOptionGroupLink
     )
     from services.order.order_service import DeliveryZone
     from database import db as order_db
@@ -218,6 +219,9 @@ try:
         'Coupon': Coupon,
         'CouponUsage': CouponUsage,
         'Deal': Deal,
+        'GlobalOptionGroup': GlobalOptionGroup,
+        'GlobalOptionChoice': GlobalOptionChoice,
+        'GlobalOptionGroupLink': GlobalOptionGroupLink,
         'UpsellRule': UpsellRule,
         'OrderActivityLog': OrderActivityLog,
         'SMSLog': SMSLog,

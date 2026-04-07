@@ -93,6 +93,13 @@
               <span>{{ item.name_he }} × {{ item.qty }}</span>
               <span class="fw-semibold">₪{{ (item.qty * item.price) | int }}</span>
             </div>
+            {% if item.get('selected_items') %}
+            <div class="mb-2 ms-3" style="font-size:.82rem;color:#6b7280;">
+              {% for sel in item.get('selected_items') %}
+              <div>• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
             {% endfor %}
 
             <hr>

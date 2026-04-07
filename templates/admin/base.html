@@ -709,6 +709,9 @@
             <a class="nav-link {% if request.endpoint in ['admin.deals', 'admin.create_deal', 'admin.edit_deal'] %}active{% endif %}" href="{{ url_for('admin.deals') }}">
                 <i class="fas fa-tags me-2"></i> {{ 'מבצעים' if (admin_language or 'he') == 'he' else 'Deals' }}
             </a>
+            <a class="nav-link {% if request.endpoint in ['admin.global_options', 'admin.edit_global_option_group'] %}active{% endif %}" href="{{ url_for('admin.global_options') }}">
+                <i class="fas fa-layer-group me-2"></i> {{ 'תבניות אפשרויות' if (admin_language or 'he') == 'he' else 'Option Templates' }}
+            </a>
             <a class="nav-link {% if request.endpoint in ['admin.upsell_rules', 'admin.create_upsell_rule', 'admin.edit_upsell_rule'] %}active{% endif %}" href="{{ url_for('admin.upsell_rules') }}">
                 <i class="fas fa-chart-line me-2"></i> {{ 'אפסל' if (admin_language or 'he') == 'he' else 'Upsell' }}
             </a>

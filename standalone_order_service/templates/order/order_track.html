@@ -153,6 +153,13 @@
     <div>
       <div class="item-name">{{ item.name_he or item.get('name','') }}</div>
       <div class="item-qty">× {{ item.qty or 1 }}</div>
+      {% if item.get('selected_items') %}
+      <div style="font-size:.75rem;color:#9ca3af;margin-top:2px;">
+        {% for sel in item.get('selected_items') %}
+        <div>• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
     <div class="item-price">₪{{ ((item.unit_price or item.get('price',0)) * (item.qty or 1)) | int }}</div>
   </div>

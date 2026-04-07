@@ -5946,14 +5946,17 @@ def archived_order_restore(archive_id):
 
     items_data = _json.loads(archived.items_snapshot) if archived.items_snapshot else []
     for it in items_data:
+        qty = it.get('quantity', it.get('qty', 1)) or 1
+        unit_p = it.get('unit_price', it.get('price', 0)) or 0
+        total_p = it.get('total_price') or (unit_p * qty)
         oi = FoodOrderItem(
             order_id=new_order.id,
             menu_item_id=it.get('menu_item_id'),
             item_name_he=it.get('item_name_he', it.get('name_he', '?')),
             item_name_en=it.get('item_name_en', it.get('name_en', '')),
-            quantity=it.get('quantity', it.get('qty', 1)),
-            unit_price=it.get('unit_price', it.get('price', 0)),
-            total_price=it.get('total_price', (it.get('unit_price', 0) * it.get('quantity', 1))),
+            quantity=qty,
+            unit_price=unit_p,
+            total_price=total_p,
             special_instructions=it.get('special_instructions', ''),
             options_json=it.get('options_json'),
         )

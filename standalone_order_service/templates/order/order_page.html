@@ -921,7 +921,14 @@ loadCartFromStorage();
         cart = {};
         for (var i = 0; i < rd.items.length; i++) {
             var it = rd.items[i];
-            var key = 'reorder_' + (it.menu_item_id || i);
+            var key = 'reorder_' + i + '_' + (it.menu_item_id || 0);
+            var opts = [];
+            if (it.options_json) {
+                try {
+                    var parsed = typeof it.options_json === 'string' ? JSON.parse(it.options_json) : it.options_json;
+                    if (Array.isArray(parsed)) opts = parsed;
+                } catch(e) {}
+            }
             cart[key] = {
                 id: it.menu_item_id,
                 nameHe: it.name_he || '',
@@ -929,21 +936,13 @@ loadCartFromStorage();
                 price: it.price || 0,
                 qty: it.quantity || 1,
                 instructions: it.special_instructions || '',
-                options: [],
+                options: opts,
                 excludedIngredients: []
             };
         }
         saveCartToStorage();
         if (rd.order_type === 'delivery') orderType = 'delivery';
         else orderType = 'takeaway';
-        window._reorderCustomer = {
-            name: rd.customer_name || '',
-            phone: rd.customer_phone || '',
-            email: rd.customer_email || '',
-            address: rd.delivery_address || '',
-            city: rd.delivery_city || '',
-            notes: rd.delivery_notes || ''
-        };
     }
 })();
 {% endif %}

@@ -1,14 +1,17 @@
 import json
 import logging
 import os
+import queue
 import secrets
 import socket
+import threading
+import time as _time
 from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (
     Blueprint, render_template, request, session, redirect,
-    url_for, jsonify, make_response, flash,
+    url_for, jsonify, make_response, flash, Response,
 )
 from database import db
 
@@ -19,7 +22,7 @@ from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
     MenuCategory, MenuItem, BranchMenuItem, StockItem, StockLevel, StockTransaction,
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
-    Printer, PrinterStation, PrintStation, TimeLog,
+    Printer, PrinterStation, PrintStation, TimeLog, PrintDevice,
 )
 from services.order.order_service import DeliveryZone
 
@@ -739,6 +742,24 @@ def auto_print():
         flash('אין לך הרשאה לגשת לדף ההגדרות', 'danger')
         return redirect(url_for('ops.home'))
     return render_template('ops/auto_print.html', active_tab='settings')
+
+
+@ops_bp.route('/print-devices')
+@require_ops_module('orders')
+def print_devices_page():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        flash('אין לך הרשאה לגשת לדף זה', 'danger')
+        return redirect(url_for('ops.home'))
+    cutoff = datetime.utcnow() - timedelta(minutes=2)
+    devices = PrintDevice.query.all()
+    for d in devices:
+        if d.last_heartbeat and d.last_heartbeat < cutoff:
+            d.is_online = False
+    db.session.commit()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    print_key = os.environ.get('PRINT_AGENT_KEY', '')
+    return render_template('ops/print_devices.html', devices=devices, branches=branches, active_tab='settings', print_key=print_key)
 
 
 @ops_bp.route('/settings')
@@ -2377,3 +2398,298 @@ def delete_order(order_id):
         return jsonify({'ok': False, 'error': 'שגיאה במחיקת ההזמנה'})
 
     return jsonify({'ok': True, 'message': f'הזמנה #{order.order_number} נמחקה'})
+
+
+_sse_subscribers = []
+_sse_lock = threading.Lock()
+
+def _notify_sse_new_order(order_data):
+    event_json = json.dumps(order_data, ensure_ascii=False)
+    dead = []
+    with _sse_lock:
+        for sub in _sse_subscribers:
+            try:
+                branch_filter = sub.get('branch_id')
+                if branch_filter and order_data.get('branch_id') != branch_filter:
+                    continue
+                sub['queue'].put_nowait(event_json)
+            except Exception:
+                dead.append(sub)
+        for d in dead:
+            try:
+                _sse_subscribers.remove(d)
+            except ValueError:
+                pass
+
+
+@ops_bp.route('/api/orders/stream')
+def sse_order_stream():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    branch_id = request.args.get('branch_id', type=int)
+    q = queue.Queue(maxsize=50)
+    sub = {'queue': q, 'branch_id': branch_id}
+    with _sse_lock:
+        _sse_subscribers.append(sub)
+
+    def generate():
+        try:
+            yield 'data: {"type":"connected"}\n\n'
+            while True:
+                try:
+                    data = q.get(timeout=25)
+                    yield f'data: {data}\n\n'
+                except queue.Empty:
+                    yield ': keepalive\n\n'
+        except GeneratorExit:
+            pass
+        finally:
+            with _sse_lock:
+                try:
+                    _sse_subscribers.remove(sub)
+                except ValueError:
+                    pass
+
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive',
+        },
+    )
+
+
+@ops_bp.route('/api/devices/register', methods=['POST'])
+def register_print_device():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(force=True)
+    device_id = data.get('device_id', '').strip()
+    branch_id = data.get('branch_id')
+    device_name = data.get('device_name', '').strip()
+
+    if not device_id or not branch_id or not device_name:
+        return jsonify({'ok': False, 'error': 'missing device_id, branch_id, or device_name'}), 400
+
+    branch = Branch.query.get(branch_id)
+    if not branch:
+        return jsonify({'ok': False, 'error': 'branch not found'}), 404
+
+    device = PrintDevice.query.filter_by(device_id=device_id).first()
+    now = datetime.utcnow()
+    if device:
+        device.branch_id = branch_id
+        device.device_name = device_name
+        device.last_heartbeat = now
+        device.is_online = True
+    else:
+        device = PrintDevice(
+            device_id=device_id,
+            branch_id=branch_id,
+            device_name=device_name,
+            last_heartbeat=now,
+            is_online=True,
+            registered_at=now,
+        )
+        db.session.add(device)
+
+    db.session.commit()
+    return jsonify({'ok': True, 'device': device.to_dict()})
+
+
+@ops_bp.route('/api/devices/heartbeat', methods=['POST'])
+def print_device_heartbeat():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(force=True)
+    device_id = data.get('device_id', '').strip()
+    if not device_id:
+        return jsonify({'ok': False, 'error': 'missing device_id'}), 400
+
+    device = PrintDevice.query.filter_by(device_id=device_id).first()
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not registered'}), 404
+
+    device.last_heartbeat = datetime.utcnow()
+    device.is_online = True
+    db.session.commit()
+    return jsonify({'ok': True, 'server_time': datetime.utcnow().isoformat() + 'Z'})
+
+
+@ops_bp.route('/api/devices', methods=['GET'])
+def list_print_devices():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    if not is_api_key_auth:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    cutoff = datetime.utcnow() - timedelta(minutes=2)
+    devices = PrintDevice.query.all()
+    for d in devices:
+        if d.last_heartbeat and d.last_heartbeat < cutoff:
+            d.is_online = False
+    db.session.commit()
+
+    return jsonify({
+        'ok': True,
+        'devices': [d.to_dict() for d in devices],
+    })
+
+
+@ops_bp.route('/api/devices/<int:device_db_id>/config', methods=['GET'])
+def get_print_device_config(device_db_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    device = PrintDevice.query.get(device_db_id)
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not found'}), 404
+
+    printers = Printer.query.filter_by(branch_id=device.branch_id, is_active=True).order_by(Printer.display_order).all()
+    station_map = {}
+    default_printer = None
+    for p in printers:
+        pd = p.to_dict()
+        if p.is_default:
+            default_printer = pd
+        for st in p.stations:
+            station_map[st.station_name] = pd
+
+    branch = Branch.query.get(device.branch_id)
+    custom_config = {}
+    if device.config_json:
+        try:
+            custom_config = json.loads(device.config_json)
+        except Exception:
+            pass
+
+    config = {
+        'device_id': device.device_id,
+        'device_db_id': device.id,
+        'branch_id': device.branch_id,
+        'branch_name': branch.name_he if branch else '',
+        'poll_interval_seconds': custom_config.get('poll_interval_seconds', 5),
+        'sse_reconnect_delay_ms': custom_config.get('sse_reconnect_delay_ms', 3000),
+        'heartbeat_interval_seconds': custom_config.get('heartbeat_interval_seconds', 30),
+        'sound_enabled': custom_config.get('sound_enabled', True),
+        'sound_file': custom_config.get('sound_file', 'new_order.mp3'),
+        'notification_enabled': custom_config.get('notification_enabled', True),
+        'default_printer': default_printer,
+        'station_map': station_map,
+        'printers': [p.to_dict() for p in printers],
+        'encoding': custom_config.get('encoding', 'iso-8859-8'),
+        'codepage_num': custom_config.get('codepage_num', 32),
+    }
+
+    return jsonify({'ok': True, 'config': config})
+
+
+@ops_bp.route('/api/devices/<int:device_db_id>/config', methods=['PUT'])
+def update_print_device_config(device_db_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    if not is_api_key_auth:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    device = PrintDevice.query.get(device_db_id)
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not found'}), 404
+
+    data = request.get_json(force=True)
+
+    if 'device_name' in data:
+        device.device_name = data['device_name']
+    if 'branch_id' in data:
+        branch = Branch.query.get(data['branch_id'])
+        if branch:
+            device.branch_id = data['branch_id']
+
+    config_fields = [
+        'poll_interval_seconds', 'sse_reconnect_delay_ms', 'heartbeat_interval_seconds',
+        'sound_enabled', 'sound_file', 'notification_enabled', 'encoding', 'codepage_num',
+    ]
+    existing = {}
+    if device.config_json:
+        try:
+            existing = json.loads(device.config_json)
+        except Exception:
+            pass
+
+    if 'config' in data and isinstance(data['config'], dict):
+        existing.update(data['config'])
+    else:
+        for f in config_fields:
+            if f in data:
+                existing[f] = data[f]
+
+    device.config_json = json.dumps(existing, ensure_ascii=False)
+    db.session.commit()
+    return jsonify({'ok': True, 'device': device.to_dict()})
+
+
+@ops_bp.route('/api/devices/<int:device_db_id>', methods=['DELETE'])
+def delete_print_device(device_db_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    if not is_api_key_auth:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    device = PrintDevice.query.get(device_db_id)
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not found'}), 404
+
+    db.session.delete(device)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'device deleted'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/ack', methods=['POST'])
+def ack_order(order_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'order not found'}), 404
+
+    data = request.get_json(force=True) if request.content_length else {}
+    device_id = data.get('device_id', '')
+
+    now = datetime.utcnow()
+    order.bon_acked_at = now
+    if device_id:
+        order.bon_acked_device_id = device_id
+
+    existing = order.admin_notes or ''
+    ts = now.strftime('%Y-%m-%d %H:%M:%S')
+    ack_note = f'[{ts} UTC] Received by tablet'
+    if device_id:
+        ack_note += f' ({device_id})'
+    order.admin_notes = f"{existing}\n{ack_note}".strip()
+    db.session.commit()
+
+    return jsonify({'ok': True, 'message': f'Order {order_id} acknowledged'})

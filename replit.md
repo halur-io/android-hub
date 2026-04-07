@@ -28,6 +28,7 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **SMS Notification Center:** Full SMS management system with bilingual templates, auto-triggers based on order status, and a message log viewer.
 - **iPad Operations Dashboard Modules:** Includes device enrollment, PIN-based authentication, Menu, Stock, Deals & Coupons, Branch settings, and a Kanban-style Orders module.
 - **Auto-Print System (Print Agent v4.0):** Local print agent runs at each branch to fetch printer configurations, poll for new orders, and route bons to specific printers by station. Supports multi-printer management and branch-specific printer settings.
+- **Android Print Hub API:** Server-side API layer for Android tablet print apps. Includes SSE real-time order streaming (`/ops/api/orders/stream`), device registration/heartbeat (`/ops/api/devices/*`), order acknowledgment (`/ops/api/orders/<id>/ack`), and remote device configuration. Uses `PrintDevice` model for device tracking. Comprehensive API documentation at `docs/android-app-api-spec.md`.
 - **Dish Photo Processing System:** Automated pipeline for image processing including background removal, auto-cropping, gradient compositing, and optimization for web display.
 - **Worker Time Tracking:** Standalone shift clock module within the Ops dashboard, allowing PIN-based clock-in/out and providing administrative oversight.
 - **Delivery Zones Management:** Admin and Ops modules for managing delivery zones with branch filtering and city autocomplete.
@@ -41,7 +42,7 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 ### System Design Choices
 - **Modularity:** Achieved through separation of concerns, e.g., `standalone_order_service`.
 - **Print Stations as Entities:** `PrintStation` is a first-class entity for flexible print routing.
-- **Database Schema:** Includes models for `FoodOrder`, `MenuItem`, `ManagerPIN`, `Deal`, `Coupon`, `Printer`, `TimeLog`, `DeliveryZone`, `ArchivedOrder`, `ReleasedOrderNumber`, among others.
+- **Database Schema:** Includes models for `FoodOrder`, `MenuItem`, `ManagerPIN`, `Deal`, `Coupon`, `Printer`, `PrintDevice`, `TimeLog`, `DeliveryZone`, `ArchivedOrder`, `ReleasedOrderNumber`, among others.
 - **API Endpoints:** Dedicated APIs for order validation, coupon validation, upsell suggestions, and print agent polling.
 
 ## External Dependencies

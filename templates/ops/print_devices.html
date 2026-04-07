@@ -1,0 +1,404 @@
+{% extends "ops/base.html" %}
+
+{% block title %}מכשירי הדפסה{% endblock %}
+{% block header_title %}📱 מכשירי הדפסה{% endblock %}
+
+{% block head %}
+<style>
+    .pd-container {
+        padding: 20px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .pd-summary {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .pd-summary-card {
+        flex: 1;
+        background: var(--ops-card-bg, #1e1e2e);
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+    }
+    .pd-summary-num {
+        font-size: 32px;
+        font-weight: bold;
+    }
+    .pd-summary-label {
+        font-size: 14px;
+        color: #999;
+        margin-top: 4px;
+    }
+    .pd-device-card {
+        background: var(--ops-card-bg, #1e1e2e);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 16px;
+        position: relative;
+    }
+    .pd-device-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    .pd-device-name {
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+    }
+    .pd-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .pd-status-online {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+    }
+    .pd-status-offline {
+        background: rgba(244, 67, 54, 0.2);
+        color: #f44336;
+    }
+    .pd-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .pd-status-dot.online { background: #4caf50; }
+    .pd-status-dot.offline { background: #f44336; }
+    .pd-device-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        color: #aaa;
+        font-size: 14px;
+    }
+    .pd-info-item {
+        display: flex;
+        gap: 6px;
+    }
+    .pd-info-label {
+        color: #777;
+    }
+    .pd-info-value {
+        color: #ddd;
+    }
+    .pd-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+    }
+    .pd-btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .pd-btn-config {
+        background: rgba(79, 195, 247, 0.15);
+        color: #4fc3f7;
+    }
+    .pd-btn-delete {
+        background: rgba(244, 67, 54, 0.15);
+        color: #f44336;
+    }
+    .pd-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #777;
+    }
+    .pd-empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+    }
+    .pd-config-modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .pd-config-modal.show { display: flex; }
+    .pd-config-content {
+        background: var(--ops-card-bg, #1e1e2e);
+        border-radius: 20px;
+        padding: 24px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .pd-config-title {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 16px;
+        color: #fff;
+    }
+    .pd-form-group {
+        margin-bottom: 14px;
+    }
+    .pd-form-group label {
+        display: block;
+        color: #aaa;
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+    .pd-form-group input, .pd-form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #444;
+        border-radius: 10px;
+        background: #2a2a3a;
+        color: #fff;
+        font-size: 15px;
+    }
+    .pd-form-row {
+        display: flex;
+        gap: 12px;
+    }
+    .pd-form-row .pd-form-group { flex: 1; }
+    .pd-config-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .pd-config-actions button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .pd-save-btn {
+        background: #4caf50;
+        color: #fff;
+    }
+    .pd-cancel-btn {
+        background: #555;
+        color: #ccc;
+    }
+    .pd-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .pd-toggle input[type=checkbox] {
+        width: 20px;
+        height: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pd-container">
+    <div class="pd-summary">
+        <div class="pd-summary-card">
+            <div class="pd-summary-num" style="color: #4fc3f7;">{{ devices|length }}</div>
+            <div class="pd-summary-label">סה"כ מכשירים</div>
+        </div>
+        <div class="pd-summary-card">
+            <div class="pd-summary-num" style="color: #4caf50;">{{ devices|selectattr('is_online')|list|length }}</div>
+            <div class="pd-summary-label">מחוברים</div>
+        </div>
+        <div class="pd-summary-card">
+            <div class="pd-summary-num" style="color: #f44336;">{{ devices|rejectattr('is_online')|list|length }}</div>
+            <div class="pd-summary-label">לא מחוברים</div>
+        </div>
+    </div>
+
+    {% if devices %}
+        {% for device in devices %}
+        <div class="pd-device-card" id="device-{{ device.id }}">
+            <div class="pd-device-header">
+                <div class="pd-device-name">{{ device.device_name }}</div>
+                <div class="pd-status-badge {{ 'pd-status-online' if device.is_online else 'pd-status-offline' }}">
+                    <span class="pd-status-dot {{ 'online' if device.is_online else 'offline' }}"></span>
+                    {{ 'מחובר' if device.is_online else 'לא מחובר' }}
+                </div>
+            </div>
+            <div class="pd-device-info">
+                <div class="pd-info-item">
+                    <span class="pd-info-label">סניף:</span>
+                    <span class="pd-info-value">{{ device.branch.name_he if device.branch else 'לא משויך' }}</span>
+                </div>
+                <div class="pd-info-item">
+                    <span class="pd-info-label">מזהה מכשיר:</span>
+                    <span class="pd-info-value" style="font-size:12px; direction:ltr;">{{ device.device_id[:20] }}...</span>
+                </div>
+                <div class="pd-info-item">
+                    <span class="pd-info-label">פעילות אחרונה:</span>
+                    <span class="pd-info-value">{{ device.last_heartbeat|il_time_short if device.last_heartbeat else 'אף פעם' }}</span>
+                </div>
+                <div class="pd-info-item">
+                    <span class="pd-info-label">נרשם:</span>
+                    <span class="pd-info-value">{{ device.registered_at|il_time_short if device.registered_at else '-' }}</span>
+                </div>
+            </div>
+            <div class="pd-actions">
+                <button class="pd-btn pd-btn-config" onclick="openConfig({{ device.id }}, '{{ device.device_name }}', {{ device.branch_id }})">
+                    <i class="fas fa-cog"></i> הגדרות
+                </button>
+                <button class="pd-btn pd-btn-delete" onclick="deleteDevice({{ device.id }}, '{{ device.device_name }}')">
+                    <i class="fas fa-trash"></i> מחק
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="pd-empty">
+            <div class="pd-empty-icon">📱</div>
+            <div style="font-size: 18px; margin-bottom: 8px;">אין מכשירי הדפסה רשומים</div>
+            <div style="font-size: 14px;">מכשירים ירשמו אוטומטית כשהאפליקציה תתחבר לשרת</div>
+        </div>
+    {% endif %}
+</div>
+
+<div class="pd-config-modal" id="configModal">
+    <div class="pd-config-content">
+        <div class="pd-config-title">הגדרות מכשיר: <span id="configDeviceName"></span></div>
+        <input type="hidden" id="configDeviceId">
+
+        <div class="pd-form-group">
+            <label>שם מכשיר</label>
+            <input type="text" id="cfgDeviceName" placeholder="שם המכשיר">
+        </div>
+
+        <div class="pd-form-group">
+            <label>סניף</label>
+            <select id="cfgBranchId">
+                {% for b in branches %}
+                <option value="{{ b.id }}">{{ b.name_he }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="pd-form-row">
+            <div class="pd-form-group">
+                <label>מרווח סקירה (שניות)</label>
+                <input type="number" id="cfgPollInterval" value="5" min="1" max="60">
+            </div>
+            <div class="pd-form-group">
+                <label>דופק (שניות)</label>
+                <input type="number" id="cfgHeartbeat" value="30" min="10" max="120">
+            </div>
+        </div>
+
+        <div class="pd-form-row">
+            <div class="pd-form-group">
+                <label>השהיית SSE (מ"ש)</label>
+                <input type="number" id="cfgSseDelay" value="3000" min="1000" max="30000" step="1000">
+            </div>
+        </div>
+
+        <div class="pd-form-group">
+            <div class="pd-toggle">
+                <input type="checkbox" id="cfgSoundEnabled" checked>
+                <label for="cfgSoundEnabled" style="margin:0; color:#ddd; font-size:15px;">צליל הזמנה חדשה</label>
+            </div>
+        </div>
+
+        <div class="pd-form-group">
+            <div class="pd-toggle">
+                <input type="checkbox" id="cfgNotifEnabled" checked>
+                <label for="cfgNotifEnabled" style="margin:0; color:#ddd; font-size:15px;">התראות</label>
+            </div>
+        </div>
+
+        <div class="pd-config-actions">
+            <button class="pd-save-btn" onclick="saveConfig()">שמור</button>
+            <button class="pd-cancel-btn" onclick="closeConfig()">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openConfig(deviceId, name, branchId) {
+    document.getElementById('configDeviceId').value = deviceId;
+    document.getElementById('configDeviceName').textContent = name;
+    document.getElementById('cfgDeviceName').value = name;
+    document.getElementById('cfgBranchId').value = branchId;
+
+    fetch('/ops/api/devices/' + deviceId + '/config', {
+        headers: {'X-Print-Key': '{{ print_key }}'}
+    }).then(r => r.json()).then(data => {
+        if (data.ok && data.config) {
+            var c = data.config;
+            document.getElementById('cfgPollInterval').value = c.poll_interval_seconds || 5;
+            document.getElementById('cfgHeartbeat').value = c.heartbeat_interval_seconds || 30;
+            document.getElementById('cfgSseDelay').value = c.sse_reconnect_delay_ms || 3000;
+            document.getElementById('cfgSoundEnabled').checked = c.sound_enabled !== false;
+            document.getElementById('cfgNotifEnabled').checked = c.notification_enabled !== false;
+        }
+    });
+
+    document.getElementById('configModal').classList.add('show');
+}
+
+function closeConfig() {
+    document.getElementById('configModal').classList.remove('show');
+}
+
+function saveConfig() {
+    var deviceId = document.getElementById('configDeviceId').value;
+    var body = {
+        device_name: document.getElementById('cfgDeviceName').value,
+        branch_id: parseInt(document.getElementById('cfgBranchId').value),
+        config: {
+            poll_interval_seconds: parseInt(document.getElementById('cfgPollInterval').value),
+            heartbeat_interval_seconds: parseInt(document.getElementById('cfgHeartbeat').value),
+            sse_reconnect_delay_ms: parseInt(document.getElementById('cfgSseDelay').value),
+            sound_enabled: document.getElementById('cfgSoundEnabled').checked,
+            notification_enabled: document.getElementById('cfgNotifEnabled').checked
+        }
+    };
+
+    fetch('/ops/api/devices/' + deviceId + '/config', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json', 'X-Print-Key': '{{ print_key }}'},
+        body: JSON.stringify(body)
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            closeConfig();
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה בשמירה');
+        }
+    });
+}
+
+function deleteDevice(deviceId, name) {
+    if (!confirm('למחוק את המכשיר "' + name + '"?')) return;
+    fetch('/ops/api/devices/' + deviceId, {
+        method: 'DELETE',
+        headers: {'X-Print-Key': '{{ print_key }}'}
+    }).then(r => r.json()).then(data => {
+        if (data.ok) {
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה במחיקה');
+        }
+    });
+}
+
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

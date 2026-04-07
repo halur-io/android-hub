@@ -2587,6 +2587,8 @@ class FoodOrder(db.Model):
     items_json = db.Column(db.Text)
     bon_printed = db.Column(db.Boolean, default=False)
     bon_printed_at = db.Column(db.DateTime, nullable=True)
+    bon_acked_at = db.Column(db.DateTime, nullable=True)
+    bon_acked_device_id = db.Column(db.String(128), nullable=True)
     items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
 
     def set_order_number(self):
@@ -3123,3 +3125,39 @@ class ReleasedOrderNumber(db.Model):
 
     def __repr__(self):
         return f'<ReleasedOrderNumber {self.order_number}>'
+
+
+class PrintDevice(db.Model):
+    __tablename__ = 'print_devices'
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.String(128), unique=True, nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    device_name = db.Column(db.String(100), nullable=False)
+    last_heartbeat = db.Column(db.DateTime, nullable=True)
+    is_online = db.Column(db.Boolean, default=False)
+    registered_at = db.Column(db.DateTime, default=datetime.utcnow)
+    config_json = db.Column(db.Text, nullable=True)
+
+    branch = db.relationship('Branch', backref=db.backref('print_devices', lazy=True))
+
+    def to_dict(self):
+        import json as _json
+        config = {}
+        if self.config_json:
+            try:
+                config = _json.loads(self.config_json)
+            except Exception:
+                pass
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'branch_id': self.branch_id,
+            'device_name': self.device_name,
+            'last_heartbeat': self.last_heartbeat.isoformat() + 'Z' if self.last_heartbeat else None,
+            'is_online': self.is_online,
+            'registered_at': self.registered_at.isoformat() + 'Z' if self.registered_at else None,
+            'config': config,
+        }
+
+    def __repr__(self):
+        return f'<PrintDevice {self.device_name} ({self.device_id})>'

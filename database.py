@@ -38,6 +38,8 @@ def _run_safe_migrations(db):
         ("deals", "source_category_id", "ALTER TABLE deals ADD COLUMN source_category_id INTEGER"),
         ("deals", "pick_count", "ALTER TABLE deals ADD COLUMN pick_count INTEGER DEFAULT 0"),
         ("global_option_group_links", "linked_option_group_id", "ALTER TABLE global_option_group_links ADD COLUMN linked_option_group_id INTEGER REFERENCES menu_item_option_groups(id) ON DELETE SET NULL"),
+        ("food_orders", "bon_acked_at", "ALTER TABLE food_orders ADD COLUMN bon_acked_at TIMESTAMP"),
+        ("food_orders", "bon_acked_device_id", "ALTER TABLE food_orders ADD COLUMN bon_acked_device_id VARCHAR(128)"),
     ]
     for table, column, sql in migrations:
         try:

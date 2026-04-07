@@ -1172,6 +1172,23 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             except Exception as e:
                 logging.warning(f"Customer SMS failed for #{order.order_number}: {e}")
 
+        try:
+            from ops_routes import _notify_sse_new_order
+            items = json.loads(order.items_json) if order.items_json else []
+            _notify_sse_new_order({
+                'type': 'new_order',
+                'id': order.id,
+                'order_number': order.order_number,
+                'order_type': order.order_type,
+                'branch_id': order.branch_id,
+                'customer_name': order.customer_name or '',
+                'total_amount': order.total_amount or 0,
+                'items_count': len(items),
+                'created_at': order.created_at.isoformat() + 'Z' if order.created_at else '',
+            })
+        except Exception as e:
+            logging.debug(f"SSE notify: {e}")
+
         return redirect(url_for('order_page.order_confirmation', order_number=order.order_number))
 
     # ── Confirmation ──────────────────────────────────────────────────
@@ -1256,6 +1273,22 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 notifier.send_customer_confirmation(order, settings)
             except Exception:
                 pass
+        try:
+            from ops_routes import _notify_sse_new_order
+            items = json.loads(order.items_json) if order.items_json else []
+            _notify_sse_new_order({
+                'type': 'new_order',
+                'id': order.id,
+                'order_number': order.order_number,
+                'order_type': order.order_type,
+                'branch_id': order.branch_id,
+                'customer_name': order.customer_name or '',
+                'total_amount': order.total_amount or 0,
+                'items_count': len(items),
+                'created_at': order.created_at.isoformat() + 'Z' if order.created_at else '',
+            })
+        except Exception:
+            pass
 
     def _fail_payment(order):
         order.payment_status = 'failed'

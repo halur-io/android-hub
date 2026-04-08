@@ -2705,6 +2705,7 @@ def ack_order(order_id):
 
     now = datetime.utcnow()
     order.bon_acked_at = now
+    order.bon_printed = True
     if device_id:
         order.bon_acked_device_id = device_id
 

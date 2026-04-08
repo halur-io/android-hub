@@ -23,69 +23,476 @@
   </div>
 </section>
 
-{% elif need_branch_selection is defined and need_branch_selection %}
-<section class="section">
-  <div class="container" style="max-width:600px;">
-    <div class="text-center py-4">
-      <i class="fas fa-map-marker-alt fa-3x mb-3" style="color:#4338ca;"></i>
-      <h2 class="mb-2 fw-bold">{{ 'בחרו סניף' if language == 'he' else 'Select Branch' }}</h2>
-      <p class="text-muted mb-4">{{ 'מאיזה סניף תרצו להזמין?' if language == 'he' else 'Which branch would you like to order from?' }}</p>
-    </div>
-    <div class="row g-3 justify-content-center">
-      {% for branch in branches %}
-      <div class="col-12">
-        <form method="POST" action="{{ url_for('order_page.select_branch') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else '' }}">
-          <input type="hidden" name="branch_id" value="{{ branch.id }}">
-          <button type="submit" class="branch-select-card w-100">
-            <div class="d-flex align-items-center gap-3">
-              <div class="branch-icon-wrap">
-                <i class="fas fa-store"></i>
-              </div>
-              <div class="text-start flex-grow-1">
-                <div class="branch-card-name">{{ branch.name_he if language == 'he' else branch.name_en }}</div>
-                {% if branch.address_he or branch.address_en %}
-                <div class="branch-card-addr">
-                  <i class="fas fa-map-pin me-1"></i>{{ branch.address_he if language == 'he' else branch.address_en }}
-                </div>
-                {% endif %}
-                {% if branch.phone %}
-                <div class="branch-card-phone">
-                  <i class="fas fa-phone me-1"></i>{{ branch.phone }}
-                </div>
-                {% endif %}
-              </div>
-              <i class="fas fa-chevron-left" style="color:#4338ca;font-size:.9rem;"></i>
-            </div>
-          </button>
-        </form>
+{% elif need_onboarding is defined and need_onboarding and not ordering_disabled %}
+
+<div id="onboarding-overlay">
+  <div class="ob-bg"></div>
+  <div class="ob-container">
+    <div class="ob-card">
+      <div class="ob-progress">
+        <div class="ob-progress-bar" id="ob-progress-bar" style="width:25%"></div>
       </div>
-      {% endfor %}
+
+      <div class="ob-step" id="ob-step-1">
+        <div class="ob-icon-circle"><i class="fas fa-store"></i></div>
+        <h2 class="ob-title">{{ 'מאיפה מזמינים?' if language == 'he' else 'Choose Branch' }}</h2>
+        <p class="ob-subtitle">{{ 'בחרו את הסניף הקרוב אליכם' if language == 'he' else 'Pick the branch closest to you' }}</p>
+        <div class="ob-branches">
+          {% for branch in branches %}
+          <button type="button" class="ob-branch-card" onclick="obSelectBranch({{ branch.id }}, this)" data-branch-id="{{ branch.id }}">
+            <div class="ob-branch-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="ob-branch-info">
+              <div class="ob-branch-name">{{ branch.name_he if language == 'he' else branch.name_en }}</div>
+              {% if branch.address_he or branch.address_en %}
+              <div class="ob-branch-addr">{{ branch.address_he if language == 'he' else branch.address_en }}</div>
+              {% endif %}
+            </div>
+            <div class="ob-branch-check"><i class="fas fa-check"></i></div>
+          </button>
+          {% endfor %}
+          {% if branches|length == 1 %}
+          <script>document.addEventListener('DOMContentLoaded', function(){ obSelectBranch({{ branches[0].id }}, document.querySelector('.ob-branch-card')); obNext(); });</script>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="ob-step" id="ob-step-2" style="display:none;">
+        <div class="ob-icon-circle"><i class="fas fa-truck"></i></div>
+        <h2 class="ob-title">{{ 'איך תרצו לקבל?' if language == 'he' else 'How would you like it?' }}</h2>
+        <p class="ob-subtitle">{{ 'בחרו משלוח או איסוף עצמי' if language == 'he' else 'Choose delivery or pickup' }}</p>
+        <div class="ob-type-options">
+          {% if enable_delivery is not defined or enable_delivery %}
+          <button type="button" class="ob-type-card" onclick="obSelectType('delivery', this)">
+            <div class="ob-type-icon"><i class="fas fa-motorcycle"></i></div>
+            <div class="ob-type-label">{{ 'משלוח' if language == 'he' else 'Delivery' }}</div>
+            <div class="ob-type-desc">{{ 'נביא אליכם עד הדלת' if language == 'he' else 'We deliver to your door' }}</div>
+          </button>
+          {% endif %}
+          {% if enable_pickup is not defined or enable_pickup %}
+          <button type="button" class="ob-type-card" onclick="obSelectType('takeaway', this)">
+            <div class="ob-type-icon"><i class="fas fa-shopping-bag"></i></div>
+            <div class="ob-type-label">{{ 'איסוף עצמי' if language == 'he' else 'Pickup' }}</div>
+            <div class="ob-type-desc">{{ 'אספו מהסניף' if language == 'he' else 'Pick up from the branch' }}</div>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="ob-step" id="ob-step-3" style="display:none;">
+        <div class="ob-icon-circle"><i class="fas fa-user"></i></div>
+        <h2 class="ob-title">{{ 'הפרטים שלך' if language == 'he' else 'Your Details' }}</h2>
+        <p class="ob-subtitle">{{ 'מלאו את הפרטים כדי להמשיך' if language == 'he' else 'Fill in your details to continue' }}</p>
+        <div class="ob-form">
+          <div class="ob-form-row">
+            <div class="ob-field">
+              <label>{{ 'שם פרטי' if language == 'he' else 'First Name' }} *</label>
+              <input type="text" id="ob-first-name" autocomplete="given-name" required>
+            </div>
+            <div class="ob-field">
+              <label>{{ 'שם משפחה' if language == 'he' else 'Last Name' }} *</label>
+              <input type="text" id="ob-last-name" autocomplete="family-name" required>
+            </div>
+          </div>
+          <div class="ob-field">
+            <label>{{ 'טלפון' if language == 'he' else 'Phone' }} *</label>
+            <input type="tel" id="ob-phone" autocomplete="tel" dir="ltr" required>
+          </div>
+          <div class="ob-field">
+            <label>{{ 'אימייל' if language == 'he' else 'Email' }} *</label>
+            <input type="email" id="ob-email" autocomplete="email" dir="ltr" required>
+          </div>
+          <div id="ob-form-error" class="ob-error" style="display:none;"></div>
+          <button type="button" class="ob-btn-primary" onclick="obSendOtp()">
+            <span id="ob-send-otp-text">{{ 'שלח קוד אימות' if language == 'he' else 'Send Verification Code' }}</span>
+            <i class="fas fa-arrow-left ms-2" id="ob-send-otp-arrow"></i>
+            <i class="fas fa-spinner fa-spin ms-2" id="ob-send-otp-spin" style="display:none;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="ob-step" id="ob-step-4" style="display:none;">
+        <div class="ob-icon-circle ob-icon-green"><i class="fas fa-shield-alt"></i></div>
+        <h2 class="ob-title">{{ 'אימות טלפון' if language == 'he' else 'Phone Verification' }}</h2>
+        <p class="ob-subtitle" id="ob-otp-subtitle">{{ 'הזינו את הקוד שנשלח ל-' if language == 'he' else 'Enter the code sent to ' }}<strong id="ob-otp-phone-display"></strong></p>
+        <div class="ob-otp-wrap">
+          <div class="ob-otp-inputs" dir="ltr">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="0" inputmode="numeric" autocomplete="one-time-code">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="1" inputmode="numeric">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="2" inputmode="numeric">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="3" inputmode="numeric">
+          </div>
+          <div id="ob-otp-error" class="ob-error" style="display:none;"></div>
+          <button type="button" class="ob-btn-primary" id="ob-verify-btn" onclick="obVerifyOtp()">
+            <span id="ob-verify-text">{{ 'אמת והמשך' if language == 'he' else 'Verify & Continue' }}</span>
+            <i class="fas fa-spinner fa-spin ms-2" id="ob-verify-spin" style="display:none;"></i>
+          </button>
+          <button type="button" class="ob-btn-link" id="ob-resend-btn" onclick="obResendOtp()" style="display:none;">
+            <i class="fas fa-redo me-1"></i>{{ 'שלח קוד חדש' if language == 'he' else 'Resend Code' }}
+          </button>
+          <div class="ob-timer" id="ob-timer"></div>
+        </div>
+      </div>
+
+      <div class="ob-back-row" id="ob-back-row" style="display:none;">
+        <button type="button" class="ob-btn-back" onclick="obBack()">
+          <i class="fas fa-arrow-right me-1"></i>{{ 'חזרה' if language == 'he' else 'Back' }}
+        </button>
+      </div>
     </div>
   </div>
-</section>
+</div>
 
 <style>
-.branch-select-card {
-  background: #fff; border: 2px solid #e5e7eb; border-radius: 14px;
-  padding: 16px 20px; cursor: pointer; transition: all .2s;
-  text-align: right; display: block; width: 100%;
-  font-family: inherit; font-size: inherit; color: inherit;
+#onboarding-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
 }
-.branch-select-card:hover {
-  border-color: #4338ca; box-shadow: 0 4px 16px rgba(67,56,202,.12);
-  transform: translateY(-2px);
+.ob-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
 }
-.branch-icon-wrap {
-  width: 48px; height: 48px; border-radius: 12px;
+.ob-container {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 440px; padding: 16px;
+}
+.ob-card {
+  background: #fff; border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  overflow: hidden; animation: obSlideUp .4s ease-out;
+}
+@keyframes obSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+.ob-progress { height: 4px; background: #e5e7eb; }
+.ob-progress-bar { height: 100%; background: linear-gradient(90deg, #4338ca, #6366f1); border-radius: 4px; transition: width .4s ease; }
+.ob-step { padding: 32px 28px 24px; text-align: center; animation: obFadeIn .3s ease; }
+@keyframes obFadeIn { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+.ob-icon-circle {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
+  background: linear-gradient(135deg, #ede9fe, #c7d2fe);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #4338ca;
+}
+.ob-icon-green { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #16a34a; }
+.ob-title { font-size: 1.35rem; font-weight: 800; color: #1e1b4b; margin-bottom: 4px; }
+.ob-subtitle { font-size: .88rem; color: #6b7280; margin-bottom: 24px; }
+.ob-branches { display: flex; flex-direction: column; gap: 10px; }
+.ob-branch-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 14px;
+  background: #fff; cursor: pointer; transition: all .2s;
+  text-align: right; width: 100%; font-family: inherit; color: inherit;
+}
+.ob-branch-card:hover { border-color: #a5b4fc; background: #f5f3ff; }
+.ob-branch-card.selected { border-color: #4338ca; background: #ede9fe; }
+.ob-branch-icon {
+  width: 42px; height: 42px; border-radius: 12px;
   background: #ede9fe; color: #4338ca;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; flex-shrink: 0;
+  font-size: 1rem; flex-shrink: 0;
 }
-.branch-card-name { font-weight: 700; font-size: 1rem; color: #1e1b4b; }
-.branch-card-addr { font-size: .8rem; color: #6b7280; margin-top: 2px; }
-.branch-card-phone { font-size: .78rem; color: #9ca3af; margin-top: 1px; }
+.ob-branch-card.selected .ob-branch-icon { background: #4338ca; color: #fff; }
+.ob-branch-info { flex: 1; min-width: 0; }
+.ob-branch-name { font-weight: 700; font-size: .95rem; color: #1e1b4b; }
+.ob-branch-addr { font-size: .78rem; color: #6b7280; margin-top: 2px; }
+.ob-branch-check {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; color: transparent; transition: all .2s; flex-shrink: 0;
+}
+.ob-branch-card.selected .ob-branch-check { background: #4338ca; border-color: #4338ca; color: #fff; }
+.ob-type-options { display: flex; gap: 12px; justify-content: center; }
+.ob-type-card {
+  flex: 1; max-width: 180px; padding: 24px 16px; border: 2px solid #e5e7eb;
+  border-radius: 16px; background: #fff; cursor: pointer; transition: all .25s;
+  text-align: center; font-family: inherit; color: inherit;
+}
+.ob-type-card:hover { border-color: #a5b4fc; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(67,56,202,.1); }
+.ob-type-card.selected { border-color: #4338ca; background: #ede9fe; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(67,56,202,.15); }
+.ob-type-icon {
+  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 12px;
+  background: #f3f4f6; display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #6b7280; transition: all .2s;
+}
+.ob-type-card.selected .ob-type-icon { background: #4338ca; color: #fff; }
+.ob-type-label { font-weight: 700; font-size: 1rem; color: #1e1b4b; margin-bottom: 4px; }
+.ob-type-desc { font-size: .75rem; color: #9ca3af; }
+.ob-form { text-align: right; }
+.ob-form-row { display: flex; gap: 10px; }
+.ob-form-row .ob-field { flex: 1; }
+.ob-field { margin-bottom: 14px; }
+.ob-field label { display: block; font-size: .8rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+.ob-field input {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 10px;
+  font-size: .92rem; font-family: inherit; transition: border-color .2s;
+  background: #f9fafb; outline: none;
+}
+.ob-field input:focus { border-color: #4338ca; background: #fff; box-shadow: 0 0 0 3px rgba(67,56,202,.08); }
+.ob-field input.ob-input-error { border-color: #ef4444; background: #fef2f2; }
+.ob-btn-primary {
+  width: 100%; padding: 13px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, #4338ca, #6366f1); color: #fff;
+  font-size: .95rem; font-weight: 700; cursor: pointer;
+  transition: all .2s; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.ob-btn-primary:hover { box-shadow: 0 6px 20px rgba(67,56,202,.3); transform: translateY(-1px); }
+.ob-btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+.ob-btn-link {
+  background: none; border: none; color: #4338ca; font-size: .85rem;
+  font-weight: 600; cursor: pointer; margin-top: 12px; font-family: inherit;
+}
+.ob-btn-link:hover { text-decoration: underline; }
+.ob-error {
+  background: #fef2f2; color: #dc2626; padding: 8px 12px; border-radius: 8px;
+  font-size: .82rem; margin-bottom: 12px; text-align: center; font-weight: 600;
+}
+.ob-otp-wrap { display: flex; flex-direction: column; align-items: center; }
+.ob-otp-inputs { display: flex; gap: 12px; margin-bottom: 20px; }
+.ob-otp-digit {
+  width: 56px; height: 62px; text-align: center; font-size: 1.6rem; font-weight: 700;
+  border: 2px solid #d1d5db; border-radius: 14px; background: #f9fafb;
+  outline: none; font-family: inherit; transition: all .2s; color: #1e1b4b;
+}
+.ob-otp-digit:focus { border-color: #4338ca; background: #fff; box-shadow: 0 0 0 3px rgba(67,56,202,.1); }
+.ob-otp-digit.filled { border-color: #4338ca; background: #ede9fe; }
+.ob-timer { font-size: .8rem; color: #9ca3af; margin-top: 8px; }
+.ob-back-row { padding: 0 28px 20px; text-align: right; }
+.ob-btn-back {
+  background: none; border: none; color: #6b7280; font-size: .85rem;
+  font-weight: 600; cursor: pointer; font-family: inherit; padding: 4px 0;
+}
+.ob-btn-back:hover { color: #4338ca; }
+@media (max-width: 480px) {
+  .ob-container { padding: 8px; }
+  .ob-step { padding: 24px 20px 18px; }
+  .ob-otp-digit { width: 48px; height: 54px; font-size: 1.4rem; }
+  .ob-type-options { gap: 8px; }
+  .ob-type-card { padding: 18px 10px; }
+}
 </style>
+
+<script>
+(function(){
+  var obData = { branchId: null, orderType: null, firstName: '', lastName: '', phone: '', email: '' };
+  var obStep = 1;
+  var otpTimer = null;
+  var MULTI_BRANCH = {{ 'true' if multi_branch else 'false' }};
+
+  window.obSelectBranch = function(id, el) {
+    obData.branchId = id;
+    document.querySelectorAll('.ob-branch-card').forEach(function(c){ c.classList.remove('selected'); });
+    el.classList.add('selected');
+    setTimeout(function(){ obNext(); }, 300);
+  };
+
+  window.obSelectType = function(type, el) {
+    obData.orderType = type;
+    document.querySelectorAll('.ob-type-card').forEach(function(c){ c.classList.remove('selected'); });
+    el.classList.add('selected');
+    setTimeout(function(){ obNext(); }, 300);
+  };
+
+  function showStep(n) {
+    for (var i = 1; i <= 4; i++) {
+      document.getElementById('ob-step-' + i).style.display = i === n ? '' : 'none';
+    }
+    document.getElementById('ob-progress-bar').style.width = (n * 25) + '%';
+    document.getElementById('ob-back-row').style.display = n > 1 ? '' : 'none';
+    obStep = n;
+  }
+
+  window.obNext = function() {
+    if (obStep === 1 && !obData.branchId) return;
+    if (obStep === 2 && !obData.orderType) return;
+    if (obStep < 4) showStep(obStep + 1);
+  };
+
+  window.obBack = function() {
+    if (obStep === 2 && !MULTI_BRANCH) return;
+    if (obStep > 1) showStep(obStep - 1);
+  };
+
+  window.obSendOtp = function() {
+    var fn = document.getElementById('ob-first-name').value.trim();
+    var ln = document.getElementById('ob-last-name').value.trim();
+    var ph = document.getElementById('ob-phone').value.trim();
+    var em = document.getElementById('ob-email').value.trim();
+    document.querySelectorAll('.ob-field input').forEach(function(i){ i.classList.remove('ob-input-error'); });
+    var errEl = document.getElementById('ob-form-error');
+    errEl.style.display = 'none';
+    var missing = [];
+    if (!fn) { document.getElementById('ob-first-name').classList.add('ob-input-error'); missing.push('first'); }
+    if (!ln) { document.getElementById('ob-last-name').classList.add('ob-input-error'); missing.push('last'); }
+    if (!ph) { document.getElementById('ob-phone').classList.add('ob-input-error'); missing.push('phone'); }
+    if (!em) { document.getElementById('ob-email').classList.add('ob-input-error'); missing.push('email'); }
+    if (missing.length) {
+      errEl.textContent = '{{ "נא למלא את כל השדות" if language == "he" else "Please fill all fields" }}';
+      errEl.style.display = '';
+      return;
+    }
+    var phoneDigits = ph.replace(/\D/g, '');
+    if (phoneDigits.length < 9 || phoneDigits.length > 15) {
+      document.getElementById('ob-phone').classList.add('ob-input-error');
+      errEl.textContent = '{{ "מספר טלפון לא תקין" if language == "he" else "Invalid phone number" }}';
+      errEl.style.display = '';
+      return;
+    }
+    obData.firstName = fn;
+    obData.lastName = ln;
+    obData.phone = ph;
+    obData.email = em;
+    document.getElementById('ob-send-otp-arrow').style.display = 'none';
+    document.getElementById('ob-send-otp-spin').style.display = '';
+    document.getElementById('ob-send-otp-text').textContent = '{{ "שולח..." if language == "he" else "Sending..." }}';
+    fetch('{{ url_for("order_page.send_otp") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: ph })
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      document.getElementById('ob-send-otp-spin').style.display = 'none';
+      document.getElementById('ob-send-otp-arrow').style.display = '';
+      document.getElementById('ob-send-otp-text').textContent = '{{ "שלח קוד אימות" if language == "he" else "Send Verification Code" }}';
+      if (d.ok) {
+        document.getElementById('ob-otp-phone-display').textContent = ph;
+        showStep(4);
+        startOtpTimer();
+        setTimeout(function(){ document.querySelector('.ob-otp-digit[data-idx="0"]').focus(); }, 200);
+      } else {
+        errEl.textContent = d.error || '{{ "שגיאה בשליחת קוד" if language == "he" else "Error sending code" }}';
+        errEl.style.display = '';
+      }
+    }).catch(function(){
+      document.getElementById('ob-send-otp-spin').style.display = 'none';
+      document.getElementById('ob-send-otp-arrow').style.display = '';
+      document.getElementById('ob-send-otp-text').textContent = '{{ "שלח קוד אימות" if language == "he" else "Send Verification Code" }}';
+      errEl.textContent = '{{ "שגיאת תקשורת" if language == "he" else "Network error" }}';
+      errEl.style.display = '';
+    });
+  };
+
+  function startOtpTimer() {
+    var seconds = 60;
+    var timerEl = document.getElementById('ob-timer');
+    var resendBtn = document.getElementById('ob-resend-btn');
+    resendBtn.style.display = 'none';
+    timerEl.textContent = '{{ "ניתן לשלוח שוב בעוד" if language == "he" else "Resend available in" }} ' + seconds + 's';
+    if (otpTimer) clearInterval(otpTimer);
+    otpTimer = setInterval(function(){
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(otpTimer);
+        timerEl.textContent = '';
+        resendBtn.style.display = '';
+      } else {
+        timerEl.textContent = '{{ "ניתן לשלוח שוב בעוד" if language == "he" else "Resend available in" }} ' + seconds + 's';
+      }
+    }, 1000);
+  }
+
+  window.obResendOtp = function() {
+    fetch('{{ url_for("order_page.send_otp") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: obData.phone })
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      if (d.ok) startOtpTimer();
+    });
+  };
+
+  window.obVerifyOtp = function() {
+    var digits = document.querySelectorAll('.ob-otp-digit');
+    var code = '';
+    digits.forEach(function(d){ code += d.value; });
+    var errEl = document.getElementById('ob-otp-error');
+    errEl.style.display = 'none';
+    if (code.length !== 4) {
+      errEl.textContent = '{{ "נא להזין 4 ספרות" if language == "he" else "Enter 4 digits" }}';
+      errEl.style.display = '';
+      return;
+    }
+    document.getElementById('ob-verify-text').textContent = '{{ "מאמת..." if language == "he" else "Verifying..." }}';
+    document.getElementById('ob-verify-spin').style.display = '';
+    document.getElementById('ob-verify-btn').disabled = true;
+    fetch('{{ url_for("order_page.verify_otp") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); }).then(function(res) {
+      if (res.ok && res.data.ok) {
+        return fetch('{{ url_for("order_page.complete_onboarding") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            branch_id: obData.branchId,
+            order_type: obData.orderType,
+            first_name: obData.firstName,
+            last_name: obData.lastName,
+            phone: obData.phone,
+            email: obData.email
+          })
+        }).then(function(r2){ return r2.json(); }).then(function(d2) {
+          if (d2.ok) {
+            window.location.reload();
+          } else {
+            errEl.textContent = d2.error || '{{ "שגיאה" if language == "he" else "Error" }}';
+            errEl.style.display = '';
+            document.getElementById('ob-verify-text').textContent = '{{ "אמת והמשך" if language == "he" else "Verify & Continue" }}';
+            document.getElementById('ob-verify-spin').style.display = 'none';
+            document.getElementById('ob-verify-btn').disabled = false;
+          }
+        });
+      } else {
+        errEl.textContent = res.data.error || '{{ "קוד שגוי" if language == "he" else "Wrong code" }}';
+        errEl.style.display = '';
+        document.getElementById('ob-verify-text').textContent = '{{ "אמת והמשך" if language == "he" else "Verify & Continue" }}';
+        document.getElementById('ob-verify-spin').style.display = 'none';
+        document.getElementById('ob-verify-btn').disabled = false;
+        digits.forEach(function(d){ d.value = ''; d.classList.remove('filled'); });
+        digits[0].focus();
+      }
+    }).catch(function() {
+      errEl.textContent = '{{ "שגיאת תקשורת" if language == "he" else "Network error" }}';
+      errEl.style.display = '';
+      document.getElementById('ob-verify-text').textContent = '{{ "אמת והמשך" if language == "he" else "Verify & Continue" }}';
+      document.getElementById('ob-verify-spin').style.display = 'none';
+      document.getElementById('ob-verify-btn').disabled = false;
+    });
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var digits = document.querySelectorAll('.ob-otp-digit');
+    digits.forEach(function(inp, idx) {
+      inp.addEventListener('input', function(){
+        var v = this.value.replace(/\D/g, '');
+        this.value = v ? v[0] : '';
+        this.classList.toggle('filled', !!this.value);
+        if (v && idx < 3) digits[idx + 1].focus();
+        if (idx === 3 && v) setTimeout(function(){ obVerifyOtp(); }, 150);
+      });
+      inp.addEventListener('keydown', function(e){
+        if (e.key === 'Backspace' && !this.value && idx > 0) {
+          digits[idx - 1].focus();
+          digits[idx - 1].value = '';
+          digits[idx - 1].classList.remove('filled');
+        }
+      });
+      inp.addEventListener('paste', function(e){
+        e.preventDefault();
+        var pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
+        for (var i = 0; i < pasted.length && i < 4; i++) {
+          digits[i].value = pasted[i];
+          digits[i].classList.add('filled');
+        }
+        if (pasted.length >= 4) setTimeout(function(){ obVerifyOtp(); }, 150);
+        else if (pasted.length > 0) digits[Math.min(pasted.length, 3)].focus();
+      });
+    });
+  });
+})();
+</script>
+
+{% elif need_branch_selection is defined and need_branch_selection %}
+
+<section class="section" style="display:none;"></section>
 
 {% else %}
 
@@ -141,16 +548,14 @@
           <span>{{ selected_branch.name_he if language == 'he' else selected_branch.name_en }}</span>
         </span>
         {% endif %}
-        {% if enable_delivery %}
-        <button type="button" class="otype-btn active" data-type="delivery" onclick="setOrderType('delivery')">
+        {% set _session_order_type = session.get('order_type', 'delivery') %}
+        <span class="branch-label-badge">
+          {% if _session_order_type == 'takeaway' %}
+          <i class="fas fa-shopping-bag me-1"></i>{{ 'איסוף עצמי' if language == 'he' else 'Pickup' }}
+          {% else %}
           <i class="fas fa-motorcycle me-1"></i>{{ 'משלוח' if language == 'he' else 'Delivery' }}
-        </button>
-        {% endif %}
-        {% if enable_pickup %}
-        <button type="button" class="otype-btn {% if not enable_delivery %}active{% endif %}" data-type="takeaway" onclick="setOrderType('takeaway')">
-          <i class="fas fa-shopping-bag me-1"></i>{{ 'איסוף' if language == 'he' else 'Pickup' }}
-        </button>
-        {% endif %}
+          {% endif %}
+        </span>
       </div>
     </div>
   </div>
@@ -343,7 +748,7 @@
 <form id="checkout-form" method="POST" action="{{ url_for('order_page.order_start_checkout') }}" style="display:none;">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else '' }}">
   <input type="hidden" name="cart_json" id="hidden-cart-json">
-  <input type="hidden" name="order_type" id="hidden-order-type" value="{{ 'delivery' if enable_delivery else 'takeaway' }}">
+  <input type="hidden" name="order_type" id="hidden-order-type" value="{{ session.get('order_type', 'delivery') }}">
   <input type="hidden" name="utm_source" id="hidden-utm-source">
   <input type="hidden" name="utm_medium" id="hidden-utm-medium">
   <input type="hidden" name="utm_campaign" id="hidden-utm-campaign">
@@ -1209,7 +1614,7 @@ const ENABLE_DELIVERY = {{ 'true' if enable_delivery else 'false' }};
 const ENABLE_PICKUP = {{ 'true' if enable_pickup else 'false' }};
 const IS_HE = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl');
 let cart = {};
-let orderType = '{{ 'delivery' if enable_delivery else 'takeaway' }}';
+let orderType = '{{ session.get("order_type", "delivery") }}';
 
 function saveCartToStorage() {
   try { localStorage.setItem('rai_cart', JSON.stringify(cart)); localStorage.setItem('rai_cart_ts', Date.now().toString()); } catch(e) {}

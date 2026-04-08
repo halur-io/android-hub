@@ -145,7 +145,90 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
     def clear_branch():
         session.pop('order_branch_id', None)
         session.pop('order_cart', None)
+        session.pop('order_onboarded', None)
+        session.pop('order_customer', None)
         return redirect(url_for('order_page.order_page'))
+
+    @bp.route('/send-otp', methods=['POST'])
+    def send_otp():
+        data = request.get_json(silent=True) or {}
+        phone = re.sub(r'[^\d+\-() ]', '', (data.get('phone') or '').strip())[:20]
+        phone_digits = re.sub(r'\D', '', phone)
+        if len(phone_digits) < 9 or len(phone_digits) > 15:
+            return jsonify({'ok': False, 'error': 'מספר טלפון לא תקין'}), 400
+        import random
+        code = str(random.randint(1000, 9999))
+        session['otp_code'] = code
+        session['otp_phone'] = phone
+        session['otp_ts'] = datetime.utcnow().isoformat()
+        session['otp_attempts'] = 0
+        try:
+            from standalone_order_service.sms_helpers import create_sender_from_env
+            send_sms = create_sender_from_env()
+            if send_sms:
+                send_sms(phone, f'קוד האימות שלך: {code}')
+                logging.info(f"[OTP] Sent to {phone}")
+            else:
+                logging.warning(f"[OTP] No SMS provider configured. Code: {code}")
+        except Exception as e:
+            logging.error(f"[OTP] SMS error: {e}")
+        return jsonify({'ok': True})
+
+    @bp.route('/verify-otp', methods=['POST'])
+    def verify_otp():
+        data = request.get_json(silent=True) or {}
+        entered = (data.get('code') or '').strip()
+        stored = session.get('otp_code')
+        otp_ts = session.get('otp_ts')
+        attempts = session.get('otp_attempts', 0)
+        if attempts >= 5:
+            return jsonify({'ok': False, 'error': 'נסיונות רבים מדי. שלח קוד חדש.'}), 429
+        session['otp_attempts'] = attempts + 1
+        if not stored or not otp_ts:
+            return jsonify({'ok': False, 'error': 'לא נשלח קוד. שלח שוב.'}), 400
+        try:
+            ts = datetime.fromisoformat(otp_ts)
+            if (datetime.utcnow() - ts).total_seconds() > 300:
+                return jsonify({'ok': False, 'error': 'הקוד פג תוקף. שלח שוב.'}), 400
+        except Exception:
+            pass
+        if entered != stored:
+            return jsonify({'ok': False, 'error': 'קוד שגוי'}), 400
+        session['otp_verified'] = True
+        session.pop('otp_code', None)
+        session.pop('otp_ts', None)
+        session.pop('otp_attempts', None)
+        return jsonify({'ok': True})
+
+    @bp.route('/complete-onboarding', methods=['POST'])
+    def complete_onboarding():
+        data = request.get_json(silent=True) or {}
+        branch_id = data.get('branch_id')
+        order_type = data.get('order_type', 'delivery')
+        first_name = (data.get('first_name') or '').strip()[:60]
+        last_name = (data.get('last_name') or '').strip()[:60]
+        phone = (data.get('phone') or '').strip()[:20]
+        email = (data.get('email') or '').strip()[:120]
+        if not first_name or not last_name or not phone or not email:
+            return jsonify({'ok': False, 'error': 'נא למלא את כל השדות'}), 400
+        if not session.get('otp_verified'):
+            return jsonify({'ok': False, 'error': 'נדרש אימות טלפון'}), 400
+        if branch_id:
+            try:
+                branch = Branch.query.filter_by(id=int(branch_id), is_active=True).first()
+                if branch:
+                    session['order_branch_id'] = branch.id
+            except (ValueError, TypeError):
+                pass
+        session['order_type'] = order_type
+        session['order_customer'] = {
+            'first_name': first_name,
+            'last_name': last_name,
+            'phone': phone,
+            'email': email,
+        }
+        session['order_onboarded'] = True
+        return jsonify({'ok': True})
 
     def _check_outside_ordering_hours(branch=None):
         settings = _settings()
@@ -208,7 +291,33 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         branches = _get_branches()
         selected_branch = _get_selected_branch()
         multi_branch = len(branches) > 1
+        order_onboarded = session.get('order_onboarded', False)
+        need_onboarding = not order_onboarded
         need_branch_selection = multi_branch and not selected_branch
+
+        if need_onboarding:
+            return render_template('order_page.html',
+                                   ordering_disabled=False,
+                                   ordering_paused=False,
+                                   ordering_outside_hours=False,
+                                   ordering_status_message='',
+                                   categories=[],
+                                   delivery_zones=[],
+                                   delivery_fee=0,
+                                   free_delivery_threshold=100,
+                                   estimated_delivery_time='45-60',
+                                   enable_delivery=getattr(settings, 'enable_delivery', True),
+                                   enable_pickup=getattr(settings, 'enable_pickup', True),
+                                   branches=branches,
+                                   selected_branch=None,
+                                   multi_branch=multi_branch,
+                                   need_branch_selection=False,
+                                   need_onboarding=True,
+                                   order_onboarded=False,
+                                   order_customer={},
+                                   deals=[],
+                                   settings=settings,
+                                   reorder_data=None)
 
         ordering_paused = getattr(settings, 'ordering_paused', False)
         paused_message = getattr(settings, 'ordering_paused_message', None) or 'עסוקים כרגע — ניקח הזמנות בעוד כמה דקות'
@@ -335,6 +444,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                selected_branch=selected_branch,
                                multi_branch=multi_branch,
                                need_branch_selection=need_branch_selection,
+                               need_onboarding=need_onboarding,
+                               order_onboarded=order_onboarded,
+                               order_customer=session.get('order_customer', {}),
                                deals=active_deals,
                                settings=settings,
                                reorder_data=reorder_data)
@@ -462,6 +574,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             card_available = _check_hyp_available() or _check_max_available()
 
         reorder_customer = session.pop('reorder_customer', None)
+        onboard_customer = session.get('order_customer', {})
         prefill = {}
         if reorder_customer:
             name_parts = (reorder_customer.get('name') or '').split(' ', 1)
@@ -473,6 +586,13 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 'address': reorder_customer.get('address', ''),
                 'city': reorder_customer.get('city', ''),
                 'notes': reorder_customer.get('notes', ''),
+            }
+        elif onboard_customer:
+            prefill = {
+                'first_name': onboard_customer.get('first_name', ''),
+                'last_name': onboard_customer.get('last_name', ''),
+                'phone': onboard_customer.get('phone', ''),
+                'email': onboard_customer.get('email', ''),
             }
 
         return render_template('order_checkout.html',

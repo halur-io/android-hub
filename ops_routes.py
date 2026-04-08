@@ -794,10 +794,15 @@ def healthcheck():
 
 @ops_bp.route('/api/healthcheck')
 def api_healthcheck():
-    device = _check_device()
-    user = _get_ops_user()
-    if not device or not user or not user.is_ops_superadmin:
-        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    is_api_key_auth = api_key and expected_key and api_key == expected_key
+
+    if not is_api_key_auth:
+        device = _check_device()
+        user = _get_ops_user()
+        if not device or not user or not user.is_ops_superadmin:
+            return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
 
     import requests as http_requests
     checks = []
@@ -851,7 +856,7 @@ def api_healthcheck():
     else:
         checks.append({'id': 'hyp', 'name': 'תשלומים HYP', 'name_en': 'Payment (HYP)', 'status': 'unconfigured', 'ms': 0, 'detail': 'חסרים פרטי חיבור'})
 
-    active_devices = PrintDevice.query.filter_by(is_active=True).all()
+    active_devices = PrintDevice.query.all()
     if active_devices:
         for dev in active_devices:
             last_seen = dev.last_heartbeat

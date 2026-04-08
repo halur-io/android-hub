@@ -576,6 +576,10 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                 'id': item.id,
                 'name_he': item.name_he,
                 'name_en': item.name_en or '',
+                'description_he': item.description_he or '',
+                'description_en': item.description_en or '',
+                'ingredients_he': item.ingredients_he or '',
+                'ingredients_en': item.ingredients_en or '',
                 'image': img,
                 'price': float(_get_branch_price(item, sel_branch_id)),
             })

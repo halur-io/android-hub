@@ -435,6 +435,20 @@
       <i class="fas fa-check ms-2"></i>
     </button>
   </div>
+  <div id="deal-item-detail" class="deal-item-detail" style="display:none;">
+    <div class="deal-detail-backdrop" onclick="closeDealItemDetail()"></div>
+    <div class="deal-detail-card">
+      <button class="deal-detail-close" onclick="closeDealItemDetail()"><i class="fas fa-times"></i></button>
+      <div class="deal-detail-img-wrap" id="deal-detail-img-wrap"></div>
+      <div class="deal-detail-body">
+        <div class="deal-detail-name" id="deal-detail-name"></div>
+        <div class="deal-detail-price" id="deal-detail-price"></div>
+        <div class="deal-detail-desc" id="deal-detail-desc"></div>
+        <div class="deal-detail-ingredients-label" id="deal-detail-ing-label" style="display:none;">{{ 'מרכיבים' if language == 'he' else 'Ingredients' }}</div>
+        <div class="deal-detail-ingredients" id="deal-detail-ingredients"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -1060,9 +1074,14 @@ body { overflow-x: hidden; overflow-y: auto; }
   line-height: 1.3; margin-bottom: 2px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.deal-pick-desc {
+  font-size: .73rem; color: #9ca3af; line-height: 1.3; margin-top: 1px;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
 .deal-pick-price {
   font-size: .78rem; color: #9ca3af; text-decoration: line-through;
 }
+.deal-pick-thumb { cursor: zoom-in; }
 .deal-pick-action {
   flex-shrink: 0; display: flex; align-items: center;
 }
@@ -1116,6 +1135,81 @@ body { overflow-x: hidden; overflow-y: auto; }
   background: #d1d5db; cursor: not-allowed;
 }
 .deal-picker-confirm:not(:disabled):active { transform: scale(.98); }
+
+/* ─── Deal Item Detail (enlarged view) ─── */
+.deal-item-detail {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.deal-detail-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,.5);
+  animation: dealDetailFadeIn .2s ease;
+}
+@keyframes dealDetailFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.deal-detail-card {
+  position: relative; background: #fff;
+  border-radius: 20px 20px 0 0; overflow: hidden;
+  max-height: 85vh; display: flex; flex-direction: column;
+  animation: dealDetailSlideUp .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes dealDetailSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.deal-detail-close {
+  position: absolute; top: 12px; right: 12px; z-index: 5;
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,.45); color: #fff; font-size: .95rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px); transition: background .15s;
+}
+.deal-detail-close:active { background: rgba(0,0,0,.65); }
+.deal-detail-img-wrap {
+  width: 100%; max-height: 280px; overflow: hidden; background: #1a1a1a;
+  flex-shrink: 0;
+}
+.deal-detail-img-wrap img {
+  width: 100%; height: 280px; object-fit: cover; display: block;
+}
+.deal-detail-img-placeholder {
+  width: 100%; height: 180px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb); color: #9ca3af; font-size: 3rem;
+}
+.deal-detail-body {
+  padding: 20px; overflow-y: auto; flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+.deal-detail-name {
+  font-weight: 800; font-size: 1.3rem; color: #1e1b4b;
+  margin-bottom: 4px; line-height: 1.3;
+}
+.deal-detail-price {
+  font-size: 1rem; color: #9ca3af; text-decoration: line-through;
+  margin-bottom: 14px;
+}
+.deal-detail-desc {
+  font-size: .92rem; color: #374151; line-height: 1.6;
+  margin-bottom: 16px;
+}
+.deal-detail-ingredients-label {
+  font-weight: 700; font-size: .82rem; color: #6b7280;
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 8px;
+}
+.deal-detail-ingredients {
+  display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 8px;
+}
+.deal-detail-ing-chip {
+  background: #f3f4f6; color: #374151; font-size: .8rem;
+  padding: 5px 12px; border-radius: 20px; font-weight: 500;
+}
+.deal-pick-expand {
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: #f3f4f6; color: #6b7280; font-size: .8rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-inline-end: 6px; transition: all .15s;
+}
+.deal-pick-expand:active { background: #e5e7eb; transform: scale(.92); }
 </style>
 
 <script>
@@ -2016,6 +2110,7 @@ function openDealPicker(el) {
 }
 
 function closeDealPicker() {
+  document.getElementById('deal-item-detail').style.display = 'none';
   document.getElementById('deal-picker-overlay').style.display = 'none';
   document.getElementById('deal-picker-sheet').style.display = 'none';
   document.body.style.overflow = '';
@@ -2049,16 +2144,26 @@ function renderDealPickerItems() {
       ph.innerHTML = '<i class="fas fa-utensils"></i>';
       thumb.appendChild(ph);
     }
+    thumb.onclick = function(e) { e.stopPropagation(); openDealItemDetail(item); };
 
     var info = document.createElement('div');
     info.className = 'deal-pick-info';
     var nameEl = document.createElement('div');
     nameEl.className = 'deal-pick-name';
     nameEl.textContent = lang === 'he' ? item.name_he : (item.name_en || item.name_he);
+    var descLine = lang === 'he' ? (item.description_he || '') : (item.description_en || item.description_he || '');
+    if (descLine) {
+      var descEl = document.createElement('div');
+      descEl.className = 'deal-pick-desc';
+      descEl.textContent = descLine.length > 45 ? descLine.substring(0, 45) + '…' : descLine;
+      info.appendChild(nameEl);
+      info.appendChild(descEl);
+    } else {
+      info.appendChild(nameEl);
+    }
     var priceEl = document.createElement('div');
     priceEl.className = 'deal-pick-price';
     priceEl.textContent = '₪' + Math.round(item.price);
-    info.appendChild(nameEl);
     info.appendChild(priceEl);
 
     var action = document.createElement('div');
@@ -2097,6 +2202,53 @@ function renderDealPickerItems() {
     row.appendChild(action);
     body.appendChild(row);
   });
+}
+
+function openDealItemDetail(item) {
+  var lang = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl') ? 'he' : 'en';
+  var panel = document.getElementById('deal-item-detail');
+  var imgWrap = document.getElementById('deal-detail-img-wrap');
+  imgWrap.innerHTML = '';
+  if (item.image) {
+    var imgEl = document.createElement('img');
+    imgEl.src = item.image;
+    imgEl.alt = '';
+    imgWrap.appendChild(imgEl);
+    imgWrap.style.display = '';
+  } else {
+    var phEl = document.createElement('div');
+    phEl.className = 'deal-detail-img-placeholder';
+    phEl.innerHTML = '<i class="fas fa-utensils"></i>';
+    imgWrap.appendChild(phEl);
+    imgWrap.style.display = '';
+  }
+  document.getElementById('deal-detail-name').textContent = lang === 'he' ? item.name_he : (item.name_en || item.name_he);
+  document.getElementById('deal-detail-price').textContent = '₪' + Math.round(item.price);
+  var desc = lang === 'he' ? (item.description_he || '') : (item.description_en || item.description_he || '');
+  var descEl = document.getElementById('deal-detail-desc');
+  descEl.textContent = desc;
+  descEl.style.display = desc ? '' : 'none';
+  var ingredients = lang === 'he' ? (item.ingredients_he || '') : (item.ingredients_en || item.ingredients_he || '');
+  var ingContainer = document.getElementById('deal-detail-ingredients');
+  var ingLabel = document.getElementById('deal-detail-ing-label');
+  ingContainer.innerHTML = '';
+  if (ingredients) {
+    ingLabel.style.display = '';
+    var parts = ingredients.split(',');
+    parts.forEach(function(part) {
+      var chip = document.createElement('span');
+      chip.className = 'deal-detail-ing-chip';
+      chip.textContent = part.trim();
+      ingContainer.appendChild(chip);
+    });
+  } else {
+    ingLabel.style.display = 'none';
+  }
+  panel.style.display = 'flex';
+}
+
+function closeDealItemDetail() {
+  document.getElementById('deal-item-detail').style.display = 'none';
 }
 
 function toggleDealPick(itemId) {

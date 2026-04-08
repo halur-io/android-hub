@@ -169,52 +169,18 @@
       <div class="col-lg-8">
 
 
-        <!-- Deals section -->
-        {% if deals %}
-        <div class="deals-section mb-3">
-          <div class="deals-title">
-            <i class="fas fa-fire" style="color:#ef4444;"></i>
-            {{ 'מבצעים' if language == 'he' else 'Deals' }}
-          </div>
-          <div class="deals-scroll">
-            {% for deal in deals %}
-            <div class="deal-card" onclick="handleDealClick(this)"
-                 data-deal-id="{{ deal.id }}"
-                 data-deal-name-he="{{ deal.name_he | e }}"
-                 data-deal-name-en="{{ deal.name_en | e }}"
-                 data-deal-price="{{ deal.deal_price }}"
-                 data-deal-type="{{ deal.deal_type or 'fixed' }}"
-                 data-deal-pick-count="{{ deal.pick_count or 0 }}"
-                 data-deal-items='{{ deal.included_items | tojson }}'>
-              {% if deal.image_path %}
-              <img src="{{ deal.image_path }}" alt="" class="deal-img">
-              {% else %}
-              <div class="deal-img-placeholder"><i class="fas fa-tags"></i></div>
-              {% endif %}
-              <div class="deal-info">
-                <div class="deal-name">{{ deal.name_he if language == 'he' else (deal.name_en or deal.name_he) }}</div>
-                {% if deal.description_he %}
-                <div class="deal-desc">{{ deal.description_he if language == 'he' else (deal.description_en or deal.description_he) }}</div>
-                {% endif %}
-                <div class="deal-price-row">
-                  <span class="deal-price">₪{{ deal.deal_price | int }}</span>
-                  {% if deal.original_price %}
-                  <span class="deal-original-price">₪{{ deal.original_price | int }}</span>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-
         <!-- Category tabs -->
-        {% if categories %}
-        <!-- Category scroll tabs -->
+        {% if categories or deals %}
         <div class="cat-tabs-wrap">
+          {% if deals %}
+          <button class="cat-tab-btn active"
+                  data-target="cat-deals"
+                  onclick="scrollToSection('cat-deals',this)">
+            <i class="fas fa-fire" style="margin-inline-end:4px;font-size:.75rem;color:#ef4444;"></i>{{ 'מבצעים' if language == 'he' else 'Deals' }}
+          </button>
+          {% endif %}
           {% for cat in categories %}
-          <button class="cat-tab-btn {% if loop.first %}active{% endif %}"
+          <button class="cat-tab-btn {% if not deals and loop.first %}active{% endif %}"
                   data-target="cat-{{ cat.id }}"
                   onclick="scrollToSection('cat-{{ cat.id }}',this)">
             {{ cat.name_he if language == 'he' else cat.name_en }}
@@ -224,6 +190,40 @@
 
         <!-- Category sections (all visible, scroll-linked) -->
         <div id="menu-sections">
+          {% if deals %}
+          <div class="cat-section" id="cat-deals">
+            <div class="cat-section-title"><i class="fas fa-fire" style="color:#ef4444;margin-inline-end:6px;font-size:.9rem;"></i>{{ 'מבצעים' if language == 'he' else 'Deals' }}</div>
+            <div class="items-grid">
+              {% for deal in deals %}
+              <div class="dish-card deal-dish-card" onclick="handleDealClick(this)"
+                   data-deal-id="{{ deal.id }}"
+                   data-deal-name-he="{{ deal.name_he | e }}"
+                   data-deal-name-en="{{ deal.name_en | e }}"
+                   data-deal-price="{{ deal.deal_price }}"
+                   data-deal-type="{{ deal.deal_type or 'fixed' }}"
+                   data-deal-pick-count="{{ deal.pick_count or 0 }}"
+                   data-deal-items='{{ deal.included_items | tojson }}'>
+                <div class="dish-img-wrap">
+                  {% if deal.image_path %}
+                  <img src="{{ deal.image_path }}" alt="{{ deal.name_he }}" class="dish-img" loading="lazy">
+                  {% else %}
+                  <div class="deal-img-placeholder"><i class="fas fa-tags"></i></div>
+                  {% endif %}
+                </div>
+                <div class="dish-info">
+                  <div class="dish-name">{{ deal.name_he if language == 'he' else (deal.name_en or deal.name_he) }}</div>
+                  {% if deal.description_he or deal.description_en %}
+                  <div class="dish-desc">{{ (deal.description_he if language == 'he' else (deal.description_en or deal.description_he)) | truncate(55) }}</div>
+                  {% endif %}
+                  <div class="dish-price" style="color:#16a34a;">₪{{ deal.deal_price | int }}{% if deal.original_price %} <span style="text-decoration:line-through;color:#9ca3af;font-size:.75rem;font-weight:400;">₪{{ deal.original_price | int }}</span>{% endif %}</div>
+                </div>
+                <div class="combo-badge"><i class="fas fa-fire"></i> DEAL</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
           {% for cat in categories %}
           <div class="cat-section" id="cat-{{ cat.id }}">
             <div class="cat-section-title">{{ cat.name_he if language == 'he' else cat.name_en }}</div>
@@ -544,36 +544,16 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
   font-size: .87rem; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
 }
 
-/* ─── Deals section ─── */
-.deals-section { margin-bottom: 16px; }
-.deals-title {
-  display: flex; align-items: center; gap: 8px;
-  font-weight: 800; font-size: 1.1rem; color: #1e1b4b; margin-bottom: 10px;
+/* ─── Deal cards in category grid ─── */
+.deal-dish-card {
+  border: 2px solid #f59e0b;
 }
-.deals-scroll {
-  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch;
-}
-.deals-scroll::-webkit-scrollbar { display: none; }
-.deal-card {
-  min-width: 200px; max-width: 240px; flex-shrink: 0;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 2px solid #f59e0b; border-radius: 14px;
-  overflow: hidden; cursor: pointer;
-  transition: transform .15s, box-shadow .15s;
-}
-.deal-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(245,158,11,.25); }
-.deal-img { width: 100%; height: 110px; object-fit: cover; }
 .deal-img-placeholder {
-  width: 100%; height: 80px; display: flex; align-items: center; justify-content: center;
-  background: rgba(245,158,11,.15); color: #f59e0b; font-size: 1.5rem;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #f59e0b; font-size: 1.5rem;
 }
-.deal-info { padding: 8px 10px; }
-.deal-name { font-weight: 700; font-size: .88rem; color: #1e1b4b; margin-bottom: 2px; }
-.deal-desc { font-size: .75rem; color: #6b7280; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.deal-price-row { display: flex; align-items: center; gap: 6px; }
-.deal-price { font-weight: 800; font-size: 1rem; color: #16a34a; }
-.deal-original-price { text-decoration: line-through; font-size: .8rem; color: #9ca3af; }
 
 /* ─── Category scroll tabs ─── */
 .cat-tabs-wrap {

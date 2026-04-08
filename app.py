@@ -261,6 +261,7 @@ try:
     with app.app_context():
         csrf.exempt(app.view_functions.get('order_page.validate_coupon', lambda: None))
         csrf.exempt(app.view_functions.get('order_page.upsell_suggestions', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.order_start_checkout', lambda: None))
 
     from standalone_order_service.kds_routes import create_kds_blueprint
     kds_bp = create_kds_blueprint(

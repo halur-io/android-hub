@@ -2449,9 +2449,44 @@ function scrollToSection(sectionId, btn) {
 /* ─── Navigate to checkout page ─── */
 function goToCheckout() {
   if (cartCount() === 0) return;
-  document.getElementById('hidden-cart-json').value = JSON.stringify(Object.values(cart));
-  document.getElementById('hidden-order-type').value = orderType;
-  document.getElementById('checkout-form').submit();
+  var body = new URLSearchParams();
+  body.append('cart_json', JSON.stringify(Object.values(cart)));
+  body.append('order_type', orderType);
+  var utmSrc = document.getElementById('hidden-utm-source');
+  var utmMed = document.getElementById('hidden-utm-medium');
+  var utmCam = document.getElementById('hidden-utm-campaign');
+  var refEl  = document.getElementById('hidden-referrer');
+  if (utmSrc) body.append('utm_source', utmSrc.value);
+  if (utmMed) body.append('utm_medium', utmMed.value);
+  if (utmCam) body.append('utm_campaign', utmCam.value);
+  if (refEl)  body.append('referrer', refEl.value);
+  {% if selected_branch is defined and selected_branch %}
+  body.append('branch_id', '{{ selected_branch.id }}');
+  {% endif %}
+  var csrfEl = document.querySelector('#checkout-form input[name="csrf_token"]');
+  if (csrfEl && csrfEl.value) body.append('csrf_token', csrfEl.value);
+  fetch('{{ url_for("order_page.order_start_checkout") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: body.toString(),
+    redirect: 'follow'
+  }).then(function(r) {
+    if (r.redirected) {
+      window.location.href = r.url;
+    } else if (r.ok) {
+      window.location.href = '{{ url_for("order_page.order_checkout_page") }}';
+    } else {
+      r.text().then(function(t) { console.error('Checkout error:', r.status, t); });
+    }
+  }).catch(function(e) {
+    console.error('Checkout fetch error:', e);
+    var form = document.getElementById('checkout-form');
+    if (form) {
+      document.getElementById('hidden-cart-json').value = JSON.stringify(Object.values(cart));
+      document.getElementById('hidden-order-type').value = orderType;
+      form.submit();
+    }
+  });
 }
 
 /* ─── Add animation ─── */

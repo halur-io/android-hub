@@ -53,7 +53,7 @@
       </div>
     </div>
 
-    <form method="POST" action="{{ url_for('order_page.order_checkout') }}" id="checkout-form">
+    <form method="POST" action="{{ url_for('order_page.order_checkout') }}" id="checkout-form" novalidate>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else '' }}">
       <input type="hidden" name="cart_json" value="{{ cart_json }}">
       <input type="hidden" name="order_type" id="order-type-field" value="{{ order_type }}">
@@ -765,6 +765,8 @@ function setOrderType(type) {
     if (feeRow) feeRow.style.display = '';
     if (titleEl) titleEl.textContent = '{{ 'כתובת למשלוח' if language == 'he' else 'Delivery Address' }}';
     document.getElementById('delivery-zone-select') && (document.getElementById('delivery-zone-select').required = true);
+    var cityText = document.getElementById('delivery-city-text');
+    if (cityText) cityText.required = true;
     document.getElementById('street-input').required = true;
     document.getElementById('house-number-input').required = true;
   } else {
@@ -774,6 +776,8 @@ function setOrderType(type) {
     document.getElementById('step-card-2').style.display = 'none';
     const sel = document.getElementById('delivery-zone-select');
     if (sel) sel.required = false;
+    var cityText2 = document.getElementById('delivery-city-text');
+    if (cityText2) cityText2.required = false;
     document.getElementById('street-input').required = false;
     document.getElementById('house-number-input').required = false;
   }

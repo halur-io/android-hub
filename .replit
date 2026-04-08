@@ -2,7 +2,7 @@ modules = ["python-3.11", "nodejs-20", "python3", "postgresql-16"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["ffmpeg", "freetype", "glibcLocales", "imagemagick", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "oneDNN", "openjpeg", "openssl", "pkg-config", "postgresql", "rapidfuzz-cpp", "re2", "taskflow", "tcl", "tesseract", "tk", "xsimd", "zlib"]
+packages = ["ffmpeg", "freetype", "glibcLocales", "imagemagick", "lcms2", "libev", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "oneDNN", "openjpeg", "openssl", "pkg-config", "postgresql", "rapidfuzz-cpp", "re2", "taskflow", "tcl", "tesseract", "tk", "xsimd", "zlib"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -24,13 +24,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload --timeout 120 main:app"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload --timeout 120 --worker-class gevent --workers 3 main:app"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000

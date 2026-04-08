@@ -366,7 +366,7 @@
   </button>
   <div id="item-sheet-scroll">
     <div id="item-sheet-hero">
-      <img id="item-sheet-img" src="" alt="">
+      <img id="item-sheet-img" src="" alt="" onclick="openImageLightbox(this.src)">
     </div>
     <div id="item-sheet-body">
       <div class="item-sheet-top">
@@ -391,6 +391,13 @@
       <span id="item-sheet-total">₪0</span>
     </button>
   </div>
+</div>
+
+<!-- Image lightbox -->
+<div id="img-lightbox" onclick="closeImageLightbox()">
+  <button id="img-lightbox-close" onclick="closeImageLightbox()"><i class="fas fa-times"></i></button>
+  <img id="img-lightbox-src" src="" alt="">
+  <div id="img-lightbox-hint">{{ 'צביטה לזום' if language == 'he' else 'Pinch to zoom' }}</div>
 </div>
 
 <!-- Floating bubble animation template -->
@@ -720,10 +727,30 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
   flex: 1 1 auto; min-height: 0;
 }
 #item-sheet-hero {
-  width: 100%; height: 200px; background: #1a1a1a;
+  width: 100%; height: 240px; background: #1a1a1a;
   overflow: hidden; position: relative;
 }
-#item-sheet-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#item-sheet-img { width: 100%; height: 100%; object-fit: contain; display: block; background: #1a1a1a; cursor: pointer; }
+#img-lightbox {
+  display: none; position: fixed; inset: 0; z-index: 100000;
+  background: rgba(0,0,0,.92); align-items: center; justify-content: center;
+  flex-direction: column; touch-action: pinch-zoom;
+}
+#img-lightbox.open { display: flex; }
+#img-lightbox img {
+  max-width: 94vw; max-height: 85vh; object-fit: contain; border-radius: 8px;
+  touch-action: pinch-zoom;
+}
+#img-lightbox-close {
+  position: absolute; top: 12px; right: 12px; width: 40px; height: 40px;
+  border: none; background: rgba(255,255,255,.15); color: #fff;
+  border-radius: 50%; font-size: 1.3rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100001;
+}
+#img-lightbox-hint {
+  color: rgba(255,255,255,.5); font-size: .75rem; margin-top: 10px;
+}
 #item-sheet-body {
   padding: 18px 18px 10px;
 }
@@ -766,7 +793,7 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
 @media (min-width: 768px) {
   #item-sheet { max-width: 500px; left: 50%; right: auto; transform: translateX(-50%) translateY(110%); }
   #item-sheet.open { transform: translateX(-50%) translateY(0); visibility: visible; pointer-events: auto; }
-  #item-sheet-hero { height: 280px; }
+  #item-sheet-hero { height: 320px; }
   .dish-card { width: 165px; }
 }
 
@@ -1499,6 +1526,18 @@ function closeItemModal() {
   document.getElementById('item-sheet').classList.remove('open');
   document.body.style.overflow = '';
   _modalId = null;
+}
+
+function openImageLightbox(src) {
+  if (!src) return;
+  var lb = document.getElementById('img-lightbox');
+  document.getElementById('img-lightbox-src').src = src;
+  lb.classList.add('open');
+}
+function closeImageLightbox() {
+  var lb = document.getElementById('img-lightbox');
+  lb.classList.remove('open');
+  document.getElementById('img-lightbox-src').src = '';
 }
 
 function optionsKey(itemId, options, excludedIngredients) {

@@ -793,8 +793,12 @@ def healthcheck():
 
 
 @ops_bp.route('/api/healthcheck')
-@require_ops_module('home')
 def api_healthcheck():
+    device = _check_device()
+    user = _get_ops_user()
+    if not device or not user or not user.is_ops_superadmin:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+
     import requests as http_requests
     checks = []
 
@@ -809,9 +813,9 @@ def api_healthcheck():
 
     t0 = _time.time()
     try:
-        from app import app as flask_app
-        test_url = request.url_root.rstrip('/') + url_for('ops.login')
-        resp = http_requests.get(test_url, timeout=5, verify=False)
+        from app import app
+        with app.test_client() as tc:
+            resp = tc.get('/ops/login')
         ms = round((_time.time() - t0) * 1000)
         checks.append({'id': 'webserver', 'name': 'שרת אינטרנט', 'name_en': 'Web Server', 'status': 'ok' if resp.status_code < 500 else 'error', 'ms': ms, 'detail': f'HTTP {resp.status_code}'})
     except Exception as e:
@@ -824,11 +828,9 @@ def api_healthcheck():
     if sms_key and sms_user and sms_pass:
         t0 = _time.time()
         try:
-            resp = http_requests.post('https://www.sms4free.co.il/ApiSMS/v2/SendSMS',
-                json={'key': sms_key, 'user': sms_user, 'pass': sms_pass, 'sender': 'TEST', 'recipient': '0000000000', 'msg': 'healthcheck'},
-                timeout=8)
+            resp = http_requests.get('https://www.sms4free.co.il/ApiSMS/v2/SendSMS', timeout=8)
             ms = round((_time.time() - t0) * 1000)
-            checks.append({'id': 'sms', 'name': 'SMS', 'name_en': 'SMS (SMS4Free)', 'status': 'ok' if resp.status_code == 200 else 'warn', 'ms': ms, 'detail': f'HTTP {resp.status_code}'})
+            checks.append({'id': 'sms', 'name': 'SMS', 'name_en': 'SMS (SMS4Free)', 'status': 'ok' if resp.status_code < 500 else 'warn', 'ms': ms, 'detail': f'API reachable ({resp.status_code})'})
         except Exception as e:
             ms = round((_time.time() - t0) * 1000)
             checks.append({'id': 'sms', 'name': 'SMS', 'name_en': 'SMS (SMS4Free)', 'status': 'error', 'ms': ms, 'detail': str(e)[:120]})
@@ -842,38 +844,29 @@ def api_healthcheck():
         try:
             resp = http_requests.get('https://icom.yaad.net/p/', timeout=8)
             ms = round((_time.time() - t0) * 1000)
-            checks.append({'id': 'hyp', 'name': 'תשלומים HYP', 'name_en': 'Payment (HYP)', 'status': 'ok' if resp.status_code < 500 else 'warn', 'ms': ms, 'detail': f'HTTP {resp.status_code}'})
+            checks.append({'id': 'hyp', 'name': 'תשלומים HYP', 'name_en': 'Payment (HYP)', 'status': 'ok' if resp.status_code < 500 else 'warn', 'ms': ms, 'detail': f'API reachable ({resp.status_code})'})
         except Exception as e:
             ms = round((_time.time() - t0) * 1000)
             checks.append({'id': 'hyp', 'name': 'תשלומים HYP', 'name_en': 'Payment (HYP)', 'status': 'error', 'ms': ms, 'detail': str(e)[:120]})
     else:
         checks.append({'id': 'hyp', 'name': 'תשלומים HYP', 'name_en': 'Payment (HYP)', 'status': 'unconfigured', 'ms': 0, 'detail': 'חסרים פרטי חיבור'})
 
-    t0 = _time.time()
-    try:
-        resp = http_requests.get(request.url_root.rstrip('/') + url_for('ops.orders'), timeout=5, verify=False,
-            cookies=request.cookies)
-        ms = round((_time.time() - t0) * 1000)
-        checks.append({'id': 'sse', 'name': 'SSE (עדכונים חיים)', 'name_en': 'SSE (Live Updates)', 'status': 'ok' if resp.status_code < 500 else 'error', 'ms': ms})
-    except Exception as e:
-        ms = round((_time.time() - t0) * 1000)
-        checks.append({'id': 'sse', 'name': 'SSE (עדכונים חיים)', 'name_en': 'SSE (Live Updates)', 'status': 'error', 'ms': ms, 'detail': str(e)[:120]})
-
     active_devices = PrintDevice.query.filter_by(is_active=True).all()
     if active_devices:
         for dev in active_devices:
             last_seen = dev.last_heartbeat
             is_online = False
+            age = 0
             if last_seen:
                 age = (datetime.utcnow() - last_seen).total_seconds()
                 is_online = age < 300
             checks.append({
                 'id': f'print_device_{dev.id}',
-                'name': f'מדפסת {dev.device_name or dev.device_id}',
-                'name_en': f'Printer: {dev.device_name or dev.device_id}',
+                'name': f'מכשיר הדפסה: {dev.device_name or dev.device_id}',
+                'name_en': f'Print Device: {dev.device_name or dev.device_id}',
                 'status': 'ok' if is_online else 'warn',
                 'ms': 0,
-                'detail': f'Last seen {int(age)}s ago' if last_seen else 'Never seen',
+                'detail': f'נראה לפני {int(age)} שניות' if last_seen else 'לא נצפה',
             })
     else:
         checks.append({'id': 'print_devices', 'name': 'מכשירי הדפסה', 'name_en': 'Print Devices', 'status': 'unconfigured', 'ms': 0, 'detail': 'אין מכשירים רשומים'})
@@ -890,10 +883,10 @@ def api_healthcheck():
                 s.connect((ip, port))
                 s.close()
                 ms = round((_time.time() - t0) * 1000)
-                checks.append({'id': f'printer_{printer.id}', 'name': f'מדפסת {printer.name}', 'name_en': f'Printer: {printer.name}', 'status': 'ok', 'ms': ms, 'detail': f'{ip}:{port}'})
+                checks.append({'id': f'printer_{printer.id}', 'name': f'מדפסת: {printer.name}', 'name_en': f'Printer: {printer.name}', 'status': 'ok', 'ms': ms, 'detail': f'{ip}:{port}'})
             except Exception as e:
                 ms = round((_time.time() - t0) * 1000)
-                checks.append({'id': f'printer_{printer.id}', 'name': f'מדפסת {printer.name}', 'name_en': f'Printer: {printer.name}', 'status': 'error', 'ms': ms, 'detail': f'{ip}:{port} - {str(e)[:60]}'})
+                checks.append({'id': f'printer_{printer.id}', 'name': f'מדפסת: {printer.name}', 'name_en': f'Printer: {printer.name}', 'status': 'error', 'ms': ms, 'detail': f'{ip}:{port} - {str(e)[:60]}'})
 
     return jsonify({'ok': True, 'checks': checks, 'timestamp': datetime.utcnow().isoformat()})
 

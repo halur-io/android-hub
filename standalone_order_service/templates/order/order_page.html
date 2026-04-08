@@ -136,13 +136,10 @@
       </div>
       <div class="d-flex gap-2 align-items-center">
         {% if multi_branch is defined and multi_branch and selected_branch %}
-        <a href="{{ url_for('order_page.clear_branch') }}" class="branch-switch-btn"
-           onclick="sessionStorage.removeItem('rai_cart');sessionStorage.removeItem('rai_cart_ts');"
-           title="{{ 'החלף סניף' if language == 'he' else 'Switch branch' }}">
+        <span class="branch-label-badge">
           <i class="fas fa-store me-1"></i>
           <span>{{ selected_branch.name_he if language == 'he' else selected_branch.name_en }}</span>
-          <i class="fas fa-exchange-alt ms-1" style="font-size:.7rem;opacity:.7;"></i>
-        </a>
+        </span>
         {% endif %}
         {% if enable_delivery %}
         <button type="button" class="otype-btn active" data-type="delivery" onclick="setOrderType('delivery')">
@@ -546,18 +543,13 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
   box-shadow: 0 4px 16px rgba(0,0,0,.25);
   text-shadow: none;
 }
-.branch-switch-btn {
+.branch-label-badge {
   display: inline-flex; align-items: center;
   min-height: 44px; padding: 0 14px; border-radius: 22px;
-  border: 1.5px solid rgba(255,255,255,.5);
-  background: rgba(255,255,255,.15); color: #fff;
-  font-weight: 600; font-size: .82rem; cursor: pointer;
-  transition: all .2s; text-decoration: none;
+  border: 1.5px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.1); color: #fff;
+  font-weight: 600; font-size: .82rem;
   backdrop-filter: blur(8px);
-}
-.branch-switch-btn:hover {
-  background: rgba(255,255,255,.3); color: #fff;
-  text-decoration: none;
 }
 
 /* ─── Info banner ─── */

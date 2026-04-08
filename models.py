@@ -2589,6 +2589,8 @@ class FoodOrder(db.Model):
     bon_printed_at = db.Column(db.DateTime, nullable=True)
     bon_acked_at = db.Column(db.DateTime, nullable=True)
     bon_acked_device_id = db.Column(db.String(128), nullable=True)
+    bon_print_error = db.Column(db.Text, nullable=True)
+    bon_print_attempts = db.Column(db.Integer, default=0)
     items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
 
     def set_order_number(self):

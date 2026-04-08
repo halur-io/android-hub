@@ -1,7 +1,7 @@
 # SUMO Android Print Hub — API & Architecture Specification
 
-> **Version**: 1.0  
-> **Last Updated**: 2026-04-07  
+> **Version**: 1.1  
+> **Last Updated**: 2026-04-08  
 > **Audience**: Android Studio developer or AI agent building the SUMO restaurant tablet print app
 
 ---
@@ -483,6 +483,160 @@ Acknowledge receipt of an order (before printing). This lets the dashboard show 
   "message": "Order 42 acknowledged"
 }
 ```
+
+---
+
+### 5.11 `POST /ops/api/orders/<id>/print-status`
+
+Report the print result for an order. The app calls this **after** attempting to print — whether it succeeded, partially succeeded, or failed. This is the primary mechanism for the server to know the print outcome.
+
+**Request Body:**
+```json
+{
+  "status": "success",
+  "device_id": "android-a1b2c3d4...",
+  "stations_printed": ["סושי", "ווק"],
+  "stations_failed": [],
+  "error": ""
+}
+```
+
+**Possible `status` values:**
+
+| Status | Meaning | Server Behavior |
+|---|---|---|
+| `success` | All stations printed OK | Sets `bon_printed=true`, clears errors |
+| `partial` | Some stations printed, some failed | Sets `bon_printed=true`, records error details |
+| `error` | Complete print failure | Keeps `bon_printed=false`, records error |
+
+**Response:**
+```json
+{
+  "ok": true,
+  "message": "Print status recorded for order 42",
+  "bon_printed": true,
+  "attempts": 1
+}
+```
+
+**Example — Error:**
+```json
+{
+  "status": "error",
+  "device_id": "android-a1b2c3d4...",
+  "error": "Printer 192.168.1.100:9100 connection refused"
+}
+```
+
+**Example — Partial:**
+```json
+{
+  "status": "partial",
+  "device_id": "android-a1b2c3d4...",
+  "stations_printed": ["סושי"],
+  "stations_failed": ["ווק"],
+  "error": "Wok printer timeout after 5s"
+}
+```
+
+---
+
+### 5.12 `GET /ops/api/orders/<id>/detail`
+
+Fetch full detail for a single order, including print status. Useful when the app receives a new-order SSE event and needs the complete order data.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "order": {
+    "id": 42,
+    "order_number": "ORD-260407-1234",
+    "order_type": "delivery",
+    "status": "confirmed",
+    "branch_id": 1,
+    "customer_name": "ישראל ישראלי",
+    "customer_phone": "0501234567",
+    "delivery_address": "רחוב הרצל 5",
+    "delivery_city": "תל אביב",
+    "delivery_notes": "קומה 3",
+    "customer_notes": "בלי בצל",
+    "subtotal": 120,
+    "delivery_fee": 15,
+    "discount_amount": 0,
+    "total_amount": 135,
+    "payment_method": "cash",
+    "coupon_code": "",
+    "created_at": "07/04 14:30",
+    "items": [...],
+    "items_by_station": {
+      "סושי": [...],
+      "ווק": [...]
+    },
+    "bon_printed": false,
+    "bon_printed_at": null,
+    "bon_acked_at": null,
+    "bon_acked_device_id": "",
+    "bon_print_error": "",
+    "bon_print_attempts": 0
+  }
+}
+```
+
+---
+
+### 5.13 `POST /ops/api/device/log-error`
+
+Report a device-level error to the server (not tied to a specific print attempt). Use for connection errors, app crashes, config issues, etc. Errors are logged server-side and optionally attached to an order.
+
+**Request Body:**
+```json
+{
+  "device_id": "android-a1b2c3d4...",
+  "error_type": "printer_connection",
+  "error_message": "Cannot reach 192.168.1.100:9100 — Connection refused",
+  "order_id": 42,
+  "extra": {
+    "printer_ip": "192.168.1.100",
+    "retry_count": 3
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `device_id` | string | Yes | The device identifier |
+| `error_type` | string | Yes | Category: `printer_connection`, `sse_disconnect`, `config_fetch`, `general` |
+| `error_message` | string | Yes | Human-readable error description |
+| `order_id` | integer | No | If error is related to a specific order |
+| `extra` | object | No | Any additional context data |
+
+**Response:**
+```json
+{
+  "ok": true,
+  "message": "error logged"
+}
+```
+
+---
+
+## Complete Order Lifecycle (Android App)
+
+The full lifecycle for an order from the app's perspective:
+
+```
+1. RECEIVE      →  SSE event: {"type":"new_order", "id": 42, ...}
+2. FETCH        →  GET /ops/api/orders/42/detail  (get full order data)
+3. ACK          →  POST /ops/api/orders/42/ack     (mark as received by tablet)
+4. PRINT        →  Build ESC/POS bons, send to printers via TCP
+5. REPORT       →  POST /ops/api/orders/42/print-status
+                    status: "success" | "partial" | "error"
+6. MARK PRINTED →  POST /ops/api/orders/mark-printed  {"order_ids": [42]}
+                    (only if status was "success" or "partial")
+```
+
+If step 4 fails completely, the order stays unprinted and will appear again on the next poll of `/ops/api/orders/unprinted`. The app can retry printing and report again.
 
 ---
 

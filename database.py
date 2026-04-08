@@ -41,6 +41,8 @@ def _run_safe_migrations(db):
         ("global_option_group_links", "linked_option_group_id", "ALTER TABLE global_option_group_links ADD COLUMN linked_option_group_id INTEGER REFERENCES menu_item_option_groups(id) ON DELETE SET NULL"),
         ("food_orders", "bon_acked_at", "ALTER TABLE food_orders ADD COLUMN bon_acked_at TIMESTAMP"),
         ("food_orders", "bon_acked_device_id", "ALTER TABLE food_orders ADD COLUMN bon_acked_device_id VARCHAR(128)"),
+        ("food_orders", "bon_print_error", "ALTER TABLE food_orders ADD COLUMN bon_print_error TEXT"),
+        ("food_orders", "bon_print_attempts", "ALTER TABLE food_orders ADD COLUMN bon_print_attempts INTEGER DEFAULT 0"),
     ]
     for table, column, sql in migrations:
         try:

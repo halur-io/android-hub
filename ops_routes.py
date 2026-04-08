@@ -2693,3 +2693,163 @@ def ack_order(order_id):
     db.session.commit()
 
     return jsonify({'ok': True, 'message': f'Order {order_id} acknowledged'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/print-status', methods=['POST'])
+def report_print_status(order_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'order not found'}), 404
+
+    data = request.get_json(force=True) if request.content_length else {}
+    status = data.get('status', '')
+    device_id = data.get('device_id', '')
+    error_message = data.get('error', '')
+    stations_printed = data.get('stations_printed', [])
+    stations_failed = data.get('stations_failed', [])
+
+    now = datetime.utcnow()
+    order.bon_print_attempts = (order.bon_print_attempts or 0) + 1
+
+    existing_notes = order.admin_notes or ''
+    ts = now.strftime('%Y-%m-%d %H:%M:%S')
+
+    if status == 'success':
+        order.bon_printed = True
+        order.bon_printed_at = now
+        order.bon_print_error = None
+        note = f'[{ts} UTC] Print SUCCESS'
+        if device_id:
+            note += f' by {device_id}'
+        if stations_printed:
+            note += f' stations: {", ".join(stations_printed)}'
+    elif status == 'partial':
+        order.bon_printed = True
+        order.bon_printed_at = now
+        order.bon_print_error = error_message or f'Failed stations: {", ".join(stations_failed)}'
+        note = f'[{ts} UTC] Print PARTIAL'
+        if device_id:
+            note += f' by {device_id}'
+        if stations_printed:
+            note += f' OK: {", ".join(stations_printed)}'
+        if stations_failed:
+            note += f' FAILED: {", ".join(stations_failed)}'
+        if error_message:
+            note += f' Error: {error_message}'
+    elif status == 'error':
+        order.bon_print_error = error_message or 'Unknown print error'
+        note = f'[{ts} UTC] Print ERROR'
+        if device_id:
+            note += f' by {device_id}'
+        if error_message:
+            note += f': {error_message}'
+    else:
+        return jsonify({'ok': False, 'error': 'invalid status, must be: success, partial, or error'}), 400
+
+    order.admin_notes = f"{existing_notes}\n{note}".strip()
+    db.session.commit()
+
+    return jsonify({
+        'ok': True,
+        'message': f'Print status recorded for order {order_id}',
+        'bon_printed': order.bon_printed,
+        'attempts': order.bon_print_attempts,
+    })
+
+
+@ops_bp.route('/api/orders/<int:order_id>/detail', methods=['GET'])
+def api_order_detail(order_id):
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'order not found'}), 404
+
+    items = json.loads(order.items_json) if order.items_json else []
+    by_station = {}
+    for item in items:
+        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        st = 'כללי'
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi:
+                if mi.print_station:
+                    st = mi.print_station
+                if order.branch_id:
+                    bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
+                    if bmi and bmi.print_station:
+                        st = bmi.print_station
+                if mi.print_name:
+                    item['print_name'] = mi.print_name
+        if st not in by_station:
+            by_station[st] = []
+        by_station[st].append(item)
+
+    return jsonify({
+        'ok': True,
+        'order': {
+            'id': order.id,
+            'order_number': order.order_number,
+            'order_type': order.order_type,
+            'status': order.status,
+            'branch_id': order.branch_id,
+            'customer_name': order.customer_name or '',
+            'customer_phone': order.customer_phone or '',
+            'delivery_address': order.delivery_address or '',
+            'delivery_city': order.delivery_city or '',
+            'delivery_notes': order.delivery_notes or '',
+            'customer_notes': order.customer_notes or '',
+            'subtotal': order.subtotal or 0,
+            'delivery_fee': order.delivery_fee or 0,
+            'discount_amount': order.discount_amount or 0,
+            'total_amount': order.total_amount or 0,
+            'payment_method': order.payment_method or '',
+            'coupon_code': order.coupon_code or '',
+            'created_at': _to_il(order.created_at) if order.created_at else '',
+            'items': items,
+            'items_by_station': by_station,
+            'bon_printed': order.bon_printed,
+            'bon_printed_at': _to_il(order.bon_printed_at) if order.bon_printed_at else None,
+            'bon_acked_at': _to_il(order.bon_acked_at) if order.bon_acked_at else None,
+            'bon_acked_device_id': order.bon_acked_device_id or '',
+            'bon_print_error': order.bon_print_error or '',
+            'bon_print_attempts': order.bon_print_attempts or 0,
+        }
+    })
+
+
+@ops_bp.route('/api/device/log-error', methods=['POST'])
+def device_log_error():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if not api_key or not expected_key or api_key != expected_key:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(force=True) if request.content_length else {}
+    device_id = data.get('device_id', 'unknown')
+    error_type = data.get('error_type', 'general')
+    error_message = data.get('error_message', '')
+    order_id = data.get('order_id')
+    extra = data.get('extra', {})
+
+    logging.error(f"[DEVICE ERROR] device={device_id} type={error_type} order={order_id} msg={error_message} extra={json.dumps(extra, ensure_ascii=False)}")
+
+    if order_id:
+        order = FoodOrder.query.get(order_id)
+        if order:
+            now = datetime.utcnow()
+            ts = now.strftime('%Y-%m-%d %H:%M:%S')
+            existing = order.admin_notes or ''
+            note = f'[{ts} UTC] Device error ({device_id}): {error_type} - {error_message}'
+            order.admin_notes = f"{existing}\n{note}".strip()
+            db.session.commit()
+
+    return jsonify({'ok': True, 'message': 'error logged'})

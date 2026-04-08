@@ -303,6 +303,13 @@ New order:
 data: {"type":"new_order","id":42,"order_number":"ORD-260407-1234","order_type":"delivery","branch_id":1,"customer_name":"ישראל ישראלי","total_amount":135,"items_count":3,"created_at":"2026-04-07T11:30:00Z"}
 ```
 
+Order status changed (sent when any order status is updated via Ops or KDS):
+```
+data: {"type":"order_status_changed","id":42,"order_number":"ORD-260407-1234","order_type":"delivery","branch_id":1,"old_status":"pending","new_status":"confirmed","customer_name":"ישראל ישראלי","total_amount":135,"updated_at":"2026-04-07T11:35:00Z"}
+```
+
+Possible status values: `pending`, `confirmed`, `preparing`, `ready`, `delivered`, `pickedup`, `cancelled`
+
 Keepalive (every ~25 seconds):
 ```
 : keepalive
@@ -661,9 +668,16 @@ val sseListener = object : EventSourceListener() {
                 val orderNumber = json.getString("order_number")
                 // 1. Play notification sound
                 // 2. Show Android notification
-                // 3. Fetch full order from /ops/api/orders/unprinted
+                // 3. Fetch full order from /ops/api/orders/<id>/detail
                 // 4. Build and print bons
                 // 5. ACK and mark printed
+            }
+            "order_status_changed" -> {
+                val orderId = json.getInt("id")
+                val oldStatus = json.getString("old_status")
+                val newStatus = json.getString("new_status")
+                // Update local order state
+                // Show notification if relevant (e.g., cancelled)
             }
         }
     }

@@ -1011,6 +1011,11 @@ def update_order_status(order_id):
         except Exception as e:
             import logging
             logging.error(f'Auto-SMS failed for order {order.id} status {new_status}: {e}')
+        try:
+            _notify_sse_status_change(order, old_status, new_status)
+        except Exception as e:
+            import logging
+            logging.debug(f'SSE status notify: {e}')
 
     msg = f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}'
     if auto_sms_sent:
@@ -2404,13 +2409,17 @@ _sse_subscribers = []
 _sse_lock = threading.Lock()
 
 def _notify_sse_new_order(order_data):
-    event_json = json.dumps(order_data, ensure_ascii=False)
+    _notify_sse_order_event(order_data)
+
+
+def _notify_sse_order_event(event_data):
+    event_json = json.dumps(event_data, ensure_ascii=False)
     dead = []
     with _sse_lock:
         for sub in _sse_subscribers:
             try:
                 branch_filter = sub.get('branch_id')
-                if branch_filter and order_data.get('branch_id') != branch_filter:
+                if branch_filter and event_data.get('branch_id') != branch_filter:
                     continue
                 sub['queue'].put_nowait(event_json)
             except Exception:
@@ -2420,6 +2429,21 @@ def _notify_sse_new_order(order_data):
                 _sse_subscribers.remove(d)
             except ValueError:
                 pass
+
+
+def _notify_sse_status_change(order, old_status, new_status):
+    _notify_sse_order_event({
+        'type': 'order_status_changed',
+        'id': order.id,
+        'order_number': order.order_number,
+        'order_type': order.order_type,
+        'branch_id': order.branch_id,
+        'old_status': old_status,
+        'new_status': new_status,
+        'customer_name': order.customer_name or '',
+        'total_amount': order.total_amount or 0,
+        'updated_at': datetime.utcnow().isoformat() + 'Z',
+    })
 
 
 @ops_bp.route('/api/orders/stream')

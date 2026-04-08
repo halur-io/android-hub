@@ -365,6 +365,12 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             )
             db.session.add(log)
         db.session.commit()
+        if old_status != new_status:
+            try:
+                from ops_routes import _notify_sse_status_change
+                _notify_sse_status_change(order, old_status, new_status)
+            except Exception:
+                pass
         return jsonify({'success': True, 'new_status': new_status, 'status_label': STATUS_LABELS.get(new_status, new_status)})
 
     # ── Add note ──────────────────────────────────────────────────────
@@ -472,6 +478,11 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             )
             db.session.add(log)
         db.session.commit()
+        try:
+            from ops_routes import _notify_sse_status_change
+            _notify_sse_status_change(order, old_status, 'cancelled')
+        except Exception:
+            pass
         flash(f'הזמנה #{order.order_number} בוטלה.', 'info')
         return redirect(url_for('order_dashboard.orders'))
 

@@ -143,10 +143,17 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
     @bp.route('/clear-branch')
     def clear_branch():
-        session.pop('order_branch_id', None)
-        session.pop('order_cart', None)
-        session.pop('order_onboarded', None)
-        session.pop('order_customer', None)
+        for k in ['order_branch_id', 'order_cart', 'order_onboarded',
+                   'order_customer', 'order_type', 'otp_code', 'otp_phone',
+                   'otp_ts', 'otp_attempts', 'otp_verified']:
+            session.pop(k, None)
+        return redirect(url_for('order_page.order_page'))
+
+    @bp.route('/reset')
+    def reset_order():
+        for k in list(session.keys()):
+            if k.startswith('order_') or k.startswith('otp_'):
+                session.pop(k, None)
         return redirect(url_for('order_page.order_page'))
 
     @bp.route('/send-otp', methods=['POST'])

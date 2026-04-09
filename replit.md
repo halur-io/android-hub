@@ -44,6 +44,7 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Print Stations as Entities:** `PrintStation` is a first-class entity for flexible print routing.
 - **Database Schema:** Includes models for `FoodOrder`, `MenuItem`, `ManagerPIN`, `Deal`, `Coupon`, `Printer`, `PrintDevice`, `TimeLog`, `DeliveryZone`, `ArchivedOrder`, `ReleasedOrderNumber`, among others.
 - **API Endpoints:** Dedicated APIs for order validation, coupon validation, upsell suggestions, and print agent polling.
+- **Swagger API Documentation:** Interactive OpenAPI 3.0 documentation at `/api/docs` via `flask-swagger-ui`. Spec defined in `swagger_spec.py` covering 44 endpoints across 5 tag groups (Public, Ordering, Kitchen Display, Operations, Popup) with 33 schemas. Spec JSON served at `/api/docs/openapi.json`.
 
 ## External Dependencies
 - **Payment Gateways:** HYP, MAX Pay.

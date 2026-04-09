@@ -1,7 +1,7 @@
 import os
 import logging
 import time
-from flask import Flask, make_response
+from flask import Flask, make_response, request, redirect, url_for
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
 from database import init_db
@@ -47,6 +47,42 @@ try:
     logging.info("API blueprint registered and exempted from CSRF")
 except Exception as e:
     logging.error(f"Error registering API blueprint: {e}")
+
+# Register Swagger UI for API documentation at /api/docs (admin-only)
+try:
+    from flask_swagger_ui import get_swaggerui_blueprint
+    from swagger_spec import get_apispec
+    from flask import jsonify as _sw_jsonify
+
+    @app.route('/api/docs/openapi.json')
+    def swagger_spec_json():
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return _sw_jsonify({"error": "unauthorized"}), 401
+        return _sw_jsonify(get_apispec())
+
+    SWAGGER_URL = '/api/docs'
+    API_URL = '/api/docs/openapi.json'
+    swaggerui_blueprint = get_swaggerui_blueprint(
+        SWAGGER_URL,
+        API_URL,
+        config={'app_name': "SUMO Restaurant API"},
+    )
+    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+    csrf.exempt(swaggerui_blueprint)
+
+    @app.before_request
+    def _protect_swagger_docs():
+        from flask_login import current_user
+        if request.path.startswith('/api/docs'):
+            if not current_user.is_authenticated:
+                return redirect(url_for('admin.login', next=request.url))
+
+    logging.info("Swagger UI registered at /api/docs (admin-only)")
+except Exception as e:
+    logging.error(f"Error registering Swagger UI: {e}")
+    import traceback
+    traceback.print_exc()
 
 
 # Initialize Flask-Login

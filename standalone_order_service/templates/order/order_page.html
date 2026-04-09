@@ -501,20 +501,22 @@
         <p class="text-muted mb-4">{{ 'מאיפה תרצה להזמין?' if language == 'he' else 'Where would you like to order from?' }}</p>
         <div class="d-flex flex-wrap justify-content-center gap-3">
           {% for branch in branches %}
-          <a href="{{ url_for('order_page.select_branch', branch_id=branch.id) }}"
-             class="text-decoration-none"
-             style="min-width:200px;max-width:280px;flex:1;">
-            <div style="background:#fff;border:2px solid #e2e8f0;border-radius:16px;padding:28px 20px;
-                        text-align:center;transition:all .2s;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);"
-                 onmouseover="this.style.borderColor='#4338ca';this.style.boxShadow='0 4px 16px rgba(67,56,202,.15)'"
-                 onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)'">
-              <i class="fas fa-store fa-2x mb-3" style="color:#4338ca;"></i>
-              <h4 style="font-weight:700;margin:0;color:#1e293b;">{{ branch.name }}</h4>
-              {% if branch.address %}
-              <p class="text-muted mt-2 mb-0" style="font-size:.9rem;">{{ branch.address }}</p>
-              {% endif %}
-            </div>
-          </a>
+          <form method="POST" action="{{ url_for('order_page.select_branch') }}" style="min-width:200px;max-width:280px;flex:1;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="branch_id" value="{{ branch.id }}">
+            <button type="submit" style="all:unset;display:block;width:100%;cursor:pointer;">
+              <div style="background:#fff;border:2px solid #e2e8f0;border-radius:16px;padding:28px 20px;
+                          text-align:center;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.06);"
+                   onmouseover="this.style.borderColor='#4338ca';this.style.boxShadow='0 4px 16px rgba(67,56,202,.15)'"
+                   onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)'">
+                <i class="fas fa-store fa-2x mb-3" style="color:#4338ca;"></i>
+                <h4 style="font-weight:700;margin:0;color:#1e293b;">{{ branch.name }}</h4>
+                {% if branch.address %}
+                <p class="text-muted mt-2 mb-0" style="font-size:.9rem;">{{ branch.address }}</p>
+                {% endif %}
+              </div>
+            </button>
+          </form>
           {% endfor %}
         </div>
       </div>

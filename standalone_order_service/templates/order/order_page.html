@@ -573,10 +573,12 @@
       </div>
       <div class="d-flex gap-2 align-items-center">
         {% if multi_branch is defined and multi_branch and selected_branch %}
-        <span class="branch-label-badge">
+        <a href="{{ url_for('order_page.clear_branch') }}" class="branch-label-badge branch-switchable"
+           onclick="return confirm('{{ 'שים לב — החלפת סניף תרוקן את העגלה. להמשיך?' if language == 'he' else 'Note — switching branch will empty your cart. Continue?' }}');">
           <i class="fas fa-store me-1"></i>
           <span>{{ selected_branch.name_he if language == 'he' else selected_branch.name_en }}</span>
-        </span>
+          <i class="fas fa-exchange-alt ms-1" style="font-size:.7rem;opacity:.7;"></i>
+        </a>
         {% endif %}
         {% set _session_order_type = session.get('order_type', 'delivery') %}
         <span class="branch-label-badge">
@@ -985,6 +987,15 @@ input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
   background: rgba(255,255,255,.1); color: #fff;
   font-weight: 600; font-size: .82rem;
   backdrop-filter: blur(8px);
+}
+a.branch-switchable {
+  text-decoration: none; color: #fff; cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+a.branch-switchable:hover {
+  background: rgba(255,255,255,.25);
+  border-color: rgba(255,255,255,.6);
+  color: #fff;
 }
 
 /* ─── Info banner ─── */

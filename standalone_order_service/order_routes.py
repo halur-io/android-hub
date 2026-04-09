@@ -291,8 +291,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         branches = _get_branches()
         selected_branch = _get_selected_branch()
         multi_branch = len(branches) > 1
+        onboarding_enabled = getattr(settings, 'enable_order_onboarding', True)
         order_onboarded = session.get('order_onboarded', False)
-        need_onboarding = not order_onboarded
+        need_onboarding = onboarding_enabled and not order_onboarded
         need_branch_selection = multi_branch and not selected_branch
 
         if need_onboarding:

@@ -864,6 +864,7 @@ def settings():
         settings.enable_english_language = request.form.get('enable_english_language') == 'on'
         settings.enable_delivery = request.form.get('enable_delivery') == 'on'
         settings.enable_pickup = request.form.get('enable_pickup') == 'on'
+        settings.enable_order_onboarding = request.form.get('enable_order_onboarding') == 'on'
         settings.enable_menu_display = request.form.get('enable_menu_display') == 'on'
         settings.enable_gallery = request.form.get('enable_gallery') == 'on'
         settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'

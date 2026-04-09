@@ -246,6 +246,7 @@ class SiteSettings(db.Model):
     announcement_bg_color = db.Column(db.String(20), default='#ffc107')
     
     # Online Ordering Settings
+    enable_order_onboarding = db.Column(db.Boolean, default=True)
     ordering_paused = db.Column(db.Boolean, default=False)
     ordering_paused_message = db.Column(db.String(500))
     ordering_closed_message = db.Column(db.String(500))

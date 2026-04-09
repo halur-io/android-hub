@@ -751,6 +751,17 @@
                         
                         <div class="toggle-group">
                             <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'טופס כניסה להזמנה' if (admin_language or 'he') == 'he' else 'Order Onboarding Flow' }}</label>
+                                <span class="toggle-description">{{ 'חייב לקוחות למלא פרטים ולאמת טלפון (OTP) לפני גישה לתפריט' if (admin_language or 'he') == 'he' else 'Require customers to fill details & verify phone (OTP) before accessing menu' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_order_onboarding" {% if settings.enable_order_onboarding %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
                                 <label class="toggle-label">שפות / Multi-Language</label>
                                 <span class="toggle-description">הצג אפשרות החלפה בין עברית לאנגלית</span>
                             </div>

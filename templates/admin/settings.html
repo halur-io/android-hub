@@ -483,6 +483,30 @@
                         </div>
                     </section>
                     
+                    <!-- Order Onboarding Flow -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOnboarding" aria-expanded="false">
+                                <i class="fas fa-clipboard-check"></i>
+                                {{ 'טופס כניסה להזמנה' if (admin_language or 'he') == 'he' else 'Order Onboarding Flow' }}
+                            </h3>
+                        </div>
+                        <div id="collapseOnboarding" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                                <div class="toggle-group">
+                                    <div class="toggle-label-wrapper">
+                                        <label class="toggle-label">{{ 'הפעל טופס כניסה' if (admin_language or 'he') == 'he' else 'Enable Onboarding' }}</label>
+                                        <span class="toggle-description">{{ 'חייב לקוחות למלא פרטים ולאמת טלפון (OTP) לפני גישה לתפריט ההזמנות' if (admin_language or 'he') == 'he' else 'Require customers to fill details & verify phone (OTP) before accessing the order menu' }}</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="enable_order_onboarding" {% if settings.enable_order_onboarding %}checked{% endif %}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
                     <!-- Site Info & Social Media -->
                     <section class="settings-section accordion-item">
                         <div class="settings-section-header accordion-header">
@@ -745,17 +769,6 @@
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="enable_pickup" {% if settings.enable_pickup %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        
-                        <div class="toggle-group">
-                            <div class="toggle-label-wrapper">
-                                <label class="toggle-label">{{ 'טופס כניסה להזמנה' if (admin_language or 'he') == 'he' else 'Order Onboarding Flow' }}</label>
-                                <span class="toggle-description">{{ 'חייב לקוחות למלא פרטים ולאמת טלפון (OTP) לפני גישה לתפריט' if (admin_language or 'he') == 'he' else 'Require customers to fill details & verify phone (OTP) before accessing menu' }}</span>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" name="enable_order_onboarding" {% if settings.enable_order_onboarding %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>

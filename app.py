@@ -48,17 +48,22 @@ try:
 except Exception as e:
     logging.error(f"Error registering API blueprint: {e}")
 
-# Register Swagger UI for API documentation at /api/docs (admin-only)
+# Register Swagger UI for API documentation at /api/docs
 try:
     from flask_swagger_ui import get_swaggerui_blueprint
     from swagger_spec import get_apispec
     from flask import jsonify as _sw_jsonify
 
+    _DOCS_KEY = os.environ.get('PRINT_AGENT_KEY', '')
+
     @app.route('/api/docs/openapi.json')
     def swagger_spec_json():
         from flask_login import current_user
         if not current_user.is_authenticated:
-            return _sw_jsonify({"error": "unauthorized"}), 401
+            tok = request.args.get('key') or ''
+            sess_tok = session.get('_docs_token', '')
+            if not ((tok == _DOCS_KEY and _DOCS_KEY) or (sess_tok == _DOCS_KEY and _DOCS_KEY)):
+                return _sw_jsonify({"error": "unauthorized"}), 401
         return _sw_jsonify(get_apispec())
 
     SWAGGER_URL = '/api/docs'
@@ -66,7 +71,7 @@ try:
     swaggerui_blueprint = get_swaggerui_blueprint(
         SWAGGER_URL,
         API_URL,
-        config={'app_name': "SUMO Restaurant API"},
+        config={'app_name': "SUMO Print Hub API"},
     )
     app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
     csrf.exempt(swaggerui_blueprint)
@@ -75,10 +80,17 @@ try:
     def _protect_swagger_docs():
         from flask_login import current_user
         if request.path.startswith('/api/docs'):
-            if not current_user.is_authenticated:
-                return redirect(url_for('admin.login', next=request.url))
+            if current_user.is_authenticated:
+                return None
+            token = request.args.get('key', '')
+            if token == _DOCS_KEY and _DOCS_KEY:
+                session['_docs_token'] = token
+                return None
+            if session.get('_docs_token') == _DOCS_KEY and _DOCS_KEY:
+                return None
+            return _sw_jsonify({"error": "Unauthorized. Add ?key=YOUR_PRINT_KEY to the URL."}), 401
 
-    logging.info("Swagger UI registered at /api/docs (admin-only)")
+    logging.info("Swagger UI registered at /api/docs (token or admin auth)")
 except Exception as e:
     logging.error(f"Error registering Swagger UI: {e}")
     import traceback

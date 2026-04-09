@@ -235,6 +235,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             'email': email,
         }
         session['order_onboarded'] = True
+        session['order_onboarded_ts'] = datetime.utcnow().isoformat()
         return jsonify({'ok': True})
 
     def _check_outside_ordering_hours(branch=None):
@@ -300,6 +301,24 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         multi_branch = len(branches) > 1
         onboarding_enabled = getattr(settings, 'enable_order_onboarding', True)
         order_onboarded = session.get('order_onboarded', False)
+        if order_onboarded:
+            ob_ts = session.get('order_onboarded_ts')
+            if ob_ts:
+                try:
+                    ob_time = datetime.fromisoformat(ob_ts)
+                    if (datetime.utcnow() - ob_time).total_seconds() > 7200:
+                        for k in ['order_onboarded', 'order_onboarded_ts', 'order_customer',
+                                  'order_type', 'order_branch_id', 'order_cart',
+                                  'otp_code', 'otp_phone', 'otp_ts', 'otp_attempts', 'otp_verified']:
+                            session.pop(k, None)
+                        order_onboarded = False
+                except Exception:
+                    pass
+            else:
+                for k in ['order_onboarded', 'order_customer', 'order_type',
+                           'order_branch_id', 'order_cart']:
+                    session.pop(k, None)
+                order_onboarded = False
         need_onboarding = onboarding_enabled and not order_onboarded
         need_branch_selection = multi_branch and not selected_branch
 

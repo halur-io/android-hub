@@ -46,6 +46,9 @@
                                     <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="copyKey('{{ k.key }}')" title="העתק">
                                         <i class="fas fa-copy"></i>
                                     </button>
+                                    <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="showQR('{{ k.key }}', '{{ k.name }}')" title="הצג QR">
+                                        <i class="fas fa-qrcode"></i>
+                                    </button>
                                 </div>
                             </td>
                             <td>
@@ -169,7 +172,36 @@
     </div>
 </div>
 
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-qrcode me-2"></i>QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="fw-bold mb-2" id="qrKeyName"></p>
+                <div id="qrCanvas" style="display:inline-block;"></div>
+                <p class="text-muted mt-2" style="font-size:12px;">סרוק עם אפליקציית ההדפסה בטאבלט</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
+function showQR(key, name) {
+    document.getElementById('qrKeyName').textContent = name;
+    var container = document.getElementById('qrCanvas');
+    container.innerHTML = '';
+    var qr = qrcode(0, 'M');
+    qr.addData(key);
+    qr.make();
+    container.innerHTML = qr.createSvgTag(6, 0);
+    var modal = new bootstrap.Modal(document.getElementById('qrModal'));
+    modal.show();
+}
+
 function toggleKey(id, fullKey) {
     var el = document.getElementById('key-' + id);
     var eye = document.getElementById('eye-' + id);

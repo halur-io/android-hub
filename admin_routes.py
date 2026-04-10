@@ -5572,6 +5572,73 @@ def test_all_printers():
             results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'error', 'error': str(e)})
     return jsonify({'success': True, 'results': results})
 
+@admin_bp.route('/api-keys')
+@login_required
+@require_permission('kitchen.manage')
+def api_keys():
+    keys = ApiKey.query.order_by(ApiKey.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    return render_template('admin/api_keys.html', keys=keys, branches=branches)
+
+
+@admin_bp.route('/api-keys/create', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def create_api_key():
+    import secrets as _secrets
+    name = request.form.get('name', '').strip()
+    branch_id = request.form.get('branch_id', '')
+    notes = request.form.get('notes', '').strip()
+    if not name:
+        flash('יש להזין שם למפתח', 'danger')
+        return redirect(url_for('admin.api_keys'))
+    raw_key = _secrets.token_urlsafe(32)
+    ak = ApiKey(
+        key=raw_key,
+        name=name,
+        branch_id=int(branch_id) if branch_id else None,
+        notes=notes or None,
+        created_by=current_user.username,
+    )
+    db.session.add(ak)
+    db.session.commit()
+    flash(f'מפתח API נוצר בהצלחה: {raw_key}', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/revoke', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def revoke_api_key(key_id):
+    ak = ApiKey.query.get_or_404(key_id)
+    ak.is_active = False
+    db.session.commit()
+    flash(f'מפתח "{ak.name}" בוטל בהצלחה', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/activate', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def activate_api_key(key_id):
+    ak = ApiKey.query.get_or_404(key_id)
+    ak.is_active = True
+    db.session.commit()
+    flash(f'מפתח "{ak.name}" הופעל מחדש', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/delete', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def delete_api_key(key_id):
+    ak = ApiKey.query.get_or_404(key_id)
+    db.session.delete(ak)
+    db.session.commit()
+    flash(f'מפתח "{ak.name}" נמחק', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
 @admin_bp.route('/stations/add', methods=['POST'])
 @login_required
 @require_permission('kitchen.manage')

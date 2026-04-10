@@ -22,7 +22,7 @@ from models import (
     ManagerPIN, EnrolledDevice, SiteSettings, Branch, WorkingHours,
     MenuCategory, MenuItem, BranchMenuItem, StockItem, StockLevel, StockTransaction,
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder,
-    Printer, PrinterStation, PrintStation, TimeLog, PrintDevice,
+    Printer, PrinterStation, PrintStation, TimeLog, PrintDevice, ApiKey,
 )
 from services.order.order_service import DeliveryZone
 
@@ -68,6 +68,24 @@ def _to_il_hour(dt):
 
 def _to_il_full(dt):
     return _to_il(dt, '%d/%m/%Y %H:%M')
+
+def _verify_print_api_key():
+    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
+    if not api_key:
+        return False
+    master_key = os.environ.get('PRINT_AGENT_KEY', '')
+    if master_key and api_key == master_key:
+        return True
+    ak = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+    if ak:
+        ak.last_used_at = datetime.utcnow()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return True
+    return False
+
 
 def _check_device():
     token = request.cookies.get('ops_device_token')
@@ -794,9 +812,7 @@ def healthcheck():
 
 @ops_bp.route('/api/healthcheck')
 def api_healthcheck():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    is_api_key_auth = _verify_print_api_key()
 
     if not is_api_key_auth:
         device = _check_device()
@@ -2069,9 +2085,7 @@ def direct_print():
 
 @ops_bp.route('/api/orders/unprinted', methods=['GET'])
 def get_unprinted_orders():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    is_api_key_auth = _verify_print_api_key()
     if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
@@ -2140,9 +2154,7 @@ def get_unprinted_orders():
 
 @ops_bp.route('/api/orders/mark-printed', methods=['POST'])
 def mark_orders_printed():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    is_api_key_auth = _verify_print_api_key()
     if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
@@ -2169,9 +2181,7 @@ def mark_orders_printed():
 
 @ops_bp.route('/api/branch/<int:branch_id>/printers', methods=['GET'])
 def get_branch_printers(branch_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         pin = _get_ops_user()
         if not pin:
             return jsonify({'ok': False, 'error': 'unauthorized'}), 401
@@ -2562,9 +2572,7 @@ def _notify_sse_status_change(order, old_status, new_status):
 
 @ops_bp.route('/api/orders/stream')
 def sse_order_stream():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     branch_id = request.args.get('branch_id', type=int)
@@ -2604,9 +2612,7 @@ def sse_order_stream():
 
 @ops_bp.route('/api/devices/register', methods=['POST'])
 def register_print_device():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     data = request.get_json(force=True)
@@ -2645,9 +2651,7 @@ def register_print_device():
 
 @ops_bp.route('/api/devices/heartbeat', methods=['POST'])
 def print_device_heartbeat():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     data = request.get_json(force=True)
@@ -2667,9 +2671,7 @@ def print_device_heartbeat():
 
 @ops_bp.route('/api/devices', methods=['GET'])
 def list_print_devices():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    is_api_key_auth = _verify_print_api_key()
     if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
@@ -2690,9 +2692,7 @@ def list_print_devices():
 
 @ops_bp.route('/api/devices/<int:device_db_id>/config', methods=['GET'])
 def get_print_device_config(device_db_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     device = PrintDevice.query.get(device_db_id)
@@ -2740,9 +2740,7 @@ def get_print_device_config(device_db_id):
 
 @ops_bp.route('/api/devices/<int:device_db_id>/config', methods=['PUT'])
 def update_print_device_config(device_db_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    is_api_key_auth = _verify_print_api_key()
     if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
@@ -2786,9 +2784,7 @@ def update_print_device_config(device_db_id):
 
 @ops_bp.route('/api/devices/<int:device_db_id>', methods=['DELETE'])
 def delete_print_device(device_db_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    is_api_key_auth = api_key and expected_key and api_key == expected_key
+    is_api_key_auth = _verify_print_api_key()
     if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
@@ -2805,9 +2801,7 @@ def delete_print_device(device_db_id):
 
 @ops_bp.route('/api/orders/<int:order_id>/ack', methods=['POST'])
 def ack_order(order_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     order = FoodOrder.query.get(order_id)
@@ -2836,9 +2830,7 @@ def ack_order(order_id):
 
 @ops_bp.route('/api/orders/<int:order_id>/print-status', methods=['POST'])
 def report_print_status(order_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     order = FoodOrder.query.get(order_id)
@@ -2903,9 +2895,7 @@ def report_print_status(order_id):
 
 @ops_bp.route('/api/orders/<int:order_id>/detail', methods=['GET'])
 def api_order_detail(order_id):
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     order = FoodOrder.query.get(order_id)
@@ -2967,9 +2957,7 @@ def api_order_detail(order_id):
 
 @ops_bp.route('/api/device/log-error', methods=['POST'])
 def device_log_error():
-    api_key = request.headers.get('X-Print-Key') or request.args.get('key')
-    expected_key = os.environ.get('PRINT_AGENT_KEY', '')
-    if not api_key or not expected_key or api_key != expected_key:
+    if not _verify_print_api_key():
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     data = request.get_json(force=True) if request.content_length else {}

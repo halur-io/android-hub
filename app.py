@@ -54,7 +54,15 @@ try:
     from swagger_spec import get_apispec
     from flask import jsonify as _sw_jsonify
 
-    _DOCS_KEY = os.environ.get('PRINT_AGENT_KEY', '')
+    _DOCS_MASTER_KEY = os.environ.get('PRINT_AGENT_KEY', '')
+
+    def _is_valid_api_key(token):
+        if not token:
+            return False
+        if _DOCS_MASTER_KEY and token == _DOCS_MASTER_KEY:
+            return True
+        from models import ApiKey
+        return ApiKey.query.filter_by(key=token, is_active=True).first() is not None
 
     @app.route('/api/docs/openapi.json')
     def swagger_spec_json():
@@ -62,7 +70,7 @@ try:
         if not current_user.is_authenticated:
             tok = request.args.get('key') or ''
             sess_tok = session.get('_docs_token', '')
-            if not ((tok == _DOCS_KEY and _DOCS_KEY) or (sess_tok == _DOCS_KEY and _DOCS_KEY)):
+            if not (_is_valid_api_key(tok) or _is_valid_api_key(sess_tok)):
                 return _sw_jsonify({"error": "unauthorized"}), 401
         return _sw_jsonify(get_apispec())
 
@@ -83,12 +91,12 @@ try:
             if current_user.is_authenticated:
                 return None
             token = request.args.get('key', '')
-            if token == _DOCS_KEY and _DOCS_KEY:
+            if _is_valid_api_key(token):
                 session['_docs_token'] = token
                 return None
-            if session.get('_docs_token') == _DOCS_KEY and _DOCS_KEY:
+            if _is_valid_api_key(session.get('_docs_token', '')):
                 return None
-            return _sw_jsonify({"error": "Unauthorized. Add ?key=YOUR_PRINT_KEY to the URL."}), 401
+            return _sw_jsonify({"error": "Unauthorized. Add ?key=YOUR_API_KEY to the URL."}), 401
 
     logging.info("Swagger UI registered at /api/docs (token or admin auth)")
 except Exception as e:

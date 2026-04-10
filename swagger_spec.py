@@ -3,7 +3,7 @@ def get_apispec():
         "openapi": "3.0.3",
         "info": {
             "title": "SUMO Print Hub API",
-            "description": "API documentation for the SUMO Android Print Hub app — device registration, order polling, SSE streaming, print status reporting, and printer configuration.",
+            "description": "API documentation for the SUMO Android Print Hub app — device registration, order polling, SSE streaming, print status reporting, and printer configuration.\n\nAuthentication: pass your API key in the `X-Print-Key` header (or as `?key=` query param for SSE). Keys are created in the admin panel under API Keys.",
             "version": "1.0.0",
         },
         "servers": [{"url": "/", "description": "Current server"}],

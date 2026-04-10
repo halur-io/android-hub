@@ -3172,3 +3172,35 @@ class PrintDevice(db.Model):
 
     def __repr__(self):
         return f'<PrintDevice {self.device_name} ({self.device_id})>'
+
+
+class ApiKey(db.Model):
+    __tablename__ = 'api_keys'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(db.String(100), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+
+    branch = db.relationship('Branch', backref=db.backref('api_keys', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'key': self.key,
+            'name': self.name,
+            'branch_id': self.branch_id,
+            'branch_name': self.branch.name_he if self.branch else None,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'last_used_at': self.last_used_at.isoformat() + 'Z' if self.last_used_at else None,
+            'created_by': self.created_by,
+            'notes': self.notes,
+        }
+
+    def __repr__(self):
+        return f'<ApiKey {self.name} ({"active" if self.is_active else "revoked"})>'

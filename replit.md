@@ -44,7 +44,8 @@ I prefer clear, concise language in all communications. For coding, I favor an i
 - **Print Stations as Entities:** `PrintStation` is a first-class entity for flexible print routing.
 - **Database Schema:** Includes models for `FoodOrder`, `MenuItem`, `ManagerPIN`, `Deal`, `Coupon`, `Printer`, `PrintDevice`, `TimeLog`, `DeliveryZone`, `ArchivedOrder`, `ReleasedOrderNumber`, among others.
 - **API Endpoints:** Dedicated APIs for order validation, coupon validation, upsell suggestions, and print agent polling.
-- **Swagger API Documentation:** Interactive OpenAPI 3.0 documentation at `/api/docs` via `flask-swagger-ui`. Spec defined in `swagger_spec.py` covering 44 endpoints across 5 tag groups (Public, Ordering, Kitchen Display, Operations, Popup) with 33 schemas. Spec JSON served at `/api/docs/openapi.json`.
+- **Swagger API Documentation:** Interactive OpenAPI 3.0 docs at `/api/docs` via `flask-swagger-ui`, scoped to Print Hub endpoints only (Orders, Devices, Printers, Diagnostics). Accessible via `?key=API_KEY` or admin login. Spec JSON at `/api/docs/openapi.json`.
+- **Per-Device API Keys:** `ApiKey` model allows creating unique API keys per device/developer. Admin manages keys at `/admin/api-keys` (create, revoke, activate, delete). Centralized auth via `_verify_print_api_key()` in `ops_routes.py` checks both master `PRINT_AGENT_KEY` env var and per-device keys from `api_keys` table. `last_used_at` timestamp tracks usage.
 
 ## External Dependencies
 - **Payment Gateways:** HYP, MAX Pay.

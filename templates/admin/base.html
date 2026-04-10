@@ -769,6 +769,9 @@
             <a class="nav-link {% if request.endpoint in ['admin.printers', 'admin.add_printer', 'admin.edit_printer'] %}active{% endif %}" href="{{ url_for('admin.printers') }}">
                 <i class="fas fa-print me-2"></i> {{ 'ניהול מדפסות' if (admin_language or 'he') == 'he' else 'Printer Management' }}
             </a>
+            <a class="nav-link {% if request.endpoint in ['admin.api_keys', 'admin.create_api_key'] %}active{% endif %}" href="{{ url_for('admin.api_keys') }}">
+                <i class="fas fa-key me-2"></i> {{ 'מפתחות API' if (admin_language or 'he') == 'he' else 'API Keys' }}
+            </a>
             {% endif %}
             <hr class="my-3">
             <a class="nav-link" href="{{ url_for('admin.logout') }}">

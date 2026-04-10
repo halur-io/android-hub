@@ -52,6 +52,9 @@
                             {% else %}
                                 <span class="badge bg-secondary">{{ 'איסוף' if (admin_language or 'he') == 'he' else 'Pickup' }}</span>
                             {% endif %}
+                            {% if order.source == 'ops' %}
+                                <span class="badge" style="background:#7c3aed;">{{ 'ידני' if (admin_language or 'he') == 'he' else 'Manual' }}</span>
+                            {% endif %}
                         </td></tr>
                         {% if order.order_type == 'delivery' and order.delivery_address %}
                         <tr><td class="fw-bold">{{ 'כתובת' if (admin_language or 'he') == 'he' else 'Address' }}</td><td>{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</td></tr>

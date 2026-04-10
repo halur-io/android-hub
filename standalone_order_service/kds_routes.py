@@ -517,6 +517,7 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
             'total_amount': o.total_amount,
             'pickup_time': o.pickup_time or '',
             'created_at': _to_il_hour(o.created_at),
+            'source': getattr(o, 'source', 'online') or 'online',
         } for o in ords])
 
     # ── Settings ──────────────────────────────────────────────────────

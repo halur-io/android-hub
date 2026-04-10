@@ -845,8 +845,11 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         customer_notes = request.form.get('customer_notes', '').strip()
         payment_method = request.form.get('payment_method', 'cash')
 
+        from standalone_order_service.order_helpers import (
+            sanitize_phone, validate_phone_digits,
+        )
         customer_name = customer_name[:120]
-        customer_phone = re.sub(r'[^\d+\-() ]', '', customer_phone)[:20]
+        customer_phone = sanitize_phone(customer_phone)
         delivery_address = delivery_address[:300]
         delivery_city = delivery_city[:100]
         delivery_notes = delivery_notes[:500]
@@ -856,8 +859,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             flash('נא למלא שם וטלפון.', 'danger')
             return redirect(url_for('order_page.order_checkout_page'))
 
-        phone_digits = re.sub(r'\D', '', customer_phone)
-        if len(phone_digits) < 9 or len(phone_digits) > 15:
+        if not validate_phone_digits(customer_phone):
             flash('מספר טלפון לא תקין.', 'danger')
             return redirect(url_for('order_page.order_checkout_page'))
 

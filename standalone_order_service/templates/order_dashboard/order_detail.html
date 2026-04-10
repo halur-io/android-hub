@@ -277,6 +277,7 @@
     <span class="badge-pill bp-{{ order.order_type }}">{{ 'משלוח 🛵' if order.order_type == 'delivery' else 'איסוף 🛍' }}</span>
     <span class="badge-pill bp-{{ order.payment_method }}">{{ 'מזומן' if order.payment_method == 'cash' else 'אשראי' }}</span>
     {% if order.branch_name %}<span class="badge-pill" style="background:#ede9fe;color:#4338ca;">🏪 {{ order.branch_name }}</span>{% endif %}
+    {% if (order.source|default('online')) == 'ops' %}<span class="badge-pill" style="background:#2e1065;color:#c084fc;">ידני</span>{% endif %}
     <span class="badge-pill bp-{{ order.status }}">
       {% set st_labels = {'pending':'ממתין','confirmed':'אושר','preparing':'בהכנה','ready':'מוכן','delivered':'נמסר','pickedup':'נאסף','cancelled':'בוטל'} %}
       {{ st_labels.get(order.status, order.status) }}

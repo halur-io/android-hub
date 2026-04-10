@@ -319,6 +319,9 @@
                 {% else %}
                     <span class="badge-sm bg-pay-other">{{ order.payment_status or '-' }}</span>
                 {% endif %}
+                {% if order.source == 'ops' %}
+                    <span class="badge-sm" style="background:#7c3aed;color:#fff;">{{ 'ידני' if (admin_language or 'he') == 'he' else 'Manual' }}</span>
+                {% endif %}
             </div>
             <div class="order-date">{{ order.created_at|il_time_short }}</div>
         </div>

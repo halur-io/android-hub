@@ -1676,7 +1676,257 @@ def get_order_detail(order_id):
             'items_by_station': by_station,
             'branch_name': order.branch_name or '',
             'estimated_ready_at': _to_il_hour(order.estimated_ready_at),
+            'source': getattr(order, 'source', 'online') or 'online',
         }
+    })
+
+
+@ops_bp.route('/orders/new/<order_type>')
+@require_ops_module('orders')
+def manual_order(order_type):
+    if order_type not in ('takeaway', 'delivery'):
+        return redirect(url_for('ops.orders'))
+    effective_branch = _get_effective_branch_id()
+    categories = MenuCategory.query.filter_by(is_active=True, show_in_order=True).order_by(MenuCategory.display_order).all()
+    menu_data = []
+    for cat in categories:
+        items_q = MenuItem.query.filter_by(category_id=cat.id, is_available=True, show_in_order=True)
+        cat_items = []
+        for item in items_q.order_by(MenuItem.display_order).all():
+            if effective_branch:
+                bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=item.id).first()
+                if bmi and not bmi.is_available:
+                    continue
+                price = bmi.custom_price if (bmi and bmi.custom_price is not None) else item.base_price
+            else:
+                price = item.base_price
+            option_groups = []
+            for og in item.option_groups:
+                if not og.is_active:
+                    continue
+                choices = []
+                for ch in og.choices:
+                    if not ch.is_available:
+                        continue
+                    choices.append({
+                        'id': ch.id,
+                        'name_he': ch.name_he,
+                        'price_modifier': ch.price_modifier or 0,
+                        'is_default': ch.is_default,
+                    })
+                if choices:
+                    option_groups.append({
+                        'id': og.id,
+                        'name_he': og.name_he,
+                        'selection_type': og.selection_type,
+                        'is_required': og.is_required,
+                        'min_selections': og.min_selections or 0,
+                        'max_selections': og.max_selections or 0,
+                        'choices': choices,
+                    })
+            from models import GlobalOptionGroupLink
+            global_links = GlobalOptionGroupLink.query.filter_by(menu_item_id=item.id).all()
+            for link in global_links:
+                gog = link.global_group
+                if not gog or not gog.is_active:
+                    continue
+                if link.linked_option_group_id:
+                    continue
+                g_choices = []
+                for gc in gog.choices:
+                    if not gc.is_available:
+                        continue
+                    g_choices.append({
+                        'id': gc.id,
+                        'name_he': gc.name_he,
+                        'price_modifier': gc.price_modifier or 0,
+                        'is_default': gc.is_default,
+                        'is_global': True,
+                    })
+                if g_choices:
+                    option_groups.append({
+                        'id': f'g_{gog.id}',
+                        'name_he': gog.name_he,
+                        'selection_type': gog.selection_type,
+                        'is_required': gog.is_required,
+                        'min_selections': gog.min_selections or 0,
+                        'max_selections': gog.max_selections or 0,
+                        'choices': g_choices,
+                    })
+            cat_items.append({
+                'id': item.id,
+                'name_he': item.name_he,
+                'name_en': item.name_en or '',
+                'price': float(price) if price else 0,
+                'description_he': item.short_description_he or item.description_he or '',
+                'image_path': item.image_path or '',
+                'option_groups': option_groups,
+            })
+        if cat_items:
+            menu_data.append({
+                'id': cat.id,
+                'name_he': cat.name_he,
+                'icon': cat.icon or 'utensils',
+                'items': cat_items,
+            })
+    deals_data = []
+    active_deals = Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all()
+    for deal in active_deals:
+        if not deal.is_valid():
+            continue
+        deal_info = {
+            'id': deal.id,
+            'name_he': deal.name_he,
+            'name_en': deal.name_en or '',
+            'deal_price': float(deal.deal_price),
+            'original_price': float(deal.original_price) if deal.original_price else None,
+            'description_he': deal.description_he or '',
+            'deal_type': deal.deal_type or 'fixed',
+            'included_items': deal.included_items or [],
+            'image_path': deal.image_path or '',
+        }
+        if deal.deal_type == 'customer_picks':
+            deal_info['pick_count'] = deal.pick_count or 0
+            source_cats = deal.effective_category_ids
+            deal_info['source_category_ids'] = source_cats
+            pick_items = []
+            for sc_id in source_cats:
+                sc_items = MenuItem.query.filter_by(category_id=sc_id, is_available=True, show_in_order=True).order_by(MenuItem.display_order).all()
+                for pi in sc_items:
+                    if effective_branch:
+                        bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=pi.id).first()
+                        if bmi and not bmi.is_available:
+                            continue
+                    pick_items.append({
+                        'item_id': pi.id,
+                        'name_he': pi.name_he,
+                        'name_en': pi.name_en or '',
+                    })
+            deal_info['pick_items'] = pick_items
+        else:
+            included_details = []
+            for inc in (deal.included_items or []):
+                inc_id = inc.get('item_id') or inc.get('id')
+                if inc_id:
+                    inc_item = MenuItem.query.get(int(inc_id))
+                    if inc_item:
+                        included_details.append({
+                            'item_id': inc_item.id,
+                            'name_he': inc_item.name_he,
+                            'qty': inc.get('qty') or inc.get('quantity') or 1,
+                        })
+            deal_info['included_details'] = included_details
+        deals_data.append(deal_info)
+    return render_template('ops/manual_order.html',
+        active_tab='orders',
+        order_type=order_type,
+        menu_data=menu_data,
+        deals_data=deals_data,
+    )
+
+
+@ops_bp.route('/api/orders/create', methods=['POST'])
+@require_ops_module('orders')
+def create_manual_order():
+    from standalone_order_service.order_helpers import (
+        sanitize_phone, validate_phone_digits,
+        verify_cart_items, calculate_delivery_fee,
+    )
+    import secrets as _secrets
+    data = request.get_json(force=True)
+    order_type_raw = data.get('order_type', 'takeaway')
+    order_type = 'delivery' if order_type_raw == 'delivery' else 'pickup'
+    customer_name = (data.get('customer_name') or '').strip()[:120]
+    customer_phone = sanitize_phone(data.get('customer_phone'))
+    delivery_address = (data.get('delivery_address') or '').strip()[:300]
+    delivery_city = (data.get('delivery_city') or '').strip()[:100]
+    delivery_notes = (data.get('delivery_notes') or '').strip()[:500]
+    customer_notes = (data.get('customer_notes') or '').strip()[:500]
+    payment_method = data.get('payment_method', 'cash')
+    if payment_method not in ('cash', 'card'):
+        payment_method = 'cash'
+    if not customer_name or not customer_phone:
+        return jsonify({'ok': False, 'error': 'נא למלא שם וטלפון'})
+    if not validate_phone_digits(customer_phone):
+        return jsonify({'ok': False, 'error': 'מספר טלפון לא תקין'})
+    if order_type == 'delivery' and not delivery_address:
+        return jsonify({'ok': False, 'error': 'נא למלא כתובת למשלוח'})
+    cart = data.get('items', [])
+    if not cart:
+        return jsonify({'ok': False, 'error': 'לא נבחרו פריטים'})
+    effective_branch = _get_effective_branch_id()
+    branch = Branch.query.get(effective_branch) if effective_branch else None
+    valid_cart, verified_subtotal = verify_cart_items(cart, effective_branch)
+    if not valid_cart:
+        return jsonify({'ok': False, 'error': 'סל ריק או פריטים לא תקינים'})
+    settings = _settings()
+    delivery_zone_id = data.get('delivery_zone_id') if order_type == 'delivery' else None
+    delivery_fee, min_order_error = calculate_delivery_fee(
+        order_type, verified_subtotal, delivery_zone_id, effective_branch, settings
+    )
+    if min_order_error:
+        return jsonify({'ok': False, 'error': min_order_error})
+    total_amount = verified_subtotal + delivery_fee
+    order = FoodOrder()
+    order.set_order_number()
+    order.tracking_token = _secrets.token_urlsafe(24)
+    if branch:
+        order.branch_id = branch.id
+        order.branch_name = branch.name_he
+    order.order_type = order_type
+    order.customer_name = customer_name
+    order.customer_phone = customer_phone
+    order.delivery_address = delivery_address
+    order.delivery_city = delivery_city
+    order.delivery_notes = delivery_notes
+    order.customer_notes = customer_notes
+    order.payment_method = payment_method
+    order.subtotal = verified_subtotal
+    order.delivery_fee = delivery_fee
+    order.total_amount = total_amount
+    order.status = 'confirmed'
+    order.confirmed_at = datetime.utcnow()
+    order.payment_status = 'cash' if payment_method == 'cash' else 'pending'
+    order.source = 'ops'
+    order.items_json = json.dumps(valid_cart, ensure_ascii=False)
+    db.session.add(order)
+    db.session.flush()
+    for item in valid_cart:
+        oi = FoodOrderItem()
+        oi.order_id = order.id
+        if item.get('is_deal'):
+            oi.menu_item_id = None
+            oi.item_name_he = item.get('name_he', '')
+            oi.item_name_en = item.get('name_en', '')
+            oi.quantity = int(item.get('qty', 1))
+            oi.unit_price = float(item.get('price', 0))
+            oi.total_price = oi.quantity * oi.unit_price
+            oi.special_instructions = item.get('notes', '')
+            deal_data = {'is_deal': True, 'deal_id': item.get('deal_id')}
+            if item.get('deal_type') == 'customer_picks':
+                deal_data['deal_type'] = 'customer_picks'
+                deal_data['selected_items'] = item.get('selected_items', [])
+                deal_data['included_items'] = []
+            else:
+                deal_data['included_items'] = item.get('included_items', [])
+            oi.options_json = json.dumps(deal_data, ensure_ascii=False)
+        else:
+            oi.menu_item_id = item.get('id')
+            oi.item_name_he = item.get('name_he', '')
+            oi.item_name_en = item.get('name_en', '')
+            oi.quantity = int(item.get('qty', 1))
+            oi.unit_price = float(item.get('price', 0))
+            oi.total_price = oi.quantity * oi.unit_price
+            oi.special_instructions = item.get('notes', '')
+            if item.get('options'):
+                oi.options_json = json.dumps(item['options'], ensure_ascii=False)
+        db.session.add(oi)
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',
+        'order_id': order.id,
+        'order_number': order.order_number,
     })
 
 
@@ -2896,6 +3146,7 @@ def _notify_sse_status_change(order, old_status, new_status):
         'new_status': new_status,
         'customer_name': order.customer_name or '',
         'total_amount': order.total_amount or 0,
+        'source': getattr(order, 'source', 'online') or 'online',
         'updated_at': datetime.utcnow().isoformat() + 'Z',
     })
 

@@ -1,0 +1,1025 @@
+{% extends "ops/base.html" %}
+{% block header_title %}הזמנה חדשה — {{ 'משלוח' if order_type == 'delivery' else 'איסוף עצמי' }}{% endblock %}
+{% block title %}הזמנה חדשה{% endblock %}
+
+{% block head %}
+<style>
+.mo-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+}
+.mo-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    flex-shrink: 0;
+}
+.mo-back-btn {
+    background: none;
+    border: none;
+    color: var(--ops-accent);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+}
+.mo-top-title {
+    font-size: 16px;
+    font-weight: 800;
+    flex: 1;
+}
+.mo-type-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    color: #fff;
+}
+.mo-type-badge.delivery { background: #1976d2; }
+.mo-type-badge.takeaway { background: #388e3c; }
+.mo-search-bar {
+    padding: 8px 16px;
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    flex-shrink: 0;
+}
+.mo-search-input {
+    width: 100%;
+    background: var(--ops-bg);
+    border: 1px solid var(--ops-border);
+    color: var(--ops-text);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+.mo-search-input::placeholder { color: var(--ops-text-dim); }
+.mo-cat-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 8px;
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+}
+.mo-cat-tab {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ops-text-dim);
+    white-space: nowrap;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    text-align: center;
+    min-width: 60px;
+}
+.mo-cat-tab.active {
+    color: var(--ops-accent);
+    border-bottom-color: var(--ops-accent);
+}
+.mo-cat-tab.deals-tab {
+    color: #f59e0b;
+}
+.mo-cat-tab.deals-tab.active {
+    color: #f59e0b;
+    border-bottom-color: #f59e0b;
+}
+.mo-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+.mo-menu-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+}
+.mo-item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+}
+.mo-item-card {
+    background: var(--ops-card, #1e293b);
+    border: 1px solid var(--ops-border);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: right;
+    position: relative;
+}
+.mo-item-card:active { transform: scale(0.97); }
+.mo-item-card.in-cart {
+    border-color: var(--ops-accent);
+    box-shadow: 0 0 0 1px var(--ops-accent);
+}
+.mo-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+.mo-item-price {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ops-accent);
+}
+.mo-item-desc {
+    font-size: 11px;
+    color: var(--ops-text-dim);
+    margin-top: 2px;
+    line-height: 1.2;
+    max-height: 28px;
+    overflow: hidden;
+}
+.mo-item-badge {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    background: var(--ops-accent);
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mo-deal-card {
+    background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+    border: 1px solid #b45309;
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: right;
+    position: relative;
+}
+.mo-deal-card:active { transform: scale(0.97); }
+.mo-deal-card .mo-deal-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fef3c7;
+    margin-bottom: 4px;
+}
+.mo-deal-card .mo-deal-desc {
+    font-size: 12px;
+    color: #fcd34d;
+    margin-bottom: 6px;
+}
+.mo-deal-card .mo-deal-prices {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+.mo-deal-card .mo-deal-price {
+    font-size: 16px;
+    font-weight: 900;
+    color: #fef3c7;
+}
+.mo-deal-card .mo-deal-orig {
+    font-size: 13px;
+    color: #d97706;
+    text-decoration: line-through;
+}
+.mo-summary-panel {
+    width: 280px;
+    background: var(--ops-surface);
+    border-right: 1px solid var(--ops-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.mo-summary-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ops-border);
+    font-size: 15px;
+    font-weight: 800;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mo-cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+.mo-cart-empty {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--ops-text-dim);
+    font-size: 13px;
+}
+.mo-cart-item {
+    background: var(--ops-bg);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--ops-border);
+}
+.mo-cart-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+}
+.mo-cart-item-name {
+    font-size: 13px;
+    font-weight: 700;
+    flex: 1;
+}
+.mo-cart-item-price {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ops-accent);
+    margin-right: 8px;
+}
+.mo-cart-item-opts {
+    font-size: 11px;
+    color: var(--ops-text-dim);
+    margin-bottom: 4px;
+}
+.mo-cart-qty-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+.mo-qty-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--ops-border);
+    background: var(--ops-surface);
+    color: var(--ops-text);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mo-qty-btn.remove { border-color: #ef4444; color: #ef4444; }
+.mo-qty-val {
+    font-size: 15px;
+    font-weight: 800;
+    min-width: 24px;
+    text-align: center;
+}
+.mo-cart-note-btn {
+    font-size: 11px;
+    color: var(--ops-accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-right: auto;
+}
+.mo-summary-footer {
+    padding: 12px 14px;
+    border-top: 1px solid var(--ops-border);
+    flex-shrink: 0;
+}
+.mo-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.mo-total-row.grand {
+    font-size: 18px;
+    font-weight: 900;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--ops-border);
+}
+.mo-checkout-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--ops-accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: opacity 0.15s;
+}
+.mo-checkout-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.mo-checkout-btn:active:not(:disabled) { opacity: 0.8; }
+
+.mo-modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+.mo-modal-backdrop.show { display: flex; }
+.mo-modal {
+    background: var(--ops-surface, #1e293b);
+    border-radius: 16px;
+    width: 92%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.mo-modal-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 16px;
+}
+.mo-form-group {
+    margin-bottom: 14px;
+}
+.mo-form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--ops-text-dim);
+}
+.mo-form-input {
+    width: 100%;
+    background: var(--ops-bg);
+    border: 1px solid var(--ops-border);
+    color: var(--ops-text);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+.mo-form-input::placeholder { color: #64748b; }
+.mo-payment-options {
+    display: flex;
+    gap: 10px;
+}
+.mo-payment-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    border: 2px solid var(--ops-border);
+    background: var(--ops-bg);
+    color: var(--ops-text);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+}
+.mo-payment-btn.selected {
+    border-color: var(--ops-accent);
+    background: var(--ops-accent-soft, rgba(59,130,246,0.1));
+    color: var(--ops-accent);
+}
+.mo-payment-btn i { display: block; font-size: 24px; margin-bottom: 4px; }
+.mo-option-group {
+    margin-bottom: 14px;
+    background: var(--ops-bg);
+    border-radius: 10px;
+    padding: 10px;
+}
+.mo-og-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--ops-text-dim);
+}
+.mo-og-required {
+    color: #ef4444;
+    font-size: 11px;
+}
+.mo-og-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s;
+    margin-bottom: 2px;
+}
+.mo-og-choice:active { background: var(--ops-surface); }
+.mo-og-choice.selected { background: var(--ops-accent-soft, rgba(59,130,246,0.1)); }
+.mo-og-choice-name { flex: 1; font-size: 14px; }
+.mo-og-choice-price { font-size: 12px; color: var(--ops-accent); font-weight: 700; }
+.mo-og-check {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--ops-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.mo-og-check.multi { border-radius: 4px; }
+.mo-og-choice.selected .mo-og-check {
+    border-color: var(--ops-accent);
+    background: var(--ops-accent);
+    color: #fff;
+}
+.mo-pick-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid var(--ops-border);
+    margin-bottom: 6px;
+}
+.mo-pick-item.selected {
+    border-color: var(--ops-accent);
+    background: var(--ops-accent-soft, rgba(59,130,246,0.1));
+}
+.mo-pick-item-name { flex: 1; font-size: 14px; font-weight: 600; }
+.mo-pick-counter { display: flex; align-items: center; gap: 4px; }
+
+@media (max-width: 700px) {
+    .mo-body { flex-direction: column; }
+    .mo-summary-panel {
+        width: 100%;
+        border-right: none;
+        border-top: 1px solid var(--ops-border);
+        max-height: 40vh;
+    }
+    .mo-item-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mo-wrapper">
+    <div class="mo-top-bar">
+        <button class="mo-back-btn" onclick="location.href='{{ url_for('ops.orders') }}'"><i class="fas fa-arrow-right"></i></button>
+        <div class="mo-top-title">הזמנה חדשה</div>
+        <span class="mo-type-badge {{ order_type }}">
+            <i class="fas fa-{{ 'motorcycle' if order_type == 'delivery' else 'shopping-bag' }}"></i>
+            {{ 'משלוח' if order_type == 'delivery' else 'איסוף עצמי' }}
+        </span>
+    </div>
+    <div class="mo-search-bar">
+        <input type="text" class="mo-search-input" id="moSearch" placeholder="חיפוש פריט..." oninput="filterItems()">
+    </div>
+    <div class="mo-cat-tabs" id="moCatTabs"></div>
+    <div class="mo-body">
+        <div class="mo-menu-panel" id="moMenuPanel"></div>
+        <div class="mo-summary-panel">
+            <div class="mo-summary-header">
+                <span><i class="fas fa-shopping-cart"></i> סל הזמנה</span>
+                <span id="moCartCount">0</span>
+            </div>
+            <div class="mo-cart-items" id="moCartItems">
+                <div class="mo-cart-empty"><i class="fas fa-basket-shopping" style="font-size:32px;opacity:0.3;display:block;margin-bottom:8px;"></i>הסל ריק</div>
+            </div>
+            <div class="mo-summary-footer">
+                <div class="mo-total-row"><span>סה"כ פריטים</span><span id="moSubtotal">₪0</span></div>
+                {% if order_type == 'delivery' %}
+                <div class="mo-total-row"><span>דמי משלוח</span><span id="moDeliveryFee">₪0</span></div>
+                {% endif %}
+                <div class="mo-total-row grand"><span>סה"כ</span><span id="moTotal">₪0</span></div>
+                <button class="mo-checkout-btn" id="moCheckoutBtn" onclick="openCheckout()" disabled>
+                    <i class="fas fa-cash-register"></i> המשך לתשלום
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mo-modal-backdrop" id="itemModal" onclick="if(event.target===this)closeItemModal()">
+    <div class="mo-modal">
+        <div class="mo-modal-title" id="itemModalTitle"></div>
+        <div id="itemModalBody"></div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+            <button class="mo-checkout-btn" style="margin-top:0;" id="itemModalAdd" onclick="addItemFromModal()"><i class="fas fa-plus"></i> הוסף להזמנה</button>
+        </div>
+    </div>
+</div>
+
+<div class="mo-modal-backdrop" id="dealPickModal" onclick="if(event.target===this)closeDealPickModal()">
+    <div class="mo-modal">
+        <div class="mo-modal-title" id="dealPickTitle"></div>
+        <div id="dealPickBody"></div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+            <button class="mo-checkout-btn" style="margin-top:0;" id="dealPickAdd" onclick="addDealFromPick()"><i class="fas fa-plus"></i> הוסף מבצע</button>
+        </div>
+    </div>
+</div>
+
+<div class="mo-modal-backdrop" id="checkoutModal" onclick="if(event.target===this)closeCheckout()">
+    <div class="mo-modal" style="max-width:450px;">
+        <div class="mo-modal-title"><i class="fas fa-cash-register"></i> פרטי הזמנה</div>
+        <div class="mo-form-group">
+            <label class="mo-form-label">שם לקוח *</label>
+            <input type="text" class="mo-form-input" id="coName" placeholder="שם מלא" required>
+        </div>
+        <div class="mo-form-group">
+            <label class="mo-form-label">טלפון *</label>
+            <input type="tel" class="mo-form-input" id="coPhone" placeholder="050-0000000" dir="ltr" required>
+        </div>
+        {% if order_type == 'delivery' %}
+        <div class="mo-form-group">
+            <label class="mo-form-label">כתובת משלוח *</label>
+            <input type="text" class="mo-form-input" id="coAddress" placeholder="רחוב, מספר, עיר">
+        </div>
+        <div class="mo-form-group">
+            <label class="mo-form-label">עיר</label>
+            <input type="text" class="mo-form-input" id="coCity" placeholder="עיר">
+        </div>
+        <div class="mo-form-group">
+            <label class="mo-form-label">הערות למשלוח</label>
+            <input type="text" class="mo-form-input" id="coDeliveryNotes" placeholder="קומה, דירה, הוראות...">
+        </div>
+        {% endif %}
+        <div class="mo-form-group">
+            <label class="mo-form-label">הערות להזמנה</label>
+            <input type="text" class="mo-form-input" id="coNotes" placeholder="הערות מיוחדות...">
+        </div>
+        <div class="mo-form-group">
+            <label class="mo-form-label">אמצעי תשלום</label>
+            <div class="mo-payment-options">
+                <button class="mo-payment-btn selected" data-method="cash" onclick="selectPayment('cash')">
+                    <i class="fas fa-money-bill-wave"></i> מזומן
+                </button>
+                <button class="mo-payment-btn" data-method="card" onclick="selectPayment('card')">
+                    <i class="fas fa-credit-card"></i> כרטיס
+                </button>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+            <button class="mo-checkout-btn" style="margin-top:0;background:#22c55e;" id="coSubmitBtn" onclick="submitOrder()">
+                <i class="fas fa-check-circle"></i> שלח הזמנה
+            </button>
+            <button class="mo-checkout-btn" style="margin-top:0;background:#64748b;flex:0.5;" onclick="closeCheckout()">ביטול</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var ORDER_TYPE = '{{ order_type }}';
+var MENU_DATA = {{ menu_data|tojson }};
+var DEALS_DATA = {{ deals_data|tojson }};
+var cart = [];
+var currentItemData = null;
+var currentDealData = null;
+var dealPickSelections = {};
+var selectedPayment = 'cash';
+var activeCat = null;
+
+function init() {
+    renderCatTabs();
+    if (MENU_DATA.length > 0) {
+        activeCat = MENU_DATA[0].id;
+    }
+    renderMenu();
+}
+
+function renderCatTabs() {
+    var h = '';
+    if (DEALS_DATA.length > 0) {
+        h += '<div class="mo-cat-tab deals-tab" data-cat="deals" onclick="switchCat(\'deals\')"><i class="fas fa-tags"></i> מבצעים</div>';
+    }
+    MENU_DATA.forEach(function(cat) {
+        h += '<div class="mo-cat-tab" data-cat="'+cat.id+'" onclick="switchCat('+cat.id+')">'+cat.name_he+'</div>';
+    });
+    document.getElementById('moCatTabs').innerHTML = h;
+    updateCatTabActive();
+}
+
+function switchCat(catId) {
+    activeCat = catId;
+    updateCatTabActive();
+    renderMenu();
+}
+
+function updateCatTabActive() {
+    document.querySelectorAll('.mo-cat-tab').forEach(function(t) {
+        t.classList.toggle('active', String(t.dataset.cat) === String(activeCat));
+    });
+}
+
+function filterItems() {
+    renderMenu();
+}
+
+function renderMenu() {
+    var search = (document.getElementById('moSearch').value || '').trim().toLowerCase();
+    var panel = document.getElementById('moMenuPanel');
+    var h = '';
+
+    if (activeCat === 'deals') {
+        h += '<div class="mo-item-grid">';
+        DEALS_DATA.forEach(function(deal) {
+            if (search && deal.name_he.toLowerCase().indexOf(search) === -1) return;
+            var origHtml = deal.original_price ? '<span class="mo-deal-orig">₪'+deal.original_price.toFixed(0)+'</span>' : '';
+            h += '<div class="mo-deal-card" onclick="openDeal('+deal.id+')">';
+            h += '<div class="mo-deal-name">'+deal.name_he+'</div>';
+            if (deal.description_he) h += '<div class="mo-deal-desc">'+deal.description_he+'</div>';
+            h += '<div class="mo-deal-prices"><span class="mo-deal-price">₪'+deal.deal_price.toFixed(0)+'</span>'+origHtml+'</div>';
+            h += '</div>';
+        });
+        h += '</div>';
+        panel.innerHTML = h;
+        return;
+    }
+
+    var cats = MENU_DATA.filter(function(c) { return !activeCat || c.id === activeCat; });
+    cats.forEach(function(cat) {
+        var items = cat.items;
+        if (search) {
+            items = items.filter(function(it) {
+                return it.name_he.toLowerCase().indexOf(search) !== -1 ||
+                       (it.name_en && it.name_en.toLowerCase().indexOf(search) !== -1);
+            });
+        }
+        if (items.length === 0) return;
+        if (!activeCat || cats.length > 1) {
+            h += '<div style="font-size:14px;font-weight:800;margin:12px 0 8px;color:var(--ops-accent);">'+cat.name_he+'</div>';
+        }
+        h += '<div class="mo-item-grid">';
+        items.forEach(function(item) {
+            var inCartQty = getCartQty(item.id);
+            var badgeHtml = inCartQty > 0 ? '<div class="mo-item-badge">'+inCartQty+'</div>' : '';
+            h += '<div class="mo-item-card'+(inCartQty > 0 ? ' in-cart' : '')+'" onclick="openItem('+item.id+')">';
+            h += badgeHtml;
+            h += '<div class="mo-item-name">'+item.name_he+'</div>';
+            h += '<div class="mo-item-price">₪'+item.price.toFixed(0)+'</div>';
+            if (item.description_he) h += '<div class="mo-item-desc">'+item.description_he+'</div>';
+            h += '</div>';
+        });
+        h += '</div>';
+    });
+    if (!h) h = '<div style="text-align:center;padding:40px;color:var(--ops-text-dim);">לא נמצאו פריטים</div>';
+    panel.innerHTML = h;
+}
+
+function getCartQty(itemId) {
+    var total = 0;
+    cart.forEach(function(c) { if (c.id === itemId && !c.is_deal) total += c.qty; });
+    return total;
+}
+
+function findMenuItem(itemId) {
+    for (var i=0; i<MENU_DATA.length; i++) {
+        for (var j=0; j<MENU_DATA[i].items.length; j++) {
+            if (MENU_DATA[i].items[j].id === itemId) return MENU_DATA[i].items[j];
+        }
+    }
+    return null;
+}
+
+function openItem(itemId) {
+    var item = findMenuItem(itemId);
+    if (!item) return;
+    currentItemData = {id: item.id, name_he: item.name_he, price: item.price, options: [], notes: ''};
+    document.getElementById('itemModalTitle').textContent = item.name_he + ' — ₪' + item.price.toFixed(0);
+    var bodyH = '';
+    if (item.option_groups && item.option_groups.length > 0) {
+        item.option_groups.forEach(function(og, idx) {
+            var reqText = og.is_required ? '<span class="mo-og-required"> (חובה)</span>' : '';
+            bodyH += '<div class="mo-option-group" data-og-idx="'+idx+'">';
+            bodyH += '<div class="mo-og-title">'+og.name_he+reqText+'</div>';
+            og.choices.forEach(function(ch) {
+                var priceText = ch.price_modifier > 0 ? '+₪'+ch.price_modifier.toFixed(0) : '';
+                var isMulti = og.selection_type === 'multiple';
+                bodyH += '<div class="mo-og-choice'+(ch.is_default?' selected':'')+'" data-og="'+idx+'" data-cid="'+ch.id+'" onclick="toggleChoice(this, '+idx+', '+ch.id+')">';
+                bodyH += '<div class="mo-og-check'+(isMulti?' multi':'')+'"><i class="fas fa-check" style="font-size:11px;"></i></div>';
+                bodyH += '<span class="mo-og-choice-name">'+ch.name_he+'</span>';
+                if (priceText) bodyH += '<span class="mo-og-choice-price">'+priceText+'</span>';
+                bodyH += '</div>';
+            });
+            bodyH += '</div>';
+        });
+    }
+    bodyH += '<div class="mo-form-group" style="margin-top:10px;"><label class="mo-form-label">הערה לפריט</label>';
+    bodyH += '<input type="text" class="mo-form-input" id="itemNoteInput" placeholder="הערה מיוחדת..."></div>';
+    document.getElementById('itemModalBody').innerHTML = bodyH;
+
+    if (item.option_groups) {
+        item.option_groups.forEach(function(og, idx) {
+            og.choices.forEach(function(ch) {
+                if (ch.is_default) {
+                    currentItemData.options.push({choice_id: ch.id, choice_name_he: ch.name_he, price_modifier: ch.price_modifier, is_global: ch.is_global || false});
+                }
+            });
+        });
+    }
+    document.getElementById('itemModal').classList.add('show');
+}
+
+function toggleChoice(el, ogIdx, choiceId) {
+    var item = findMenuItem(currentItemData.id);
+    var og = item.option_groups[ogIdx];
+    var ch = og.choices.find(function(c){return c.id === choiceId;});
+    if (!ch) return;
+
+    if (og.selection_type === 'multiple') {
+        el.classList.toggle('selected');
+    } else {
+        var siblings = el.parentElement.querySelectorAll('.mo-og-choice');
+        siblings.forEach(function(s) { s.classList.remove('selected'); });
+        el.classList.add('selected');
+    }
+
+    currentItemData.options = [];
+    item.option_groups.forEach(function(o, i) {
+        var container = document.querySelector('[data-og-idx="'+i+'"]');
+        if (!container) return;
+        container.querySelectorAll('.mo-og-choice.selected').forEach(function(sel) {
+            var cid = parseInt(sel.dataset.cid);
+            var c = o.choices.find(function(x){return x.id === cid;});
+            if (c) {
+                currentItemData.options.push({choice_id: c.id, choice_name_he: c.name_he, price_modifier: c.price_modifier, is_global: c.is_global || false});
+            }
+        });
+    });
+}
+
+function addItemFromModal() {
+    if (!currentItemData) return;
+    var noteEl = document.getElementById('itemNoteInput');
+    currentItemData.notes = noteEl ? noteEl.value.trim() : '';
+    var optExtra = 0;
+    currentItemData.options.forEach(function(o){ optExtra += (o.price_modifier || 0); });
+    cart.push({
+        id: currentItemData.id,
+        name_he: currentItemData.name_he,
+        price: currentItemData.price + optExtra,
+        base_price: currentItemData.price,
+        qty: 1,
+        options: currentItemData.options.slice(),
+        notes: currentItemData.notes,
+        is_deal: false,
+    });
+    closeItemModal();
+    updateCart();
+}
+
+function closeItemModal() {
+    document.getElementById('itemModal').classList.remove('show');
+    currentItemData = null;
+}
+
+function openDeal(dealId) {
+    var deal = DEALS_DATA.find(function(d){return d.id === dealId;});
+    if (!deal) return;
+    currentDealData = deal;
+
+    if (deal.deal_type === 'customer_picks') {
+        dealPickSelections = {};
+        document.getElementById('dealPickTitle').textContent = deal.name_he + ' — בחר ' + deal.pick_count + ' פריטים';
+        var bh = '<div style="font-size:13px;color:var(--ops-text-dim);margin-bottom:12px;">₪'+deal.deal_price.toFixed(0)+' | בחר '+deal.pick_count+' פריטים</div>';
+        (deal.pick_items || []).forEach(function(pi) {
+            bh += '<div class="mo-pick-item" data-pi="'+pi.item_id+'" onclick="togglePick('+pi.item_id+')">';
+            bh += '<span class="mo-pick-item-name">'+pi.name_he+'</span>';
+            bh += '<div class="mo-pick-counter"><span class="mo-qty-btn" onclick="event.stopPropagation();adjustPick('+pi.item_id+',-1)">−</span>';
+            bh += '<span id="pickQty_'+pi.item_id+'">0</span>';
+            bh += '<span class="mo-qty-btn" onclick="event.stopPropagation();adjustPick('+pi.item_id+',1)">+</span></div>';
+            bh += '</div>';
+        });
+        bh += '<div style="margin-top:10px;text-align:center;color:var(--ops-text-dim);font-size:13px;">נבחרו: <strong id="pickTotal">0</strong> / '+deal.pick_count+'</div>';
+        document.getElementById('dealPickBody').innerHTML = bh;
+        document.getElementById('dealPickModal').classList.add('show');
+    } else {
+        cart.push({
+            id: 'deal_' + deal.id,
+            name_he: deal.name_he,
+            price: deal.deal_price,
+            qty: 1,
+            is_deal: true,
+            deal_id: deal.id,
+            deal_type: deal.deal_type,
+            included_items: deal.included_items || [],
+            notes: '',
+        });
+        updateCart();
+        showToast('מבצע נוסף: ' + deal.name_he);
+    }
+}
+
+function togglePick(itemId) {
+    if (!dealPickSelections[itemId]) {
+        adjustPick(itemId, 1);
+    }
+}
+
+function adjustPick(itemId, delta) {
+    var cur = dealPickSelections[itemId] || 0;
+    var newVal = Math.max(0, cur + delta);
+    var total = getTotalPicked() - cur + newVal;
+    if (total > currentDealData.pick_count) return;
+    dealPickSelections[itemId] = newVal;
+    var el = document.getElementById('pickQty_' + itemId);
+    if (el) el.textContent = newVal;
+    var item = document.querySelector('[data-pi="'+itemId+'"]');
+    if (item) item.classList.toggle('selected', newVal > 0);
+    var totalEl = document.getElementById('pickTotal');
+    if (totalEl) totalEl.textContent = getTotalPicked();
+}
+
+function getTotalPicked() {
+    var t = 0;
+    for (var k in dealPickSelections) t += dealPickSelections[k];
+    return t;
+}
+
+function addDealFromPick() {
+    if (!currentDealData) return;
+    if (getTotalPicked() !== currentDealData.pick_count) {
+        showToast('נא לבחור ' + currentDealData.pick_count + ' פריטים', true);
+        return;
+    }
+    var selected = [];
+    for (var k in dealPickSelections) {
+        if (dealPickSelections[k] > 0) {
+            var pi = (currentDealData.pick_items || []).find(function(p){return p.item_id === parseInt(k);});
+            selected.push({item_id: parseInt(k), qty: dealPickSelections[k], name_he: pi ? pi.name_he : ''});
+        }
+    }
+    cart.push({
+        id: 'deal_' + currentDealData.id,
+        name_he: currentDealData.name_he,
+        price: currentDealData.deal_price,
+        qty: 1,
+        is_deal: true,
+        deal_id: currentDealData.id,
+        deal_type: 'customer_picks',
+        selected_items: selected,
+        notes: '',
+    });
+    closeDealPickModal();
+    updateCart();
+    showToast('מבצע נוסף: ' + currentDealData.name_he);
+}
+
+function closeDealPickModal() {
+    document.getElementById('dealPickModal').classList.remove('show');
+    currentDealData = null;
+}
+
+function updateCart() {
+    var container = document.getElementById('moCartItems');
+    var countEl = document.getElementById('moCartCount');
+    var subtotalEl = document.getElementById('moSubtotal');
+    var totalEl = document.getElementById('moTotal');
+    var deliveryFeeEl = document.getElementById('moDeliveryFee');
+    var checkBtn = document.getElementById('moCheckoutBtn');
+
+    if (cart.length === 0) {
+        container.innerHTML = '<div class="mo-cart-empty"><i class="fas fa-basket-shopping" style="font-size:32px;opacity:0.3;display:block;margin-bottom:8px;"></i>הסל ריק</div>';
+        countEl.textContent = '0';
+        subtotalEl.textContent = '₪0';
+        totalEl.textContent = '₪0';
+        if (deliveryFeeEl) deliveryFeeEl.textContent = '₪0';
+        checkBtn.disabled = true;
+        renderMenu();
+        return;
+    }
+
+    var h = '';
+    var subtotal = 0;
+    cart.forEach(function(item, idx) {
+        var lineTotal = item.price * item.qty;
+        subtotal += lineTotal;
+        var optsHtml = '';
+        if (item.options && item.options.length) {
+            optsHtml = '<div class="mo-cart-item-opts">';
+            item.options.forEach(function(o) { optsHtml += '• ' + o.choice_name_he + ' '; });
+            optsHtml += '</div>';
+        }
+        if (item.selected_items && item.selected_items.length) {
+            optsHtml = '<div class="mo-cart-item-opts">';
+            item.selected_items.forEach(function(s) { optsHtml += '• ' + s.name_he + (s.qty > 1 ? ' ×' + s.qty : '') + ' '; });
+            optsHtml += '</div>';
+        }
+        var noteHtml = item.notes ? '<div class="mo-cart-item-opts" style="color:#f59e0b;">📝 '+item.notes+'</div>' : '';
+        h += '<div class="mo-cart-item">';
+        h += '<div class="mo-cart-item-top">';
+        h += '<div class="mo-cart-item-name">'+(item.is_deal?'🏷 ':'')+item.name_he+'</div>';
+        h += '<div class="mo-cart-item-price">₪'+lineTotal.toFixed(0)+'</div>';
+        h += '</div>';
+        h += optsHtml + noteHtml;
+        h += '<div class="mo-cart-qty-row">';
+        h += '<button class="mo-qty-btn remove" onclick="changeQty('+idx+',-1)">−</button>';
+        h += '<span class="mo-qty-val">'+item.qty+'</span>';
+        h += '<button class="mo-qty-btn" onclick="changeQty('+idx+',1)">+</button>';
+        h += '<button class="mo-cart-note-btn" onclick="editNote('+idx+')"><i class="fas fa-pen"></i> הערה</button>';
+        h += '</div></div>';
+    });
+    container.innerHTML = h;
+    var totalItems = cart.reduce(function(s,c){return s+c.qty;},0);
+    countEl.textContent = totalItems;
+    subtotalEl.textContent = '₪' + subtotal.toFixed(0);
+    var deliveryFee = 0;
+    totalEl.textContent = '₪' + (subtotal + deliveryFee).toFixed(0);
+    if (deliveryFeeEl) deliveryFeeEl.textContent = '₪' + deliveryFee.toFixed(0);
+    checkBtn.disabled = false;
+    renderMenu();
+}
+
+function changeQty(idx, delta) {
+    if (!cart[idx]) return;
+    cart[idx].qty += delta;
+    if (cart[idx].qty <= 0) {
+        cart.splice(idx, 1);
+    }
+    updateCart();
+}
+
+function editNote(idx) {
+    var note = prompt('הערה לפריט:', cart[idx].notes || '');
+    if (note !== null) {
+        cart[idx].notes = note.trim();
+        updateCart();
+    }
+}
+
+function selectPayment(method) {
+    selectedPayment = method;
+    document.querySelectorAll('.mo-payment-btn').forEach(function(b) {
+        b.classList.toggle('selected', b.dataset.method === method);
+    });
+}
+
+function openCheckout() {
+    if (cart.length === 0) return;
+    document.getElementById('checkoutModal').classList.add('show');
+}
+
+function closeCheckout() {
+    document.getElementById('checkoutModal').classList.remove('show');
+}
+
+function submitOrder() {
+    var name = document.getElementById('coName').value.trim();
+    var phone = document.getElementById('coPhone').value.trim();
+    if (!name || !phone) {
+        showToast('נא למלא שם וטלפון', true);
+        return;
+    }
+    var payload = {
+        order_type: ORDER_TYPE,
+        customer_name: name,
+        customer_phone: phone,
+        customer_notes: document.getElementById('coNotes').value.trim(),
+        payment_method: selectedPayment,
+        items: cart,
+    };
+    if (ORDER_TYPE === 'delivery') {
+        payload.delivery_address = (document.getElementById('coAddress') || {}).value || '';
+        payload.delivery_city = (document.getElementById('coCity') || {}).value || '';
+        payload.delivery_notes = (document.getElementById('coDeliveryNotes') || {}).value || '';
+    }
+    var btn = document.getElementById('coSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח...';
+
+    fetch('{{ url_for("ops.create_manual_order") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            showToast(d.message || 'הזמנה נוצרה בהצלחה!');
+            setTimeout(function() { location.href = '{{ url_for("ops.orders") }}'; }, 800);
+        } else {
+            showToast(d.error || 'שגיאה ביצירת הזמנה', true);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> שלח הזמנה';
+        }
+    })
+    .catch(function() {
+        showToast('שגיאת תקשורת', true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> שלח הזמנה';
+    });
+}
+
+init();
+</script>
+{% endblock %}

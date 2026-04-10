@@ -2593,7 +2593,7 @@ class FoodOrder(db.Model):
     bon_print_error = db.Column(db.Text, nullable=True)
     bon_print_attempts = db.Column(db.Integer, default=0)
     source = db.Column(db.String(20), default='online')
-    created_by_name = db.Column(db.String(100), nullable=True)
+    created_by_name = db.Column(db.String(120), nullable=True)
     items = db.relationship('FoodOrderItem', backref='food_order', lazy=True, cascade='all, delete-orphan')
 
     def set_order_number(self):

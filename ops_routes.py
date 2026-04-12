@@ -1146,9 +1146,10 @@ def update_order_status(order_id):
     old_status = order.status
     order.status = new_status
     now = datetime.utcnow()
-    if new_status == 'confirmed' and not order.confirmed_at:
-        order.confirmed_at = now
-    elif new_status == 'preparing':
+    if new_status == 'confirmed':
+        new_status = 'preparing'
+        order.status = new_status
+    if new_status == 'preparing':
         order.preparing_at = now
         if not order.confirmed_at:
             order.confirmed_at = now
@@ -1607,8 +1608,9 @@ def create_manual_order():
     order.subtotal = verified_subtotal
     order.delivery_fee = delivery_fee
     order.total_amount = total_amount
-    order.status = 'confirmed'
+    order.status = 'preparing'
     order.confirmed_at = datetime.utcnow()
+    order.preparing_at = datetime.utcnow()
     order.payment_status = 'cash' if payment_method == 'cash' else 'pending'
     order.source = 'ops'
     order.items_json = json.dumps(valid_cart, ensure_ascii=False)

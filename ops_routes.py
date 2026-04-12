@@ -2331,6 +2331,57 @@ def _build_station_bon(p, o, station_name, station_items):
     p.cut()
 
 
+def _get_printer_routing(branch_id):
+    printers = Printer.query.filter_by(branch_id=branch_id, is_active=True).order_by(Printer.display_order).all()
+    station_map = {}
+    default_printer = None
+    for p in printers:
+        pd = p.to_dict()
+        if p.is_default:
+            default_printer = pd
+        for st in p.stations:
+            station_map[st.station_name] = pd
+    return default_printer, station_map, printers
+
+
+def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, station_bons):
+    default_printer, station_map, printers = _get_printer_routing(order.branch_id or 0)
+    fallback = default_printer or (printers[0].to_dict() if printers else None)
+
+    jobs = []
+
+    for _ in range(checker_copies):
+        jobs.append({
+            'bon_type': 'checker',
+            'printer': fallback,
+            'order_id': order.id,
+            'order_number': order.order_number,
+            'items': items,
+        })
+
+    for _ in range(payment_copies):
+        jobs.append({
+            'bon_type': 'payment',
+            'printer': fallback,
+            'order_id': order.id,
+            'order_number': order.order_number,
+        })
+
+    if station_bons and by_station:
+        for st_name, st_items in by_station.items():
+            target = station_map.get(st_name, fallback)
+            jobs.append({
+                'bon_type': 'station',
+                'station_name': st_name,
+                'printer': target,
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'items': st_items,
+            })
+
+    return jobs
+
+
 def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons=True, persist_options=True):
     if persist_options and not order.bon_print_options:
         order.bon_print_options = json.dumps({
@@ -2361,6 +2412,8 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
             by_station[st] = []
         by_station[st].append(item)
 
+    print_jobs = _build_print_jobs(order, items, by_station, checker_copies, payment_copies, station_bons)
+
     _notify_sse_order_event({
         'type': 'print_order',
         'id': order.id,
@@ -2386,6 +2439,7 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
         'checker_copies': checker_copies,
         'payment_copies': payment_copies,
         'station_bons': station_bons,
+        'print_jobs': print_jobs,
     })
 
 
@@ -2470,6 +2524,11 @@ def get_unprinted_orders():
             except Exception:
                 pass
 
+        p_checker = print_options.get('checker_copies', 2)
+        p_payment = print_options.get('payment_copies', 1)
+        p_station = print_options.get('station_bons', True)
+        print_jobs = _build_print_jobs(o, items, by_station, p_checker, p_payment, p_station)
+
         result.append({
             'id': o.id,
             'order_number': o.order_number,
@@ -2492,6 +2551,7 @@ def get_unprinted_orders():
             'items': items,
             'items_by_station': by_station,
             'print_options': print_options,
+            'print_jobs': print_jobs,
         })
 
     return jsonify({'ok': True, 'orders': result})

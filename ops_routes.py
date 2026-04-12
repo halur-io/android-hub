@@ -2627,6 +2627,8 @@ def get_branch_printers(branch_id):
         'station_map': station_map,
         'printers': [p.to_dict() for p in printers],
         'cp862_hebrew_map': cp862_map,
+        'rtl': True,
+        'rtl_note': 'Hebrew text must be reversed (character order) before sending to printer. ESC/POS printers print left-to-right only.',
     })
 
 

@@ -1087,9 +1087,7 @@ function serverPrint(orderId, opts) {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(Object.assign({
-            order_id: orderId,
-            printer_ip: PRINT_SETTINGS.printer_ip || '',
-            printer_port: PRINT_SETTINGS.printer_port || 9100
+            order_id: orderId
         }, opts))
     })
     .then(function(r) { return r.json(); })

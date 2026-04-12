@@ -2394,8 +2394,6 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
 def direct_print():
     data = request.get_json(force=True)
     order_id = data.get('order_id')
-    printer_ip = data.get('printer_ip', '').strip()
-    printer_port = int(data.get('printer_port', 9100))
     checker_copies = int(data.get('checker_copies', 2))
     payment_copies = int(data.get('payment_copies', 1))
     station_bons = data.get('station_bons', True)
@@ -2410,62 +2408,16 @@ def direct_print():
     if effective_branch and order.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
 
-    if printer_ip:
-        p = DirectPrinter(printer_ip, printer_port)
-
-        for _ in range(checker_copies):
-            _build_checker_bon(p, order)
-
-        for _ in range(payment_copies):
-            _build_payment_bon(p, order)
-
-        if station_bons:
-            items = json.loads(order.items_json) if order.items_json else []
-            by_station = {}
-            for item in items:
-                menu_item_id = item.get('menu_item_id') or item.get('item_id')
-                st = 'כללי'
-                if menu_item_id:
-                    mi = MenuItem.query.get(menu_item_id)
-                    if mi:
-                        st = mi.print_station or 'כללי'
-                        if order.branch_id:
-                            bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
-                            if bmi and bmi.print_station:
-                                st = bmi.print_station
-                if st not in by_station:
-                    by_station[st] = []
-                by_station[st].append(item)
-            for st_name, st_items in by_station.items():
-                _build_station_bon(p, order, st_name, st_items)
-
-        success = p.send()
-        if success:
-            order.bon_printed = True
-            order.bon_printed_at = datetime.utcnow()
-            db.session.commit()
-            return jsonify({'ok': True, 'message': 'נשלח להדפסה'})
-        else:
-            return jsonify({'ok': False, 'error': 'שגיאת חיבור למדפסת'})
-    else:
-        branch_id = effective_branch or order.branch_id
-        has_online_device = False
-        if branch_id:
-            has_online_device = PrintDevice.query.filter_by(branch_id=branch_id, is_online=True).first() is not None
-        else:
-            has_online_device = PrintDevice.query.filter_by(is_online=True).first() is not None
-        if not has_online_device:
-            return jsonify({'ok': False, 'error': 'אפליקציית ההדפסה לא מחוברת'})
-        order.bon_printed = False
-        order.bon_print_error = None
-        order.bon_print_options = json.dumps({
-            'checker_copies': checker_copies,
-            'payment_copies': payment_copies,
-            'station_bons': station_bons,
-        })
-        db.session.commit()
-        _queue_print_for_app(order, checker_copies, payment_copies, station_bons, persist_options=False)
-        return jsonify({'ok': True, 'message': 'נשלח לאפליקציית ההדפסה'})
+    order.bon_printed = False
+    order.bon_print_error = None
+    order.bon_print_options = json.dumps({
+        'checker_copies': checker_copies,
+        'payment_copies': payment_copies,
+        'station_bons': station_bons,
+    })
+    db.session.commit()
+    _queue_print_for_app(order, checker_copies, payment_copies, station_bons, persist_options=False)
+    return jsonify({'ok': True, 'message': 'נשלח לאפליקציית ההדפסה'})
 
 
 @ops_bp.route('/api/orders/unprinted', methods=['GET'])

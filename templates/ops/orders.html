@@ -860,7 +860,7 @@ if (PRINT_SETTINGS.payment_copies === undefined) PRINT_SETTINGS.payment_copies =
 if (PRINT_SETTINGS.station_bons === undefined) PRINT_SETTINGS.station_bons = true;
 if (PRINT_SETTINGS.printer_ip === undefined) PRINT_SETTINGS.printer_ip = '';
 if (PRINT_SETTINGS.printer_port === undefined) PRINT_SETTINGS.printer_port = 9100;
-if (PRINT_SETTINGS.print_mode === undefined) PRINT_SETTINGS.print_mode = 'browser';
+if (PRINT_SETTINGS.print_mode === undefined) PRINT_SETTINGS.print_mode = 'server';
 function savePrintSettings() {
     localStorage.setItem('ops_print_settings', JSON.stringify(PRINT_SETTINGS));
 }
@@ -1038,13 +1038,13 @@ function serverPrint(orderId, opts) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(Object.assign({
             order_id: orderId,
-            printer_ip: PRINT_SETTINGS.printer_ip,
+            printer_ip: PRINT_SETTINGS.printer_ip || '',
             printer_port: PRINT_SETTINGS.printer_port || 9100
         }, opts))
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {
-        toast.textContent = d.ok ? '✅ הודפס' : '❌ ' + (d.error || 'שגיאה');
+        toast.textContent = d.ok ? '✅ נשלח להדפסה' : '❌ ' + (d.error || 'שגיאה');
         toast.style.background = d.ok ? '#2e7d32' : '#c62828';
         setTimeout(function() { toast.remove(); }, 2500);
     })
@@ -1060,7 +1060,7 @@ function printAll(orderId) {
     var o = cachedOrders[orderId];
     if (!o) return;
 
-    if (PRINT_SETTINGS.print_mode === 'server' && PRINT_SETTINGS.printer_ip) {
+    if (PRINT_SETTINGS.print_mode === 'server') {
         serverPrint(orderId, {
             checker_copies: PRINT_SETTINGS.checker_copies,
             payment_copies: PRINT_SETTINGS.payment_copies,
@@ -1085,7 +1085,7 @@ function printBon(orderId, type, station) {
     var o = cachedOrders[orderId];
     if (!o) return;
 
-    if (PRINT_SETTINGS.print_mode === 'server' && PRINT_SETTINGS.printer_ip) {
+    if (PRINT_SETTINGS.print_mode === 'server') {
         var opts = {checker_copies: 0, payment_copies: 0, station_bons: false};
         if (type === 'checker') opts.checker_copies = 1;
         else if (type === 'payment') opts.payment_copies = 1;

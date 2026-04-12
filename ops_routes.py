@@ -11,7 +11,7 @@ from functools import wraps
 
 from flask import (
     Blueprint, render_template, request, session, redirect,
-    url_for, jsonify, make_response, flash, Response,
+    url_for, jsonify, make_response, flash, Response, g,
 )
 from database import db
 
@@ -33,6 +33,22 @@ ops_bp = Blueprint(
     template_folder='templates/ops',
     url_prefix='/ops',
 )
+
+
+@ops_bp.after_request
+def _restore_device_cookie_if_needed(response):
+    restore_token = getattr(g, '_ops_restore_device_cookie', None)
+    if restore_token:
+        response.set_cookie(
+            'ops_device_token',
+            restore_token,
+            max_age=365 * 24 * 3600,
+            httponly=True,
+            samesite='Lax',
+            secure=_is_secure(),
+        )
+    return response
+
 
 def _settings():
     return SiteSettings.query.first()
@@ -91,6 +107,20 @@ def _verify_print_api_key():
 def _check_device():
     token = request.cookies.get('ops_device_token')
     if not token:
+        backup_device_id = session.get('ops_device_db_id')
+        if backup_device_id:
+            device = EnrolledDevice.query.filter_by(id=backup_device_id, is_active=True).first()
+            if device and device.enrolled_at:
+                import logging
+                logging.debug(f'OPS: restoring device cookie from session backup (device {device.id})')
+                device.last_seen = datetime.utcnow()
+                device.user_agent = request.headers.get('User-Agent', '')[:500]
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                g._ops_restore_device_cookie = device.device_token
+                return device
         return None
     device = EnrolledDevice.query.filter_by(device_token=token, is_active=True).first()
     if device:
@@ -100,6 +130,9 @@ def _check_device():
             db.session.commit()
         except Exception:
             db.session.rollback()
+        if session.get('ops_device_db_id') != device.id:
+            session['ops_device_db_id'] = device.id
+            session.modified = True
     return device
 
 def _get_ops_user():
@@ -271,6 +304,8 @@ def not_enrolled():
             device.pending_request_token = None
             device.last_seen = datetime.utcnow()
             db.session.commit()
+            session['ops_device_db_id'] = device.id
+            session.modified = True
             resp = make_response(redirect(url_for('ops.login')))
             resp.set_cookie('ops_device_token', device.device_token, max_age=365*24*3600, httponly=True, samesite='Lax', secure=_is_secure())
             resp.delete_cookie('ops_pending_request')
@@ -312,6 +347,8 @@ def check_enrollment():
             device.pending_request_token = None
             device.last_seen = datetime.utcnow()
             db.session.commit()
+            session['ops_device_db_id'] = device.id
+            session.modified = True
             resp = make_response(redirect(url_for('ops.login')))
             resp.set_cookie('ops_device_token', device.device_token, max_age=365*24*3600, httponly=True, samesite='Lax', secure=_is_secure())
             resp.delete_cookie('ops_pending_request')
@@ -331,6 +368,9 @@ def enroll_device(code):
     device.last_seen = datetime.utcnow()
     device.user_agent = request.headers.get('User-Agent', '')[:500]
     db.session.commit()
+
+    session['ops_device_db_id'] = device.id
+    session.modified = True
 
     resp = make_response(redirect(url_for('ops.login')))
     resp.set_cookie(
@@ -1147,6 +1187,12 @@ def update_order_status(order_id):
         except Exception as e:
             import logging
             logging.debug(f'SSE status notify: {e}')
+        if new_status == 'confirmed' and old_status != 'confirmed' and not order.bon_printed:
+            try:
+                _queue_print_for_app(order)
+            except Exception as e:
+                import logging
+                logging.debug(f'Auto-print queue for order {order.id}: {e}')
 
     msg = f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}'
     if auto_sms_sent:
@@ -1593,6 +1639,10 @@ def create_manual_order():
                 oi.options_json = json.dumps(item['options'], ensure_ascii=False)
         db.session.add(oi)
     db.session.commit()
+    try:
+        _queue_print_for_app(order)
+    except Exception:
+        pass
     return jsonify({
         'ok': True,
         'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',
@@ -2275,19 +2325,77 @@ def _build_station_bon(p, o, station_name, station_items):
     p.cut()
 
 
+def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons=True, persist_options=True):
+    if persist_options and not order.bon_print_options:
+        order.bon_print_options = json.dumps({
+            'checker_copies': checker_copies,
+            'payment_copies': payment_copies,
+            'station_bons': station_bons,
+        })
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    items = json.loads(order.items_json) if order.items_json else []
+    by_station = {}
+    for item in items:
+        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        st = 'כללי'
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi:
+                st = mi.print_station or 'כללי'
+                if order.branch_id:
+                    bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
+                    if bmi and bmi.print_station:
+                        st = bmi.print_station
+                if mi.print_name:
+                    item['print_name'] = mi.print_name
+        if st not in by_station:
+            by_station[st] = []
+        by_station[st].append(item)
+
+    _notify_sse_order_event({
+        'type': 'print_order',
+        'id': order.id,
+        'order_number': order.order_number,
+        'order_type': order.order_type,
+        'branch_id': order.branch_id,
+        'status': order.status,
+        'customer_name': order.customer_name or '',
+        'customer_phone': order.customer_phone or '',
+        'delivery_address': order.delivery_address or '',
+        'delivery_city': order.delivery_city or '',
+        'delivery_notes': order.delivery_notes or '',
+        'customer_notes': order.customer_notes or '',
+        'subtotal': order.subtotal or 0,
+        'delivery_fee': order.delivery_fee or 0,
+        'discount_amount': order.discount_amount or 0,
+        'total_amount': order.total_amount or 0,
+        'payment_method': order.payment_method or '',
+        'coupon_code': order.coupon_code or '',
+        'created_at': _to_il(order.created_at) if order.created_at else '',
+        'items': items,
+        'items_by_station': by_station,
+        'checker_copies': checker_copies,
+        'payment_copies': payment_copies,
+        'station_bons': station_bons,
+    })
+
+
 @ops_bp.route('/api/print', methods=['POST'])
 @require_ops_module('orders')
 def direct_print():
     data = request.get_json(force=True)
     order_id = data.get('order_id')
-    printer_ip = data.get('printer_ip')
+    printer_ip = data.get('printer_ip', '').strip()
     printer_port = int(data.get('printer_port', 9100))
     checker_copies = int(data.get('checker_copies', 2))
     payment_copies = int(data.get('payment_copies', 1))
     station_bons = data.get('station_bons', True)
 
-    if not order_id or not printer_ip:
-        return jsonify({'ok': False, 'error': 'חסר מזהה הזמנה או כתובת מדפסת'})
+    if not order_id:
+        return jsonify({'ok': False, 'error': 'חסר מזהה הזמנה'})
 
     order = FoodOrder.query.get(order_id)
     if not order:
@@ -2296,42 +2404,62 @@ def direct_print():
     if effective_branch and order.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
 
-    p = DirectPrinter(printer_ip, printer_port)
+    if printer_ip:
+        p = DirectPrinter(printer_ip, printer_port)
 
-    for _ in range(checker_copies):
-        _build_checker_bon(p, order)
+        for _ in range(checker_copies):
+            _build_checker_bon(p, order)
 
-    for _ in range(payment_copies):
-        _build_payment_bon(p, order)
+        for _ in range(payment_copies):
+            _build_payment_bon(p, order)
 
-    if station_bons:
-        items = json.loads(order.items_json) if order.items_json else []
-        by_station = {}
-        for item in items:
-            menu_item_id = item.get('menu_item_id') or item.get('item_id')
-            st = 'כללי'
-            if menu_item_id:
-                mi = MenuItem.query.get(menu_item_id)
-                if mi:
-                    st = mi.print_station or 'כללי'
-                    if order.branch_id:
-                        bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
-                        if bmi and bmi.print_station:
-                            st = bmi.print_station
-            if st not in by_station:
-                by_station[st] = []
-            by_station[st].append(item)
-        for st_name, st_items in by_station.items():
-            _build_station_bon(p, order, st_name, st_items)
+        if station_bons:
+            items = json.loads(order.items_json) if order.items_json else []
+            by_station = {}
+            for item in items:
+                menu_item_id = item.get('menu_item_id') or item.get('item_id')
+                st = 'כללי'
+                if menu_item_id:
+                    mi = MenuItem.query.get(menu_item_id)
+                    if mi:
+                        st = mi.print_station or 'כללי'
+                        if order.branch_id:
+                            bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
+                            if bmi and bmi.print_station:
+                                st = bmi.print_station
+                if st not in by_station:
+                    by_station[st] = []
+                by_station[st].append(item)
+            for st_name, st_items in by_station.items():
+                _build_station_bon(p, order, st_name, st_items)
 
-    success = p.send()
-    if success:
-        order.bon_printed = True
-        order.bon_printed_at = datetime.utcnow()
-        db.session.commit()
-        return jsonify({'ok': True, 'message': 'נשלח להדפסה'})
+        success = p.send()
+        if success:
+            order.bon_printed = True
+            order.bon_printed_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({'ok': True, 'message': 'נשלח להדפסה'})
+        else:
+            return jsonify({'ok': False, 'error': 'שגיאת חיבור למדפסת'})
     else:
-        return jsonify({'ok': False, 'error': 'שגיאת חיבור למדפסת'})
+        branch_id = effective_branch or order.branch_id
+        has_online_device = False
+        if branch_id:
+            has_online_device = PrintDevice.query.filter_by(branch_id=branch_id, is_online=True).first() is not None
+        else:
+            has_online_device = PrintDevice.query.filter_by(is_online=True).first() is not None
+        if not has_online_device:
+            return jsonify({'ok': False, 'error': 'אפליקציית ההדפסה לא מחוברת'})
+        order.bon_printed = False
+        order.bon_print_error = None
+        order.bon_print_options = json.dumps({
+            'checker_copies': checker_copies,
+            'payment_copies': payment_copies,
+            'station_bons': station_bons,
+        })
+        db.session.commit()
+        _queue_print_for_app(order, checker_copies, payment_copies, station_bons, persist_options=False)
+        return jsonify({'ok': True, 'message': 'נשלח לאפליקציית ההדפסה'})
 
 
 @ops_bp.route('/api/orders/unprinted', methods=['GET'])
@@ -2377,6 +2505,13 @@ def get_unprinted_orders():
                 by_station[st] = []
             by_station[st].append(item)
 
+        print_options = {}
+        if o.bon_print_options:
+            try:
+                print_options = json.loads(o.bon_print_options)
+            except Exception:
+                pass
+
         result.append({
             'id': o.id,
             'order_number': o.order_number,
@@ -2398,6 +2533,7 @@ def get_unprinted_orders():
             'created_at': _to_il(o.created_at) if o.created_at else '',
             'items': items,
             'items_by_station': by_station,
+            'print_options': print_options,
         })
 
     return jsonify({'ok': True, 'orders': result})

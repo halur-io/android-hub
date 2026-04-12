@@ -1193,7 +1193,7 @@ def update_order_status(order_id):
         except Exception as e:
             import logging
             logging.debug(f'SSE status notify: {e}')
-        if new_status == 'confirmed' and old_status != 'confirmed' and not order.bon_printed:
+        if new_status == 'preparing' and old_status != 'preparing' and not order.bon_printed:
             try:
                 _queue_print_for_app(order)
             except Exception as e:
@@ -2489,7 +2489,7 @@ def get_unprinted_orders():
             branch_id = effective_branch
     query = FoodOrder.query.filter(
         FoodOrder.bon_printed == False,
-        FoodOrder.status.in_(['pending', 'confirmed', 'preparing'])
+        FoodOrder.status.in_(['preparing', 'ready'])
     )
     if branch_id:
         query = query.filter_by(branch_id=branch_id)

@@ -2115,7 +2115,7 @@ class DirectPrinter:
     BOLD_ON = b'\x1bE\x01'
     BOLD_OFF = b'\x1bE\x00'
 
-    def __init__(self, ip, port=9100, encoding='cp1255', codepage_num=32):
+    def __init__(self, ip, port=9100, encoding='cp862', codepage_num=36):
         self.ip = ip
         self.port = port
         self.encoding = encoding
@@ -2610,6 +2610,15 @@ def get_branch_printers(branch_id):
         for st in p.stations:
             station_map[st.station_name] = pd
 
+    cp862_map = {
+        'א': 0x80, 'ב': 0x81, 'ג': 0x82, 'ד': 0x83, 'ה': 0x84,
+        'ו': 0x85, 'ז': 0x86, 'ח': 0x87, 'ט': 0x88, 'י': 0x89,
+        'ך': 0x8A, 'כ': 0x8B, 'ל': 0x8C, 'ם': 0x8D, 'מ': 0x8E,
+        'ן': 0x8F, 'נ': 0x90, 'ס': 0x91, 'ע': 0x92, 'ף': 0x93,
+        'פ': 0x94, 'ץ': 0x95, 'צ': 0x96, 'ק': 0x97, 'ר': 0x98,
+        'ש': 0x99, 'ת': 0x9A,
+    }
+
     return jsonify({
         'ok': True,
         'branch_id': branch_id,
@@ -2617,6 +2626,7 @@ def get_branch_printers(branch_id):
         'default_printer': default_printer,
         'station_map': station_map,
         'printers': [p.to_dict() for p in printers],
+        'cp862_hebrew_map': cp862_map,
     })
 
 
@@ -2629,8 +2639,8 @@ def direct_print_test():
     if not printer_ip:
         return jsonify({'ok': False, 'error': 'חסר כתובת מדפסת'})
 
-    encoding = data.get('encoding', 'cp1255')
-    codepage_num = int(data.get('codepage_num', 32))
+    encoding = data.get('encoding', 'cp862')
+    codepage_num = int(data.get('codepage_num', 36))
     p = DirectPrinter(printer_ip, printer_port, encoding=encoding, codepage_num=codepage_num)
     p.init()
     p.align('center')

@@ -2115,19 +2115,22 @@ class DirectPrinter:
     BOLD_ON = b'\x1bE\x01'
     BOLD_OFF = b'\x1bE\x00'
 
-    def __init__(self, ip, port=9100):
+    def __init__(self, ip, port=9100, encoding='cp862', codepage_num=36):
         self.ip = ip
         self.port = port
+        self.encoding = encoding
+        self.codepage_num = codepage_num
         self.buf = bytearray()
 
     def _add(self, data):
         if isinstance(data, str):
-            self.buf.extend(data.encode('utf-8'))
+            self.buf.extend(data.encode(self.encoding, errors='replace'))
         else:
             self.buf.extend(data)
 
     def init(self):
         self._add(self.INIT)
+        self._add(b'\x1bt' + bytes([self.codepage_num]))
 
     def cut(self):
         self._add(b'\n\n\n')
@@ -2626,7 +2629,9 @@ def direct_print_test():
     if not printer_ip:
         return jsonify({'ok': False, 'error': 'חסר כתובת מדפסת'})
 
-    p = DirectPrinter(printer_ip, printer_port)
+    encoding = data.get('encoding', 'cp862')
+    codepage_num = int(data.get('codepage_num', 36))
+    p = DirectPrinter(printer_ip, printer_port, encoding=encoding, codepage_num=codepage_num)
     p.init()
     p.align('center')
     p.font('double')

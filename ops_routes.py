@@ -1074,21 +1074,27 @@ def orders():
     order_list = query.order_by(FoodOrder.created_at.desc()).limit(100).all()
 
     now = _get_israel_now()
-    today_start_utc = _israel_today_start_utc()
-    today_q = FoodOrder.query.filter(FoodOrder.created_at >= today_start_utc)
+    from sqlalchemy import func, case
+    count_q = db.session.query(
+        func.sum(case((FoodOrder.status.in_(['pending', 'confirmed']), 1), else_=0)).label('new_count'),
+        func.sum(case((FoodOrder.status == 'preparing', 1), else_=0)).label('preparing_count'),
+        func.sum(case((FoodOrder.status == 'ready', 1), else_=0)).label('ready_count'),
+        func.sum(case((FoodOrder.status.in_(['delivered', 'pickedup']), 1), else_=0)).label('done_count'),
+        func.sum(case((FoodOrder.status == 'cancelled', 1), else_=0)).label('cancelled_count'),
+    )
     if effective_branch:
-        today_q = today_q.filter_by(branch_id=effective_branch)
+        count_q = count_q.filter(FoodOrder.branch_id == effective_branch)
     if type_filter == 'delivery':
-        today_q = today_q.filter_by(order_type='delivery')
+        count_q = count_q.filter(FoodOrder.order_type == 'delivery')
     elif type_filter == 'pickup':
-        today_q = today_q.filter_by(order_type='pickup')
-    today_orders = today_q.all()
+        count_q = count_q.filter(FoodOrder.order_type == 'pickup')
+    cr = count_q.one()
     counts = {
-        'new': sum(1 for o in today_orders if o.status in ('pending', 'confirmed')),
-        'preparing': sum(1 for o in today_orders if o.status == 'preparing'),
-        'ready': sum(1 for o in today_orders if o.status == 'ready'),
-        'done': sum(1 for o in today_orders if o.status in ('delivered', 'pickedup')),
-        'cancelled': sum(1 for o in today_orders if o.status == 'cancelled'),
+        'new': cr.new_count or 0,
+        'preparing': cr.preparing_count or 0,
+        'ready': cr.ready_count or 0,
+        'done': cr.done_count or 0,
+        'cancelled': cr.cancelled_count or 0,
     }
     counts['active'] = counts['new'] + counts['preparing'] + counts['ready']
 

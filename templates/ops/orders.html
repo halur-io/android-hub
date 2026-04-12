@@ -131,6 +131,7 @@
 .swipe-action.send-sms { background: #0f9b58; }
 .swipe-action.set-time { background: #f39c12; }
 .swipe-action.cancel-order { background: #e74c3c; }
+.swipe-action.complete-order { background: #0f9b58; }
 .swipe-action i { font-size: 18px; }
 
 .order-row {
@@ -413,6 +414,9 @@
             <div class="swipe-action set-time" onclick="openTimeModal({{ order.id }})"><i class="fas fa-clock"></i><span>זמן</span></div>
         </div>
         <div class="order-swipe-actions left">
+            {% if order.status in ('preparing', 'ready') %}
+            <div class="swipe-action complete-order" onclick="completeOrder({{ order.id }}, '{{ order.order_type }}')"><i class="fas fa-check-circle"></i><span>סגור</span></div>
+            {% endif %}
             <div class="swipe-action cancel-order" onclick="cancelOrder({{ order.id }})"><i class="fas fa-ban"></i><span>בטל</span></div>
             <div class="swipe-action print-bon" onclick="openPrintMenu({{ order.id }})"><i class="fas fa-print"></i><span>הדפס</span></div>
         </div>
@@ -670,11 +674,12 @@ function renderDetail(o) {
         actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#fdecea;color:#c62828;border:none;" onclick="cancelOrder('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-times"></i> בטל</button>';
     } else if (s === 'preparing') {
         actionsHtml += '<button class="ops-btn ops-btn-success ops-btn-sm" style="flex:1;" onclick="setStatus('+o.id+',\'ready\')"><i class="fas fa-bell"></i> מוכנה!</button>';
+        actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#e0e0e0;color:#333;border:none;" onclick="completeOrder('+o.id+',\''+o.order_type+'\');closeModal(\'orderModal\')"><i class="fas fa-check-circle"></i> סגור</button>';
     } else if (s === 'ready') {
         if (o.order_type === 'delivery') {
-            actionsHtml += '<button class="ops-btn ops-btn-sm" style="flex:1;background:#e0e0e0;color:#333;border:none;" onclick="setStatus('+o.id+',\'delivered\')"><i class="fas fa-motorcycle"></i> נמסר</button>';
+            actionsHtml += '<button class="ops-btn ops-btn-sm" style="flex:1;background:#0f9b58;color:#fff;border:none;font-weight:800;" onclick="setStatus('+o.id+',\'delivered\')"><i class="fas fa-check-circle"></i> סגור הזמנה — נמסר</button>';
         } else {
-            actionsHtml += '<button class="ops-btn ops-btn-sm" style="flex:1;background:#e0e0e0;color:#333;border:none;" onclick="setStatus('+o.id+',\'pickedup\')"><i class="fas fa-shopping-bag"></i> נלקח</button>';
+            actionsHtml += '<button class="ops-btn ops-btn-sm" style="flex:1;background:#0f9b58;color:#fff;border:none;font-weight:800;" onclick="setStatus('+o.id+',\'pickedup\')"><i class="fas fa-check-circle"></i> סגור הזמנה — נלקח</button>';
         }
     }
     actionsHtml += '<button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="openPrintMenu('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-print"></i></button>';
@@ -745,6 +750,51 @@ function setStatus(id, status) {
 function cancelOrder(id) {
     resetSwipe(id);
     if(confirm('לבטל הזמנה?')) setStatus(id, 'cancelled');
+}
+
+function completeOrder(id, orderType) {
+    resetSwipe(id);
+    var newStatus = (orderType === 'delivery') ? 'delivered' : 'pickedup';
+    opsPost('{{ url_for("ops.update_order_status", order_id=0) }}'.replace('/0/', '/'+id+'/'), {status: newStatus}, function(){
+        var wrap = document.querySelector('.order-row-wrap[data-order-id="'+id+'"]');
+        if (wrap) {
+            wrap.style.transition = 'opacity 0.3s, max-height 0.3s';
+            wrap.style.opacity = '0';
+            wrap.style.maxHeight = wrap.offsetHeight + 'px';
+            wrap.style.overflow = 'hidden';
+            setTimeout(function(){
+                wrap.style.maxHeight = '0';
+                wrap.style.padding = '0';
+            }, 50);
+            setTimeout(function(){ wrap.remove(); updateCountersLocal(); }, 350);
+        }
+        showToast('ההזמנה נסגרה');
+    });
+}
+
+function updateCountersLocal() {
+    var rows = document.querySelectorAll('.order-row-wrap');
+    var c = {new:0, preparing:0, ready:0, done:0, active:0};
+    rows.forEach(function(row) {
+        var statusEl = row.querySelector('.row-status');
+        if (!statusEl) return;
+        if (statusEl.classList.contains('s-new')) c.new++;
+        else if (statusEl.classList.contains('s-preparing')) c.preparing++;
+        else if (statusEl.classList.contains('s-ready')) c.ready++;
+        else if (statusEl.classList.contains('s-done')) c.done++;
+    });
+    c.active = c.new + c.preparing + c.ready;
+    var items = document.querySelectorAll('.counter-item');
+    items.forEach(function(item) {
+        var href = item.getAttribute('href') || '';
+        var num = item.querySelector('.counter-num');
+        if (!num) return;
+        if (href.indexOf('status=new') > -1) num.textContent = c.new;
+        else if (href.indexOf('status=preparing') > -1) num.textContent = c.preparing;
+        else if (href.indexOf('status=ready') > -1) num.textContent = c.ready;
+        else if (href.indexOf('status=done') > -1) num.textContent = c.done;
+        else if (href.indexOf('status=active') > -1) num.textContent = c.active;
+    });
 }
 
 function openTimeModal(id) {

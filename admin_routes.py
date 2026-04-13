@@ -1226,17 +1226,15 @@ def branch_menu(branch_id):
 @admin_bp.route('/menu')
 @login_required
 def menu():
-    # Eager load menu items and their dietary properties
     categories = db.session.query(MenuCategory).filter_by(is_active=True).order_by(MenuCategory.display_order).all()
     
-    # Load all menu items with their dietary properties
     for category in categories:
         category.menu_items = db.session.query(MenuItem).filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
         for item in category.menu_items:
-            # Ensure dietary properties are loaded
             item.dietary_properties = [prop for prop in item.dietary_properties if prop.is_active]
-    
-    return render_template('admin/menu.html', categories=categories)
+
+    print_stations = PrintStation.query.order_by(PrintStation.name).all()
+    return render_template('admin/menu.html', categories=categories, print_stations=print_stations)
 
 @admin_bp.route('/menu/category/edit/<int:id>', methods=['GET', 'POST'])
 @admin_bp.route('/menu/category/new', methods=['GET', 'POST'])
@@ -8895,6 +8893,57 @@ def careers_delete():
         return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
 
 # ===== BULK OPERATIONS =====
+
+@admin_bp.route('/menu/bulk-update', methods=['POST'])
+@login_required
+@csrf.exempt
+def bulk_update_menu_items():
+    import json
+    try:
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
+        action = request.form.get('action', '')
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'לא נבחרו פריטים'}), 400
+        if len(ids) > 200:
+            return jsonify({'success': False, 'message': 'מקסימום 200 פריטים'}), 400
+
+        items = MenuItem.query.filter(MenuItem.id.in_(ids)).all()
+        if not items:
+            return jsonify({'success': False, 'message': 'לא נמצאו פריטים'}), 404
+
+        updated = 0
+        if action == 'set_station':
+            station = request.form.get('print_station', '').strip() or None
+            for item in items:
+                item.print_station = station
+                updated += 1
+        elif action == 'set_availability':
+            avail = request.form.get('is_available') == '1'
+            for item in items:
+                item.is_available = avail
+                updated += 1
+        elif action == 'set_category':
+            cat_id = request.form.get('category_id')
+            if cat_id:
+                cat_id = int(cat_id)
+                cat = MenuCategory.query.get(cat_id)
+                if not cat:
+                    return jsonify({'success': False, 'message': 'קטגוריה לא נמצאה'}), 404
+                for item in items:
+                    item.category_id = cat_id
+                    updated += 1
+        else:
+            return jsonify({'success': False, 'message': 'פעולה לא תקינה'}), 400
+
+        db.session.commit()
+        return jsonify({'success': True, 'updated_count': updated})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk update menu items error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @admin_bp.route('/bulk-delete-items', methods=['POST'])
 @login_required

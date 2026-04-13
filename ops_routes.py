@@ -2395,7 +2395,7 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
     items = json.loads(order.items_json) if order.items_json else []
     by_station = {}
     for item in items:
-        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        menu_item_id = item.get('menu_item_id') or item.get('item_id') or item.get('id')
         st = 'כללי'
         if menu_item_id:
             mi = MenuItem.query.get(menu_item_id)
@@ -3376,7 +3376,7 @@ def api_order_detail(order_id):
     items = json.loads(order.items_json) if order.items_json else []
     by_station = {}
     for item in items:
-        menu_item_id = item.get('menu_item_id') or item.get('item_id')
+        menu_item_id = item.get('menu_item_id') or item.get('item_id') or item.get('id')
         st = 'כללי'
         if menu_item_id:
             mi = MenuItem.query.get(menu_item_id)

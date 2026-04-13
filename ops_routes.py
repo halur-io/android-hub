@@ -1608,9 +1608,7 @@ def create_manual_order():
     order.subtotal = verified_subtotal
     order.delivery_fee = delivery_fee
     order.total_amount = total_amount
-    order.status = 'preparing'
-    order.confirmed_at = datetime.utcnow()
-    order.preparing_at = datetime.utcnow()
+    order.status = 'pending'
     order.payment_status = 'cash' if payment_method == 'cash' else 'pending'
     order.source = 'ops'
     order.items_json = json.dumps(valid_cart, ensure_ascii=False)
@@ -1647,10 +1645,6 @@ def create_manual_order():
                 oi.options_json = json.dumps(item['options'], ensure_ascii=False)
         db.session.add(oi)
     db.session.commit()
-    try:
-        _queue_print_for_app(order)
-    except Exception:
-        pass
     return jsonify({
         'ok': True,
         'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',

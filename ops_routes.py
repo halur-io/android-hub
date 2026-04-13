@@ -2632,6 +2632,58 @@ def get_branch_printers(branch_id):
     })
 
 
+@ops_bp.route('/api/print/test-bytes', methods=['GET'])
+def print_test_bytes():
+    _verify_print_api_key()
+    codepage_num = int(request.args.get('codepage_num', 36))
+
+    test_text = "המבורגר קלאסי"
+    reversed_text = test_text[::-1]
+
+    cp862_map = {}
+    for i, ch in enumerate("אבגדהוזחטיךכלםמןנסעףפץצקרשת"):
+        cp862_map[ch] = 0x80 + i
+
+    raw_bytes = []
+    raw_bytes += [0x1B, 0x40]
+    raw_bytes += [0x1B, 0x74, codepage_num]
+    raw_bytes += [0x1B, 0x61, 0x01]
+
+    for ch in reversed_text:
+        if ch in cp862_map:
+            raw_bytes.append(cp862_map[ch])
+        else:
+            raw_bytes.append(ord(ch))
+    raw_bytes.append(0x0A)
+    raw_bytes += [0x0A] * 6
+    raw_bytes += [0x1D, 0x56, 0x00]
+
+    hex_str = ' '.join(f'{b:02X}' for b in raw_bytes)
+    dec_str = ' '.join(str(b) for b in raw_bytes)
+
+    return jsonify({
+        'ok': True,
+        'description': f'Test print bytes for: {test_text}',
+        'reversed_text': reversed_text,
+        'codepage_num': codepage_num,
+        'total_bytes': len(raw_bytes),
+        'bytes_hex': hex_str,
+        'bytes_decimal': dec_str,
+        'raw_bytes_array': raw_bytes,
+        'breakdown': {
+            'init': '1B 40 (ESC @)',
+            'codepage': f'1B 74 {codepage_num:02X} (ESC t {codepage_num})',
+            'center': '1B 61 01 (ESC a 1)',
+            'text_bytes': ' '.join(f'{b:02X}' for b in raw_bytes[6:-7]),
+            'newline': '0A',
+            'feed': '0A x6',
+            'cut': '1D 56 00 (GS V 0)',
+        },
+        'android_must_send_exactly_these_bytes': raw_bytes,
+        'note': 'If the Android app sends these exact bytes and it prints gibberish, the codepage_num is wrong for this printer. Try codepage_num=15 or codepage_num=7.',
+    })
+
+
 @ops_bp.route('/api/print/test', methods=['POST'])
 @require_ops_module('orders')
 def direct_print_test():

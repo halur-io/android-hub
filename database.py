@@ -61,6 +61,17 @@ def _run_safe_migrations(db):
             logging.warning(f"Migration skipped for {table}.{column}: {e}")
 
     try:
+        result = db.session.execute(text(
+            "UPDATE printers SET codepage_num = 36 WHERE id = 2 AND codepage_num = 15"
+        ))
+        if result.rowcount:
+            db.session.commit()
+            logging.info("Migration: updated SNBC printer (id=2) codepage_num from 15 to 36")
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"Migration skipped for printers.codepage_num fix: {e}")
+
+    try:
         from models import PrintStation, PrinterStation, MenuItem
         existing_names = set(r[0] for r in db.session.query(PrintStation.name).all())
         legacy_names = set()

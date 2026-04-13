@@ -2115,7 +2115,7 @@ class DirectPrinter:
     BOLD_ON = b'\x1bE\x01'
     BOLD_OFF = b'\x1bE\x00'
 
-    def __init__(self, ip, port=9100, encoding='cp862', codepage_num=15):
+    def __init__(self, ip, port=9100, encoding='cp862', codepage_num=36):
         self.ip = ip
         self.port = port
         self.encoding = encoding
@@ -2642,7 +2642,7 @@ def direct_print_test():
         return jsonify({'ok': False, 'error': 'חסר כתובת מדפסת'})
 
     encoding = data.get('encoding', 'cp862')
-    codepage_num = int(data.get('codepage_num', 15))
+    codepage_num = int(data.get('codepage_num', 36))
     p = DirectPrinter(printer_ip, printer_port, encoding=encoding, codepage_num=codepage_num)
     p.init()
     p.align('center')

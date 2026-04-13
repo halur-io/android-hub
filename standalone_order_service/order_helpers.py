@@ -163,7 +163,7 @@ def _verify_deal_item(ci, ci_id, branch_id):
 
 
 def calculate_delivery_fee(order_type, subtotal, delivery_zone_id, branch_id, settings):
-    from models import DeliveryZone
+    from services.order.order_service import DeliveryZone
     delivery_fee = 0.0
     delivery_zone = None
     min_order_error = None

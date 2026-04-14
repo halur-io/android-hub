@@ -231,6 +231,15 @@ def require_ops_any_module(*module_names):
 def _get_current_pin():
     return _get_ops_user()
 
+def _safe_json_list(raw):
+    if not raw:
+        return []
+    try:
+        val = json.loads(raw)
+        return val if isinstance(val, list) else []
+    except Exception:
+        return []
+
 def _get_effective_branch_id():
     worker_branch = session.get('ops_branch_id')
     if worker_branch:
@@ -3636,7 +3645,7 @@ def api_get_session(session_id):
             'payment_url': sess.payment_url or '',
             'items': items,
             'opened_at': sess.opened_at.isoformat() if sess.opened_at else '',
-            'pending_void_approvals': (json.loads(sess.pending_void_approvals) if sess.pending_void_approvals else []),
+            'pending_void_approvals': _safe_json_list(sess.pending_void_approvals),
         },
     })
 
@@ -3817,7 +3826,10 @@ def api_session_remove_item(session_id):
                 })
                 sess.pending_void_approvals = json.dumps(pending, ensure_ascii=False)
         db.session.commit()
-        needs_approval = bool(sess.pending_void_approvals and json.loads(sess.pending_void_approvals))
+        try:
+            needs_approval = bool(sess.pending_void_approvals and json.loads(sess.pending_void_approvals))
+        except Exception:
+            needs_approval = False
         return jsonify({'ok': True, 'message': 'פריט הוסר', 'needs_manager_approval': needs_approval})
     return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
 

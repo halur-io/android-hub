@@ -24,6 +24,7 @@ from models import (
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder, FoodOrderItem,
     Printer, PrinterStation, PrintStation, TimeLog, PrintDevice, ApiKey,
     MenuItemOptionGroup, MenuItemOptionChoice,
+    DineInTable, DineInSession,
 )
 from services.order.order_service import DeliveryZone
 
@@ -3477,3 +3478,720 @@ def device_log_error():
             db.session.commit()
 
     return jsonify({'ok': True, 'message': 'error logged'})
+
+
+# ─── Dine-In Table Service ─────────────────────────────────────────
+
+@ops_bp.route('/tables')
+@require_ops_module('orders')
+def tables_view():
+    effective_branch = _get_effective_branch_id()
+    tables = DineInTable.query.filter_by(branch_id=effective_branch, is_active=True).order_by(DineInTable.display_order, DineInTable.id).all() if effective_branch else []
+    active_sessions = {}
+    if effective_branch:
+        sess_list = DineInSession.query.filter_by(branch_id=effective_branch).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).all()
+        for s in sess_list:
+            active_sessions[s.table_id] = s
+    return render_template('ops/tables.html',
+        active_tab='tables',
+        tables=tables,
+        active_sessions=active_sessions,
+    )
+
+
+@ops_bp.route('/api/tables', methods=['GET'])
+@require_ops_module('orders')
+def api_list_tables():
+    effective_branch = _get_effective_branch_id()
+    if not effective_branch:
+        return jsonify({'ok': False, 'error': 'לא נבחר סניף'})
+    tables = DineInTable.query.filter_by(branch_id=effective_branch, is_active=True).order_by(DineInTable.display_order, DineInTable.id).all()
+    active_sessions = {}
+    sess_list = DineInSession.query.filter_by(branch_id=effective_branch).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).all()
+    for s in sess_list:
+        active_sessions[s.table_id] = s
+    result = []
+    for t in tables:
+        s = active_sessions.get(t.id)
+        result.append({
+            'id': t.id,
+            'table_number': t.table_number,
+            'capacity': t.capacity,
+            'status': s.status if s else 'available',
+            'session_id': s.id if s else None,
+            'elapsed_minutes': s.elapsed_minutes if s else 0,
+            'total': s.total_amount if s else 0,
+            'item_count': sum(len((o.get_items() or [])) for o in s.orders if o.status != 'cancelled') if s else 0,
+            'waiter': s.waiter.name if s and s.waiter else '',
+        })
+    return jsonify({'ok': True, 'tables': result})
+
+
+@ops_bp.route('/api/tables/manage', methods=['POST'])
+@require_ops_module('orders')
+def api_manage_tables():
+    effective_branch = _get_effective_branch_id()
+    if not effective_branch:
+        return jsonify({'ok': False, 'error': 'לא נבחר סניף'})
+    data = request.get_json(force=True)
+    action = data.get('action')
+    if action == 'add':
+        table_number = (data.get('table_number') or '').strip()
+        if not table_number:
+            return jsonify({'ok': False, 'error': 'נא להזין מספר שולחן'})
+        existing = DineInTable.query.filter_by(branch_id=effective_branch, table_number=table_number).first()
+        if existing:
+            if not existing.is_active:
+                existing.is_active = True
+                db.session.commit()
+                return jsonify({'ok': True, 'message': f'שולחן {table_number} הופעל מחדש'})
+            return jsonify({'ok': False, 'error': f'שולחן {table_number} כבר קיים'})
+        t = DineInTable(branch_id=effective_branch, table_number=table_number, capacity=int(data.get('capacity', 4)))
+        max_order = db.session.query(db.func.max(DineInTable.display_order)).filter_by(branch_id=effective_branch).scalar() or 0
+        t.display_order = max_order + 1
+        db.session.add(t)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': f'שולחן {table_number} נוסף'})
+    elif action == 'remove':
+        table_id = data.get('table_id')
+        t = DineInTable.query.get(table_id)
+        if t and t.branch_id == effective_branch:
+            active_sess = DineInSession.query.filter_by(table_id=t.id).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).first()
+            if active_sess:
+                return jsonify({'ok': False, 'error': 'לא ניתן למחוק שולחן עם ישיבה פעילה'})
+            t.is_active = False
+            db.session.commit()
+            return jsonify({'ok': True, 'message': 'שולחן הוסר'})
+        return jsonify({'ok': False, 'error': 'שולחן לא נמצא'})
+    return jsonify({'ok': False, 'error': 'פעולה לא ידועה'})
+
+
+@ops_bp.route('/api/tables/<int:table_id>/open-session', methods=['POST'])
+@require_ops_module('orders')
+def api_open_session(table_id):
+    effective_branch = _get_effective_branch_id()
+    table = DineInTable.query.get(table_id)
+    if not table or table.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'שולחן לא נמצא'})
+    existing = DineInSession.query.filter_by(table_id=table.id).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).first()
+    if existing:
+        return jsonify({'ok': True, 'session_id': existing.id, 'message': 'ישיבה קיימת'})
+    user = _get_ops_user()
+    data = request.get_json(force=True) if request.content_length else {}
+    sess = DineInSession(
+        table_id=table.id,
+        branch_id=effective_branch,
+        waiter_pin_id=user.id if user else None,
+        guests_count=int(data.get('guests_count', 1)),
+        status='open',
+    )
+    db.session.add(sess)
+    db.session.commit()
+    return jsonify({'ok': True, 'session_id': sess.id, 'message': f'ישיבה נפתחה לשולחן {table.table_number}'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>', methods=['GET'])
+@require_ops_module('orders')
+def api_get_session(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    items = []
+    for order in sess.orders:
+        if order.status == 'cancelled':
+            continue
+        order_items = order.get_items() or []
+        for idx, item_data in enumerate(order_items):
+            item_data['order_id'] = order.id
+            item_data['item_index'] = idx
+            item_data['sent_to_kitchen'] = order.status in ('preparing', 'ready', 'delivered', 'pickedup')
+            items.append(item_data)
+    return jsonify({
+        'ok': True,
+        'session': {
+            'id': sess.id,
+            'table_number': sess.table.table_number if sess.table else '?',
+            'status': sess.status,
+            'waiter': sess.waiter.name if sess.waiter else '',
+            'guests_count': sess.guests_count,
+            'discount_type': sess.discount_type,
+            'discount_value': sess.discount_value,
+            'notes': sess.notes or '',
+            'subtotal': sess.subtotal_before_discount,
+            'total': sess.total_amount,
+            'elapsed_minutes': sess.elapsed_minutes,
+            'payment_url': sess.payment_url or '',
+            'items': items,
+            'opened_at': sess.opened_at.isoformat() if sess.opened_at else '',
+        },
+    })
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/add-items', methods=['POST'])
+@require_ops_module('orders')
+def api_session_add_items(session_id):
+    from standalone_order_service.order_helpers import verify_cart_items
+    import secrets as _secrets
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.status != 'open':
+        return jsonify({'ok': False, 'error': 'הישיבה לא פעילה'})
+    data = request.get_json(force=True)
+    cart = data.get('items', [])
+    if not cart:
+        return jsonify({'ok': False, 'error': 'לא נבחרו פריטים'})
+    valid_cart, verified_subtotal = verify_cart_items(cart, effective_branch)
+    if not valid_cart:
+        return jsonify({'ok': False, 'error': 'פריטים לא תקינים'})
+    branch = Branch.query.get(effective_branch)
+    user = _get_ops_user()
+    order = FoodOrder()
+    order.set_order_number()
+    order.tracking_token = _secrets.token_urlsafe(24)
+    order.branch_id = effective_branch
+    order.branch_name = branch.name_he if branch else ''
+    order.order_type = 'dine_in'
+    order.customer_name = f'שולחן {sess.table.table_number}' if sess.table else 'ישיבה'
+    order.customer_phone = '0000000000'
+    order.payment_method = 'cash'
+    order.subtotal = verified_subtotal
+    order.delivery_fee = 0
+    order.total_amount = verified_subtotal
+    order.status = 'pending'
+    order.payment_status = 'pending'
+    order.source = 'dine_in'
+    order.table_number = sess.table.table_number if sess.table else ''
+    order.dine_in_session_id = sess.id
+    order.created_by_name = user.name if user else None
+    order.items_json = json.dumps(valid_cart, ensure_ascii=False)
+    db.session.add(order)
+    db.session.flush()
+    for item in valid_cart:
+        oi = FoodOrderItem()
+        oi.order_id = order.id
+        if item.get('is_deal'):
+            oi.menu_item_id = None
+            oi.item_name_he = item.get('name_he', '')
+            oi.item_name_en = item.get('name_en', '')
+            oi.quantity = int(item.get('qty', 1))
+            oi.unit_price = float(item.get('price', 0))
+            oi.total_price = oi.quantity * oi.unit_price
+            oi.special_instructions = item.get('notes', '')
+            deal_data = {'is_deal': True, 'deal_id': item.get('deal_id')}
+            if item.get('deal_type') == 'customer_picks':
+                deal_data['deal_type'] = 'customer_picks'
+                deal_data['selected_items'] = item.get('selected_items', [])
+            else:
+                deal_data['included_items'] = item.get('included_items', [])
+            oi.options_json = json.dumps(deal_data, ensure_ascii=False)
+        else:
+            oi.menu_item_id = item.get('id')
+            oi.item_name_he = item.get('name_he', '')
+            oi.item_name_en = item.get('name_en', '')
+            oi.quantity = int(item.get('qty', 1))
+            oi.unit_price = float(item.get('price', 0))
+            oi.total_price = oi.quantity * oi.unit_price
+            oi.special_instructions = item.get('notes', '')
+            if item.get('options'):
+                oi.options_json = json.dumps(item['options'], ensure_ascii=False)
+        db.session.add(oi)
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'message': f'{len(valid_cart)} פריטים נוספו',
+        'order_id': order.id,
+        'order_number': order.order_number,
+    })
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/send-to-kitchen', methods=['POST'])
+@require_ops_module('orders')
+def api_session_send_to_kitchen(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    sent_count = 0
+    for order in sess.orders:
+        if order.status in ('pending', 'confirmed') and order.status != 'cancelled':
+            order.status = 'preparing'
+            order.preparing_at = datetime.utcnow()
+            sent_count += 1
+            try:
+                _queue_print_for_app(order)
+            except Exception as e:
+                logging.warning(f"Print failed for dine-in order {order.id}: {e}")
+    db.session.commit()
+    if sent_count == 0:
+        return jsonify({'ok': True, 'message': 'אין פריטים חדשים לשלוח'})
+    return jsonify({'ok': True, 'message': f'{sent_count} הזמנות נשלחו למטבח'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/remove-item', methods=['POST'])
+@require_ops_module('orders')
+def api_session_remove_item(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    data = request.get_json(force=True)
+    order_id = data.get('order_id')
+    item_index = data.get('item_index')
+    order = FoodOrder.query.get(order_id)
+    if not order or order.dine_in_session_id != sess.id:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    if order.status in ('preparing', 'ready', 'delivered', 'pickedup'):
+        require_pin = data.get('manager_pin')
+        if require_pin:
+            pin_valid = False
+            for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
+                if pm.check_pin(str(require_pin)):
+                    pin_valid = True
+                    break
+            if not pin_valid:
+                return jsonify({'ok': False, 'error': 'PIN מנהל לא תקין'})
+        else:
+            return jsonify({'ok': False, 'error': 'פריט כבר נשלח למטבח — נדרש PIN מנהל', 'require_pin': True})
+    items = order.get_items()
+    if item_index is not None and 0 <= item_index < len(items):
+        removed = items.pop(item_index)
+        removed_price = float(removed.get('price', 0)) * int(removed.get('qty', 1))
+        order.items_json = json.dumps(items, ensure_ascii=False)
+        order.subtotal = max(0, (order.subtotal or 0) - removed_price)
+        order.total_amount = max(0, (order.total_amount or 0) - removed_price)
+        if not items:
+            order.status = 'cancelled'
+            order.cancelled_at = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'פריט הוסר'})
+    return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/discount', methods=['POST'])
+@require_ops_module('orders')
+def api_session_discount(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    data = request.get_json(force=True)
+    discount_type = data.get('discount_type')
+    discount_value = float(data.get('discount_value', 0))
+    if discount_type not in ('percentage', 'fixed', None, ''):
+        return jsonify({'ok': False, 'error': 'סוג הנחה לא תקין'})
+    if not discount_type or discount_value <= 0:
+        sess.discount_type = None
+        sess.discount_value = 0
+    else:
+        sess.discount_type = discount_type
+        sess.discount_value = discount_value
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'הנחה עודכנה', 'total': sess.total_amount})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/notes', methods=['POST'])
+@require_ops_module('orders')
+def api_session_notes(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    data = request.get_json(force=True)
+    sess.notes = (data.get('notes') or '').strip()[:500]
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'הערות עודכנו'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/pay-cash', methods=['POST'])
+@require_ops_module('orders')
+def api_session_pay_cash(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    for order in sess.orders:
+        if order.status != 'cancelled':
+            order.payment_status = 'cash'
+            order.payment_method = 'cash'
+            if order.status in ('pending', 'confirmed'):
+                order.status = 'preparing'
+            if order.status not in ('delivered', 'pickedup', 'cancelled'):
+                order.status = 'pickedup'
+                order.completed_at = datetime.utcnow()
+    sess.status = 'closed'
+    sess.closed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'תשלום במזומן — שולחן נסגר'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/generate-payment-link', methods=['POST'])
+@require_ops_module('orders')
+def api_session_generate_payment(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    total = sess.total_amount
+    if total <= 0:
+        return jsonify({'ok': False, 'error': 'סכום לתשלום 0'})
+    first_order = None
+    for o in sess.orders:
+        if o.status != 'cancelled':
+            first_order = o
+            break
+    if not first_order:
+        return jsonify({'ok': False, 'error': 'אין הזמנות בישיבה'})
+    try:
+        from standalone_order_service.hyp_payment import HYPPayment
+        branch = Branch.query.get(effective_branch)
+        settings = _settings()
+        terminal = (branch and branch.hyp_terminal) or (settings and settings.hyp_terminal) or os.environ.get('HYP_TERMINAL', '')
+        api_key = (branch and branch.hyp_api_key) or (settings and settings.hyp_api_key) or os.environ.get('HYP_API_KEY', '')
+        passp = (branch and branch.hyp_passp) or (settings and settings.hyp_passp) or os.environ.get('HYP_PASSP', '')
+        if not terminal or not api_key:
+            return jsonify({'ok': False, 'error': 'הגדרות HYP חסרות'})
+        hyp = HYPPayment(terminal=terminal, api_key=api_key, passp=passp)
+        table_num = sess.table.table_number if sess.table else '?'
+        order_ref = first_order.order_number
+        import secrets as _secrets
+        cb_token = _secrets.token_urlsafe(32)
+        sess.payment_callback_token = cb_token
+        scheme = 'https' if _is_secure() else 'http'
+        base_url = f"{scheme}://{request.host}"
+        success_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=success&token={cb_token}"
+        fail_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=fail&token={cb_token}"
+        payment_url = hyp.create_payment_url(
+            amount=total,
+            order_id=order_ref,
+            description=f'שולחן {table_num}',
+            success_url=success_url,
+            fail_url=fail_url,
+            customer_name=f'שולחן {table_num}',
+        )
+        sess.payment_url = payment_url
+        sess.status = 'awaiting_payment'
+        db.session.commit()
+        return jsonify({'ok': True, 'payment_url': payment_url, 'message': 'קישור תשלום נוצר'})
+    except Exception as e:
+        logging.error(f"HYP payment link error for session {session_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה ביצירת קישור: {str(e)}'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/send-payment-sms', methods=['POST'])
+@require_ops_module('orders')
+def api_session_send_payment_sms(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if not sess.payment_url:
+        return jsonify({'ok': False, 'error': 'יש ליצור קישור תשלום קודם'})
+    data = request.get_json(force=True)
+    phone = (data.get('phone') or '').strip()
+    if not phone or len(phone) < 9:
+        return jsonify({'ok': False, 'error': 'נא להזין מספר טלפון'})
+    try:
+        from sms_helpers import send_sms_4free
+        table_num = sess.table.table_number if sess.table else '?'
+        total = sess.total_amount
+        msg = f'SUMO - שולחן {table_num}\nסה"כ לתשלום: ₪{total:.2f}\nלתשלום: {sess.payment_url}'
+        send_sms_4free(phone, msg)
+        return jsonify({'ok': True, 'message': 'SMS נשלח בהצלחה'})
+    except Exception as e:
+        logging.error(f"SMS send error for session {session_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה בשליחת SMS: {str(e)}'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/payment-callback')
+def session_payment_callback(session_id):
+    sess = DineInSession.query.get(session_id)
+    if not sess:
+        return 'Session not found', 404
+    cb_token = request.args.get('token', '')
+    if not cb_token or not sess.payment_callback_token or cb_token != sess.payment_callback_token:
+        return 'Invalid callback token', 403
+    status = request.args.get('status', '')
+    if status == 'success':
+        for order in sess.orders:
+            if order.status != 'cancelled':
+                order.payment_status = 'paid'
+                order.payment_method = 'card'
+                order.payment_provider = 'hyp'
+                if order.status not in ('delivered', 'pickedup', 'cancelled'):
+                    order.status = 'pickedup'
+                    order.completed_at = datetime.utcnow()
+        sess.status = 'closed'
+        sess.closed_at = datetime.utcnow()
+        sess.payment_callback_token = None
+        db.session.commit()
+        return render_template('ops/payment_success.html', session=sess)
+    else:
+        return render_template('ops/payment_fail.html', session=sess)
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/cancel', methods=['POST'])
+@require_ops_module('orders')
+def api_session_cancel(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    for order in sess.orders:
+        if order.status != 'cancelled':
+            order.status = 'cancelled'
+            order.cancelled_at = datetime.utcnow()
+    sess.status = 'cancelled'
+    sess.closed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'ישיבה בוטלה'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/print-check', methods=['POST'])
+@require_ops_module('orders')
+def api_session_print_check(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    total = sess.total_amount
+    if total <= 0:
+        return jsonify({'ok': False, 'error': 'אין פריטים לחשבון'})
+    if not sess.payment_url:
+        try:
+            from standalone_order_service.hyp_payment import HYPPayment
+            branch = Branch.query.get(effective_branch)
+            settings = _settings()
+            terminal = (branch and branch.hyp_terminal) or (settings and settings.hyp_terminal) or os.environ.get('HYP_TERMINAL', '')
+            api_key = (branch and branch.hyp_api_key) or (settings and settings.hyp_api_key) or os.environ.get('HYP_API_KEY', '')
+            passp = (branch and branch.hyp_passp) or (settings and settings.hyp_passp) or os.environ.get('HYP_PASSP', '')
+            if terminal and api_key:
+                hyp = HYPPayment(terminal=terminal, api_key=api_key, passp=passp)
+                first_order = next((o for o in sess.orders if o.status != 'cancelled'), None)
+                if first_order:
+                    import secrets as _secrets
+                    cb_token = _secrets.token_urlsafe(32)
+                    sess.payment_callback_token = cb_token
+                    table_num = sess.table.table_number if sess.table else '?'
+                    scheme = 'https' if _is_secure() else 'http'
+                    base_url = f"{scheme}://{request.host}"
+                    success_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=success&token={cb_token}"
+                    fail_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=fail&token={cb_token}"
+                    payment_url = hyp.create_payment_url(
+                        amount=total,
+                        order_id=first_order.order_number,
+                        description=f'שולחן {table_num}',
+                        success_url=success_url,
+                        fail_url=fail_url,
+                        customer_name=f'שולחן {table_num}',
+                    )
+                    sess.payment_url = payment_url
+                    sess.status = 'awaiting_payment'
+                    db.session.commit()
+        except Exception as e:
+            logging.warning(f"Could not generate payment URL for check print: {e}")
+    try:
+        printers = Printer.query.filter_by(branch_id=effective_branch).all()
+        if not printers:
+            return jsonify({'ok': False, 'error': 'לא נמצאה מדפסת לסניף'})
+        printer = printers[0]
+        table_num = sess.table.table_number if sess.table else '?'
+        all_items = []
+        for order in sess.orders:
+            if order.status != 'cancelled':
+                for item in (order.get_items() or []):
+                    all_items.append(item)
+        check_data = _build_dine_in_check(
+            printer, table_num, all_items,
+            sess.subtotal_before_discount,
+            sess.discount_type, sess.discount_value,
+            total, sess.payment_url
+        )
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            ip_parts = printer.ip_address.split(':')
+            ip = ip_parts[0]
+            port = int(ip_parts[1]) if len(ip_parts) > 1 else 9100
+            sock.connect((ip, port))
+            sock.sendall(bytes(check_data))
+            sock.close()
+            return jsonify({'ok': True, 'message': 'חשבון הודפס'})
+        except Exception as e:
+            logging.warning(f"Direct print failed, queuing for agent: {e}")
+            return jsonify({'ok': True, 'message': 'חשבון הועבר להדפסה', 'queued': True})
+    except Exception as e:
+        logging.error(f"Check print error for session {session_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה בהדפסה: {str(e)}'})
+
+
+def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, discount_value, total, payment_url=None):
+    buf = bytearray()
+    encoding = getattr(printer, 'encoding', 'cp862') or 'cp862'
+    codepage = getattr(printer, 'codepage_num', 15) or 15
+
+    def add(text_str):
+        try:
+            for ch in text_str:
+                if '\u0590' <= ch <= '\u05FF':
+                    buf.append(0x80 + (ord(ch) - 0x05D0))
+                else:
+                    buf.extend(ch.encode(encoding, errors='replace'))
+        except Exception:
+            buf.extend(text_str.encode('ascii', errors='replace'))
+
+    buf.extend(b'\x1b\x40')
+    buf.extend(b'\x1bt')
+    buf.append(codepage)
+    buf.extend(b'\x1ba\x01')
+    buf.extend(b'\x1b!\x30')
+    add('SUMO')
+    buf.append(0x0A)
+    buf.extend(b'\x1b!\x00')
+    buf.append(0x0A)
+    buf.extend(b'\x1b!\x10')
+    reversed_table = table_number[::-1] if any('\u0590' <= c <= '\u05FF' for c in table_number) else table_number
+    add(f'{reversed_table} ןחלוש')
+    buf.append(0x0A)
+    buf.extend(b'\x1b!\x00')
+    buf.append(0x0A)
+    buf.extend(b'\x1ba\x00')
+    buf.extend(b'-' * 32)
+    buf.append(0x0A)
+
+    for item in items:
+        name = item.get('name_he', item.get('item_name_he', ''))
+        qty = int(item.get('qty', item.get('quantity', 1)))
+        price = float(item.get('price', item.get('unit_price', 0)))
+        line_total = qty * price
+        reversed_name = name[::-1]
+        price_str = f'{line_total:.0f}'
+        qty_str = f'x{qty} ' if qty > 1 else ''
+        right_part = f'{qty_str}{reversed_name}'
+        left_part = price_str
+        pad = 32 - len(right_part) - len(left_part)
+        if pad < 1:
+            pad = 1
+        line = f'{left_part}{" " * pad}{right_part}'
+        add(line)
+        buf.append(0x0A)
+        if item.get('notes') or item.get('special_instructions'):
+            note = item.get('notes') or item.get('special_instructions', '')
+            add(f'  {note[::-1]}')
+            buf.append(0x0A)
+
+    buf.extend(b'-' * 32)
+    buf.append(0x0A)
+
+    if discount_type and discount_value and discount_value > 0:
+        buf.extend(b'\x1ba\x00')
+        if discount_type == 'percentage':
+            disc_label = f'%{discount_value:.0f} החנה'
+        else:
+            disc_label = f'₪{discount_value:.0f} החנה'
+        disc_amount = subtotal - total
+        disc_line = f'{disc_amount:.0f}-    {disc_label}'
+        add(disc_line)
+        buf.append(0x0A)
+
+    buf.extend(b'\x1ba\x01')
+    buf.extend(b'\x1b!\x10')
+    total_line = f'₪{total:.2f} :םולשתל כ"הס'
+    add(total_line)
+    buf.append(0x0A)
+    buf.extend(b'\x1b!\x00')
+    buf.append(0x0A)
+
+    if payment_url:
+        buf.extend(b'\x1ba\x01')
+        add('QR ורקס - םולשתל')
+        buf.append(0x0A)
+        buf.append(0x0A)
+        try:
+            import qrcode
+            import io
+            qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=6, border=2)
+            qr.add_data(payment_url)
+            qr.make(fit=True)
+            matrix = qr.get_matrix()
+            height = len(matrix)
+            width = len(matrix[0]) if matrix else 0
+            byte_width = (width + 7) // 8
+            buf.extend(b'\x1dv0\x00')
+            buf.append(byte_width & 0xFF)
+            buf.append((byte_width >> 8) & 0xFF)
+            buf.append(height & 0xFF)
+            buf.append((height >> 8) & 0xFF)
+            for row in matrix:
+                row_bytes = bytearray(byte_width)
+                for x, cell in enumerate(row):
+                    if cell:
+                        row_bytes[x // 8] |= (0x80 >> (x % 8))
+                buf.extend(row_bytes)
+        except ImportError:
+            add(payment_url)
+            buf.append(0x0A)
+        buf.append(0x0A)
+
+    buf.extend(b'\x1ba\x01')
+    add('!הבוט ןובאת')
+    buf.append(0x0A)
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+    il_tz = ZoneInfo('Asia/Jerusalem')
+    now_il = _dt.now(il_tz)
+    add(now_il.strftime('%H:%M %d/%m/%Y'))
+    buf.append(0x0A)
+    for _ in range(5):
+        buf.append(0x0A)
+    buf.extend(b'\x1dV\x00')
+    return buf
+
+
+@ops_bp.route('/dine-in/<int:session_id>')
+@require_ops_module('orders')
+def dine_in_order(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        flash('ישיבה לא נמצאה', 'danger')
+        return redirect(url_for('ops.tables_view'))
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    items_by_cat = {}
+    for cat in categories:
+        q = MenuItem.query.filter_by(category_id=cat.id, is_available=True)
+        cat_items = q.order_by(MenuItem.display_order).all()
+        if effective_branch:
+            filtered = []
+            for mi in cat_items:
+                bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=mi.id).first()
+                if bmi and not bmi.is_visible:
+                    continue
+                if bmi and bmi.price is not None:
+                    mi._branch_price = bmi.price
+                else:
+                    mi._branch_price = mi.price
+                filtered.append(mi)
+            cat_items = filtered
+        else:
+            for mi in cat_items:
+                mi._branch_price = mi.price
+        if cat_items:
+            items_by_cat[cat.id] = cat_items
+    deals = Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all()
+    option_groups = {}
+    for cat_id, cat_items in items_by_cat.items():
+        for mi in cat_items:
+            groups = MenuItemOptionGroup.query.filter_by(menu_item_id=mi.id).order_by(MenuItemOptionGroup.display_order).all()
+            if groups:
+                option_groups[mi.id] = groups
+    return render_template('ops/dine_in_order.html',
+        active_tab='tables',
+        session=sess,
+        categories=categories,
+        items_by_cat=items_by_cat,
+        deals=deals,
+        option_groups=option_groups,
+    )

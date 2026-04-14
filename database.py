@@ -50,6 +50,9 @@ def _run_safe_migrations(db):
         ("payment_configuration", "test_mode", "ALTER TABLE payment_configuration ADD COLUMN test_mode BOOLEAN DEFAULT TRUE"),
         ("payment_configuration", "webhook_url", "ALTER TABLE payment_configuration ADD COLUMN webhook_url VARCHAR(500)"),
         ("payment_configuration", "webhook_secret", "ALTER TABLE payment_configuration ADD COLUMN webhook_secret VARCHAR(500)"),
+        ("food_orders", "table_number", "ALTER TABLE food_orders ADD COLUMN table_number VARCHAR(20)"),
+        ("food_orders", "dine_in_session_id", "ALTER TABLE food_orders ADD COLUMN dine_in_session_id INTEGER REFERENCES dine_in_sessions(id)"),
+        ("dine_in_sessions", "payment_callback_token", "ALTER TABLE dine_in_sessions ADD COLUMN payment_callback_token VARCHAR(64)"),
     ]
     for table, column, sql in migrations:
         try:

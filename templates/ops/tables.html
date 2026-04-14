@@ -1,0 +1,276 @@
+{% extends "ops/base.html" %}
+{% block title %}שולחנות - Ops{% endblock %}
+
+{% block content %}
+<style>
+    .tables-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        padding: 12px;
+    }
+    .table-card {
+        background: var(--ops-surface, #fff);
+        border-radius: 14px;
+        padding: 16px 12px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        cursor: pointer;
+        transition: transform .15s, box-shadow .15s;
+        position: relative;
+        border: 2px solid transparent;
+        min-height: 130px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    .table-card:active { transform: scale(.96); }
+    .table-card.available { border-color: #e0e0e0; }
+    .table-card.available .table-num { color: #888; }
+    .table-card.open { border-color: #ff9800; background: #fff8e1; }
+    .table-card.open .table-num { color: #e65100; }
+    .table-card.awaiting_payment { border-color: #f44336; background: #fce4ec; }
+    .table-card.awaiting_payment .table-num { color: #c62828; }
+    .table-num {
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .table-status {
+        font-size: .7rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 6px;
+        display: inline-block;
+    }
+    .table-card.available .table-status { background: #e8f5e9; color: #2e7d32; }
+    .table-card.open .table-status { background: #fff3e0; color: #e65100; }
+    .table-card.awaiting_payment .table-status { background: #ffebee; color: #c62828; }
+    .table-meta {
+        font-size: .72rem;
+        color: #999;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .table-meta .amount { font-weight: 600; color: #333; font-size: .8rem; }
+    .tables-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #eee;
+        background: var(--ops-surface, #fff);
+    }
+    .tables-header h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0;
+    }
+    .btn-add-table {
+        background: var(--ops-accent, #e94560);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: .85rem;
+        cursor: pointer;
+    }
+    .empty-tables {
+        text-align: center;
+        padding: 60px 20px;
+        color: #aaa;
+    }
+    .empty-tables i { font-size: 3rem; margin-bottom: 12px; display: block; }
+    .modal-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,.15);
+        z-index: 1050;
+        max-height: 50vh;
+        padding: 20px;
+        transform: translateY(100%);
+        transition: transform .3s ease;
+    }
+    .modal-sheet.show { transform: translateY(0); }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.4);
+        z-index: 1040;
+        display: none;
+    }
+    .modal-overlay.show { display: block; }
+    .sheet-handle {
+        width: 40px;
+        height: 4px;
+        background: #ddd;
+        border-radius: 2px;
+        margin: 0 auto 16px;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: .9rem;
+    }
+    .summary-row:last-child { border: none; }
+    .summary-row .label { color: #666; }
+    .summary-row .value { font-weight: 600; }
+</style>
+
+<div class="tables-header">
+    <h2><i class="fas fa-utensils me-2"></i>שולחנות</h2>
+    <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוספת שולחן</button>
+</div>
+
+{% if tables %}
+<div class="tables-grid" id="tablesGrid">
+    {% for table in tables %}
+    {% set sess = active_sessions.get(table.id) %}
+    {% set status = sess.status if sess else 'available' %}
+    <div class="table-card {{ status }}"
+         data-table-id="{{ table.id }}"
+         data-session-id="{{ sess.id if sess else '' }}"
+         onclick="handleTableClick({{ table.id }}, '{{ sess.id if sess else '' }}', '{{ status }}')">
+        <div class="table-num">{{ table.table_number }}</div>
+        {% if status == 'available' %}
+            <span class="table-status">פנוי</span>
+        {% elif status == 'open' %}
+            <span class="table-status">תפוס</span>
+            <div class="table-meta">
+                <span>{{ sess.elapsed_minutes }} דק׳</span>
+                <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                {% if sess.waiter %}<span>{{ sess.waiter.name }}</span>{% endif %}
+            </div>
+        {% elif status == 'awaiting_payment' %}
+            <span class="table-status">ממתין לתשלום</span>
+            <div class="table-meta">
+                <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+            </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-tables">
+    <i class="fas fa-chair"></i>
+    <h3>אין שולחנות מוגדרים</h3>
+    <p>הוסף שולחנות כדי להתחיל</p>
+    <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוסף שולחן ראשון</button>
+</div>
+{% endif %}
+
+<div class="modal-overlay" id="addTableOverlay" onclick="hideAddTable()"></div>
+<div class="modal-sheet" id="addTableSheet">
+    <div class="sheet-handle"></div>
+    <h4 style="font-weight:700; margin-bottom:16px;">הוספת שולחן</h4>
+    <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <input type="text" id="newTableNumber" class="form-control" placeholder="מספר שולחן" style="flex:2; border-radius:10px;">
+        <input type="number" id="newTableCapacity" class="form-control" placeholder="מקומות" value="4" style="flex:1; border-radius:10px;">
+    </div>
+    <button class="btn-add-table" style="width:100%; padding:12px;" onclick="addTable()">
+        <i class="fas fa-plus me-1"></i> הוסף
+    </button>
+    <div style="margin-top:16px;">
+        <button class="btn" style="width:100%; background:#f5f5f5; border:none; padding:10px; border-radius:10px; color:#666; font-weight:500;" onclick="bulkAddTables()">
+            <i class="fas fa-th me-1"></i> הוסף שולחנות 1-10 בבת אחת
+        </button>
+    </div>
+</div>
+
+<script>
+function showAddTable() {
+    document.getElementById('addTableOverlay').classList.add('show');
+    document.getElementById('addTableSheet').classList.add('show');
+    document.getElementById('newTableNumber').focus();
+}
+function hideAddTable() {
+    document.getElementById('addTableOverlay').classList.remove('show');
+    document.getElementById('addTableSheet').classList.remove('show');
+}
+
+function addTable() {
+    var num = document.getElementById('newTableNumber').value.trim();
+    var cap = parseInt(document.getElementById('newTableCapacity').value) || 4;
+    if (!num) { alert('נא להזין מספר שולחן'); return; }
+    fetch('/ops/api/tables/manage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'add', table_number: num, capacity: cap})
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { location.reload(); }
+        else { alert(d.error); }
+    });
+}
+
+function bulkAddTables() {
+    var promises = [];
+    for (var i = 1; i <= 10; i++) {
+        promises.push(
+            fetch('/ops/api/tables/manage', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'add', table_number: String(i), capacity: 4})
+            }).then(r => r.json())
+        );
+    }
+    Promise.all(promises).then(function() { location.reload(); });
+}
+
+function handleTableClick(tableId, sessionId, status) {
+    if (status === 'available') {
+        fetch('/ops/api/tables/' + tableId + '/open-session', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
+        }).then(r => r.json()).then(d => {
+            if (d.ok) {
+                window.location.href = '/ops/dine-in/' + d.session_id;
+            } else {
+                alert(d.error);
+            }
+        });
+    } else if (sessionId) {
+        window.location.href = '/ops/dine-in/' + sessionId;
+    }
+}
+
+setInterval(function() {
+    fetch('/ops/api/tables').then(r => r.json()).then(d => {
+        if (!d.ok) return;
+        d.tables.forEach(function(t) {
+            var card = document.querySelector('[data-table-id="' + t.id + '"]');
+            if (!card) return;
+            card.className = 'table-card ' + (t.status || 'available');
+            card.setAttribute('data-session-id', t.session_id || '');
+            card.onclick = function() { handleTableClick(t.id, t.session_id || '', t.status || 'available'); };
+            var meta = '';
+            if (t.status === 'open') {
+                meta = '<div class="table-num">' + t.table_number + '</div>' +
+                    '<span class="table-status">תפוס</span>' +
+                    '<div class="table-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                    '<span class="amount">₪' + Math.round(t.total) + '</span>' +
+                    (t.waiter ? '<span>' + t.waiter + '</span>' : '') + '</div>';
+            } else if (t.status === 'awaiting_payment') {
+                meta = '<div class="table-num">' + t.table_number + '</div>' +
+                    '<span class="table-status">ממתין לתשלום</span>' +
+                    '<div class="table-meta"><span class="amount">₪' + Math.round(t.total) + '</span></div>';
+            } else {
+                meta = '<div class="table-num">' + t.table_number + '</div>' +
+                    '<span class="table-status">פנוי</span>';
+            }
+            card.innerHTML = meta;
+        });
+    });
+}, 15000);
+</script>
+{% endblock %}

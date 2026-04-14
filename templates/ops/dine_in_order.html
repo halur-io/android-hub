@@ -1,0 +1,680 @@
+{% extends "ops/base.html" %}
+{% block title %}שולחן {{ session.table.table_number }} - Ops{% endblock %}
+
+{% block content %}
+<style>
+    .din-wrapper { display: flex; flex-direction: column; height: calc(100vh - 120px); overflow: hidden; }
+    .din-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 14px; background: var(--ops-surface, #fff);
+        border-bottom: 1px solid #eee; flex-shrink: 0;
+    }
+    .din-header .table-badge {
+        background: #ff9800; color: #fff; border-radius: 10px;
+        padding: 6px 14px; font-weight: 700; font-size: 1rem;
+    }
+    .din-header .table-badge.awaiting { background: #f44336; }
+    .din-header .session-meta { font-size: .78rem; color: #888; display: flex; gap: 12px; align-items: center; }
+    .din-header .header-actions { display: flex; gap: 6px; }
+    .din-header .header-actions button {
+        border: none; border-radius: 8px; padding: 8px 12px;
+        font-weight: 600; font-size: .78rem; cursor: pointer;
+    }
+    .din-main { flex: 1; display: flex; overflow: hidden; }
+    .din-menu { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid #eee; }
+    .din-sidebar {
+        width: 300px; display: flex; flex-direction: column;
+        background: var(--ops-surface, #fff); overflow: hidden;
+    }
+    .cat-tabs {
+        display: flex; overflow-x: auto; gap: 0; flex-shrink: 0;
+        border-bottom: 1px solid #eee; background: #fafafa;
+        -webkit-overflow-scrolling: touch;
+    }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+        padding: 10px 16px; white-space: nowrap; font-size: .8rem;
+        font-weight: 600; color: #888; cursor: pointer; border-bottom: 3px solid transparent;
+        transition: all .15s;
+    }
+    .cat-tab.active { color: var(--ops-accent, #e94560); border-bottom-color: var(--ops-accent, #e94560); }
+    .items-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px; padding: 10px; overflow-y: auto; flex: 1;
+    }
+    .item-card {
+        background: #fff; border: 1px solid #eee; border-radius: 10px;
+        padding: 10px 8px; text-align: center; cursor: pointer;
+        transition: transform .1s, box-shadow .15s;
+    }
+    .item-card:active { transform: scale(.95); }
+    .item-card .item-name { font-size: .78rem; font-weight: 600; margin-bottom: 4px; line-height: 1.2; }
+    .item-card .item-price { font-size: .75rem; color: var(--ops-accent, #e94560); font-weight: 700; }
+    .sidebar-title {
+        padding: 10px 14px; font-weight: 700; font-size: .9rem;
+        border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
+    }
+    .sidebar-items { flex: 1; overflow-y: auto; padding: 0; }
+    .sidebar-item {
+        display: flex; align-items: center; padding: 8px 14px;
+        border-bottom: 1px solid #f5f5f5; gap: 8px;
+    }
+    .sidebar-item .si-info { flex: 1; }
+    .sidebar-item .si-name { font-size: .8rem; font-weight: 600; }
+    .sidebar-item .si-options { font-size: .68rem; color: #999; }
+    .sidebar-item .si-price { font-size: .8rem; font-weight: 700; color: #333; min-width: 50px; text-align: left; }
+    .sidebar-item .si-remove {
+        color: #ccc; cursor: pointer; font-size: .9rem; padding: 4px;
+        transition: color .15s;
+    }
+    .sidebar-item .si-remove:hover { color: #f44336; }
+    .sidebar-item.sent { background: #f9fbe7; }
+    .sidebar-item.sent .si-name::after {
+        content: ' ✓'; color: #8bc34a; font-size: .7rem;
+    }
+    .sidebar-footer {
+        border-top: 1px solid #eee; padding: 10px 14px;
+        background: #fafafa; flex-shrink: 0;
+    }
+    .sidebar-total {
+        display: flex; justify-content: space-between;
+        font-weight: 700; font-size: 1rem; margin-bottom: 8px;
+    }
+    .sidebar-total .total-amount { color: var(--ops-accent, #e94560); }
+    .sidebar-actions { display: flex; flex-direction: column; gap: 6px; }
+    .sidebar-actions .btn-kitchen {
+        background: #ff9800; color: #fff; border: none; border-radius: 10px;
+        padding: 12px; font-weight: 700; font-size: .9rem; cursor: pointer;
+        transition: background .2s;
+    }
+    .sidebar-actions .btn-kitchen:active { background: #e68a00; }
+    .sidebar-actions .btn-row { display: flex; gap: 6px; }
+    .sidebar-actions .btn-row button {
+        flex: 1; border: 1px solid #ddd; background: #fff; border-radius: 8px;
+        padding: 10px 6px; font-size: .72rem; font-weight: 600; cursor: pointer;
+        color: #555; transition: all .15s;
+    }
+    .sidebar-actions .btn-row button:active { background: #f0f0f0; }
+    .sidebar-actions .btn-row button i { display: block; font-size: 1rem; margin-bottom: 3px; }
+    .din-discount {
+        display: flex; align-items: center; gap: 6px; padding: 4px 14px;
+        background: #fff3e0; font-size: .78rem; color: #e65100;
+    }
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.5);
+        z-index: 1060; display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-panel {
+        background: #fff; border-radius: 20px 20px 0 0; width: 100%;
+        max-height: 80vh; overflow-y: auto; padding: 20px;
+        animation: slideUp .3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-panel h4 { font-weight: 700; margin-bottom: 14px; }
+    .modal-panel .close-btn {
+        position: absolute; top: 16px; left: 16px;
+        background: none; border: none; font-size: 1.3rem; color: #aaa; cursor: pointer;
+    }
+    .opt-group { margin-bottom: 14px; }
+    .opt-group-title { font-size: .85rem; font-weight: 700; margin-bottom: 6px; color: #333; }
+    .opt-choice {
+        display: flex; align-items: center; padding: 8px 12px;
+        background: #f8f8f8; border-radius: 8px; margin-bottom: 4px;
+        cursor: pointer; gap: 8px; transition: background .15s;
+    }
+    .opt-choice.selected { background: #fff3e0; }
+    .opt-choice .choice-name { flex: 1; font-size: .82rem; }
+    .opt-choice .choice-price { font-size: .78rem; color: #888; }
+    @media (max-width: 768px) {
+        .din-main { flex-direction: column; }
+        .din-sidebar { width: 100%; max-height: 45vh; }
+        .din-menu { border-left: none; border-bottom: 1px solid #eee; }
+    }
+</style>
+
+<div class="din-wrapper">
+    <div class="din-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <a href="/ops/tables" style="color:#888; font-size:1.1rem;"><i class="fas fa-arrow-right"></i></a>
+            <span class="table-badge {% if session.status == 'awaiting_payment' %}awaiting{% endif %}">
+                <i class="fas fa-utensils me-1"></i> שולחן {{ session.table.table_number }}
+            </span>
+            <div class="session-meta">
+                <span><i class="fas fa-clock me-1"></i><span id="elapsed">{{ session.elapsed_minutes }}</span> דק׳</span>
+                {% if session.waiter %}<span><i class="fas fa-user me-1"></i>{{ session.waiter.name }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="header-actions">
+            <button style="background:#fff3e0; color:#e65100;" onclick="showDiscountModal()"><i class="fas fa-percent"></i></button>
+            <button style="background:#e3f2fd; color:#1565c0;" onclick="showNotesModal()"><i class="fas fa-sticky-note"></i></button>
+            <button style="background:#ffebee; color:#c62828;" onclick="cancelSession()"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    {% if session.discount_type and session.discount_value %}
+    <div class="din-discount" id="discountBar">
+        <i class="fas fa-tag"></i>
+        {% if session.discount_type == 'percentage' %}
+            הנחה {{ session.discount_value }}%
+        {% else %}
+            הנחה ₪{{ session.discount_value }}
+        {% endif %}
+        <button onclick="removeDiscount()" style="background:none; border:none; color:#e65100; cursor:pointer; font-size:.7rem; margin-right:auto;">הסר</button>
+    </div>
+    {% endif %}
+
+    <div class="din-main">
+        <div class="din-menu">
+            <div class="cat-tabs" id="catTabs">
+                {% for cat in categories %}
+                {% if cat.id in items_by_cat %}
+                <div class="cat-tab {% if loop.first %}active{% endif %}" data-cat="{{ cat.id }}" onclick="switchCat({{ cat.id }}, this)">{{ cat.name_he }}</div>
+                {% endif %}
+                {% endfor %}
+                {% if deals %}
+                <div class="cat-tab" data-cat="deals" onclick="switchCat('deals', this)">🎁 מבצעים</div>
+                {% endif %}
+            </div>
+            <div class="items-grid" id="itemsGrid">
+                {% for cat in categories %}
+                {% if cat.id in items_by_cat %}
+                <div class="cat-items" data-cat="{{ cat.id }}" {% if not loop.first %}style="display:none;"{% endif %}>
+                    {% for item in items_by_cat[cat.id] %}
+                    <div class="item-card" onclick='openItem({{ item.id }})'>
+                        <div class="item-name">{{ item.name_he }}</div>
+                        <div class="item-price">₪{{ "%.0f"|format(item._branch_price) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% if deals %}
+                <div class="cat-items" data-cat="deals" style="display:none;">
+                    {% for deal in deals %}
+                    <div class="item-card" onclick="openDeal({{ deal.id }})">
+                        <div class="item-name">🎁 {{ deal.name_he }}</div>
+                        <div class="item-price">₪{{ "%.0f"|format(deal.price) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="din-sidebar">
+            <div class="sidebar-title">
+                <span>הזמנה</span>
+                <span id="itemCount" style="font-size:.75rem; color:#888;">0 פריטים</span>
+            </div>
+            <div class="sidebar-items" id="sidebarItems">
+            </div>
+            <div class="sidebar-footer">
+                <div class="sidebar-total">
+                    <span>סה"כ</span>
+                    <span class="total-amount" id="totalAmount">₪0</span>
+                </div>
+                <div class="sidebar-actions">
+                    <button class="btn-kitchen" id="btnKitchen" onclick="sendToKitchen()">
+                        <i class="fas fa-fire me-2"></i> שלח למטבח
+                    </button>
+                    <div class="btn-row">
+                        <button onclick="printCheck()"><i class="fas fa-receipt"></i>חשבון</button>
+                        <button onclick="payCash()"><i class="fas fa-money-bill-wave"></i>מזומן</button>
+                        <button onclick="showPaymentLinkModal()"><i class="fas fa-link"></i>קישור</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="itemModalOverlay" onclick="closeItemModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 id="itemModalTitle"></h4>
+        <div id="itemModalOptions"></div>
+        <div style="margin-top:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">הערות</label>
+            <input type="text" id="itemNotes" class="form-control" placeholder="הערות לפריט..." style="border-radius:10px; font-size:.85rem;">
+        </div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+            <button onclick="addItemToCart()" style="flex:1; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:.9rem; cursor:pointer;">
+                <i class="fas fa-plus me-1"></i> הוסף
+            </button>
+            <button onclick="closeItemModal()" style="flex:0 0 auto; background:#f0f0f0; border:none; border-radius:10px; padding:12px 20px; color:#666; font-weight:600; cursor:pointer;">ביטול</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="discountModalOverlay" onclick="closeDiscountModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4>הנחה</h4>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <button id="discTypePercent" onclick="setDiscType('percentage')" class="btn" style="flex:1; border:2px solid #e94560; border-radius:10px; padding:10px; font-weight:700; background:#fff5f5; color:#e94560;">אחוז %</button>
+            <button id="discTypeFixed" onclick="setDiscType('fixed')" class="btn" style="flex:1; border:2px solid #ddd; border-radius:10px; padding:10px; font-weight:700; background:#fff; color:#555;">סכום ₪</button>
+        </div>
+        <input type="number" id="discountValue" class="form-control" placeholder="ערך" style="border-radius:10px; font-size:1rem; text-align:center; padding:12px;" min="0">
+        <button onclick="applyDiscount()" style="width:100%; margin-top:12px; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; cursor:pointer;">
+            החל הנחה
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="notesModalOverlay" onclick="closeNotesModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4>הערות לשולחן</h4>
+        <textarea id="sessionNotes" class="form-control" rows="3" style="border-radius:10px;">{{ session.notes or '' }}</textarea>
+        <button onclick="saveNotes()" style="width:100%; margin-top:12px; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; cursor:pointer;">
+            שמור
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="paymentLinkOverlay" onclick="closePaymentLink()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4>שליחת קישור תשלום</h4>
+        <input type="tel" id="paymentPhone" class="form-control" placeholder="מספר טלפון" dir="ltr" style="border-radius:10px; font-size:1rem; padding:12px; margin-bottom:12px;">
+        <button onclick="sendPaymentLink()" style="width:100%; background:#4caf50; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+            <i class="fas fa-paper-plane me-2"></i> שלח SMS עם קישור תשלום
+        </button>
+        <div id="paymentLinkResult" style="margin-top:12px; text-align:center; font-size:.85rem;"></div>
+    </div>
+</div>
+
+<script>
+var SESSION_ID = {{ session.id }};
+var cart = [];
+var existingItems = [];
+var currentItem = null;
+var discountType = 'percentage';
+
+var menuData = {};
+{% for cat_id, cat_items in items_by_cat.items() %}
+menuData[{{ cat_id }}] = [
+    {% for item in cat_items %}
+    {
+        id: {{ item.id }},
+        name_he: {{ item.name_he|tojson }},
+        name_en: {{ item.name_en|tojson if item.name_en else '""' }},
+        price: {{ item._branch_price }},
+        options: [
+            {% if item.id in option_groups %}
+            {% for grp in option_groups[item.id] %}
+            {
+                id: {{ grp.id }},
+                name_he: {{ grp.name_he|tojson }},
+                is_required: {{ 'true' if grp.is_required else 'false' }},
+                max_choices: {{ grp.max_choices or 0 }},
+                choices: [
+                    {% for ch in grp.choices %}
+                    { id: {{ ch.id }}, name_he: {{ ch.name_he|tojson }}, price: {{ ch.price_add or 0 }} },
+                    {% endfor %}
+                ]
+            },
+            {% endfor %}
+            {% endif %}
+        ]
+    },
+    {% endfor %}
+];
+{% endfor %}
+
+loadSession();
+
+function loadSession() {
+    fetch('/ops/api/sessions/' + SESSION_ID).then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.ok) return;
+        existingItems = d.session.items || [];
+        renderSidebar();
+        document.getElementById('elapsed').textContent = d.session.elapsed_minutes;
+    });
+}
+
+function switchCat(catId, el) {
+    document.querySelectorAll('.cat-tab').forEach(function(t) { t.classList.remove('active'); });
+    el.classList.add('active');
+    document.querySelectorAll('.cat-items').forEach(function(c) { c.style.display = 'none'; });
+    var target = document.querySelector('.cat-items[data-cat="' + catId + '"]');
+    if (target) target.style.display = '';
+}
+
+function openItem(itemId) {
+    var item = null;
+    for (var catId in menuData) {
+        for (var i = 0; i < menuData[catId].length; i++) {
+            if (menuData[catId][i].id === itemId) { item = menuData[catId][i]; break; }
+        }
+        if (item) break;
+    }
+    if (!item) return;
+    currentItem = item;
+    document.getElementById('itemModalTitle').textContent = item.name_he + ' — ₪' + item.price;
+    document.getElementById('itemNotes').value = '';
+    var optHtml = '';
+    if (item.options && item.options.length) {
+        item.options.forEach(function(grp) {
+            optHtml += '<div class="opt-group"><div class="opt-group-title">' + grp.name_he;
+            if (grp.is_required) optHtml += ' <span style="color:#e94560;">*</span>';
+            optHtml += '</div>';
+            grp.choices.forEach(function(ch) {
+                optHtml += '<div class="opt-choice" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + ch.price + '" onclick="toggleChoice(this, ' + grp.id + ', ' + (grp.max_choices || 99) + ')">';
+                optHtml += '<span class="choice-name">' + ch.name_he + '</span>';
+                if (ch.price > 0) optHtml += '<span class="choice-price">+₪' + ch.price + '</span>';
+                optHtml += '</div>';
+            });
+            optHtml += '</div>';
+        });
+    }
+    document.getElementById('itemModalOptions').innerHTML = optHtml;
+    document.getElementById('itemModalOverlay').classList.add('show');
+}
+
+function toggleChoice(el, groupId, maxChoices) {
+    if (maxChoices <= 1) {
+        document.querySelectorAll('.opt-choice[data-group="' + groupId + '"]').forEach(function(c) { c.classList.remove('selected'); });
+        el.classList.add('selected');
+    } else {
+        var selected = document.querySelectorAll('.opt-choice[data-group="' + groupId + '"].selected').length;
+        if (el.classList.contains('selected')) {
+            el.classList.remove('selected');
+        } else if (selected < maxChoices) {
+            el.classList.add('selected');
+        }
+    }
+}
+
+function closeItemModal() { document.getElementById('itemModalOverlay').classList.remove('show'); currentItem = null; }
+
+function addItemToCart() {
+    if (!currentItem) return;
+    var selectedOptions = [];
+    var extraPrice = 0;
+    document.querySelectorAll('#itemModalOptions .opt-choice.selected').forEach(function(el) {
+        var p = parseFloat(el.dataset.price) || 0;
+        extraPrice += p;
+        selectedOptions.push({
+            group_id: parseInt(el.dataset.group),
+            choice_id: parseInt(el.dataset.choice),
+            name_he: el.querySelector('.choice-name').textContent,
+            price: p
+        });
+    });
+    var notes = document.getElementById('itemNotes').value.trim();
+    cart.push({
+        id: currentItem.id,
+        name_he: currentItem.name_he,
+        name_en: currentItem.name_en || '',
+        price: currentItem.price + extraPrice,
+        qty: 1,
+        options: selectedOptions,
+        notes: notes
+    });
+    closeItemModal();
+    renderSidebar();
+}
+
+function openDeal(dealId) {
+    alert('מבצעים יתמכו בקרוב');
+}
+
+function renderSidebar() {
+    var html = '';
+    var total = 0;
+    var count = 0;
+    existingItems.forEach(function(item) {
+        var name = item.name_he || item.item_name_he || '';
+        var qty = parseInt(item.qty || item.quantity || 1);
+        var price = parseFloat(item.price || item.unit_price || 0) * qty;
+        total += price;
+        count += qty;
+        var sent = item.sent_to_kitchen ? 'sent' : '';
+        var optText = '';
+        if (item.options && item.options.length) {
+            optText = item.options.map(function(o) { return o.name_he; }).join(', ');
+        }
+        html += '<div class="sidebar-item ' + sent + '">';
+        html += '<div class="si-info"><div class="si-name">' + qty + 'x ' + name + '</div>';
+        if (optText) html += '<div class="si-options">' + optText + '</div>';
+        if (item.notes || item.special_instructions) html += '<div class="si-options">📝 ' + (item.notes || item.special_instructions) + '</div>';
+        html += '</div>';
+        html += '<div class="si-price">₪' + Math.round(price) + '</div>';
+        if (!item.sent_to_kitchen) {
+            html += '<div class="si-remove" onclick="removeExistingItem(' + item.order_id + ',' + (item.item_index !== undefined ? item.item_index : 0) + ')"><i class="fas fa-trash-alt"></i></div>';
+        }
+        html += '</div>';
+    });
+    if (cart.length > 0) {
+        if (existingItems.length > 0) {
+            html += '<div style="padding:6px 14px; font-size:.7rem; font-weight:700; color:#ff9800; background:#fff8e1;">פריטים חדשים</div>';
+        }
+        cart.forEach(function(item, idx) {
+            var price = parseFloat(item.price) * parseInt(item.qty || 1);
+            total += price;
+            count += parseInt(item.qty || 1);
+            var optText = '';
+            if (item.options && item.options.length) {
+                optText = item.options.map(function(o) { return o.name_he; }).join(', ');
+            }
+            html += '<div class="sidebar-item">';
+            html += '<div class="si-info"><div class="si-name">' + (item.qty || 1) + 'x ' + item.name_he + '</div>';
+            if (optText) html += '<div class="si-options">' + optText + '</div>';
+            if (item.notes) html += '<div class="si-options">📝 ' + item.notes + '</div>';
+            html += '</div>';
+            html += '<div class="si-price">₪' + Math.round(price) + '</div>';
+            html += '<div class="si-remove" onclick="removeCartItem(' + idx + ')"><i class="fas fa-trash-alt"></i></div>';
+            html += '</div>';
+        });
+    }
+    if (!html) {
+        html = '<div style="text-align:center; padding:40px 20px; color:#ccc;"><i class="fas fa-shopping-basket" style="font-size:2rem; margin-bottom:8px; display:block;"></i>אין פריטים</div>';
+    }
+    document.getElementById('sidebarItems').innerHTML = html;
+    document.getElementById('totalAmount').textContent = '₪' + Math.round(total);
+    document.getElementById('itemCount').textContent = count + ' פריטים';
+    var btnKitchen = document.getElementById('btnKitchen');
+    if (cart.length > 0) {
+        btnKitchen.style.background = '#ff9800';
+        btnKitchen.innerHTML = '<i class="fas fa-fire me-2"></i> שלח ' + cart.length + ' פריטים למטבח';
+    } else {
+        btnKitchen.style.background = '#ccc';
+        btnKitchen.innerHTML = '<i class="fas fa-fire me-2"></i> שלח למטבח';
+    }
+}
+
+function removeCartItem(idx) {
+    cart.splice(idx, 1);
+    renderSidebar();
+}
+
+function removeExistingItem(orderId, itemIdx) {
+    if (!confirm('להסיר פריט?')) return;
+    fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({order_id: orderId, item_index: itemIdx})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.require_pin) {
+            var pin = prompt('פריט נשלח למטבח — הזן PIN מנהל:');
+            if (pin) {
+                fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({order_id: orderId, item_index: itemIdx, manager_pin: pin})
+                }).then(function(r) { return r.json(); }).then(function(d2) {
+                    if (d2.ok) loadSession();
+                    else alert(d2.error);
+                });
+            }
+            return;
+        }
+        if (d.ok) loadSession();
+        else alert(d.error);
+    });
+}
+
+function sendToKitchen() {
+    if (cart.length > 0) {
+        fetch('/ops/api/sessions/' + SESSION_ID + '/add-items', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({items: cart})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (!d.ok) { alert(d.error); return; }
+            cart = [];
+            fetch('/ops/api/sessions/' + SESSION_ID + '/send-to-kitchen', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            }).then(function(r) { return r.json(); }).then(function(d2) {
+                loadSession();
+            });
+        });
+    } else {
+        fetch('/ops/api/sessions/' + SESSION_ID + '/send-to-kitchen', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) loadSession();
+            alert(d.message);
+        });
+    }
+}
+
+function printCheck() {
+    if (cart.length > 0) {
+        if (!confirm('יש פריטים שלא נשלחו למטבח. להמשיך בהדפסת חשבון?')) return;
+    }
+    fetch('/ops/api/sessions/' + SESSION_ID + '/print-check', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        alert(d.ok ? d.message : d.error);
+    });
+}
+
+function payCash() {
+    if (cart.length > 0) {
+        alert('יש פריטים שלא נשלחו — שלח למטבח קודם');
+        return;
+    }
+    if (!confirm('לסגור שולחן ולסמן תשלום במזומן?')) return;
+    fetch('/ops/api/sessions/' + SESSION_ID + '/pay-cash', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            window.location.href = '/ops/tables';
+        } else {
+            alert(d.error);
+        }
+    });
+}
+
+function showPaymentLinkModal() {
+    document.getElementById('paymentLinkOverlay').classList.add('show');
+    document.getElementById('paymentLinkResult').innerHTML = '';
+}
+function closePaymentLink() { document.getElementById('paymentLinkOverlay').classList.remove('show'); }
+
+function sendPaymentLink() {
+    var phone = document.getElementById('paymentPhone').value.trim();
+    if (!phone) { alert('נא להזין טלפון'); return; }
+    fetch('/ops/api/sessions/' + SESSION_ID + '/generate-payment-link', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.ok) { alert(d.error); return; }
+        fetch('/ops/api/sessions/' + SESSION_ID + '/send-payment-sms', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({phone: phone})
+        }).then(function(r) { return r.json(); }).then(function(d2) {
+            document.getElementById('paymentLinkResult').innerHTML = d2.ok
+                ? '<div style="color:#4caf50;"><i class="fas fa-check-circle me-1"></i>' + d2.message + '</div>'
+                : '<div style="color:#f44336;">' + d2.error + '</div>';
+        });
+    });
+}
+
+function showDiscountModal() { document.getElementById('discountModalOverlay').classList.add('show'); }
+function closeDiscountModal() { document.getElementById('discountModalOverlay').classList.remove('show'); }
+
+function setDiscType(type) {
+    discountType = type;
+    if (type === 'percentage') {
+        document.getElementById('discTypePercent').style.borderColor = '#e94560';
+        document.getElementById('discTypePercent').style.background = '#fff5f5';
+        document.getElementById('discTypeFixed').style.borderColor = '#ddd';
+        document.getElementById('discTypeFixed').style.background = '#fff';
+    } else {
+        document.getElementById('discTypeFixed').style.borderColor = '#e94560';
+        document.getElementById('discTypeFixed').style.background = '#fff5f5';
+        document.getElementById('discTypePercent').style.borderColor = '#ddd';
+        document.getElementById('discTypePercent').style.background = '#fff';
+    }
+}
+
+function applyDiscount() {
+    var val = parseFloat(document.getElementById('discountValue').value) || 0;
+    fetch('/ops/api/sessions/' + SESSION_ID + '/discount', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({discount_type: discountType, discount_value: val})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) { closeDiscountModal(); location.reload(); }
+        else alert(d.error);
+    });
+}
+
+function removeDiscount() {
+    fetch('/ops/api/sessions/' + SESSION_ID + '/discount', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({discount_type: '', discount_value: 0})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) location.reload();
+    });
+}
+
+function showNotesModal() { document.getElementById('notesModalOverlay').classList.add('show'); }
+function closeNotesModal() { document.getElementById('notesModalOverlay').classList.remove('show'); }
+
+function saveNotes() {
+    var notes = document.getElementById('sessionNotes').value;
+    fetch('/ops/api/sessions/' + SESSION_ID + '/notes', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({notes: notes})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) closeNotesModal();
+        else alert(d.error);
+    });
+}
+
+function cancelSession() {
+    if (!confirm('לבטל את כל הישיבה? כל הפריטים יבוטלו.')) return;
+    fetch('/ops/api/sessions/' + SESSION_ID + '/cancel', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) window.location.href = '/ops/tables';
+        else alert(d.error);
+    });
+}
+
+setInterval(function() {
+    var el = document.getElementById('elapsed');
+    el.textContent = parseInt(el.textContent) + 1;
+}, 60000);
+</script>
+{% endblock %}

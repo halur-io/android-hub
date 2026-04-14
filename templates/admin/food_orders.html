@@ -321,6 +321,8 @@
                 {% endif %}
                 {% if order.source == 'ops' %}
                     <span class="badge-sm" style="background:#7c3aed;color:#fff;">{{ 'ידני' if (admin_language or 'he') == 'he' else 'Manual' }}</span>
+                {% elif order.source == 'dine_in' %}
+                    <span class="badge-sm" style="background:#9333ea;color:#fff;">{{ 'ישיבה' if (admin_language or 'he') == 'he' else 'Dine-In' }}</span>
                 {% endif %}
             </div>
             <div class="order-date">{{ order.created_at|il_time_short }}</div>

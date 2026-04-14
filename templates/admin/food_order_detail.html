@@ -54,6 +54,8 @@
                             {% endif %}
                             {% if order.source == 'ops' %}
                                 <span class="badge" style="background:#7c3aed;">{{ 'ידני' if (admin_language or 'he') == 'he' else 'Manual' }}</span>
+                            {% elif order.source == 'dine_in' %}
+                                <span class="badge" style="background:#9333ea;">{{ 'ישיבה' if (admin_language or 'he') == 'he' else 'Dine-In' }}</span>
                             {% endif %}
                         </td></tr>
                         {% if order.order_type == 'delivery' and order.delivery_address %}

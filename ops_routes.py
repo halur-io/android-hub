@@ -3815,8 +3815,11 @@ def api_session_update_item(session_id):
     if not sess or sess.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
     data = request.get_json(force=True)
-    order_id = data.get('order_id')
-    item_index = data.get('item_index')
+    try:
+        order_id = int(data.get('order_id', 0))
+        item_index = int(data.get('item_index', -1))
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'נתונים לא תקינים'})
     order = FoodOrder.query.get(order_id)
     if not order or order.dine_in_session_id != sess.id:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
@@ -3833,7 +3836,7 @@ def api_session_update_item(session_id):
         else:
             return jsonify({'ok': False, 'error': 'פריט נשלח למטבח — נדרש PIN מנהל', 'require_pin': True})
     items = order.get_items()
-    if item_index is None or item_index < 0 or item_index >= len(items):
+    if item_index < 0 or item_index >= len(items):
         return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
     item = items[item_index]
     old_price = float(item.get('price', 0)) * int(item.get('qty', 1))
@@ -3841,7 +3844,10 @@ def api_session_update_item(session_id):
     new_notes = data.get('notes')
     new_options = data.get('options')
     if new_qty is not None:
-        new_qty = max(1, int(new_qty))
+        try:
+            new_qty = max(1, int(new_qty))
+        except (TypeError, ValueError):
+            return jsonify({'ok': False, 'error': 'כמות לא תקינה'})
         item['qty'] = new_qty
         item['quantity'] = new_qty
     if new_notes is not None:

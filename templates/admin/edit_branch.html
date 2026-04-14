@@ -75,19 +75,48 @@
                 </div>
             </div>
             
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if branch.is_active %}checked{% endif %}>
-                <label class="form-check-label" for="is_active">
-                    סניף פעיל
-                </label>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if branch.is_active or not branch.id %}checked{% endif %}>
+                        <label class="form-check-label" for="is_active">
+                            סניף פעיל
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_delivery" id="enable_delivery" {% if branch.enable_delivery or (not branch.id and branch.enable_delivery is none) %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_delivery">
+                            אפשר משלוחים
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="enable_pickup" id="enable_pickup" {% if branch.enable_pickup or (not branch.id and branch.enable_pickup is none) %}checked{% endif %}>
+                        <label class="form-check-label" for="enable_pickup">
+                            אפשר איסוף עצמי
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="card mt-4">
-        <div class="card-header" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#paymentSettingsBody">
-            <i class="fas fa-credit-card me-2"></i> הגדרות תשלום
-            <i class="fas fa-chevron-down float-end mt-1"></i>
+        <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#paymentSettingsBody">
+            <div>
+                <i class="fas fa-credit-card me-2"></i> הגדרות תשלום
+                {% if branch.id %}
+                    {% if branch.has_payment_config %}
+                        <span class="badge bg-success ms-2"><i class="fas fa-check-circle me-1"></i>מוגדר</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark ms-2"><i class="fas fa-exclamation-triangle me-1"></i>לא מוגדר — משתמש בהגדרות גלובליות</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <i class="fas fa-chevron-down"></i>
         </div>
         <div class="collapse {% if branch.id and (branch.hyp_terminal or branch.max_api_key) %}show{% endif %}" id="paymentSettingsBody">
             <div class="card-body">
@@ -97,11 +126,18 @@
                         <option value="hyp" {% if not branch.payment_provider or branch.payment_provider == 'hyp' %}selected{% endif %}>HYP (Yaad Pay)</option>
                         <option value="max" {% if branch.payment_provider == 'max' %}selected{% endif %}>MAX Pay</option>
                     </select>
-                    <small class="text-muted">אם לא מוגדר, המערכת תשתמש בהגדרות הגלובליות</small>
+                    <small class="text-muted">אם השדות ריקים, המערכת תשתמש בהגדרות הגלובליות מדף הגדרות האתר.</small>
                 </div>
 
                 <div id="hyp-section" class="border rounded p-3 mb-3" style="background:#f8f9fa;">
-                    <h6 class="mb-3"><i class="fas fa-shield-alt me-1 text-primary"></i> HYP (Yaad Pay) Credentials</h6>
+                    <h6 class="mb-3">
+                        <i class="fas fa-shield-alt me-1 text-primary"></i> HYP (Yaad Pay) Credentials
+                        {% if branch.id and branch.hyp_terminal and branch.hyp_api_key and branch.hyp_passp %}
+                            <span class="badge bg-success ms-2"><i class="fas fa-check me-1"></i>3/3</span>
+                        {% elif branch.id and (branch.hyp_terminal or branch.hyp_api_key or branch.hyp_passp) %}
+                            <span class="badge bg-danger ms-2"><i class="fas fa-times me-1"></i>חלקי</span>
+                        {% endif %}
+                    </h6>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
@@ -125,7 +161,14 @@
                 </div>
 
                 <div id="max-section" class="border rounded p-3 mb-3" style="background:#f8f9fa;">
-                    <h6 class="mb-3"><i class="fas fa-credit-card me-1 text-success"></i> MAX Pay Credentials</h6>
+                    <h6 class="mb-3">
+                        <i class="fas fa-credit-card me-1 text-success"></i> MAX Pay Credentials
+                        {% if branch.id and branch.max_api_url and branch.max_api_key and branch.max_merchant_id %}
+                            <span class="badge bg-success ms-2"><i class="fas fa-check me-1"></i>3/3</span>
+                        {% elif branch.id and (branch.max_api_url or branch.max_api_key or branch.max_merchant_id) %}
+                            <span class="badge bg-danger ms-2"><i class="fas fa-times me-1"></i>חלקי</span>
+                        {% endif %}
+                    </h6>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
@@ -151,7 +194,7 @@
                 <div class="alert alert-info mb-0" style="font-size:.85rem;">
                     <i class="fas fa-info-circle me-1"></i>
                     אם השדות ריקים, המערכת תשתמש בהגדרות הגלובליות מדף הגדרות האתר.
-                    <br>כל סניף יכול לעבוד עם חשבון תשלום שונה.
+                    <br>כל סניף יכול לעבוד עם חשבון תשלום שונה — פשוט מלא את הפרטים כאן.
                 </div>
             </div>
         </div>

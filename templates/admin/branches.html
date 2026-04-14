@@ -24,6 +24,7 @@
                         <th>כתובת</th>
                         <th>טלפון</th>
                         <th>סטטוס</th>
+                        <th>תשלום</th>
                         <th>סדר תצוגה</th>
                         <th>פעולות</th>
                     </tr>
@@ -39,23 +40,48 @@
                                 {{ 'פעיל' if branch.is_active else 'לא פעיל' }}
                             </span>
                         </td>
+                        <td>
+                            {% if branch.has_payment_config %}
+                                <span class="badge bg-success" title="{{ branch.payment_provider|upper }}: מוגדר">
+                                    <i class="fas fa-check-circle me-1"></i>{{ branch.payment_provider|upper }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark" title="הגדרות תשלום חסרות — ישתמש בהגדרות גלובליות">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>גלובלי
+                                </span>
+                            {% endif %}
+                        </td>
                         <td>{{ branch.display_order }}</td>
                         <td>
-                            <a href="{{ url_for('admin.branch_menu', branch_id=branch.id) }}" class="btn btn-sm btn-warning">
-                                <i class="fas fa-utensils"></i> תפריט
-                            </a>
-                            <a href="{{ url_for('admin.edit_branch', id=branch.id) }}" class="btn btn-sm btn-info">
-                                <i class="fas fa-edit"></i> ערוך
-                            </a>
-                            <button class="btn btn-sm btn-danger delete-branch" data-id="{{ branch.id }}">
-                                <i class="fas fa-trash"></i> מחק
-                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('admin.branch_menu', branch_id=branch.id) }}">
+                                            <i class="fas fa-utensils me-2"></i> תפריט
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('admin.edit_branch', id=branch.id) }}">
+                                            <i class="fas fa-edit me-2"></i> ערוך
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger delete-branch" href="#" data-id="{{ branch.id }}">
+                                            <i class="fas fa-trash me-2"></i> מחק
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                     {% if not branches %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted">אין סניפים במערכת</td>
+                        <td colspan="7" class="text-center text-muted">אין סניפים במערכת</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -69,7 +95,8 @@
 {% block extra_js %}
 <script>
 document.querySelectorAll('.delete-branch').forEach(btn => {
-    btn.addEventListener('click', async function() {
+    btn.addEventListener('click', async function(e) {
+        e.preventDefault();
         if (!confirm('האם אתה בטוח שברצונך למחוק סניף זה?')) return;
         
         const id = this.dataset.id;

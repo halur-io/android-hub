@@ -1115,6 +1115,8 @@ def edit_branch(id=None):
         branch.waze_link = request.form.get('waze_link')
         branch.google_maps_link = request.form.get('google_maps_link')
         branch.is_active = request.form.get('is_active') == 'on'
+        branch.enable_delivery = request.form.get('enable_delivery') == 'on'
+        branch.enable_pickup = request.form.get('enable_pickup') == 'on'
         branch.display_order = int(request.form.get('display_order', 0))
         branch.payment_provider = request.form.get('payment_provider', 'hyp').strip() or 'hyp'
         branch.hyp_terminal = request.form.get('hyp_terminal', '').strip() or None

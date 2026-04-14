@@ -49,26 +49,26 @@ class HYPPayment:
                 self._credentials_source = 'branch'
                 return
 
+        s = self._settings
+        if s:
+            st = getattr(s, 'hyp_terminal', None)
+            sk = getattr(s, 'hyp_api_key', None)
+            sp = getattr(s, 'hyp_passp', None)
+            if st and sk and sp:
+                self.terminal = st
+                self.api_key = sk
+                self.passp = sp
+                self._credentials_source = 'settings'
+                return
+
         self.terminal = os.environ.get('HYP_TERMINAL', '').strip()
         self.api_key = os.environ.get('HYP_API_KEY', '').strip()
         self.passp = os.environ.get('HYP_PASSP', '').strip()
 
         if self.terminal and self.api_key and self.passp:
             self._credentials_source = 'env'
-            return
-
-        s = self._settings
-        if s:
-            if not self.terminal and getattr(s, 'hyp_terminal', None):
-                self.terminal = s.hyp_terminal
-            if not self.api_key and getattr(s, 'hyp_api_key', None):
-                self.api_key = s.hyp_api_key
-            if not self.passp and getattr(s, 'hyp_passp', None):
-                self.passp = s.hyp_passp
-            if self.terminal and self.api_key and self.passp:
-                self._credentials_source = 'settings'
-            else:
-                self._credentials_source = 'partial'
+        else:
+            self._credentials_source = 'partial'
 
     @property
     def sandbox_mode(self) -> bool:

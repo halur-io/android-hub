@@ -1288,6 +1288,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                     if hesh_items:
                         extra_params['heshDesc'] = ''.join(hesh_items)
                         extra_params['Pritim'] = 'True'
+                    logging.info(f"HYP credentials for #{order.order_number}: source={hyp_local._credentials_source}, branch={selected_branch.name_he if selected_branch else 'global'}")
                     payment_url = hyp_local.create_payment_url(
                         amount=order.total_amount,
                         order_id=order.order_number,
@@ -1508,6 +1509,7 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                     branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
                     hyp_local = HYPPayment(settings)
                     hyp_local._load_credentials(settings, branch=branch_obj)
+                    logging.info(f"HYP verify for #{order_number}: source={hyp_local._credentials_source}, branch={branch_obj.name_he if branch_obj else 'global'}")
                     verification = hyp_local.verify_payment_response(
                         dict(request.args),
                         expected_order_id=order.hyp_order_ref or order.order_number,

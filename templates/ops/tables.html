@@ -261,6 +261,13 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="summaryOverlay" onclick="hideSummary()" style="display:none; align-items:flex-end; justify-content:center; z-index:1055;"></div>
+<div class="move-table-sheet" id="summarySheet" style="z-index:1060;">
+    <div class="sheet-handle"></div>
+    <h4 style="font-weight:700; margin-bottom:4px;">סיכום הזמנה</h4>
+    <div id="summaryContent" style="font-size:.85rem;"></div>
+</div>
+
 <div class="modal-overlay" id="moveTableOverlay" onclick="hideMoveTable()" style="z-index:1055;"></div>
 <div class="move-table-sheet" id="moveTableSheet">
     <div class="sheet-handle"></div>
@@ -372,6 +379,7 @@ function showQuickActions(card, evt) {
 
     if (status === 'open' || status === 'awaiting_payment') {
         addMenuItem(menu, 'fa-external-link-alt', 'פתח הזמנה', function() { window.location.href = '/ops/dine-in/' + sessionId; });
+        addMenuItem(menu, 'fa-list-alt', 'סיכום הזמנה', function() { showOrderSummary(sessionId); });
         addMenuItem(menu, 'fa-receipt', 'הדפס חשבון', function() { quickPrintCheck(sessionId); });
         addMenuItem(menu, 'fa-exchange-alt', 'העבר שולחן', function() { showMoveTable(sessionId); });
         addDivider(menu);
@@ -408,6 +416,40 @@ function hideQuickActions() {
     if (m) m.remove();
     var b = document.querySelector('.qa-backdrop');
     if (b) b.remove();
+}
+
+function showOrderSummary(sessionId) {
+    var content = document.getElementById('summaryContent');
+    content.innerHTML = '<div style="text-align:center; padding:20px; color:#aaa;"><i class="fas fa-spinner fa-spin"></i> טוען...</div>';
+    document.getElementById('summaryOverlay').style.display = 'flex';
+    document.getElementById('summarySheet').classList.add('show');
+    fetch('/ops/api/sessions/' + sessionId).then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.ok) { content.innerHTML = '<p style="color:#f44336;">שגיאה: ' + (d.error || '') + '</p>'; return; }
+        var s = d.session;
+        var h = '<div style="display:flex; justify-content:space-between; margin-bottom:8px;">';
+        h += '<span style="font-weight:600;">שולחן ' + s.table_number + '</span>';
+        h += '<span style="color:#888;">' + s.elapsed_minutes + ' דק׳</span></div>';
+        if (s.waiter) h += '<div style="color:#888; font-size:.75rem; margin-bottom:8px;"><i class="fas fa-user me-1"></i>' + s.waiter + '</div>';
+        h += '<div style="border-top:1px solid #eee; padding-top:8px;">';
+        (s.items || []).forEach(function(item) {
+            var name = item.name_he || item.item_name_he || '';
+            var qty = item.qty || item.quantity || 1;
+            var price = parseFloat(item.price || item.unit_price || 0) * parseInt(qty);
+            h += '<div style="display:flex; justify-content:space-between; padding:3px 0;">';
+            h += '<span>' + qty + 'x ' + name + '</span>';
+            h += '<span style="font-weight:600;">₪' + Math.round(price) + '</span></div>';
+        });
+        h += '</div>';
+        h += '<div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:1px solid #eee; margin-top:8px; font-weight:700; font-size:1rem;">';
+        h += '<span>סה"כ</span><span style="color:var(--ops-accent,#e94560);">₪' + Math.round(s.total) + '</span></div>';
+        if (s.notes) h += '<div style="margin-top:6px; color:#888; font-size:.75rem;"><i class="fas fa-sticky-note me-1"></i>' + s.notes + '</div>';
+        content.innerHTML = h;
+    });
+}
+
+function hideSummary() {
+    document.getElementById('summaryOverlay').style.display = 'none';
+    document.getElementById('summarySheet').classList.remove('show');
 }
 
 function quickPrintCheck(sessionId) {

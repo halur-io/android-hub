@@ -4122,6 +4122,15 @@ def session_payment_callback(session_id):
         return 'Invalid callback token', 403
     status = request.args.get('status', '')
     if status == 'success':
+        if sess.pending_void_approvals:
+            try:
+                pending = json.loads(sess.pending_void_approvals)
+            except Exception:
+                pending = []
+            if pending:
+                logging.warning(f'Dine-in session {sess.id}: payment callback blocked — {len(pending)} pending void approvals')
+                return render_template('ops/payment_fail.html', session=sess,
+                    error_message='לא ניתן לסגור — יש ביטולים הממתינים לאישור מנהל')
         hyp_verified = False
         try:
             from standalone_order_service.hyp_payment import HYPPayment

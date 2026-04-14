@@ -397,14 +397,20 @@
     <div class="modal-panel" onclick="event.stopPropagation()">
         <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
         <h4 id="itemModalTitle"></h4>
+        <div id="itemModalDesc" style="font-size:.8rem; color:#888; margin-bottom:8px;"></div>
+        <div class="edit-qty-row" style="margin:10px 0;">
+            <button class="edit-qty-btn" onclick="newItemQtyAdjust(-1)">−</button>
+            <span class="edit-qty-value" id="newItemQty">1</span>
+            <button class="edit-qty-btn" onclick="newItemQtyAdjust(1)">+</button>
+        </div>
         <div id="itemModalOptions"></div>
         <div style="margin-top:12px;">
             <label style="font-size:.8rem; font-weight:600; color:#555;">הערות</label>
             <input type="text" id="itemNotes" class="form-control" placeholder="הערות לפריט..." style="border-radius:10px; font-size:.85rem;">
         </div>
         <div style="display:flex; gap:8px; margin-top:14px;">
-            <button onclick="addItemToCart()" style="flex:1; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:.9rem; cursor:pointer;">
-                <i class="fas fa-plus me-1"></i> הוסף
+            <button onclick="addItemToCart()" id="addItemBtn" style="flex:1; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:.9rem; cursor:pointer;">
+                <i class="fas fa-plus me-1"></i> הוסף — ₪0
             </button>
             <button onclick="closeItemModal()" style="flex:0 0 auto; background:#f0f0f0; border:none; border-radius:10px; padding:12px 20px; color:#666; font-weight:600; cursor:pointer;">ביטול</button>
         </div>
@@ -657,6 +663,8 @@ function bindDragEvents() {
     });
 }
 
+var newItemQty = 1;
+
 function openItem(itemId) {
     var item = null;
     MENU_DATA.forEach(function(cat) {
@@ -664,34 +672,47 @@ function openItem(itemId) {
     });
     if (!item) return;
     currentItem = item;
-    if (!item.option_groups || item.option_groups.length === 0) {
-        cart.push({
-            id: item.id, name_he: item.name_he, name_en: item.name_en || '',
-            price: item.price, qty: 1, options: [], notes: ''
-        });
-        renderSidebar();
-        renderMenu();
-        return;
-    }
-    document.getElementById('itemModalTitle').textContent = item.name_he + ' — ₪' + item.price.toFixed(0);
+    newItemQty = 1;
+    document.getElementById('itemModalTitle').textContent = item.name_he;
+    document.getElementById('itemModalDesc').textContent = item.description_he || '';
+    document.getElementById('newItemQty').textContent = '1';
     document.getElementById('itemNotes').value = '';
+    updateAddBtnPrice();
     var optHtml = '';
-    item.option_groups.forEach(function(grp) {
-        optHtml += '<div class="opt-group"><div class="opt-group-title">' + grp.name_he;
-        if (grp.is_required) optHtml += ' <span style="color:#e94560;">*</span>';
-        optHtml += '</div>';
-        var maxSel = grp.max_selections || grp.max_choices || 99;
-        grp.choices.forEach(function(ch) {
-            var chPrice = ch.price_modifier || ch.price || 0;
-            optHtml += '<div class="opt-choice" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + chPrice + '" onclick="toggleChoice(this, \'' + grp.id + '\', ' + maxSel + ')">';
-            optHtml += '<span class="choice-name">' + ch.name_he + '</span>';
-            if (chPrice > 0) optHtml += '<span class="choice-price">+₪' + chPrice + '</span>';
+    if (item.option_groups && item.option_groups.length > 0) {
+        item.option_groups.forEach(function(grp) {
+            optHtml += '<div class="opt-group"><div class="opt-group-title">' + grp.name_he;
+            if (grp.is_required) optHtml += ' <span style="color:#e94560;">*</span>';
+            optHtml += '</div>';
+            var maxSel = grp.max_selections || grp.max_choices || 99;
+            grp.choices.forEach(function(ch) {
+                var chPrice = ch.price_modifier || ch.price || 0;
+                optHtml += '<div class="opt-choice" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + chPrice + '" onclick="toggleChoice(this, \'' + grp.id + '\', ' + maxSel + '); updateAddBtnPrice();">';
+                optHtml += '<span class="choice-name">' + ch.name_he + '</span>';
+                if (chPrice > 0) optHtml += '<span class="choice-price">+₪' + chPrice + '</span>';
+                optHtml += '</div>';
+            });
             optHtml += '</div>';
         });
-        optHtml += '</div>';
-    });
+    }
     document.getElementById('itemModalOptions').innerHTML = optHtml;
     document.getElementById('itemModalOverlay').classList.add('show');
+}
+
+function newItemQtyAdjust(delta) {
+    newItemQty = Math.max(1, newItemQty + delta);
+    document.getElementById('newItemQty').textContent = newItemQty;
+    updateAddBtnPrice();
+}
+
+function updateAddBtnPrice() {
+    if (!currentItem) return;
+    var extraPrice = 0;
+    document.querySelectorAll('#itemModalOptions .opt-choice.selected').forEach(function(el) {
+        extraPrice += (parseFloat(el.dataset.price) || 0);
+    });
+    var total = (currentItem.price + extraPrice) * newItemQty;
+    document.getElementById('addItemBtn').innerHTML = '<i class="fas fa-plus me-1"></i> הוסף — ₪' + Math.round(total);
 }
 
 function toggleChoice(el, groupId, maxChoices) {
@@ -724,7 +745,7 @@ function addItemToCart() {
     var notes = document.getElementById('itemNotes').value.trim();
     cart.push({
         id: currentItem.id, name_he: currentItem.name_he, name_en: currentItem.name_en || '',
-        price: currentItem.price + extraPrice, qty: 1, options: selectedOptions, notes: notes
+        price: currentItem.price + extraPrice, qty: newItemQty, options: selectedOptions, notes: notes
     });
     closeItemModal();
     renderSidebar();

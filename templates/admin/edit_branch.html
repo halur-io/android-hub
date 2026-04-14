@@ -101,6 +101,16 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold">סטטוס הזמנות</label>
+                <select class="form-select" name="ordering_status">
+                    <option value="open" {% if (branch.ordering_status or 'open') == 'open' %}selected{% endif %}>🟢 פתוח - מקבל הזמנות</option>
+                    <option value="busy" {% if (branch.ordering_status or 'open') == 'busy' %}selected{% endif %}>🟡 עמוס - סגור זמנית להזמנות</option>
+                    <option value="closed" {% if (branch.ordering_status or 'open') == 'closed' %}selected{% endif %}>🔴 סגור - לא מקבל הזמנות</option>
+                </select>
+                <small class="text-muted">קובע אם לקוחות יכולים להזמין מסניף זה</small>
+            </div>
         </div>
     </div>
 

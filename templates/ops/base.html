@@ -33,6 +33,46 @@
                     <i class="fas fa-store" style="margin-left:3px;"></i>{{ ops_branch_name }}
                 </span>
                 {% endif %}
+                {% if ops_branch_id %}
+                <div class="ops-branch-status-wrap" style="position:relative;display:inline-block;margin-left:8px;">
+                    <button type="button" id="branch-status-btn" onclick="toggleStatusPopover()" style="
+                        background:none;border:1px solid var(--ops-border);border-radius:8px;padding:4px 10px;
+                        cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Heebo',sans-serif;
+                        font-size:0.75rem;color:var(--ops-text);min-height:32px;">
+                        <span id="branch-status-dot" style="
+                            width:10px;height:10px;border-radius:50%;display:inline-block;
+                            background:{% if branch_ordering_status == 'open' %}#22c55e{% elif branch_ordering_status == 'busy' %}#f59e0b{% else %}#ef4444{% endif %};
+                        "></span>
+                        <span id="branch-status-label">{% if branch_ordering_status == 'open' %}פתוח{% elif branch_ordering_status == 'busy' %}עמוס{% else %}סגור{% endif %}</span>
+                    </button>
+                    <div id="branch-status-popover" style="
+                        display:none;position:absolute;top:100%;left:0;margin-top:6px;z-index:9999;
+                        background:var(--ops-card);border:1px solid var(--ops-border);border-radius:10px;
+                        box-shadow:0 8px 24px rgba(0,0,0,.3);padding:6px;min-width:170px;">
+                        <button type="button" onclick="setBranchStatus('open')" class="ops-status-option" style="
+                            display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;
+                            background:none;cursor:pointer;border-radius:8px;font-family:'Heebo',sans-serif;
+                            font-size:0.85rem;color:var(--ops-text);text-align:right;">
+                            <span style="width:12px;height:12px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span>
+                            פתוח
+                        </button>
+                        <button type="button" onclick="setBranchStatus('busy')" class="ops-status-option" style="
+                            display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;
+                            background:none;cursor:pointer;border-radius:8px;font-family:'Heebo',sans-serif;
+                            font-size:0.85rem;color:var(--ops-text);text-align:right;">
+                            <span style="width:12px;height:12px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>
+                            עמוס (סגור זמנית)
+                        </button>
+                        <button type="button" onclick="setBranchStatus('closed')" class="ops-status-option" style="
+                            display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;
+                            background:none;cursor:pointer;border-radius:8px;font-family:'Heebo',sans-serif;
+                            font-size:0.85rem;color:var(--ops-text);text-align:right;">
+                            <span style="width:12px;height:12px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>
+                            סגור
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
                 <span class="ops-header-user">
                     <i class="fas fa-user-circle"></i>
                     {{ session.get('ops_user_name', '') }}
@@ -113,6 +153,25 @@
         t.textContent = message;
         t.className = 'ops-toast' + (isError ? ' error' : '') + ' show';
         setTimeout(function() { t.className = 'ops-toast'; }, 2500);
+    }
+
+    function toggleStatusPopover() {
+        var pop = document.getElementById('branch-status-popover');
+        pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+    }
+    document.addEventListener('click', function(e) {
+        var wrap = document.querySelector('.ops-branch-status-wrap');
+        var pop = document.getElementById('branch-status-popover');
+        if (wrap && pop && !wrap.contains(e.target)) pop.style.display = 'none';
+    });
+    function setBranchStatus(status) {
+        document.getElementById('branch-status-popover').style.display = 'none';
+        var colors = {open:'#22c55e', busy:'#f59e0b', closed:'#ef4444'};
+        var labels = {open:'פתוח', busy:'עמוס', closed:'סגור'};
+        opsPost('{{ url_for("ops.update_branch_status") }}', {status: status}, function(d) {
+            document.getElementById('branch-status-dot').style.background = colors[status];
+            document.getElementById('branch-status-label').textContent = labels[status];
+        });
     }
 
     function switchBranch(branchId) {

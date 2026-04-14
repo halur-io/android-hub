@@ -46,6 +46,7 @@ def _run_safe_migrations(db):
         ("food_orders", "bon_print_options", "ALTER TABLE food_orders ADD COLUMN bon_print_options TEXT"),
         ("food_orders", "source", "ALTER TABLE food_orders ADD COLUMN source VARCHAR(20) DEFAULT 'online'"),
         ("food_orders", "created_by_name", "ALTER TABLE food_orders ADD COLUMN created_by_name VARCHAR(120)"),
+        ("branches", "ordering_status", "ALTER TABLE branches ADD COLUMN ordering_status VARCHAR(20) NOT NULL DEFAULT 'open'"),
     ]
     for table, column, sql in migrations:
         try:

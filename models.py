@@ -413,6 +413,7 @@ class Branch(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     enable_delivery = db.Column(db.Boolean, default=True)
     enable_pickup = db.Column(db.Boolean, default=True)
+    ordering_status = db.Column(db.String(20), default='open', nullable=False)
     display_order = db.Column(db.Integer, default=0)
     payment_provider = db.Column(db.String(20), default='hyp')
     hyp_terminal = db.Column(db.String(100))

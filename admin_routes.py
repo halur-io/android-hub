@@ -1117,6 +1117,9 @@ def edit_branch(id=None):
         branch.is_active = request.form.get('is_active') == 'on'
         branch.enable_delivery = request.form.get('enable_delivery') == 'on'
         branch.enable_pickup = request.form.get('enable_pickup') == 'on'
+        ordering_status = request.form.get('ordering_status', 'open').strip()
+        if ordering_status in ('open', 'busy', 'closed'):
+            branch.ordering_status = ordering_status
         branch.display_order = int(request.form.get('display_order', 0))
         branch.payment_provider = request.form.get('payment_provider', 'hyp').strip() or 'hyp'
         branch.hyp_terminal = request.form.get('hyp_terminal', '').strip() or None
@@ -1151,6 +1154,19 @@ def edit_branch(id=None):
         return redirect(url_for('admin.branches'))
     
     return render_template('admin/edit_branch.html', branch=branch)
+
+@admin_bp.route('/branches/<int:branch_id>/ordering-status', methods=['POST'])
+@login_required
+def update_branch_ordering_status(branch_id):
+    branch = Branch.query.get_or_404(branch_id)
+    data = request.get_json(force=True)
+    new_status = data.get('ordering_status', 'open')
+    if new_status not in ('open', 'busy', 'closed'):
+        return jsonify({'success': False, 'error': 'Invalid status'}), 400
+    branch.ordering_status = new_status
+    db.session.commit()
+    return jsonify({'success': True})
+
 
 @admin_bp.route('/branches/delete/<int:id>', methods=['POST'])
 @login_required

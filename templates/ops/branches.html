@@ -43,6 +43,15 @@
                 <span class="ops-badge ops-badge-red">לא פעיל</span>
                 {% endif %}
             </div>
+            <div style="margin-top:6px;">
+                <select class="ops-ordering-status-select" data-branch-id="{{ branch.id }}" style="
+                    background:var(--ops-card);color:var(--ops-text);border:1px solid var(--ops-border);
+                    border-radius:8px;padding:4px 10px;font-size:0.8rem;font-family:'Heebo',sans-serif;cursor:pointer;">
+                    <option value="open" {% if (branch.ordering_status or 'open') == 'open' %}selected{% endif %}>🟢 פתוח להזמנות</option>
+                    <option value="busy" {% if (branch.ordering_status or 'open') == 'busy' %}selected{% endif %}>🟡 עמוס</option>
+                    <option value="closed" {% if (branch.ordering_status or 'open') == 'closed' %}selected{% endif %}>🔴 סגור להזמנות</option>
+                </select>
+            </div>
             <div class="ops-branch-address">
                 {{ branch.address_he or '' }}
                 {% if branch.phone %} · {{ branch.phone }}{% endif %}
@@ -131,5 +140,13 @@ function toggleBranch(branchId, field, value) {
 function toggleGlobal(field, value) {
     opsPost('{{ url_for('ops.branch_toggle') }}', {field: field, value: value});
 }
+
+document.querySelectorAll('.ops-ordering-status-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        var branchId = this.dataset.branchId;
+        var status = this.value;
+        opsPost('{{ url_for('ops.update_branch_status') }}', {branch_id: parseInt(branchId), status: status});
+    });
+});
 </script>
 {% endblock %}

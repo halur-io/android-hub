@@ -131,11 +131,21 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
 
     @bp.route('/select-branch', methods=['POST'])
     def select_branch():
+        lang = _get_language()
         branch_id = request.form.get('branch_id', '').strip()
         if branch_id:
             try:
                 branch = Branch.query.filter_by(id=int(branch_id), is_active=True).first()
                 if branch:
+                    bs = getattr(branch, 'ordering_status', 'open') or 'open'
+                    if bs == 'busy':
+                        msg = 'הסניף עמוס כרגע, נסו שוב מאוחר יותר' if lang == 'he' else 'This branch is currently busy, please try again later'
+                        flash(msg, 'warning')
+                        return redirect(url_for('order_page.order_page'))
+                    if bs == 'closed':
+                        msg = 'הסניף סגור כרגע' if lang == 'he' else 'This branch is currently closed'
+                        flash(msg, 'warning')
+                        return redirect(url_for('order_page.order_page'))
                     session['order_branch_id'] = branch.id
             except (ValueError, TypeError):
                 pass
@@ -346,6 +356,38 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
                                    settings=settings,
                                    reorder_data=None)
 
+        branch_ordering_status = getattr(selected_branch, 'ordering_status', 'open') if selected_branch else 'open'
+        if branch_ordering_status == 'busy':
+            lang = _get_language()
+            busy_msg = 'הסניף עמוס כרגע, נסו שוב מאוחר יותר' if lang == 'he' else 'This branch is currently busy, please try again later'
+            return render_template('order_page.html', ordering_disabled=False,
+                                   ordering_paused=True, ordering_outside_hours=False,
+                                   ordering_status_message=busy_msg,
+                                   categories=[], delivery_zones=[], delivery_fee=0,
+                                   free_delivery_threshold=100, estimated_delivery_time='45-60',
+                                   enable_delivery=getattr(settings, 'enable_delivery', True),
+                                   enable_pickup=getattr(settings, 'enable_pickup', True),
+                                   branches=branches, selected_branch=selected_branch,
+                                   multi_branch=multi_branch, need_branch_selection=False,
+                                   need_onboarding=False, order_onboarded=order_onboarded,
+                                   order_customer=session.get('order_customer', {}),
+                                   deals=[], settings=settings, reorder_data=None)
+        if branch_ordering_status == 'closed':
+            lang = _get_language()
+            closed_msg = 'הסניף סגור כרגע' if lang == 'he' else 'This branch is currently closed'
+            return render_template('order_page.html', ordering_disabled=False,
+                                   ordering_paused=True, ordering_outside_hours=False,
+                                   ordering_status_message=closed_msg,
+                                   categories=[], delivery_zones=[], delivery_fee=0,
+                                   free_delivery_threshold=100, estimated_delivery_time='45-60',
+                                   enable_delivery=getattr(settings, 'enable_delivery', True),
+                                   enable_pickup=getattr(settings, 'enable_pickup', True),
+                                   branches=branches, selected_branch=selected_branch,
+                                   multi_branch=multi_branch, need_branch_selection=False,
+                                   need_onboarding=False, order_onboarded=order_onboarded,
+                                   order_customer=session.get('order_customer', {}),
+                                   deals=[], settings=settings, reorder_data=None)
+
         ordering_paused = getattr(settings, 'ordering_paused', False)
         paused_message = getattr(settings, 'ordering_paused_message', None) or 'עסוקים כרגע — ניקח הזמנות בעוד כמה דקות'
         ordering_outside_hours = False
@@ -523,6 +565,17 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             return redirect(url_for('order_page.order_page'))
 
         selected_branch = _get_selected_branch()
+        if selected_branch:
+            bs = getattr(selected_branch, 'ordering_status', 'open')
+            lang = _get_language()
+            if bs == 'busy':
+                msg = 'הסניף עמוס כרגע, נסו שוב מאוחר יותר' if lang == 'he' else 'This branch is currently busy, please try again later'
+                flash(msg, 'warning')
+                return redirect(url_for('order_page.order_page'))
+            if bs == 'closed':
+                msg = 'הסניף סגור כרגע' if lang == 'he' else 'This branch is currently closed'
+                flash(msg, 'warning')
+                return redirect(url_for('order_page.order_page'))
         multi_branch = len(_get_branches()) > 1
         if multi_branch and not selected_branch:
             flash('נא לבחור סניף לפני ביצוע הזמנה.', 'warning')
@@ -813,6 +866,17 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             flash('עסוקים כרגע', 'warning')
             return redirect(url_for('order_page.order_page'))
         selected_branch = _get_selected_branch()
+        if selected_branch:
+            bs = getattr(selected_branch, 'ordering_status', 'open')
+            lang = _get_language()
+            if bs == 'busy':
+                msg = 'הסניף עמוס כרגע, נסו שוב מאוחר יותר' if lang == 'he' else 'This branch is currently busy, please try again later'
+                flash(msg, 'warning')
+                return redirect(url_for('order_page.order_page'))
+            if bs == 'closed':
+                msg = 'הסניף סגור כרגע' if lang == 'he' else 'This branch is currently closed'
+                flash(msg, 'warning')
+                return redirect(url_for('order_page.order_page'))
         sel_branch_id = selected_branch.id if selected_branch else None
         multi_branch = len(_get_branches()) > 1
         if multi_branch and not selected_branch:

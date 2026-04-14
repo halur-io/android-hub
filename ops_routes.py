@@ -242,10 +242,12 @@ def inject_ops_context():
     modules = user.get_ops_modules() if user else []
     branch_id = _get_effective_branch_id()
     branch_name = ''
+    branch_ordering_status = 'open'
     if branch_id:
         branch = Branch.query.get(branch_id)
         if branch:
             branch_name = branch.name_he
+            branch_ordering_status = branch.ordering_status or 'open'
     is_ops_superadmin = user.is_ops_superadmin if user else False
     all_branches = Branch.query.filter_by(is_active=True).all() if is_ops_superadmin else []
     return dict(
@@ -253,6 +255,7 @@ def inject_ops_context():
         ops_user=user,
         ops_branch_id=branch_id,
         ops_branch_name=branch_name,
+        branch_ordering_status=branch_ordering_status,
         is_ops_superadmin=is_ops_superadmin,
         can_switch_branch=is_ops_superadmin,
         all_branches=all_branches,
@@ -2033,6 +2036,29 @@ def branches():
         hours=hours,
         settings=settings,
     )
+
+
+@ops_bp.route('/api/branch-status', methods=['POST'])
+@require_ops_any_module('branches', 'orders', 'home')
+def update_branch_status():
+    user = _get_ops_user()
+    effective_branch = _get_effective_branch_id()
+    data = request.get_json(force=True)
+    new_status = data.get('status')
+    branch_id = data.get('branch_id') or effective_branch
+    if new_status not in ('open', 'busy', 'closed'):
+        return jsonify({'ok': False, 'error': 'סטטוס לא תקין'}), 400
+    if not branch_id:
+        return jsonify({'ok': False, 'error': 'לא נבחר סניף'}), 400
+    branch = Branch.query.get(branch_id)
+    if not branch:
+        return jsonify({'ok': False, 'error': 'סניף לא נמצא'}), 404
+    if not user.is_ops_superadmin and (not effective_branch or branch.id != effective_branch):
+        return jsonify({'ok': False, 'error': 'אין הרשאה לשנות סניף זה'}), 403
+    branch.ordering_status = new_status
+    db.session.commit()
+    status_labels = {'open': 'פתוח', 'busy': 'עמוס', 'closed': 'סגור'}
+    return jsonify({'ok': True, 'message': f'סטטוס סניף עודכן: {status_labels.get(new_status, new_status)}'})
 
 
 @ops_bp.route('/api/branches/toggle', methods=['POST'])

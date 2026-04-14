@@ -4287,7 +4287,7 @@ def dine_in_order(session_id):
         deals_data.append(deal_info)
     return render_template('ops/dine_in_order.html',
         active_tab='tables',
-        session=sess,
+        din_session=sess,
         categories=categories,
         items_by_cat=items_by_cat,
         deals_data=deals_data,

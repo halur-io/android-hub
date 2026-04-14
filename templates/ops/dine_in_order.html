@@ -1,5 +1,5 @@
 {% extends "ops/base.html" %}
-{% block title %}שולחן {{ session.table.table_number }} - Ops{% endblock %}
+{% block title %}שולחן {{ din_session.table.table_number }} - Ops{% endblock %}
 
 {% block content %}
 <style>
@@ -138,12 +138,12 @@
     <div class="din-header">
         <div style="display:flex; align-items:center; gap:10px;">
             <a href="/ops/tables" style="color:#888; font-size:1.1rem;"><i class="fas fa-arrow-right"></i></a>
-            <span class="table-badge {% if session.status == 'awaiting_payment' %}awaiting{% endif %}">
-                <i class="fas fa-utensils me-1"></i> שולחן {{ session.table.table_number }}
+            <span class="table-badge {% if din_session.status == 'awaiting_payment' %}awaiting{% endif %}">
+                <i class="fas fa-utensils me-1"></i> שולחן {{ din_session.table.table_number }}
             </span>
             <div class="session-meta">
-                <span><i class="fas fa-clock me-1"></i><span id="elapsed">{{ session.elapsed_minutes }}</span> דק׳</span>
-                {% if session.waiter %}<span><i class="fas fa-user me-1"></i>{{ session.waiter.name }}</span>{% endif %}
+                <span><i class="fas fa-clock me-1"></i><span id="elapsed">{{ din_session.elapsed_minutes }}</span> דק׳</span>
+                {% if din_session.waiter %}<span><i class="fas fa-user me-1"></i>{{ din_session.waiter.name }}</span>{% endif %}
             </div>
         </div>
         <div class="header-actions">
@@ -153,13 +153,13 @@
         </div>
     </div>
 
-    {% if session.discount_type and session.discount_value %}
+    {% if din_session.discount_type and din_session.discount_value %}
     <div class="din-discount" id="discountBar">
         <i class="fas fa-tag"></i>
-        {% if session.discount_type == 'percentage' %}
-            הנחה {{ session.discount_value }}%
+        {% if din_session.discount_type == 'percentage' %}
+            הנחה {{ din_session.discount_value }}%
         {% else %}
-            הנחה ₪{{ session.discount_value }}
+            הנחה ₪{{ din_session.discount_value }}
         {% endif %}
         <button onclick="removeDiscount()" style="background:none; border:none; color:#e65100; cursor:pointer; font-size:.7rem; margin-right:auto;">הסר</button>
     </div>
@@ -261,7 +261,7 @@
     <div class="modal-panel" onclick="event.stopPropagation()">
         <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
         <h4>הערות לשולחן</h4>
-        <textarea id="sessionNotes" class="form-control" rows="3" style="border-radius:10px;">{{ session.notes or '' }}</textarea>
+        <textarea id="sessionNotes" class="form-control" rows="3" style="border-radius:10px;">{{ din_session.notes or '' }}</textarea>
         <button onclick="saveNotes()" style="width:100%; margin-top:12px; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; cursor:pointer;">
             שמור
         </button>
@@ -292,7 +292,7 @@
 </div>
 
 <script>
-var SESSION_ID = {{ session.id }};
+var SESSION_ID = {{ din_session.id }};
 var cart = [];
 var existingItems = [];
 var currentItem = null;

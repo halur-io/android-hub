@@ -3940,15 +3940,15 @@ def session_payment_callback(session_id):
             )
             if verification.get('verified'):
                 hyp_verified = True
-                logger.info(f'Dine-in session {sess.id}: HYP payment verified (tx={verification.get("transaction_id")})')
+                logging.info(f'Dine-in session {sess.id}: HYP payment verified (tx={verification.get("transaction_id")})')
             elif verification.get('success'):
                 hyp_verified = True
-                logger.warning(f'Dine-in session {sess.id}: HYP payment success but signature not verified')
+                logging.warning(f'Dine-in session {sess.id}: HYP payment success but signature not verified')
             else:
-                logger.warning(f'Dine-in session {sess.id}: HYP verification failed: {verification.get("error_message")}')
+                logging.warning(f'Dine-in session {sess.id}: HYP verification failed: {verification.get("error_message")}')
         except Exception as e:
-            logger.warning(f'Dine-in session {sess.id}: HYP verification error: {e}')
-            hyp_verified = True
+            logging.error(f'Dine-in session {sess.id}: HYP verification error: {e}')
+            hyp_verified = False
         if not hyp_verified:
             return render_template('ops/payment_fail.html', session=sess)
         for order in sess.orders:

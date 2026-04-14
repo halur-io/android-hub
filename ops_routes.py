@@ -4219,33 +4219,86 @@ def dine_in_order(session_id):
         flash('ישיבה לא נמצאה', 'danger')
         return redirect(url_for('ops.tables_view'))
     categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
-    items_by_cat = {}
+    menu_data = []
     for cat in categories:
-        q = MenuItem.query.filter_by(category_id=cat.id, is_available=True)
-        cat_items = q.order_by(MenuItem.display_order).all()
-        if effective_branch:
-            filtered = []
-            for mi in cat_items:
-                bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=mi.id).first()
+        items_q = MenuItem.query.filter_by(category_id=cat.id, is_available=True)
+        cat_items = []
+        for item in items_q.order_by(MenuItem.display_order).all():
+            if effective_branch:
+                bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=item.id).first()
                 if bmi and not bmi.is_available:
                     continue
-                if bmi and bmi.custom_price is not None:
-                    mi._branch_price = bmi.custom_price
-                else:
-                    mi._branch_price = mi.base_price
-                filtered.append(mi)
-            cat_items = filtered
-        else:
-            for mi in cat_items:
-                mi._branch_price = mi.base_price
+                price = bmi.custom_price if (bmi and bmi.custom_price is not None) else item.base_price
+            else:
+                price = item.base_price
+            option_groups_list = []
+            for og in item.option_groups:
+                if not og.is_active:
+                    continue
+                choices = []
+                for ch in og.choices:
+                    if not ch.is_available:
+                        continue
+                    choices.append({
+                        'id': ch.id,
+                        'name_he': ch.name_he,
+                        'price_modifier': ch.price_modifier or 0,
+                        'is_default': ch.is_default,
+                    })
+                if choices:
+                    option_groups_list.append({
+                        'id': og.id,
+                        'name_he': og.name_he,
+                        'selection_type': og.selection_type,
+                        'is_required': og.is_required,
+                        'min_selections': og.min_selections or 0,
+                        'max_selections': og.max_selections or 0,
+                        'choices': choices,
+                    })
+            from models import GlobalOptionGroupLink
+            global_links = GlobalOptionGroupLink.query.filter_by(menu_item_id=item.id).all()
+            for link in global_links:
+                gog = link.global_group
+                if not gog or not gog.is_active:
+                    continue
+                if link.linked_option_group_id:
+                    continue
+                g_choices = []
+                for gc in gog.choices:
+                    if not gc.is_available:
+                        continue
+                    g_choices.append({
+                        'id': gc.id,
+                        'name_he': gc.name_he,
+                        'price_modifier': gc.price_modifier or 0,
+                        'is_default': gc.is_default,
+                        'is_global': True,
+                    })
+                if g_choices:
+                    option_groups_list.append({
+                        'id': f'g_{gog.id}',
+                        'name_he': gog.name_he,
+                        'selection_type': gog.selection_type,
+                        'is_required': gog.is_required,
+                        'min_selections': gog.min_selections or 0,
+                        'max_selections': gog.max_selections or 0,
+                        'choices': g_choices,
+                    })
+            cat_items.append({
+                'id': item.id,
+                'name_he': item.name_he,
+                'name_en': item.name_en or '',
+                'price': float(price) if price else 0,
+                'description_he': item.short_description_he or item.description_he or '',
+                'option_groups': option_groups_list,
+            })
         if cat_items:
-            items_by_cat[cat.id] = cat_items
-    option_groups = {}
-    for cat_id, cat_items in items_by_cat.items():
-        for mi in cat_items:
-            groups = MenuItemOptionGroup.query.filter_by(menu_item_id=mi.id).order_by(MenuItemOptionGroup.display_order).all()
-            if groups:
-                option_groups[mi.id] = groups
+            menu_data.append({
+                'id': cat.id,
+                'name_he': cat.name_he,
+                'icon': cat.icon or 'utensils',
+                'items': cat_items,
+            })
     deals_data = []
     active_deals = Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all()
     for deal in active_deals:
@@ -4288,8 +4341,6 @@ def dine_in_order(session_id):
     return render_template('ops/dine_in_order.html',
         active_tab='tables',
         din_session=sess,
-        categories=categories,
-        items_by_cat=items_by_cat,
+        menu_data=menu_data,
         deals_data=deals_data,
-        option_groups=option_groups,
     )

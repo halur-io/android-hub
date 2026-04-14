@@ -20,37 +20,82 @@
         border: none; border-radius: 8px; padding: 8px 12px;
         font-weight: 600; font-size: .78rem; cursor: pointer;
     }
+    .din-search-bar {
+        padding: 8px 14px;
+        background: var(--ops-surface, #fff);
+        border-bottom: 1px solid #eee;
+        flex-shrink: 0;
+    }
+    .din-search-input {
+        width: 100%;
+        background: #f5f5f5;
+        border: 1px solid #eee;
+        color: #333;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+    .din-search-input::placeholder { color: #aaa; }
     .din-main { flex: 1; display: flex; overflow: hidden; }
     .din-menu { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid #eee; }
     .din-sidebar {
         width: 300px; display: flex; flex-direction: column;
         background: var(--ops-surface, #fff); overflow: hidden;
     }
-    .cat-tabs {
+    .din-cat-tabs {
         display: flex; overflow-x: auto; gap: 0; flex-shrink: 0;
         border-bottom: 1px solid #eee; background: #fafafa;
+        -webkit-overflow-scrolling: touch; padding: 0 8px;
+    }
+    .din-cat-tabs::-webkit-scrollbar { display: none; }
+    .din-cat-tab {
+        padding: 8px 14px; white-space: nowrap; font-size: 13px;
+        font-weight: 700; color: #888; cursor: pointer; border-bottom: 3px solid transparent;
+        transition: all .15s; text-align: center; min-width: 60px;
+    }
+    .din-cat-tab.active { color: var(--ops-accent, #e94560); border-bottom-color: var(--ops-accent, #e94560); }
+    .din-cat-tab.deals-tab { color: #f59e0b; }
+    .din-cat-tab.deals-tab.active { color: #f59e0b; border-bottom-color: #f59e0b; }
+    .din-menu-panel {
+        flex: 1; overflow-y: auto; padding: 12px;
         -webkit-overflow-scrolling: touch;
     }
-    .cat-tabs::-webkit-scrollbar { display: none; }
-    .cat-tab {
-        padding: 10px 16px; white-space: nowrap; font-size: .8rem;
-        font-weight: 600; color: #888; cursor: pointer; border-bottom: 3px solid transparent;
-        transition: all .15s;
-    }
-    .cat-tab.active { color: var(--ops-accent, #e94560); border-bottom-color: var(--ops-accent, #e94560); }
-    .items-grid {
+    .din-item-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-        gap: 8px; padding: 10px; overflow-y: auto; flex: 1;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
     }
-    .item-card {
-        background: #fff; border: 1px solid #eee; border-radius: 10px;
-        padding: 10px 8px; text-align: center; cursor: pointer;
-        transition: transform .1s, box-shadow .15s;
+    .din-item-card {
+        background: #fff; border: 1px solid #eee; border-radius: 12px;
+        padding: 12px; cursor: pointer; transition: all .15s;
+        text-align: right; position: relative;
     }
-    .item-card:active { transform: scale(.95); }
-    .item-card .item-name { font-size: .78rem; font-weight: 600; margin-bottom: 4px; line-height: 1.2; }
-    .item-card .item-price { font-size: .75rem; color: var(--ops-accent, #e94560); font-weight: 700; }
+    .din-item-card:active { transform: scale(0.97); }
+    .din-item-card.in-cart {
+        border-color: var(--ops-accent, #e94560);
+        box-shadow: 0 0 0 1px var(--ops-accent, #e94560);
+    }
+    .din-item-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+    .din-item-price { font-size: 13px; font-weight: 800; color: var(--ops-accent, #e94560); }
+    .din-item-desc { font-size: 11px; color: #999; margin-top: 2px; line-height: 1.2; max-height: 28px; overflow: hidden; }
+    .din-item-badge {
+        position: absolute; top: -6px; left: -6px;
+        background: var(--ops-accent, #e94560); color: #fff;
+        width: 22px; height: 22px; border-radius: 50%;
+        font-size: 12px; font-weight: 800;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .din-deal-card {
+        background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+        border: 1px solid #b45309; border-radius: 12px;
+        padding: 14px; cursor: pointer; transition: all .15s; text-align: right; position: relative;
+    }
+    .din-deal-card:active { transform: scale(0.97); }
+    .din-deal-card .din-deal-name { font-size: 15px; font-weight: 800; color: #fef3c7; margin-bottom: 4px; }
+    .din-deal-card .din-deal-desc { font-size: 12px; color: #fcd34d; margin-bottom: 6px; }
+    .din-deal-card .din-deal-prices { display: flex; gap: 8px; align-items: baseline; }
+    .din-deal-card .din-deal-price { font-size: 16px; font-weight: 900; color: #fef3c7; }
+    .din-deal-card .din-deal-orig { font-size: 13px; color: #d97706; text-decoration: line-through; }
     .sidebar-title {
         padding: 10px 14px; font-weight: 700; font-size: .9rem;
         border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
@@ -131,6 +176,7 @@
         .din-main { flex-direction: column; }
         .din-sidebar { width: 100%; max-height: 45vh; }
         .din-menu { border-left: none; border-bottom: 1px solid #eee; }
+        .din-item-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     }
 </style>
 
@@ -167,34 +213,11 @@
 
     <div class="din-main">
         <div class="din-menu">
-            <div class="cat-tabs" id="catTabs">
-                {% for cat in categories %}
-                {% if cat.id in items_by_cat %}
-                <div class="cat-tab {% if loop.first %}active{% endif %}" data-cat="{{ cat.id }}" onclick="switchCat({{ cat.id }}, this)">{{ cat.name_he }}</div>
-                {% endif %}
-                {% endfor %}
-                {% if deals_data %}
-                <div class="cat-tab" data-cat="deals" onclick="switchCat('deals', this)">🎁 מבצעים</div>
-                {% endif %}
+            <div class="din-search-bar">
+                <input type="text" class="din-search-input" id="dinSearch" placeholder="חיפוש פריט..." oninput="filterItems()">
             </div>
-            <div class="items-grid" id="itemsGrid">
-                {% for cat in categories %}
-                {% if cat.id in items_by_cat %}
-                <div class="cat-items" data-cat="{{ cat.id }}" {% if not loop.first %}style="display:none;"{% endif %}>
-                    {% for item in items_by_cat[cat.id] %}
-                    <div class="item-card" onclick='openItem({{ item.id }})'>
-                        <div class="item-name">{{ item.name_he }}</div>
-                        <div class="item-price">₪{{ "%.0f"|format(item._branch_price) }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% endfor %}
-                {% if deals_data %}
-                <div class="cat-items" data-cat="deals" style="display:none;" id="dealsGrid">
-                </div>
-                {% endif %}
-            </div>
+            <div class="din-cat-tabs" id="dinCatTabs"></div>
+            <div class="din-menu-panel" id="dinMenuPanel"></div>
         </div>
 
         <div class="din-sidebar">
@@ -293,101 +316,138 @@
 
 <script>
 var SESSION_ID = {{ din_session.id }};
+var MENU_DATA = {{ menu_data|tojson }};
+var DEALS_DATA = {{ deals_data|tojson }};
 var cart = [];
 var existingItems = [];
 var currentItem = null;
 var currentDealData = null;
 var dealPickSelections = {};
 var discountType = 'percentage';
+var activeCat = null;
 
-var DEALS_DATA = {{ deals_data|tojson }};
+function init() {
+    renderCatTabs();
+    if (MENU_DATA.length > 0) {
+        activeCat = MENU_DATA[0].id;
+    }
+    renderMenu();
+    loadSession();
+}
 
-var menuData = {};
-{% for cat_id, cat_items in items_by_cat.items() %}
-menuData[{{ cat_id }}] = [
-    {% for item in cat_items %}
-    {
-        id: {{ item.id }},
-        name_he: {{ item.name_he|tojson }},
-        name_en: {{ item.name_en|tojson if item.name_en else '""' }},
-        price: {{ item._branch_price }},
-        options: [
-            {% if item.id in option_groups %}
-            {% for grp in option_groups[item.id] %}
-            {
-                id: {{ grp.id }},
-                name_he: {{ grp.name_he|tojson }},
-                is_required: {{ 'true' if grp.is_required else 'false' }},
-                max_choices: {{ grp.max_choices or 0 }},
-                choices: [
-                    {% for ch in grp.choices %}
-                    { id: {{ ch.id }}, name_he: {{ ch.name_he|tojson }}, price: {{ ch.price_add or 0 }} },
-                    {% endfor %}
-                ]
-            },
-            {% endfor %}
-            {% endif %}
-        ]
-    },
-    {% endfor %}
-];
-{% endfor %}
-
-loadSession();
-renderDeals();
-
-function renderDeals() {
-    var grid = document.getElementById('dealsGrid');
-    if (!grid || !DEALS_DATA.length) return;
+function renderCatTabs() {
     var h = '';
-    DEALS_DATA.forEach(function(deal) {
-        h += '<div class="item-card" onclick="openDeal(' + deal.id + ')">';
-        h += '<div class="item-name">🎁 ' + deal.name_he + '</div>';
-        h += '<div class="item-price">₪' + deal.deal_price.toFixed(0) + '</div>';
+    if (DEALS_DATA.length > 0) {
+        h += '<div class="din-cat-tab deals-tab" data-cat="deals" onclick="switchCat(\'deals\')"><i class="fas fa-tags"></i> מבצעים</div>';
+    }
+    MENU_DATA.forEach(function(cat) {
+        h += '<div class="din-cat-tab" data-cat="'+cat.id+'" onclick="switchCat('+cat.id+')">'+cat.name_he+'</div>';
+    });
+    document.getElementById('dinCatTabs').innerHTML = h;
+    updateCatTabActive();
+}
+
+function switchCat(catId) {
+    activeCat = catId;
+    updateCatTabActive();
+    renderMenu();
+}
+
+function updateCatTabActive() {
+    document.querySelectorAll('.din-cat-tab').forEach(function(t) {
+        t.classList.toggle('active', String(t.dataset.cat) === String(activeCat));
+    });
+}
+
+function filterItems() {
+    renderMenu();
+}
+
+function getCartQty(itemId) {
+    var qty = 0;
+    cart.forEach(function(c) { if (c.id === itemId) qty += (c.qty || 1); });
+    return qty;
+}
+
+function renderMenu() {
+    var search = (document.getElementById('dinSearch').value || '').trim().toLowerCase();
+    var panel = document.getElementById('dinMenuPanel');
+    var h = '';
+
+    if (activeCat === 'deals') {
+        h += '<div class="din-item-grid">';
+        DEALS_DATA.forEach(function(deal) {
+            if (search && deal.name_he.toLowerCase().indexOf(search) === -1) return;
+            var origHtml = deal.original_price ? '<span class="din-deal-orig">₪'+deal.original_price.toFixed(0)+'</span>' : '';
+            h += '<div class="din-deal-card" onclick="openDeal('+deal.id+')">';
+            h += '<div class="din-deal-name">'+deal.name_he+'</div>';
+            if (deal.description_he) h += '<div class="din-deal-desc">'+deal.description_he+'</div>';
+            h += '<div class="din-deal-prices"><span class="din-deal-price">₪'+deal.deal_price.toFixed(0)+'</span>'+origHtml+'</div>';
+            h += '</div>';
+        });
+        h += '</div>';
+        panel.innerHTML = h;
+        return;
+    }
+
+    var cats = MENU_DATA.filter(function(c) { return !activeCat || c.id === activeCat; });
+    cats.forEach(function(cat) {
+        var items = cat.items;
+        if (search) {
+            items = items.filter(function(it) {
+                return it.name_he.toLowerCase().indexOf(search) !== -1 ||
+                       (it.name_en && it.name_en.toLowerCase().indexOf(search) !== -1);
+            });
+        }
+        if (items.length === 0) return;
+        if (!activeCat || cats.length > 1) {
+            h += '<div style="font-size:14px;font-weight:800;margin:12px 0 8px;color:var(--ops-accent, #e94560);">'+cat.name_he+'</div>';
+        }
+        h += '<div class="din-item-grid">';
+        items.forEach(function(item) {
+            var inCartQty = getCartQty(item.id);
+            var badgeHtml = inCartQty > 0 ? '<div class="din-item-badge">'+inCartQty+'</div>' : '';
+            h += '<div class="din-item-card'+(inCartQty > 0 ? ' in-cart' : '')+'" onclick="openItem('+item.id+')">';
+            h += badgeHtml;
+            h += '<div class="din-item-name">'+item.name_he+'</div>';
+            h += '<div class="din-item-price">₪'+item.price.toFixed(0)+'</div>';
+            if (item.description_he) h += '<div class="din-item-desc">'+item.description_he+'</div>';
+            h += '</div>';
+        });
         h += '</div>';
     });
-    grid.innerHTML = h;
+
+    if (!h) {
+        h = '<div style="text-align:center;padding:40px 20px;color:#aaa;"><i class="fas fa-search" style="font-size:2rem;display:block;margin-bottom:10px;opacity:.3;"></i>לא נמצאו פריטים</div>';
+    }
+    panel.innerHTML = h;
 }
 
-function loadSession() {
-    fetch('/ops/api/sessions/' + SESSION_ID).then(function(r) { return r.json(); }).then(function(d) {
-        if (!d.ok) return;
-        existingItems = d.session.items || [];
-        renderSidebar();
-        document.getElementById('elapsed').textContent = d.session.elapsed_minutes;
-    });
-}
-
-function switchCat(catId, el) {
-    document.querySelectorAll('.cat-tab').forEach(function(t) { t.classList.remove('active'); });
-    el.classList.add('active');
-    document.querySelectorAll('.cat-items').forEach(function(c) { c.style.display = 'none'; });
-    var target = document.querySelector('.cat-items[data-cat="' + catId + '"]');
-    if (target) target.style.display = '';
-}
+init();
 
 function openItem(itemId) {
     var item = null;
-    for (var catId in menuData) {
-        for (var i = 0; i < menuData[catId].length; i++) {
-            if (menuData[catId][i].id === itemId) { item = menuData[catId][i]; break; }
-        }
-        if (item) break;
-    }
+    MENU_DATA.forEach(function(cat) {
+        cat.items.forEach(function(it) {
+            if (it.id === itemId) item = it;
+        });
+    });
     if (!item) return;
     currentItem = item;
-    document.getElementById('itemModalTitle').textContent = item.name_he + ' — ₪' + item.price;
+    document.getElementById('itemModalTitle').textContent = item.name_he + ' — ₪' + item.price.toFixed(0);
     document.getElementById('itemNotes').value = '';
     var optHtml = '';
-    if (item.options && item.options.length) {
-        item.options.forEach(function(grp) {
+    if (item.option_groups && item.option_groups.length) {
+        item.option_groups.forEach(function(grp) {
             optHtml += '<div class="opt-group"><div class="opt-group-title">' + grp.name_he;
             if (grp.is_required) optHtml += ' <span style="color:#e94560;">*</span>';
             optHtml += '</div>';
+            var maxSel = grp.max_selections || grp.max_choices || 99;
             grp.choices.forEach(function(ch) {
-                optHtml += '<div class="opt-choice" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + ch.price + '" onclick="toggleChoice(this, ' + grp.id + ', ' + (grp.max_choices || 99) + ')">';
+                var chPrice = ch.price_modifier || ch.price || 0;
+                optHtml += '<div class="opt-choice" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + chPrice + '" onclick="toggleChoice(this, \'' + grp.id + '\', ' + maxSel + ')">';
                 optHtml += '<span class="choice-name">' + ch.name_he + '</span>';
-                if (ch.price > 0) optHtml += '<span class="choice-price">+₪' + ch.price + '</span>';
+                if (chPrice > 0) optHtml += '<span class="choice-price">+₪' + chPrice + '</span>';
                 optHtml += '</div>';
             });
             optHtml += '</div>';
@@ -421,7 +481,7 @@ function addItemToCart() {
         var p = parseFloat(el.dataset.price) || 0;
         extraPrice += p;
         selectedOptions.push({
-            group_id: parseInt(el.dataset.group),
+            group_id: el.dataset.group,
             choice_id: parseInt(el.dataset.choice),
             name_he: el.querySelector('.choice-name').textContent,
             price: p
@@ -439,6 +499,7 @@ function addItemToCart() {
     });
     closeItemModal();
     renderSidebar();
+    renderMenu();
 }
 
 function openDeal(dealId) {
@@ -533,6 +594,15 @@ function closeDealPickModal() {
     currentDealData = null;
 }
 
+function loadSession() {
+    fetch('/ops/api/sessions/' + SESSION_ID).then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.ok) return;
+        existingItems = d.session.items || [];
+        renderSidebar();
+        document.getElementById('elapsed').textContent = d.session.elapsed_minutes;
+    });
+}
+
 function renderSidebar() {
     var html = '';
     var total = 0;
@@ -607,6 +677,7 @@ function renderSidebar() {
 function removeCartItem(idx) {
     cart.splice(idx, 1);
     renderSidebar();
+    renderMenu();
 }
 
 function removeExistingItem(orderId, itemIdx) {
@@ -644,6 +715,7 @@ function sendToKitchen() {
         }).then(function(r) { return r.json(); }).then(function(d) {
             if (!d.ok) { alert(d.error); return; }
             cart = [];
+            renderMenu();
             fetch('/ops/api/sessions/' + SESSION_ID + '/send-to-kitchen', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},

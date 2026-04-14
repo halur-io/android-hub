@@ -3636,6 +3636,7 @@ def api_get_session(session_id):
             'payment_url': sess.payment_url or '',
             'items': items,
             'opened_at': sess.opened_at.isoformat() if sess.opened_at else '',
+            'pending_void_approvals': (json.loads(sess.pending_void_approvals) if sess.pending_void_approvals else []),
         },
     })
 
@@ -3756,19 +3757,15 @@ def api_session_remove_item(session_id):
     if not order or order.dine_in_session_id != sess.id:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
     manager_name = None
-    if order.status in ('preparing', 'ready', 'delivered', 'pickedup'):
-        pin_val = data.get('manager_pin')
-        if pin_val:
-            pin_valid = False
-            for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
-                if pm.check_pin(str(pin_val)):
-                    pin_valid = True
-                    manager_name = pm.name
-                    break
-            if not pin_valid:
-                return jsonify({'ok': False, 'error': 'PIN מנהל לא תקין'})
-        else:
-            return jsonify({'ok': False, 'error': 'פריט כבר נשלח למטבח — נדרש PIN מנהל', 'require_pin': True})
+    is_sent = order.status in ('preparing', 'ready', 'delivered', 'pickedup')
+    pin_val = data.get('manager_pin')
+    if pin_val:
+        for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
+            if pm.check_pin(str(pin_val)):
+                manager_name = pm.name
+                break
+        if not manager_name:
+            return jsonify({'ok': False, 'error': 'PIN שגוי'})
     items = order.get_items()
     if item_index is not None and 0 <= item_index < len(items):
         removed = items.pop(item_index)
@@ -3783,9 +3780,9 @@ def api_session_remove_item(session_id):
             order.status = 'cancelled'
             order.cancelled_at = datetime.utcnow()
         void_reason = data.get('void_reason', '').strip()
-        if manager_name and not void_reason:
-            return jsonify({'ok': False, 'error': 'נא לבחור סיבת ביטול'})
-        if manager_name or void_reason:
+        if is_sent:
+            if not void_reason:
+                void_reason = 'לא צוין'
             existing_log = []
             if order.void_log:
                 try:
@@ -3802,8 +3799,26 @@ def api_session_remove_item(session_id):
                 'voided_by': session.get('ops_user_name', ''),
             })
             order.void_log = json.dumps(existing_log, ensure_ascii=False)
+            if not manager_name:
+                pending = []
+                if sess.pending_void_approvals:
+                    try:
+                        pending = json.loads(sess.pending_void_approvals)
+                    except Exception:
+                        pending = []
+                pending.append({
+                    'item_name': removed.get('name_he', ''),
+                    'item_price': removed.get('price', 0),
+                    'item_qty': removed.get('qty', 1),
+                    'void_reason': void_reason,
+                    'voided_at': datetime.utcnow().isoformat(),
+                    'voided_by': session.get('ops_user_name', ''),
+                    'order_id': order.id,
+                })
+                sess.pending_void_approvals = json.dumps(pending, ensure_ascii=False)
         db.session.commit()
-        return jsonify({'ok': True, 'message': 'פריט הוסר'})
+        needs_approval = bool(sess.pending_void_approvals and json.loads(sess.pending_void_approvals))
+        return jsonify({'ok': True, 'message': 'פריט הוסר', 'needs_manager_approval': needs_approval})
     return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
 
 
@@ -3956,6 +3971,29 @@ def api_session_notes(session_id):
     return jsonify({'ok': True, 'message': 'הערות עודכנו'})
 
 
+@ops_bp.route('/api/sessions/<int:session_id>/approve-voids', methods=['POST'])
+@require_ops_module('orders')
+def api_session_approve_voids(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    data = request.get_json(force=True)
+    pin_val = data.get('manager_pin')
+    if not pin_val:
+        return jsonify({'ok': False, 'error': 'נדרש PIN מנהל'})
+    manager_name = None
+    for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
+        if pm.check_pin(str(pin_val)):
+            manager_name = pm.name
+            break
+    if not manager_name:
+        return jsonify({'ok': False, 'error': 'PIN מנהל לא תקין'})
+    sess.pending_void_approvals = None
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'ביטולים אושרו ע"י {manager_name}'})
+
+
 @ops_bp.route('/api/sessions/<int:session_id>/pay-cash', methods=['POST'])
 @require_ops_module('orders')
 def api_session_pay_cash(session_id):
@@ -3963,6 +4001,13 @@ def api_session_pay_cash(session_id):
     sess = DineInSession.query.get(session_id)
     if not sess or sess.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
     for order in sess.orders:
         if order.status != 'cancelled':
             order.payment_status = 'cash'
@@ -3985,6 +4030,13 @@ def api_session_generate_payment(session_id):
     sess = DineInSession.query.get(session_id)
     if not sess or sess.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
     total = sess.total_amount
     if total <= 0:
         return jsonify({'ok': False, 'error': 'סכום לתשלום 0'})
@@ -4124,6 +4176,34 @@ def api_session_cancel(session_id):
     sess.closed_at = datetime.utcnow()
     db.session.commit()
     return jsonify({'ok': True, 'message': 'ישיבה בוטלה'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/move-table', methods=['POST'])
+@require_ops_module('orders')
+def api_session_move_table(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.status not in ('open', 'awaiting_payment'):
+        return jsonify({'ok': False, 'error': 'ניתן להעביר רק ישיבה פעילה'})
+    data = request.get_json(force=True)
+    new_table_id = data.get('new_table_id')
+    new_table = DineInTable.query.get(new_table_id)
+    if not new_table or new_table.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'שולחן יעד לא נמצא'})
+    existing = DineInSession.query.filter_by(table_id=new_table.id).filter(
+        DineInSession.status.in_(['open', 'awaiting_payment'])).first()
+    if existing:
+        return jsonify({'ok': False, 'error': 'שולחן היעד תפוס'})
+    old_num = sess.table.table_number if sess.table else '?'
+    sess.table_id = new_table.id
+    for order in sess.orders:
+        order.table_number = new_table.table_number
+        if order.customer_name and old_num in order.customer_name:
+            order.customer_name = f'שולחן {new_table.table_number}'
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'שולחן הועבר ל-{new_table.table_number}'})
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/reopen', methods=['POST'])

@@ -3252,6 +3252,7 @@ class DineInSession(db.Model):
     notes = db.Column(db.Text, nullable=True)
     payment_url = db.Column(db.String(500), nullable=True)
     payment_callback_token = db.Column(db.String(64), nullable=True)
+    pending_void_approvals = db.Column(db.Text, nullable=True)
     opened_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True)
 

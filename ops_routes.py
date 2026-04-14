@@ -4227,17 +4227,17 @@ def dine_in_order(session_id):
             filtered = []
             for mi in cat_items:
                 bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=mi.id).first()
-                if bmi and not bmi.is_visible:
+                if bmi and not bmi.is_available:
                     continue
-                if bmi and bmi.price is not None:
-                    mi._branch_price = bmi.price
+                if bmi and bmi.custom_price is not None:
+                    mi._branch_price = bmi.custom_price
                 else:
-                    mi._branch_price = mi.price
+                    mi._branch_price = mi.base_price
                 filtered.append(mi)
             cat_items = filtered
         else:
             for mi in cat_items:
-                mi._branch_price = mi.price
+                mi._branch_price = mi.base_price
         if cat_items:
             items_by_cat[cat.id] = cat_items
     option_groups = {}

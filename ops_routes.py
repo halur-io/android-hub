@@ -3859,12 +3859,11 @@ def api_session_generate_payment(session_id):
         from standalone_order_service.hyp_payment import HYPPayment
         branch = Branch.query.get(effective_branch)
         settings = _settings()
-        terminal = (branch and branch.hyp_terminal) or (settings and settings.hyp_terminal) or os.environ.get('HYP_TERMINAL', '')
-        api_key = (branch and branch.hyp_api_key) or (settings and settings.hyp_api_key) or os.environ.get('HYP_API_KEY', '')
-        passp = (branch and branch.hyp_passp) or (settings and settings.hyp_passp) or os.environ.get('HYP_PASSP', '')
-        if not terminal or not api_key:
+        hyp = HYPPayment(settings=settings)
+        if branch:
+            hyp._load_credentials(branch=branch)
+        if not hyp.is_configured:
             return jsonify({'ok': False, 'error': 'הגדרות HYP חסרות'})
-        hyp = HYPPayment(terminal=terminal, api_key=api_key, passp=passp)
         table_num = sess.table.table_number if sess.table else '?'
         order_ref = first_order.order_number
         import secrets as _secrets
@@ -3879,7 +3878,7 @@ def api_session_generate_payment(session_id):
             order_id=order_ref,
             description=f'שולחן {table_num}',
             success_url=success_url,
-            fail_url=fail_url,
+            failure_url=fail_url,
             customer_name=f'שולחן {table_num}',
         )
         sess.payment_url = payment_url
@@ -3905,11 +3904,16 @@ def api_session_send_payment_sms(session_id):
     if not phone or len(phone) < 9:
         return jsonify({'ok': False, 'error': 'נא להזין מספר טלפון'})
     try:
-        from sms_helpers import send_sms_4free
+        from standalone_order_service.sms_helpers import create_sender_from_env
+        send_sms = create_sender_from_env()
+        if not send_sms:
+            return jsonify({'ok': False, 'error': 'שליחת SMS לא מוגדרת'})
         table_num = sess.table.table_number if sess.table else '?'
         total = sess.total_amount
         msg = f'SUMO - שולחן {table_num}\nסה"כ לתשלום: ₪{total:.2f}\nלתשלום: {sess.payment_url}'
-        send_sms_4free(phone, msg)
+        success = send_sms(phone, msg)
+        if not success:
+            return jsonify({'ok': False, 'error': 'שליחת SMS נכשלה'})
         return jsonify({'ok': True, 'message': 'SMS נשלח בהצלחה'})
     except Exception as e:
         logging.error(f"SMS send error for session {session_id}: {e}")
@@ -3941,9 +3945,6 @@ def session_payment_callback(session_id):
             if verification.get('verified'):
                 hyp_verified = True
                 logging.info(f'Dine-in session {sess.id}: HYP payment verified (tx={verification.get("transaction_id")})')
-            elif verification.get('success'):
-                hyp_verified = True
-                logging.warning(f'Dine-in session {sess.id}: HYP payment success but signature not verified')
             else:
                 logging.warning(f'Dine-in session {sess.id}: HYP verification failed: {verification.get("error_message")}')
         except Exception as e:
@@ -4026,11 +4027,10 @@ def api_session_print_check(session_id):
             from standalone_order_service.hyp_payment import HYPPayment
             branch = Branch.query.get(effective_branch)
             settings = _settings()
-            terminal = (branch and branch.hyp_terminal) or (settings and settings.hyp_terminal) or os.environ.get('HYP_TERMINAL', '')
-            api_key = (branch and branch.hyp_api_key) or (settings and settings.hyp_api_key) or os.environ.get('HYP_API_KEY', '')
-            passp = (branch and branch.hyp_passp) or (settings and settings.hyp_passp) or os.environ.get('HYP_PASSP', '')
-            if terminal and api_key:
-                hyp = HYPPayment(terminal=terminal, api_key=api_key, passp=passp)
+            hyp = HYPPayment(settings=settings)
+            if branch:
+                hyp._load_credentials(branch=branch)
+            if hyp.is_configured:
                 first_order = next((o for o in sess.orders if o.status != 'cancelled'), None)
                 if first_order:
                     import secrets as _secrets
@@ -4046,7 +4046,7 @@ def api_session_print_check(session_id):
                         order_id=first_order.order_number,
                         description=f'שולחן {table_num}',
                         success_url=success_url,
-                        fail_url=fail_url,
+                        failure_url=fail_url,
                         customer_name=f'שולחן {table_num}',
                     )
                     sess.payment_url = payment_url

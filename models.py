@@ -3223,6 +3223,7 @@ class DineInTable(db.Model):
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
     table_number = db.Column(db.String(20), nullable=False)
     capacity = db.Column(db.Integer, default=4)
+    area = db.Column(db.String(50), default='')
     display_order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
 

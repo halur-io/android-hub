@@ -53,6 +53,7 @@ def _run_safe_migrations(db):
         ("food_orders", "table_number", "ALTER TABLE food_orders ADD COLUMN table_number VARCHAR(20)"),
         ("food_orders", "dine_in_session_id", "ALTER TABLE food_orders ADD COLUMN dine_in_session_id INTEGER REFERENCES dine_in_sessions(id)"),
         ("dine_in_sessions", "payment_callback_token", "ALTER TABLE dine_in_sessions ADD COLUMN payment_callback_token VARCHAR(64)"),
+        ("dine_in_tables", "area", "ALTER TABLE dine_in_tables ADD COLUMN area VARCHAR(50) DEFAULT ''"),
     ]
     for table, column, sql in migrations:
         try:

@@ -9,6 +9,19 @@
         gap: 12px;
         padding: 12px;
     }
+    .area-section { padding: 0 16px; }
+    .area-title {
+        font-size: .9rem;
+        font-weight: 700;
+        color: #555;
+        padding: 14px 0 6px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .area-title i { color: var(--ops-accent, #e94560); font-size: .85rem; }
     .table-card {
         background: var(--ops-surface, #fff);
         border-radius: 14px;
@@ -69,8 +82,19 @@
         font-weight: 700;
         margin: 0;
     }
+    .tables-header-actions { display: flex; gap: 8px; }
     .btn-add-table {
         background: var(--ops-accent, #e94560);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: .85rem;
+        cursor: pointer;
+    }
+    .btn-add-area {
+        background: #7c3aed;
         color: #fff;
         border: none;
         border-radius: 10px;
@@ -94,10 +118,11 @@
         border-radius: 20px 20px 0 0;
         box-shadow: 0 -4px 20px rgba(0,0,0,.15);
         z-index: 1050;
-        max-height: 50vh;
+        max-height: 60vh;
         padding: 20px;
         transform: translateY(100%);
         transition: transform .3s ease;
+        overflow-y: auto;
     }
     .modal-sheet.show { transform: translateY(0); }
     .modal-overlay {
@@ -125,20 +150,63 @@
     .summary-row:last-child { border: none; }
     .summary-row .label { color: #666; }
     .summary-row .value { font-weight: 600; }
+    .area-chip {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: .75rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        background: #f8f8f8;
+        color: #555;
+        transition: all .15s;
+    }
+    .area-chip.selected {
+        background: var(--ops-accent, #e94560);
+        color: #fff;
+        border-color: var(--ops-accent, #e94560);
+    }
 </style>
 
 <div class="tables-header">
     <h2><i class="fas fa-utensils me-2"></i>שולחנות</h2>
-    <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוספת שולחן</button>
+    <div class="tables-header-actions">
+        <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוספת שולחן</button>
+    </div>
 </div>
 
 {% if tables %}
-<div class="tables-grid" id="tablesGrid">
-    {% for table in tables %}
+{% set areas = [] %}
+{% for table in tables %}
+{% if table.area and table.area not in areas %}
+{% if areas.append(table.area) %}{% endif %}
+{% endif %}
+{% endfor %}
+
+{% if areas|length > 0 %}
+{% for area_name in ([''] + areas) %}
+{% set area_tables = [] %}
+{% for table in tables %}
+{% if (table.area or '') == area_name %}
+{% if area_tables.append(table) %}{% endif %}
+{% endif %}
+{% endfor %}
+{% if area_tables|length > 0 %}
+<div class="area-section">
+    {% if area_name %}
+    <div class="area-title"><i class="fas fa-map-marker-alt"></i> {{ area_name }}</div>
+    {% elif areas|length > 0 %}
+    <div class="area-title"><i class="fas fa-map-marker-alt"></i> כללי</div>
+    {% endif %}
+</div>
+<div class="tables-grid">
+    {% for table in area_tables %}
     {% set sess = active_sessions.get(table.id) %}
     {% set status = sess.status if sess else 'available' %}
     <div class="table-card {{ status }}"
          data-table-id="{{ table.id }}"
+         data-area="{{ table.area or '' }}"
          data-session-id="{{ sess.id if sess else '' }}"
          onclick="handleTableClick({{ table.id }}, '{{ sess.id if sess else '' }}', '{{ status }}')">
         <div class="table-num">{{ table.table_number }}</div>
@@ -162,6 +230,40 @@
     </div>
     {% endfor %}
 </div>
+{% endif %}
+{% endfor %}
+{% else %}
+<div class="tables-grid" id="tablesGrid">
+    {% for table in tables %}
+    {% set sess = active_sessions.get(table.id) %}
+    {% set status = sess.status if sess else 'available' %}
+    <div class="table-card {{ status }}"
+         data-table-id="{{ table.id }}"
+         data-area=""
+         data-session-id="{{ sess.id if sess else '' }}"
+         onclick="handleTableClick({{ table.id }}, '{{ sess.id if sess else '' }}', '{{ status }}')">
+        <div class="table-num">{{ table.table_number }}</div>
+        {% if status == 'available' %}
+            <span class="table-status">פנוי</span>
+        {% elif status == 'open' %}
+            <span class="table-status">תפוס</span>
+            <div class="table-meta">
+                <span>{{ sess.elapsed_minutes }} דק׳</span>
+                <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                {% if sess.waiter %}<span>{{ sess.waiter.name }}</span>{% endif %}
+                <span>{{ sess.item_count|default(0) }} פריטים</span>
+            </div>
+        {% elif status == 'awaiting_payment' %}
+            <span class="table-status">ממתין לתשלום</span>
+            <div class="table-meta">
+                <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                <span>{{ sess.item_count|default(0) }} פריטים</span>
+            </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% else %}
 <div class="empty-tables">
     <i class="fas fa-chair"></i>
@@ -196,8 +298,8 @@
 <div class="modal-sheet" id="addTableSheet">
     <div class="sheet-handle"></div>
     <h4 style="font-weight:700; margin-bottom:4px; font-size:1.1rem;">הוספת שולחן</h4>
-    <p style="color:#888; font-size:.8rem; margin-bottom:16px;">הזן מספר שולחן ומספר מקומות</p>
-    <div style="display:flex; gap:10px; margin-bottom:16px;">
+    <p style="color:#888; font-size:.8rem; margin-bottom:16px;">הזן מספר שולחן, מספר מקומות ואזור ישיבה</p>
+    <div style="display:flex; gap:10px; margin-bottom:12px;">
         <div style="flex:2;">
             <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מספר שולחן</label>
             <input type="text" id="newTableNumber" class="form-control" placeholder="לדוגמא: 1" style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
@@ -206,6 +308,11 @@
             <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מקומות</label>
             <input type="number" id="newTableCapacity" class="form-control" placeholder="4" value="4" style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
         </div>
+    </div>
+    <div style="margin-bottom:16px;">
+        <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">אזור ישיבה (לא חובה)</label>
+        <input type="text" id="newTableArea" class="form-control" placeholder="לדוגמא: פנים, מרפסת, בר..." style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+        <div id="existingAreas" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
     </div>
     <button class="btn-add-table" style="width:100%; padding:14px; font-size:.95rem;" onclick="addTable()">
         <i class="fas fa-plus me-1"></i> הוסף שולחן
@@ -218,24 +325,54 @@
 </div>
 
 <script>
+var knownAreas = [];
+
+function collectAreas() {
+    var set = {};
+    document.querySelectorAll('[data-area]').forEach(function(el) {
+        var a = el.getAttribute('data-area');
+        if (a) set[a] = true;
+    });
+    knownAreas = Object.keys(set);
+}
+collectAreas();
+
 function showAddTable() {
     document.getElementById('addTableOverlay').classList.add('show');
     document.getElementById('addTableSheet').classList.add('show');
     document.getElementById('newTableNumber').focus();
+    renderAreaChips();
 }
 function hideAddTable() {
     document.getElementById('addTableOverlay').classList.remove('show');
     document.getElementById('addTableSheet').classList.remove('show');
 }
 
+function renderAreaChips() {
+    var container = document.getElementById('existingAreas');
+    if (!knownAreas.length) { container.innerHTML = ''; return; }
+    var h = '';
+    knownAreas.forEach(function(a) {
+        h += '<span class="area-chip" onclick="selectArea(this, \''+a+'\')">' + a + '</span>';
+    });
+    container.innerHTML = h;
+}
+
+function selectArea(el, area) {
+    document.getElementById('newTableArea').value = area;
+    document.querySelectorAll('.area-chip').forEach(function(c) { c.classList.remove('selected'); });
+    el.classList.add('selected');
+}
+
 function addTable() {
     var num = document.getElementById('newTableNumber').value.trim();
     var cap = parseInt(document.getElementById('newTableCapacity').value) || 4;
+    var area = document.getElementById('newTableArea').value.trim();
     if (!num) { alert('נא להזין מספר שולחן'); return; }
     fetch('/ops/api/tables/manage', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action: 'add', table_number: num, capacity: cap})
+        body: JSON.stringify({action: 'add', table_number: num, capacity: cap, area: area})
     }).then(r => r.json()).then(d => {
         if (d.ok) { location.reload(); }
         else { alert(d.error); }
@@ -258,13 +395,14 @@ function reopenSession(sessionId) {
 }
 
 function bulkAddTables() {
+    var area = document.getElementById('newTableArea').value.trim();
     var promises = [];
     for (var i = 1; i <= 10; i++) {
         promises.push(
             fetch('/ops/api/tables/manage', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'add', table_number: String(i), capacity: 4})
+                body: JSON.stringify({action: 'add', table_number: String(i), capacity: 4, area: area})
             }).then(r => r.json())
         );
     }

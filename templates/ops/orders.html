@@ -415,7 +415,9 @@
         <div class="order-swipe-actions right">
             <div class="swipe-action print-bon" onclick="openPrintMenu({{ order.id }})"><i class="fas fa-print"></i><span>הדפס</span></div>
             <div class="swipe-action send-sms" onclick="sendSms({{ order.id }})"><i class="fas fa-sms"></i><span>SMS</span></div>
+            {% if order.status not in ('delivered', 'pickedup', 'cancelled') %}
             <div class="swipe-action set-time" onclick="openTimeModal({{ order.id }})"><i class="fas fa-clock"></i><span>זמן</span></div>
+            {% endif %}
         </div>
         <div class="order-swipe-actions left">
             {% if order.status in ('preparing', 'ready') %}

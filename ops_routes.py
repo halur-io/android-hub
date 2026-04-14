@@ -1148,6 +1148,9 @@ def update_order_status(order_id):
         return jsonify({'ok': False, 'error': 'הזמנה לא שייכת לסניף זה'})
 
     old_status = order.status
+    terminal_statuses = ('delivered', 'pickedup', 'cancelled')
+    if old_status in terminal_statuses and new_status == 'preparing':
+        return jsonify({'ok': False, 'error': 'לא ניתן לשנות סטטוס הזמנה סגורה'})
     order.status = new_status
     now = datetime.utcnow()
     if new_status == 'confirmed':
@@ -3525,6 +3528,7 @@ def api_list_tables():
             'id': t.id,
             'table_number': t.table_number,
             'capacity': t.capacity,
+            'area': t.area or '',
             'status': s.status if s else 'available',
             'session_id': s.id if s else None,
             'elapsed_minutes': s.elapsed_minutes if s else 0,
@@ -3554,7 +3558,7 @@ def api_manage_tables():
                 db.session.commit()
                 return jsonify({'ok': True, 'message': f'שולחן {table_number} הופעל מחדש'})
             return jsonify({'ok': False, 'error': f'שולחן {table_number} כבר קיים'})
-        t = DineInTable(branch_id=effective_branch, table_number=table_number, capacity=int(data.get('capacity', 4)))
+        t = DineInTable(branch_id=effective_branch, table_number=table_number, capacity=int(data.get('capacity', 4)), area=(data.get('area') or '').strip())
         max_order = db.session.query(db.func.max(DineInTable.display_order)).filter_by(branch_id=effective_branch).scalar() or 0
         t.display_order = max_order + 1
         db.session.add(t)

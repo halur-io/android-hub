@@ -1,9 +1,10 @@
 """
 HYP (Yaad Pay) Payment Gateway Integration.
 
-Credentials can be configured via:
-  1. Environment variables  HYP_TERMINAL, HYP_API_KEY, HYP_PASSP  (priority)
-  2. A ``settings`` object passed at runtime  (fallback)
+Credential resolution precedence (first complete set wins):
+  1. Branch-specific fields  (Branch.hyp_terminal/api_key/passp)
+  2. Global site settings    (SiteSettings.hyp_terminal/api_key/passp)
+  3. Environment variables   (HYP_TERMINAL, HYP_API_KEY, HYP_PASSP)
 
 Usage::
 

@@ -1530,6 +1530,8 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
         if order_number:
             order = FoodOrder.query.filter_by(order_number=order_number).first()
             if order:
+                branch_obj = Branch.query.get(order.branch_id) if order.branch_id else None
+                logging.warning(f"Payment failed for #{order_number}, branch={branch_obj.name_he if branch_obj else 'global'}, provider={order.payment_provider or 'unknown'}")
                 order.payment_status = 'failed'
                 db.session.commit()
         flash('התשלום נכשל. ניתן לנסות שנית או לשלם במזומן.', 'danger')

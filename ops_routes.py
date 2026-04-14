@@ -3966,8 +3966,6 @@ def session_payment_callback(session_id):
         db.session.commit()
         return render_template('ops/payment_success.html', session=sess)
     else:
-        sess.payment_callback_token = None
-        db.session.commit()
         return render_template('ops/payment_fail.html', session=sess)
 
 

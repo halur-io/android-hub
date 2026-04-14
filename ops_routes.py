@@ -3782,7 +3782,9 @@ def api_session_remove_item(session_id):
         if not items:
             order.status = 'cancelled'
             order.cancelled_at = datetime.utcnow()
-        void_reason = data.get('void_reason', '')
+        void_reason = data.get('void_reason', '').strip()
+        if manager_name and not void_reason:
+            return jsonify({'ok': False, 'error': 'נא לבחור סיבת ביטול'})
         if manager_name or void_reason:
             existing_log = []
             if order.void_log:
@@ -3886,7 +3888,7 @@ def api_session_update_item(session_id):
         if new_notes is not None:
             oi.special_instructions = new_notes
         if new_options is not None:
-            oi.options_json = json.dumps(new_options, ensure_ascii=False)
+            oi.options_json = json.dumps(item.get('options', []), ensure_ascii=False)
         oi.unit_price = float(item.get('price', 0))
         oi.total_price = float(item.get('price', 0)) * int(item.get('qty', 1))
     db.session.commit()

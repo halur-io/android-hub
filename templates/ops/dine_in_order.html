@@ -884,6 +884,10 @@ function pinSubmit() {
     }
     if (!pendingPinAction) { pinCancel(); return; }
     var action = pendingPinAction;
+    if (action.type === 'remove' && !selectedVoidReason) {
+        document.getElementById('pinError').textContent = 'נא לבחור סיבת ביטול';
+        return;
+    }
     if (action.type === 'remove') {
         fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
             method: 'POST',

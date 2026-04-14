@@ -47,6 +47,9 @@ def _run_safe_migrations(db):
         ("food_orders", "source", "ALTER TABLE food_orders ADD COLUMN source VARCHAR(20) DEFAULT 'online'"),
         ("food_orders", "created_by_name", "ALTER TABLE food_orders ADD COLUMN created_by_name VARCHAR(120)"),
         ("branches", "ordering_status", "ALTER TABLE branches ADD COLUMN ordering_status VARCHAR(20) NOT NULL DEFAULT 'open'"),
+        ("payment_configuration", "test_mode", "ALTER TABLE payment_configuration ADD COLUMN test_mode BOOLEAN DEFAULT TRUE"),
+        ("payment_configuration", "webhook_url", "ALTER TABLE payment_configuration ADD COLUMN webhook_url VARCHAR(500)"),
+        ("payment_configuration", "webhook_secret", "ALTER TABLE payment_configuration ADD COLUMN webhook_secret VARCHAR(500)"),
     ]
     for table, column, sql in migrations:
         try:

@@ -4080,8 +4080,8 @@ def api_session_print_check(session_id):
             sock.close()
             return jsonify({'ok': True, 'message': 'חשבון הודפס'})
         except Exception as e:
-            logging.warning(f"Direct print failed, queuing for agent: {e}")
-            return jsonify({'ok': True, 'message': 'חשבון הועבר להדפסה', 'queued': True})
+            logging.warning(f"Direct print failed for session {session_id}: {e}")
+            return jsonify({'ok': False, 'error': f'לא ניתן להתחבר למדפסת: {str(e)}'})
     except Exception as e:
         logging.error(f"Check print error for session {session_id}: {e}")
         return jsonify({'ok': False, 'error': f'שגיאה בהדפסה: {str(e)}'})

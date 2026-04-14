@@ -173,7 +173,7 @@
                 <div class="cat-tab {% if loop.first %}active{% endif %}" data-cat="{{ cat.id }}" onclick="switchCat({{ cat.id }}, this)">{{ cat.name_he }}</div>
                 {% endif %}
                 {% endfor %}
-                {% if deals %}
+                {% if deals_data %}
                 <div class="cat-tab" data-cat="deals" onclick="switchCat('deals', this)">🎁 מבצעים</div>
                 {% endif %}
             </div>
@@ -190,14 +190,8 @@
                 </div>
                 {% endif %}
                 {% endfor %}
-                {% if deals %}
-                <div class="cat-items" data-cat="deals" style="display:none;">
-                    {% for deal in deals %}
-                    <div class="item-card" onclick="openDeal({{ deal.id }})">
-                        <div class="item-name">🎁 {{ deal.name_he }}</div>
-                        <div class="item-price">₪{{ "%.0f"|format(deal.price) }}</div>
-                    </div>
-                    {% endfor %}
+                {% if deals_data %}
+                <div class="cat-items" data-cat="deals" style="display:none;" id="dealsGrid">
                 </div>
                 {% endif %}
             </div>
@@ -286,12 +280,27 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="dealPickModal" onclick="closeDealPickModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 id="dealPickTitle"></h4>
+        <div id="dealPickBody"></div>
+        <button onclick="addDealFromPick()" style="width:100%; margin-top:14px; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; cursor:pointer;">
+            <i class="fas fa-plus me-1"></i> הוסף מבצע
+        </button>
+    </div>
+</div>
+
 <script>
 var SESSION_ID = {{ session.id }};
 var cart = [];
 var existingItems = [];
 var currentItem = null;
+var currentDealData = null;
+var dealPickSelections = {};
 var discountType = 'percentage';
+
+var DEALS_DATA = {{ deals_data|tojson }};
 
 var menuData = {};
 {% for cat_id, cat_items in items_by_cat.items() %}
@@ -325,6 +334,20 @@ menuData[{{ cat_id }}] = [
 {% endfor %}
 
 loadSession();
+renderDeals();
+
+function renderDeals() {
+    var grid = document.getElementById('dealsGrid');
+    if (!grid || !DEALS_DATA.length) return;
+    var h = '';
+    DEALS_DATA.forEach(function(deal) {
+        h += '<div class="item-card" onclick="openDeal(' + deal.id + ')">';
+        h += '<div class="item-name">🎁 ' + deal.name_he + '</div>';
+        h += '<div class="item-price">₪' + deal.deal_price.toFixed(0) + '</div>';
+        h += '</div>';
+    });
+    grid.innerHTML = h;
+}
 
 function loadSession() {
     fetch('/ops/api/sessions/' + SESSION_ID).then(function(r) { return r.json(); }).then(function(d) {
@@ -419,7 +442,95 @@ function addItemToCart() {
 }
 
 function openDeal(dealId) {
-    alert('מבצעים יתמכו בקרוב');
+    var deal = DEALS_DATA.find(function(d) { return d.id === dealId; });
+    if (!deal) return;
+    currentDealData = deal;
+    if (deal.deal_type === 'customer_picks') {
+        dealPickSelections = {};
+        document.getElementById('dealPickTitle').textContent = deal.name_he + ' — בחר ' + deal.pick_count + ' פריטים';
+        var bh = '<div style="font-size:13px;color:#888;margin-bottom:12px;">₪' + deal.deal_price.toFixed(0) + ' | בחר ' + deal.pick_count + ' פריטים</div>';
+        (deal.pick_items || []).forEach(function(pi) {
+            bh += '<div class="opt-choice" data-pi="' + pi.item_id + '" style="display:flex;align-items:center;justify-content:space-between;">';
+            bh += '<span class="choice-name">' + pi.name_he + '</span>';
+            bh += '<div style="display:flex;align-items:center;gap:8px;">';
+            bh += '<button type="button" onclick="adjustPick(' + pi.item_id + ',-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #ddd;background:#f5f5f5;cursor:pointer;font-size:14px;">−</button>';
+            bh += '<span style="font-size:.85rem;font-weight:600;min-width:16px;text-align:center;" id="pickQty_' + pi.item_id + '">0</span>';
+            bh += '<button type="button" onclick="adjustPick(' + pi.item_id + ',1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #ddd;background:#f5f5f5;cursor:pointer;font-size:14px;">+</button>';
+            bh += '</div></div>';
+        });
+        bh += '<div style="margin-top:10px;text-align:center;color:#888;font-size:13px;">נבחרו: <strong id="pickTotal">0</strong> / ' + deal.pick_count + '</div>';
+        document.getElementById('dealPickBody').innerHTML = bh;
+        document.getElementById('dealPickModal').classList.add('show');
+    } else {
+        cart.push({
+            id: 'deal_' + deal.id,
+            name_he: deal.name_he,
+            name_en: deal.name_en || '',
+            price: deal.deal_price,
+            qty: 1,
+            is_deal: true,
+            deal_id: deal.id,
+            deal_type: deal.deal_type,
+            included_items: deal.included_items || [],
+            notes: '',
+        });
+        renderSidebar();
+    }
+}
+
+function adjustPick(itemId, delta) {
+    var cur = dealPickSelections[itemId] || 0;
+    var total = getTotalPicked();
+    var newVal = cur + delta;
+    if (newVal < 0) newVal = 0;
+    if (delta > 0 && total >= currentDealData.pick_count) return;
+    dealPickSelections[itemId] = newVal;
+    var el = document.getElementById('pickQty_' + itemId);
+    if (el) el.textContent = newVal;
+    var item = document.querySelector('[data-pi="' + itemId + '"]');
+    if (item) item.classList.toggle('selected', newVal > 0);
+    var totalEl = document.getElementById('pickTotal');
+    if (totalEl) totalEl.textContent = getTotalPicked();
+}
+
+function getTotalPicked() {
+    var t = 0;
+    for (var k in dealPickSelections) t += (dealPickSelections[k] || 0);
+    return t;
+}
+
+function addDealFromPick() {
+    if (!currentDealData) return;
+    if (getTotalPicked() !== currentDealData.pick_count) {
+        alert('נא לבחור ' + currentDealData.pick_count + ' פריטים');
+        return;
+    }
+    var selected = [];
+    for (var k in dealPickSelections) {
+        if (dealPickSelections[k] > 0) {
+            var pi = (currentDealData.pick_items || []).find(function(p) { return p.item_id === parseInt(k); });
+            selected.push({item_id: parseInt(k), qty: dealPickSelections[k], name_he: pi ? pi.name_he : ''});
+        }
+    }
+    cart.push({
+        id: 'deal_' + currentDealData.id,
+        name_he: currentDealData.name_he,
+        name_en: currentDealData.name_en || '',
+        price: currentDealData.deal_price,
+        qty: 1,
+        is_deal: true,
+        deal_id: currentDealData.id,
+        deal_type: 'customer_picks',
+        selected_items: selected,
+        notes: '',
+    });
+    closeDealPickModal();
+    renderSidebar();
+}
+
+function closeDealPickModal() {
+    document.getElementById('dealPickModal').classList.remove('show');
+    currentDealData = null;
 }
 
 function renderSidebar() {
@@ -433,12 +544,16 @@ function renderSidebar() {
         total += price;
         count += qty;
         var sent = item.sent_to_kitchen ? 'sent' : '';
+        var isDeal = item.is_deal || false;
         var optText = '';
         if (item.options && item.options.length) {
-            optText = item.options.map(function(o) { return o.name_he; }).join(', ');
+            optText = item.options.map(function(o) { return o.name_he || o.choice_name_he || ''; }).join(', ');
         }
         html += '<div class="sidebar-item ' + sent + '">';
-        html += '<div class="si-info"><div class="si-name">' + qty + 'x ' + name + '</div>';
+        html += '<div class="si-info"><div class="si-name">' + qty + 'x ' + (isDeal ? '🎁 ' : '') + name + '</div>';
+        if (isDeal && item.selected_items && item.selected_items.length) {
+            html += '<div class="si-options">' + item.selected_items.map(function(s) { return s.name_he; }).join(', ') + '</div>';
+        }
         if (optText) html += '<div class="si-options">' + optText + '</div>';
         if (item.notes || item.special_instructions) html += '<div class="si-options">📝 ' + (item.notes || item.special_instructions) + '</div>';
         html += '</div>';
@@ -461,7 +576,10 @@ function renderSidebar() {
                 optText = item.options.map(function(o) { return o.name_he; }).join(', ');
             }
             html += '<div class="sidebar-item">';
-            html += '<div class="si-info"><div class="si-name">' + (item.qty || 1) + 'x ' + item.name_he + '</div>';
+            html += '<div class="si-info"><div class="si-name">' + (item.qty || 1) + 'x ' + (item.is_deal ? '🎁 ' : '') + item.name_he + '</div>';
+            if (item.is_deal && item.selected_items) {
+                html += '<div class="si-options">' + item.selected_items.map(function(s) { return s.name_he; }).join(', ') + '</div>';
+            }
             if (optText) html += '<div class="si-options">' + optText + '</div>';
             if (item.notes) html += '<div class="si-options">📝 ' + item.notes + '</div>';
             html += '</div>';

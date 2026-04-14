@@ -3488,14 +3488,21 @@ def tables_view():
     effective_branch = _get_effective_branch_id()
     tables = DineInTable.query.filter_by(branch_id=effective_branch, is_active=True).order_by(DineInTable.display_order, DineInTable.id).all() if effective_branch else []
     active_sessions = {}
+    recently_closed = []
     if effective_branch:
         sess_list = DineInSession.query.filter_by(branch_id=effective_branch).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).all()
         for s in sess_list:
             active_sessions[s.table_id] = s
+        cutoff = datetime.utcnow() - timedelta(hours=4)
+        recently_closed = DineInSession.query.filter_by(branch_id=effective_branch).filter(
+            DineInSession.status.in_(['closed', 'cancelled']),
+            DineInSession.closed_at >= cutoff
+        ).order_by(DineInSession.closed_at.desc()).limit(10).all()
     return render_template('ops/tables.html',
         active_tab='tables',
         tables=tables,
         active_sessions=active_sessions,
+        recently_closed=recently_closed,
     )
 
 
@@ -3762,6 +3769,9 @@ def api_session_remove_item(session_id):
         order.items_json = json.dumps(items, ensure_ascii=False)
         order.subtotal = max(0, (order.subtotal or 0) - removed_price)
         order.total_amount = max(0, (order.total_amount or 0) - removed_price)
+        order_items = FoodOrderItem.query.filter_by(order_id=order.id).order_by(FoodOrderItem.id).all()
+        if item_index < len(order_items):
+            db.session.delete(order_items[item_index])
         if not items:
             order.status = 'cancelled'
             order.cancelled_at = datetime.utcnow()
@@ -3947,6 +3957,30 @@ def api_session_cancel(session_id):
     sess.closed_at = datetime.utcnow()
     db.session.commit()
     return jsonify({'ok': True, 'message': 'ישיבה בוטלה'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/reopen', methods=['POST'])
+@require_ops_module('orders')
+def api_session_reopen(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.status not in ('closed', 'cancelled'):
+        return jsonify({'ok': False, 'error': 'ניתן לפתוח מחדש רק ישיבות סגורות'})
+    active = DineInSession.query.filter_by(table_id=sess.table_id).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).first()
+    if active:
+        return jsonify({'ok': False, 'error': 'יש ישיבה פעילה בשולחן זה'})
+    sess.status = 'open'
+    sess.closed_at = None
+    sess.payment_callback_token = None
+    for order in sess.orders:
+        if order.status == 'cancelled':
+            continue
+        if order.payment_status == 'paid':
+            order.payment_status = 'pending'
+    db.session.commit()
+    return jsonify({'ok': True, 'session_id': sess.id, 'message': 'ישיבה נפתחה מחדש'})
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/print-check', methods=['POST'])
@@ -4180,18 +4214,56 @@ def dine_in_order(session_id):
                 mi._branch_price = mi.price
         if cat_items:
             items_by_cat[cat.id] = cat_items
-    deals = Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all()
     option_groups = {}
     for cat_id, cat_items in items_by_cat.items():
         for mi in cat_items:
             groups = MenuItemOptionGroup.query.filter_by(menu_item_id=mi.id).order_by(MenuItemOptionGroup.display_order).all()
             if groups:
                 option_groups[mi.id] = groups
+    deals_data = []
+    active_deals = Deal.query.filter_by(is_active=True).order_by(Deal.display_order).all()
+    for deal in active_deals:
+        if not deal.is_valid():
+            continue
+        deal_info = {
+            'id': deal.id,
+            'name_he': deal.name_he,
+            'name_en': deal.name_en or '',
+            'deal_price': float(deal.deal_price),
+            'original_price': float(deal.original_price) if deal.original_price else None,
+            'description_he': deal.description_he or '',
+            'deal_type': deal.deal_type or 'fixed',
+            'included_items': deal.included_items or [],
+        }
+        if deal.deal_type == 'customer_picks':
+            deal_info['pick_count'] = deal.pick_count or 0
+            source_cats = deal.effective_category_ids
+            deal_info['source_category_ids'] = source_cats
+            pick_items = []
+            for sc_id in source_cats:
+                sc_items = MenuItem.query.filter_by(category_id=sc_id, is_available=True, show_in_order=True).order_by(MenuItem.display_order).all()
+                for pi in sc_items:
+                    if effective_branch:
+                        bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=pi.id).first()
+                        if bmi and not bmi.is_available:
+                            continue
+                    pick_items.append({'item_id': pi.id, 'name_he': pi.name_he, 'name_en': pi.name_en or ''})
+            deal_info['pick_items'] = pick_items
+        else:
+            included_details = []
+            for inc in (deal.included_items or []):
+                inc_id = inc.get('item_id') or inc.get('id')
+                if inc_id:
+                    inc_item = MenuItem.query.get(int(inc_id))
+                    if inc_item:
+                        included_details.append({'item_id': inc_item.id, 'name_he': inc_item.name_he, 'qty': inc.get('qty') or inc.get('quantity') or 1})
+            deal_info['included_details'] = included_details
+        deals_data.append(deal_info)
     return render_template('ops/dine_in_order.html',
         active_tab='tables',
         session=sess,
         categories=categories,
         items_by_cat=items_by_cat,
-        deals=deals,
+        deals_data=deals_data,
         option_groups=option_groups,
     )

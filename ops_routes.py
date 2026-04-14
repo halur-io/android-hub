@@ -3492,6 +3492,7 @@ def tables_view():
     if effective_branch:
         sess_list = DineInSession.query.filter_by(branch_id=effective_branch).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).all()
         for s in sess_list:
+            s.item_count = sum(len((o.get_items() or [])) for o in s.orders if o.status != 'cancelled')
             active_sessions[s.table_id] = s
         cutoff = datetime.utcnow() - timedelta(hours=4)
         recently_closed = DineInSession.query.filter_by(branch_id=effective_branch).filter(
@@ -3925,6 +3926,31 @@ def session_payment_callback(session_id):
         return 'Invalid callback token', 403
     status = request.args.get('status', '')
     if status == 'success':
+        hyp_verified = False
+        try:
+            from standalone_order_service.hyp_payment import HYPPayment
+            hyp = HYPPayment()
+            if sess.branch_id:
+                hyp._load_credentials(branch=Branch.query.get(sess.branch_id))
+            response_params = dict(request.args)
+            verification = hyp.verify_payment_response(
+                response_params,
+                expected_amount=float(sess.total_amount),
+                verify_signature=True
+            )
+            if verification.get('verified'):
+                hyp_verified = True
+                logger.info(f'Dine-in session {sess.id}: HYP payment verified (tx={verification.get("transaction_id")})')
+            elif verification.get('success'):
+                hyp_verified = True
+                logger.warning(f'Dine-in session {sess.id}: HYP payment success but signature not verified')
+            else:
+                logger.warning(f'Dine-in session {sess.id}: HYP verification failed: {verification.get("error_message")}')
+        except Exception as e:
+            logger.warning(f'Dine-in session {sess.id}: HYP verification error: {e}')
+            hyp_verified = True
+        if not hyp_verified:
+            return render_template('ops/payment_fail.html', session=sess)
         for order in sess.orders:
             if order.status != 'cancelled':
                 order.payment_status = 'paid'
@@ -3939,6 +3965,8 @@ def session_payment_callback(session_id):
         db.session.commit()
         return render_template('ops/payment_success.html', session=sess)
     else:
+        sess.payment_callback_token = None
+        db.session.commit()
         return render_template('ops/payment_fail.html', session=sess)
 
 

@@ -150,11 +150,13 @@
                 <span>{{ sess.elapsed_minutes }} דק׳</span>
                 <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
                 {% if sess.waiter %}<span>{{ sess.waiter.name }}</span>{% endif %}
+                <span>{{ sess.item_count|default(0) }} פריטים</span>
             </div>
         {% elif status == 'awaiting_payment' %}
             <span class="table-status">ממתין לתשלום</span>
             <div class="table-meta">
                 <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                <span>{{ sess.item_count|default(0) }} פריטים</span>
             </div>
         {% endif %}
     </div>

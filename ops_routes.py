@@ -3755,13 +3755,15 @@ def api_session_remove_item(session_id):
     order = FoodOrder.query.get(order_id)
     if not order or order.dine_in_session_id != sess.id:
         return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    manager_name = None
     if order.status in ('preparing', 'ready', 'delivered', 'pickedup'):
-        require_pin = data.get('manager_pin')
-        if require_pin:
+        pin_val = data.get('manager_pin')
+        if pin_val:
             pin_valid = False
             for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
-                if pm.check_pin(str(require_pin)):
+                if pm.check_pin(str(pin_val)):
                     pin_valid = True
+                    manager_name = pm.name
                     break
             if not pin_valid:
                 return jsonify({'ok': False, 'error': 'PIN מנהל לא תקין'})
@@ -3780,9 +3782,135 @@ def api_session_remove_item(session_id):
         if not items:
             order.status = 'cancelled'
             order.cancelled_at = datetime.utcnow()
+        void_reason = data.get('void_reason', '')
+        if manager_name or void_reason:
+            existing_log = []
+            if order.void_log:
+                try:
+                    existing_log = json.loads(order.void_log)
+                except Exception:
+                    existing_log = []
+            existing_log.append({
+                'item_name': removed.get('name_he', ''),
+                'item_price': removed.get('price', 0),
+                'item_qty': removed.get('qty', 1),
+                'void_reason': void_reason,
+                'manager': manager_name or '',
+                'voided_at': datetime.utcnow().isoformat(),
+                'voided_by': session.get('ops_user_name', ''),
+            })
+            order.void_log = json.dumps(existing_log, ensure_ascii=False)
         db.session.commit()
         return jsonify({'ok': True, 'message': 'פריט הוסר'})
     return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/update-item', methods=['POST'])
+@require_ops_module('orders')
+def api_session_update_item(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    data = request.get_json(force=True)
+    order_id = data.get('order_id')
+    item_index = data.get('item_index')
+    order = FoodOrder.query.get(order_id)
+    if not order or order.dine_in_session_id != sess.id:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    if order.status in ('preparing', 'ready', 'delivered', 'pickedup'):
+        pin_val = data.get('manager_pin')
+        if pin_val:
+            pin_valid = False
+            for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
+                if pm.check_pin(str(pin_val)):
+                    pin_valid = True
+                    break
+            if not pin_valid:
+                return jsonify({'ok': False, 'error': 'PIN מנהל לא תקין'})
+        else:
+            return jsonify({'ok': False, 'error': 'פריט נשלח למטבח — נדרש PIN מנהל', 'require_pin': True})
+    items = order.get_items()
+    if item_index is None or item_index < 0 or item_index >= len(items):
+        return jsonify({'ok': False, 'error': 'פריט לא נמצא'})
+    item = items[item_index]
+    old_price = float(item.get('price', 0)) * int(item.get('qty', 1))
+    new_qty = data.get('qty')
+    new_notes = data.get('notes')
+    new_options = data.get('options')
+    if new_qty is not None:
+        new_qty = max(1, int(new_qty))
+        item['qty'] = new_qty
+        item['quantity'] = new_qty
+    if new_notes is not None:
+        item['notes'] = new_notes
+        item['special_instructions'] = new_notes
+    if new_options is not None and not item.get('is_deal'):
+        from models import MenuItemOptionChoice
+        validated_options = []
+        extra_price = 0
+        for opt in new_options:
+            choice_id = opt.get('choice_id')
+            if not choice_id:
+                continue
+            choice = MenuItemOptionChoice.query.get(int(choice_id))
+            if not choice:
+                continue
+            server_price = float(choice.price_modifier or 0)
+            extra_price += server_price
+            validated_options.append({
+                'group_id': opt.get('group_id', ''),
+                'choice_id': choice.id,
+                'name_he': choice.name_he,
+                'price': server_price
+            })
+        menu_item_id = item.get('id')
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi:
+                bmi = BranchMenuItem.query.filter_by(branch_id=effective_branch, menu_item_id=mi.id).first()
+                base_price = bmi.custom_price if bmi and bmi.custom_price is not None else mi.base_price
+                item['price'] = base_price + extra_price
+        item['options'] = validated_options
+    new_price = float(item.get('price', 0)) * int(item.get('qty', 1))
+    price_diff = new_price - old_price
+    items[item_index] = item
+    order.items_json = json.dumps(items, ensure_ascii=False)
+    order.subtotal = max(0, (order.subtotal or 0) + price_diff)
+    order.total_amount = max(0, (order.total_amount or 0) + price_diff)
+    order_items_db = FoodOrderItem.query.filter_by(order_id=order.id).order_by(FoodOrderItem.id).all()
+    if item_index < len(order_items_db):
+        oi = order_items_db[item_index]
+        if new_qty is not None:
+            oi.quantity = new_qty
+        if new_notes is not None:
+            oi.special_instructions = new_notes
+        if new_options is not None:
+            oi.options_json = json.dumps(new_options, ensure_ascii=False)
+        oi.unit_price = float(item.get('price', 0))
+        oi.total_price = float(item.get('price', 0)) * int(item.get('qty', 1))
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'פריט עודכן'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/reprint-kitchen', methods=['POST'])
+@require_ops_module('orders')
+def api_session_reprint_kitchen(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    printed = 0
+    for order in sess.orders:
+        if order.status in ('preparing', 'ready') and order.status != 'cancelled':
+            try:
+                _queue_print_for_app(order)
+                printed += 1
+            except Exception as e:
+                logging.warning(f"Reprint failed for order {order.id}: {e}")
+    if printed == 0:
+        return jsonify({'ok': True, 'message': 'אין הזמנות פעילות להדפסה'})
+    return jsonify({'ok': True, 'message': f'{printed} הזמנות נשלחו להדפסה מחדש'})
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/discount', methods=['POST'])

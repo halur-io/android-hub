@@ -2594,6 +2594,7 @@ class FoodOrder(db.Model):
     bon_print_error = db.Column(db.Text, nullable=True)
     bon_print_attempts = db.Column(db.Integer, default=0)
     bon_print_options = db.Column(db.Text, nullable=True)
+    void_log = db.Column(db.Text, nullable=True)
     source = db.Column(db.String(20), default='online')
     created_by_name = db.Column(db.String(120), nullable=True)
     table_number = db.Column(db.String(20), nullable=True)

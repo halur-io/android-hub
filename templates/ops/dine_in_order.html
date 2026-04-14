@@ -114,10 +114,82 @@
         transition: color .15s;
     }
     .sidebar-item .si-remove:hover { color: #f44336; }
+    .sidebar-item .si-remove.sent-lock { color: #ffb74d; }
+    .sidebar-item .si-remove.sent-lock:hover { color: #f44336; }
     .sidebar-item.sent { background: #f9fbe7; }
     .sidebar-item.sent .si-name::after {
         content: ' ✓'; color: #8bc34a; font-size: .7rem;
     }
+    .sidebar-item .si-qty-controls {
+        display: flex; align-items: center; gap: 2px; margin-right: 4px;
+    }
+    .sidebar-item .si-qty-btn {
+        width: 24px; height: 24px; border-radius: 50%; border: 1px solid #ddd;
+        background: #f5f5f5; cursor: pointer; font-size: 14px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        color: #555; transition: all .15s; padding: 0; line-height: 1;
+    }
+    .sidebar-item .si-qty-btn:active { background: #e0e0e0; }
+    .pin-modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.7);
+        z-index: 2000; display: none; align-items: center; justify-content: center;
+    }
+    .pin-modal-overlay.show { display: flex; }
+    .pin-modal {
+        background: #1a1a2e; border-radius: 20px; padding: 24px;
+        width: 320px; max-width: 90vw; text-align: center; color: #fff;
+    }
+    .pin-modal h4 { color: #fff; font-weight: 700; margin-bottom: 4px; }
+    .pin-modal .pin-subtitle { color: #aaa; font-size: .8rem; margin-bottom: 16px; }
+    .pin-modal .pin-display {
+        background: #16213e; border-radius: 12px; padding: 14px;
+        font-size: 2rem; letter-spacing: 12px; margin-bottom: 16px;
+        min-height: 52px; color: #fff; font-weight: 700;
+    }
+    .pin-modal .pin-keypad {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        margin-bottom: 16px;
+    }
+    .pin-modal .pin-key {
+        background: #16213e; border: none; border-radius: 12px;
+        color: #fff; font-size: 1.3rem; font-weight: 700; padding: 14px;
+        cursor: pointer; transition: background .15s;
+    }
+    .pin-modal .pin-key:active { background: #0f3460; }
+    .pin-modal .pin-key.danger { background: #c62828; }
+    .pin-modal .pin-key.danger:active { background: #b71c1c; }
+    .pin-modal .pin-key.success { background: #2e7d32; }
+    .pin-modal .pin-key.success:active { background: #1b5e20; }
+    .pin-modal .void-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; justify-content: center; }
+    .pin-modal .void-reason-chip {
+        background: #16213e; border: 1px solid #333; border-radius: 20px;
+        padding: 6px 12px; font-size: .75rem; color: #aaa; cursor: pointer;
+        transition: all .15s;
+    }
+    .pin-modal .void-reason-chip.selected { background: #e94560; border-color: #e94560; color: #fff; }
+    .pin-modal .pin-error { color: #f44336; font-size: .8rem; margin-top: 8px; min-height: 20px; }
+    .edit-item-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.5);
+        z-index: 1070; display: none; align-items: flex-end; justify-content: center;
+    }
+    .edit-item-overlay.show { display: flex; }
+    .edit-item-panel {
+        background: #fff; border-radius: 20px 20px 0 0; width: 100%;
+        max-height: 80vh; overflow-y: auto; padding: 20px;
+        animation: slideUp .3s ease;
+    }
+    .edit-item-panel h4 { font-weight: 700; margin-bottom: 14px; }
+    .edit-qty-row {
+        display: flex; align-items: center; justify-content: center; gap: 16px;
+        margin: 14px 0;
+    }
+    .edit-qty-btn {
+        width: 44px; height: 44px; border-radius: 50%; border: 2px solid #ddd;
+        background: #f5f5f5; font-size: 1.4rem; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .edit-qty-btn:active { background: #e0e0e0; }
+    .edit-qty-value { font-size: 1.5rem; font-weight: 800; min-width: 40px; text-align: center; }
     .sidebar-footer {
         border-top: 1px solid #eee; padding: 10px 14px;
         background: #fafafa; flex-shrink: 0;
@@ -238,6 +310,7 @@
                     </button>
                     <div class="btn-row">
                         <button onclick="printCheck()"><i class="fas fa-receipt"></i>חשבון</button>
+                        <button onclick="reprintKitchen()"><i class="fas fa-print"></i>הדפס מחדש</button>
                         <button onclick="payCash()"><i class="fas fa-money-bill-wave"></i>מזומן</button>
                         <button onclick="showPaymentLinkModal()"><i class="fas fa-link"></i>קישור</button>
                     </div>
@@ -300,6 +373,58 @@
             <i class="fas fa-paper-plane me-2"></i> שלח SMS עם קישור תשלום
         </button>
         <div id="paymentLinkResult" style="margin-top:12px; text-align:center; font-size:.85rem;"></div>
+    </div>
+</div>
+
+<div class="pin-modal-overlay" id="pinModalOverlay">
+    <div class="pin-modal" onclick="event.stopPropagation()">
+        <h4 id="pinModalTitle">אימות מנהל</h4>
+        <div class="pin-subtitle" id="pinModalSubtitle">הזן PIN מנהל להמשך</div>
+        <div class="void-reasons" id="pinVoidReasons">
+            <span class="void-reason-chip" onclick="selectVoidReason(this, 'טעות')" data-reason="טעות">טעות</span>
+            <span class="void-reason-chip" onclick="selectVoidReason(this, 'בקשת לקוח')" data-reason="בקשת לקוח">בקשת לקוח</span>
+            <span class="void-reason-chip" onclick="selectVoidReason(this, 'בעיית איכות')" data-reason="בעיית איכות">בעיית איכות</span>
+            <span class="void-reason-chip" onclick="selectVoidReason(this, 'אחר')" data-reason="אחר">אחר</span>
+        </div>
+        <div class="pin-display" id="pinDisplay"></div>
+        <div class="pin-keypad">
+            <button class="pin-key" onclick="pinKey('1')">1</button>
+            <button class="pin-key" onclick="pinKey('2')">2</button>
+            <button class="pin-key" onclick="pinKey('3')">3</button>
+            <button class="pin-key" onclick="pinKey('4')">4</button>
+            <button class="pin-key" onclick="pinKey('5')">5</button>
+            <button class="pin-key" onclick="pinKey('6')">6</button>
+            <button class="pin-key" onclick="pinKey('7')">7</button>
+            <button class="pin-key" onclick="pinKey('8')">8</button>
+            <button class="pin-key" onclick="pinKey('9')">9</button>
+            <button class="pin-key danger" onclick="pinCancel()"><i class="fas fa-times"></i></button>
+            <button class="pin-key" onclick="pinKey('0')">0</button>
+            <button class="pin-key success" onclick="pinSubmit()"><i class="fas fa-check"></i></button>
+        </div>
+        <div class="pin-error" id="pinError"></div>
+    </div>
+</div>
+
+<div class="edit-item-overlay" id="editItemOverlay" onclick="closeEditItem()">
+    <div class="edit-item-panel" onclick="event.stopPropagation()">
+        <div class="sheet-handle" style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 id="editItemTitle"></h4>
+        <div class="edit-qty-row">
+            <button class="edit-qty-btn" onclick="editQtyAdjust(-1)">−</button>
+            <span class="edit-qty-value" id="editQtyValue">1</span>
+            <button class="edit-qty-btn" onclick="editQtyAdjust(1)">+</button>
+        </div>
+        <div id="editItemOptions"></div>
+        <div style="margin-top:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">הערות</label>
+            <input type="text" id="editItemNotes" class="form-control" placeholder="הערות לפריט..." style="border-radius:10px; font-size:.85rem;">
+        </div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+            <button onclick="saveEditItem()" style="flex:1; background:var(--ops-accent,#e94560); color:#fff; border:none; border-radius:10px; padding:12px; font-weight:700; font-size:.9rem; cursor:pointer;">
+                <i class="fas fa-save me-1"></i> שמור שינויים
+            </button>
+            <button onclick="closeEditItem()" style="flex:0 0 auto; background:#f0f0f0; border:none; border-radius:10px; padding:12px 20px; color:#666; font-weight:600; cursor:pointer;">ביטול</button>
+        </div>
     </div>
 </div>
 
@@ -608,7 +733,7 @@ function renderSidebar() {
     var html = '';
     var total = 0;
     var count = 0;
-    existingItems.forEach(function(item) {
+    existingItems.forEach(function(item, eidx) {
         var name = item.name_he || item.item_name_he || '';
         var qty = parseInt(item.qty || item.quantity || 1);
         var price = parseFloat(item.price || item.unit_price || 0) * qty;
@@ -620,7 +745,11 @@ function renderSidebar() {
         if (item.options && item.options.length) {
             optText = item.options.map(function(o) { return o.name_he || o.choice_name_he || ''; }).join(', ');
         }
-        html += '<div class="sidebar-item ' + sent + '">';
+        html += '<div class="sidebar-item ' + sent + '" onclick="openEditExisting(' + eidx + ')" style="cursor:pointer;">';
+        html += '<div class="si-qty-controls" onclick="event.stopPropagation();">';
+        html += '<button class="si-qty-btn" onclick="adjustExistingQty(' + eidx + ',-1)">−</button>';
+        html += '<button class="si-qty-btn" onclick="adjustExistingQty(' + eidx + ',1)">+</button>';
+        html += '</div>';
         html += '<div class="si-info"><div class="si-name">' + qty + 'x ' + (isDeal ? '🎁 ' : '') + name + '</div>';
         if (isDeal && item.selected_items && item.selected_items.length) {
             html += '<div class="si-options">' + item.selected_items.map(function(s) { return s.name_he; }).join(', ') + '</div>';
@@ -629,9 +758,9 @@ function renderSidebar() {
         if (item.notes || item.special_instructions) html += '<div class="si-options">📝 ' + (item.notes || item.special_instructions) + '</div>';
         html += '</div>';
         html += '<div class="si-price">₪' + Math.round(price) + '</div>';
-        if (!item.sent_to_kitchen) {
-            html += '<div class="si-remove" onclick="removeExistingItem(' + item.order_id + ',' + (item.item_index !== undefined ? item.item_index : 0) + ')"><i class="fas fa-trash-alt"></i></div>';
-        }
+        var lockClass = item.sent_to_kitchen ? ' sent-lock' : '';
+        var lockIcon = item.sent_to_kitchen ? 'fa-lock' : 'fa-trash-alt';
+        html += '<div class="si-remove' + lockClass + '" onclick="event.stopPropagation(); removeExistingItem(' + item.order_id + ',' + (item.item_index !== undefined ? item.item_index : 0) + ',' + (item.sent_to_kitchen ? 'true' : 'false') + ')"><i class="fas ' + lockIcon + '"></i></div>';
         html += '</div>';
     });
     if (cart.length > 0) {
@@ -646,7 +775,11 @@ function renderSidebar() {
             if (item.options && item.options.length) {
                 optText = item.options.map(function(o) { return o.name_he; }).join(', ');
             }
-            html += '<div class="sidebar-item">';
+            html += '<div class="sidebar-item" onclick="openEditCart(' + idx + ')" style="cursor:pointer;">';
+            html += '<div class="si-qty-controls" onclick="event.stopPropagation();">';
+            html += '<button class="si-qty-btn" onclick="adjustCartQty(' + idx + ',-1)">−</button>';
+            html += '<button class="si-qty-btn" onclick="adjustCartQty(' + idx + ',1)">+</button>';
+            html += '</div>';
             html += '<div class="si-info"><div class="si-name">' + (item.qty || 1) + 'x ' + (item.is_deal ? '🎁 ' : '') + item.name_he + '</div>';
             if (item.is_deal && item.selected_items) {
                 html += '<div class="si-options">' + item.selected_items.map(function(s) { return s.name_he; }).join(', ') + '</div>';
@@ -655,7 +788,7 @@ function renderSidebar() {
             if (item.notes) html += '<div class="si-options">📝 ' + item.notes + '</div>';
             html += '</div>';
             html += '<div class="si-price">₪' + Math.round(price) + '</div>';
-            html += '<div class="si-remove" onclick="removeCartItem(' + idx + ')"><i class="fas fa-trash-alt"></i></div>';
+            html += '<div class="si-remove" onclick="event.stopPropagation(); removeCartItem(' + idx + ')"><i class="fas fa-trash-alt"></i></div>';
             html += '</div>';
         });
     }
@@ -681,29 +814,318 @@ function removeCartItem(idx) {
     renderMenu();
 }
 
-function removeExistingItem(orderId, itemIdx) {
-    if (!confirm('להסיר פריט?')) return;
-    fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+function adjustCartQty(idx, delta) {
+    var item = cart[idx];
+    if (!item) return;
+    var newQty = (parseInt(item.qty) || 1) + delta;
+    if (newQty <= 0) { removeCartItem(idx); return; }
+    item.qty = newQty;
+    renderSidebar();
+    renderMenu();
+}
+
+function adjustExistingQty(eidx, delta) {
+    var item = existingItems[eidx];
+    if (!item) return;
+    var curQty = parseInt(item.qty || item.quantity || 1);
+    var newQty = curQty + delta;
+    if (newQty <= 0) {
+        removeExistingItem(item.order_id, item.item_index !== undefined ? item.item_index : 0, !!item.sent_to_kitchen);
+        return;
+    }
+    if (item.sent_to_kitchen) {
+        pendingPinAction = {type: 'update_qty', order_id: item.order_id, item_index: item.item_index, qty: newQty};
+        showPinModal('שינוי כמות', 'פריט נשלח למטבח — הזן PIN מנהל', false);
+        return;
+    }
+    doUpdateItem(item.order_id, item.item_index, {qty: newQty});
+}
+
+var pendingPinAction = null;
+var pinValue = '';
+var selectedVoidReason = '';
+
+function showPinModal(title, subtitle, showReasons) {
+    pinValue = '';
+    selectedVoidReason = '';
+    document.getElementById('pinModalTitle').textContent = title || 'אימות מנהל';
+    document.getElementById('pinModalSubtitle').textContent = subtitle || 'הזן PIN מנהל להמשך';
+    document.getElementById('pinDisplay').textContent = '';
+    document.getElementById('pinError').textContent = '';
+    document.getElementById('pinVoidReasons').style.display = showReasons ? 'flex' : 'none';
+    document.querySelectorAll('.void-reason-chip').forEach(function(c) { c.classList.remove('selected'); });
+    document.getElementById('pinModalOverlay').classList.add('show');
+}
+
+function selectVoidReason(el, reason) {
+    document.querySelectorAll('.void-reason-chip').forEach(function(c) { c.classList.remove('selected'); });
+    el.classList.add('selected');
+    selectedVoidReason = reason;
+}
+
+function pinKey(digit) {
+    if (pinValue.length >= 6) return;
+    pinValue += digit;
+    document.getElementById('pinDisplay').textContent = '●'.repeat(pinValue.length);
+    document.getElementById('pinError').textContent = '';
+}
+
+function pinCancel() {
+    document.getElementById('pinModalOverlay').classList.remove('show');
+    pendingPinAction = null;
+    pinValue = '';
+    selectedVoidReason = '';
+}
+
+function pinSubmit() {
+    if (!pinValue) {
+        document.getElementById('pinError').textContent = 'הזן PIN';
+        return;
+    }
+    if (!pendingPinAction) { pinCancel(); return; }
+    var action = pendingPinAction;
+    if (action.type === 'remove') {
+        fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                order_id: action.order_id,
+                item_index: action.item_index,
+                manager_pin: pinValue,
+                void_reason: selectedVoidReason
+            })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) { pinCancel(); loadSession(); }
+            else { document.getElementById('pinError').textContent = d.error || 'PIN שגוי'; pinValue = ''; document.getElementById('pinDisplay').textContent = ''; }
+        });
+    } else if (action.type === 'update_qty') {
+        fetch('/ops/api/sessions/' + SESSION_ID + '/update-item', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                order_id: action.order_id,
+                item_index: action.item_index,
+                qty: action.qty,
+                manager_pin: pinValue
+            })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) { pinCancel(); loadSession(); }
+            else { document.getElementById('pinError').textContent = d.error || 'PIN שגוי'; pinValue = ''; document.getElementById('pinDisplay').textContent = ''; }
+        });
+    } else if (action.type === 'edit_item') {
+        fetch('/ops/api/sessions/' + SESSION_ID + '/update-item', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                order_id: action.order_id,
+                item_index: action.item_index,
+                qty: action.qty,
+                notes: action.notes,
+                options: action.options,
+                manager_pin: pinValue
+            })
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) { pinCancel(); closeEditItem(); loadSession(); }
+            else { document.getElementById('pinError').textContent = d.error || 'PIN שגוי'; pinValue = ''; document.getElementById('pinDisplay').textContent = ''; }
+        });
+    }
+}
+
+function removeExistingItem(orderId, itemIdx, isSent) {
+    if (isSent) {
+        pendingPinAction = {type: 'remove', order_id: orderId, item_index: itemIdx};
+        showPinModal('הסרת פריט', 'פריט נשלח למטבח — בחר סיבה והזן PIN', true);
+    } else {
+        if (!confirm('להסיר פריט?')) return;
+        fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({order_id: orderId, item_index: itemIdx})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) loadSession();
+            else alert(d.error);
+        });
+    }
+}
+
+var editingItem = null;
+var editingType = null;
+var editQty = 1;
+
+function openEditExisting(eidx) {
+    var item = existingItems[eidx];
+    if (!item || item.is_deal) return;
+    editingItem = {source: 'existing', index: eidx, data: item, order_id: item.order_id, item_index: item.item_index, sent: !!item.sent_to_kitchen};
+    editQty = parseInt(item.qty || item.quantity || 1);
+    var name = item.name_he || item.item_name_he || '';
+    document.getElementById('editItemTitle').textContent = name;
+    document.getElementById('editQtyValue').textContent = editQty;
+    document.getElementById('editItemNotes').value = item.notes || item.special_instructions || '';
+    var menuItem = findMenuItem(item.id);
+    var optHtml = '';
+    if (menuItem && menuItem.option_groups && menuItem.option_groups.length) {
+        var currentOpts = item.options || [];
+        var currentIds = currentOpts.map(function(o) { return String(o.choice_id || o.id || ''); });
+        menuItem.option_groups.forEach(function(grp) {
+            optHtml += '<div class="opt-group"><div class="opt-group-title">' + grp.name_he;
+            if (grp.is_required) optHtml += ' <span style="color:#e94560;">*</span>';
+            optHtml += '</div>';
+            var maxSel = grp.max_selections || grp.max_choices || 99;
+            grp.choices.forEach(function(ch) {
+                var chPrice = ch.price_modifier || ch.price || 0;
+                var sel = currentIds.indexOf(String(ch.id)) !== -1 ? ' selected' : '';
+                optHtml += '<div class="opt-choice' + sel + '" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + chPrice + '" onclick="toggleEditChoice(this, \'' + grp.id + '\', ' + maxSel + ')">';
+                optHtml += '<span class="choice-name">' + ch.name_he + '</span>';
+                if (chPrice > 0) optHtml += '<span class="choice-price">+₪' + chPrice + '</span>';
+                optHtml += '</div>';
+            });
+            optHtml += '</div>';
+        });
+    }
+    document.getElementById('editItemOptions').innerHTML = optHtml;
+    document.getElementById('editItemOverlay').classList.add('show');
+}
+
+function openEditCart(idx) {
+    var item = cart[idx];
+    if (!item || item.is_deal) return;
+    editingItem = {source: 'cart', index: idx, data: item};
+    editQty = parseInt(item.qty || 1);
+    document.getElementById('editItemTitle').textContent = item.name_he;
+    document.getElementById('editQtyValue').textContent = editQty;
+    document.getElementById('editItemNotes').value = item.notes || '';
+    var menuItem = findMenuItem(item.id);
+    var optHtml = '';
+    if (menuItem && menuItem.option_groups && menuItem.option_groups.length) {
+        var currentOpts = item.options || [];
+        var currentIds = currentOpts.map(function(o) { return String(o.choice_id || o.id || ''); });
+        menuItem.option_groups.forEach(function(grp) {
+            optHtml += '<div class="opt-group"><div class="opt-group-title">' + grp.name_he;
+            if (grp.is_required) optHtml += ' <span style="color:#e94560;">*</span>';
+            optHtml += '</div>';
+            var maxSel = grp.max_selections || grp.max_choices || 99;
+            grp.choices.forEach(function(ch) {
+                var chPrice = ch.price_modifier || ch.price || 0;
+                var sel = currentIds.indexOf(String(ch.id)) !== -1 ? ' selected' : '';
+                optHtml += '<div class="opt-choice' + sel + '" data-group="' + grp.id + '" data-choice="' + ch.id + '" data-price="' + chPrice + '" onclick="toggleEditChoice(this, \'' + grp.id + '\', ' + maxSel + ')">';
+                optHtml += '<span class="choice-name">' + ch.name_he + '</span>';
+                if (chPrice > 0) optHtml += '<span class="choice-price">+₪' + chPrice + '</span>';
+                optHtml += '</div>';
+            });
+            optHtml += '</div>';
+        });
+    }
+    document.getElementById('editItemOptions').innerHTML = optHtml;
+    document.getElementById('editItemOverlay').classList.add('show');
+}
+
+function findMenuItem(itemId) {
+    var found = null;
+    MENU_DATA.forEach(function(cat) {
+        cat.items.forEach(function(it) {
+            if (it.id === itemId) found = it;
+        });
+    });
+    return found;
+}
+
+function toggleEditChoice(el, groupId, maxChoices) {
+    if (maxChoices <= 1) {
+        document.querySelectorAll('#editItemOptions .opt-choice[data-group="' + groupId + '"]').forEach(function(c) { c.classList.remove('selected'); });
+        el.classList.add('selected');
+    } else {
+        var selected = document.querySelectorAll('#editItemOptions .opt-choice[data-group="' + groupId + '"].selected').length;
+        if (el.classList.contains('selected')) {
+            el.classList.remove('selected');
+        } else if (selected < maxChoices) {
+            el.classList.add('selected');
+        }
+    }
+}
+
+function editQtyAdjust(delta) {
+    editQty = Math.max(1, editQty + delta);
+    document.getElementById('editQtyValue').textContent = editQty;
+}
+
+function closeEditItem() {
+    document.getElementById('editItemOverlay').classList.remove('show');
+    editingItem = null;
+}
+
+function saveEditItem() {
+    if (!editingItem) return;
+    var newNotes = document.getElementById('editItemNotes').value.trim();
+    var newOptions = [];
+    document.querySelectorAll('#editItemOptions .opt-choice.selected').forEach(function(el) {
+        newOptions.push({
+            group_id: el.dataset.group,
+            choice_id: parseInt(el.dataset.choice),
+            name_he: el.querySelector('.choice-name').textContent,
+            price: parseFloat(el.dataset.price) || 0
+        });
+    });
+
+    if (editingItem.source === 'cart') {
+        var ci = cart[editingItem.index];
+        ci.qty = editQty;
+        ci.notes = newNotes;
+        if (document.querySelectorAll('#editItemOptions .opt-choice').length > 0) {
+            var extraPrice = 0;
+            newOptions.forEach(function(o) { extraPrice += o.price; });
+            var mi = findMenuItem(ci.id);
+            if (mi) ci.price = mi.price + extraPrice;
+            ci.options = newOptions;
+        }
+        closeEditItem();
+        renderSidebar();
+        renderMenu();
+    } else if (editingItem.source === 'existing') {
+        if (editingItem.sent) {
+            pendingPinAction = {
+                type: 'edit_item',
+                order_id: editingItem.order_id,
+                item_index: editingItem.item_index,
+                qty: editQty,
+                notes: newNotes,
+                options: document.querySelectorAll('#editItemOptions .opt-choice').length > 0 ? newOptions : undefined
+            };
+            showPinModal('עריכת פריט', 'פריט נשלח למטבח — הזן PIN מנהל', false);
+        } else {
+            doUpdateItem(editingItem.order_id, editingItem.item_index, {
+                qty: editQty,
+                notes: newNotes,
+                options: document.querySelectorAll('#editItemOptions .opt-choice').length > 0 ? newOptions : undefined
+            });
+            closeEditItem();
+        }
+    }
+}
+
+function doUpdateItem(orderId, itemIdx, data) {
+    data.order_id = orderId;
+    data.item_index = itemIdx;
+    fetch('/ops/api/sessions/' + SESSION_ID + '/update-item', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({order_id: orderId, item_index: itemIdx})
+        body: JSON.stringify(data)
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.require_pin) {
-            var pin = prompt('פריט נשלח למטבח — הזן PIN מנהל:');
-            if (pin) {
-                fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({order_id: orderId, item_index: itemIdx, manager_pin: pin})
-                }).then(function(r) { return r.json(); }).then(function(d2) {
-                    if (d2.ok) loadSession();
-                    else alert(d2.error);
-                });
-            }
-            return;
-        }
         if (d.ok) loadSession();
+        else if (d.require_pin) {
+            pendingPinAction = {type: 'edit_item', order_id: orderId, item_index: itemIdx, qty: data.qty, notes: data.notes, options: data.options};
+            showPinModal('עריכת פריט', 'פריט נשלח למטבח — הזן PIN מנהל', false);
+        }
         else alert(d.error);
+    });
+}
+
+function reprintKitchen() {
+    fetch('/ops/api/sessions/' + SESSION_ID + '/reprint-kitchen', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        alert(d.message || d.error);
     });
 }
 

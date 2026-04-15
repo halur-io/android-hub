@@ -2227,7 +2227,8 @@ class DirectPrinter:
 
     def init(self):
         self._add(self.INIT)
-        self._add(b'\x1bt' + bytes([self.codepage_num]))
+        if self.codepage_num:
+            self._add(b'\x1bt' + bytes([self.codepage_num]))
 
     def cut(self):
         self._add(b'\n\n\n')
@@ -2455,7 +2456,7 @@ def _printer_obj_from_dict(pd):
     return DirectPrinter(
         ip=ip, port=port,
         encoding=pd.get('encoding') or 'cp862',
-        codepage_num=pd.get('codepage_num') or 36,
+        codepage_num=pd.get('codepage_num') or 0,
     )
 
 
@@ -5089,90 +5090,64 @@ def api_session_print_check(session_id):
 
 
 def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, discount_value, total, payment_url=None):
-    buf = bytearray()
     encoding = getattr(printer, 'encoding', 'cp862') or 'cp862'
-    codepage = getattr(printer, 'codepage_num', 15) or 15
+    codepage = getattr(printer, 'codepage_num', None) or 0
+    ip_parts = (getattr(printer, 'ip_address', '') or '').split(':')
+    ip = ip_parts[0] if ip_parts else '127.0.0.1'
+    port = int(ip_parts[1]) if len(ip_parts) > 1 else (getattr(printer, 'port', 9100) or 9100)
 
-    def add(text_str):
-        try:
-            for ch in text_str:
-                if '\u0590' <= ch <= '\u05FF':
-                    buf.append(0x80 + (ord(ch) - 0x05D0))
-                else:
-                    buf.extend(ch.encode(encoding, errors='replace'))
-        except Exception:
-            buf.extend(text_str.encode('ascii', errors='replace'))
+    p = DirectPrinter(ip, port, encoding=encoding, codepage_num=codepage)
+    p.init()
 
-    buf.extend(b'\x1b\x40')
-    buf.extend(b'\x1bt')
-    buf.append(codepage)
-    buf.extend(b'\x1ba\x01')
-    buf.extend(b'\x1b!\x30')
-    add('SUMO')
-    buf.append(0x0A)
-    buf.extend(b'\x1b!\x00')
-    buf.append(0x0A)
-    buf.extend(b'\x1b!\x10')
-    reversed_table = table_number[::-1] if any('\u0590' <= c <= '\u05FF' for c in table_number) else table_number
-    add(f'{reversed_table} ןחלוש')
-    buf.append(0x0A)
-    buf.extend(b'\x1b!\x00')
-    buf.append(0x0A)
-    buf.extend(b'\x1ba\x00')
-    buf.extend(b'-' * 32)
-    buf.append(0x0A)
+    p.align('center')
+    p.font('double')
+    p.text('SUMO')
+    p.font('normal')
+
+    p.font('double_h')
+    p.text(f'שולחן {table_number}')
+    p.font('normal')
+
+    p.align('left')
+    p.dashed()
 
     for item in items:
         name = item.get('name_he', item.get('item_name_he', ''))
         qty = int(item.get('qty', item.get('quantity', 1)))
         price = float(item.get('price', item.get('unit_price', 0)))
         line_total = qty * price
-        reversed_name = name[::-1]
-        price_str = f'{line_total:.0f}'
-        qty_str = f'x{qty} ' if qty > 1 else ''
-        right_part = f'{qty_str}{reversed_name}'
-        left_part = price_str
-        pad = 32 - len(right_part) - len(left_part)
-        if pad < 1:
-            pad = 1
-        line = f'{left_part}{" " * pad}{right_part}'
-        add(line)
-        buf.append(0x0A)
+        qty_prefix = f'{qty}x ' if qty > 1 else ''
+        p.bold()
+        p.text(f'{qty_prefix}{name}  ₪{line_total:.0f}')
+        p.bold(False)
         if item.get('notes') or item.get('special_instructions'):
             note = item.get('notes') or item.get('special_instructions', '')
-            add(f'  {note[::-1]}')
-            buf.append(0x0A)
+            p.text(f'  {note}')
 
-    buf.extend(b'-' * 32)
-    buf.append(0x0A)
+    p.dashed()
 
     if discount_type and discount_value and discount_value > 0:
-        buf.extend(b'\x1ba\x00')
+        p.align('left')
         if discount_type == 'percentage':
-            disc_label = f'%{discount_value:.0f} החנה'
+            disc_label = f'הנחה {discount_value:.0f}%'
         else:
-            disc_label = f'₪{discount_value:.0f} החנה'
+            disc_label = f'הנחה ₪{discount_value:.0f}'
         disc_amount = subtotal - total
-        disc_line = f'{disc_amount:.0f}-    {disc_label}'
-        add(disc_line)
-        buf.append(0x0A)
+        p.text(f'{disc_label}    -{disc_amount:.0f}')
 
-    buf.extend(b'\x1ba\x01')
-    buf.extend(b'\x1b!\x10')
-    total_line = f'₪{total:.2f} :םולשתל כ"הס'
-    add(total_line)
-    buf.append(0x0A)
-    buf.extend(b'\x1b!\x00')
-    buf.append(0x0A)
+    p.align('center')
+    p.font('double_h')
+    p.bold()
+    p.text(f'סה"כ לתשלום: ₪{total:.2f}')
+    p.bold(False)
+    p.font('normal')
 
     if payment_url:
-        buf.extend(b'\x1ba\x01')
-        add('QR ורקס - םולשתל')
-        buf.append(0x0A)
-        buf.append(0x0A)
+        p.align('center')
+        p.text('לתשלום - סרקו QR')
+        p._add(b'\n')
         try:
             import qrcode
-            import io
             qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=6, border=2)
             qr.add_data(payment_url)
             qr.make(fit=True)
@@ -5180,35 +5155,26 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
             height = len(matrix)
             width = len(matrix[0]) if matrix else 0
             byte_width = (width + 7) // 8
-            buf.extend(b'\x1dv0\x00')
-            buf.append(byte_width & 0xFF)
-            buf.append((byte_width >> 8) & 0xFF)
-            buf.append(height & 0xFF)
-            buf.append((height >> 8) & 0xFF)
+            p._add(b'\x1dv0\x00')
+            p._add(bytes([byte_width & 0xFF, (byte_width >> 8) & 0xFF, height & 0xFF, (height >> 8) & 0xFF]))
             for row in matrix:
                 row_bytes = bytearray(byte_width)
                 for x, cell in enumerate(row):
                     if cell:
                         row_bytes[x // 8] |= (0x80 >> (x % 8))
-                buf.extend(row_bytes)
+                p._add(row_bytes)
         except ImportError:
-            add(payment_url)
-            buf.append(0x0A)
-        buf.append(0x0A)
+            p.text(payment_url)
+        p._add(b'\n')
 
-    buf.extend(b'\x1ba\x01')
-    add('!הבוט ןובאת')
-    buf.append(0x0A)
-    from datetime import datetime as _dt
+    p.align('center')
+    p.text('תאבון טוב!')
     from zoneinfo import ZoneInfo
     il_tz = ZoneInfo('Asia/Jerusalem')
-    now_il = _dt.now(il_tz)
-    add(now_il.strftime('%H:%M %d/%m/%Y'))
-    buf.append(0x0A)
-    for _ in range(5):
-        buf.append(0x0A)
-    buf.extend(b'\x1dV\x00')
-    return buf
+    now_il = datetime.now(il_tz)
+    p.text(now_il.strftime('%H:%M %d/%m/%Y'))
+    p.cut()
+    return p.buf
 
 
 @ops_bp.route('/dine-in/<int:session_id>')

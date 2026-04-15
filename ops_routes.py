@@ -2481,8 +2481,38 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
 
     print_jobs = _build_print_jobs(order, items, by_station, checker_copies, payment_copies, station_bons)
 
-    _notify_sse_order_event({
+    order_event_data = {
         'type': 'print_order',
+        'id': order.id,
+        'order_number': order.order_number,
+        'order_type': order.order_type,
+        'branch_id': order.branch_id,
+        'status': order.status,
+        'customer_name': order.customer_name or '',
+        'customer_phone': order.customer_phone or '',
+        'delivery_address': order.delivery_address or '',
+        'delivery_city': order.delivery_city or '',
+        'delivery_notes': order.delivery_notes or '',
+        'customer_notes': order.customer_notes or '',
+        'subtotal': order.subtotal or 0,
+        'delivery_fee': order.delivery_fee or 0,
+        'discount_amount': order.discount_amount or 0,
+        'total_amount': order.total_amount or 0,
+        'payment_method': order.payment_method or '',
+        'coupon_code': order.coupon_code or '',
+        'created_at': _to_il(order.created_at) if order.created_at else '',
+        'items': items,
+        'items_by_station': by_station,
+        'checker_copies': checker_copies,
+        'payment_copies': payment_copies,
+        'station_bons': station_bons,
+        'print_jobs': print_jobs,
+    }
+    _notify_sse_order_event(order_event_data)
+
+    _notify_sse_order_event({
+        'type': 'new_print_job',
+        'print_job_id': secrets.token_hex(8),
         'id': order.id,
         'order_number': order.order_number,
         'order_type': order.order_type,

@@ -29,6 +29,12 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 SERVER_URL = os.environ.get("PRINT_AGENT_SERVER", "https://cad2a536-a2eb-41a8-a0a3-6f4a608fee70-00-2gvg9dtirvl7z.picard.replit.dev")
 PRINT_AGENT_KEY = os.environ.get("PRINT_AGENT_KEY", "sumo-print-2024-secure")
 POLL_INTERVAL = 5
+POLL_INTERVAL_SSE_ACTIVE = 30
+SSE_RETRY_INTERVAL = 5
+SSE_CONNECTED = False
+_printed_ids_lock = threading.Lock()
+_recently_printed_ids = {}
+DEDUP_TTL = 120
 # --------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(description='SUMO Print Agent v4.0')
@@ -552,6 +558,92 @@ def start_local_api():
     server.serve_forever()
 
 
+def _is_recently_printed(order_id):
+    now = time.time()
+    with _printed_ids_lock:
+        expired = [k for k, t in _recently_printed_ids.items() if now - t > DEDUP_TTL]
+        for k in expired:
+            del _recently_printed_ids[k]
+        return order_id in _recently_printed_ids
+
+
+def _mark_recently_printed(order_id):
+    with _printed_ids_lock:
+        _recently_printed_ids[order_id] = time.time()
+
+
+def _process_sse_order(order):
+    print_job_id = order.get('print_job_id')
+    dedup_key = f'sse_{print_job_id}' if print_job_id else f'sse_{order.get("id")}'
+    if _is_recently_printed(dedup_key):
+        print(f'  [SSE] Print job for order #{order.get("order_number", "?")} already processed, skipping')
+        return
+
+    num = order.get('order_number', '?')
+    name = order.get('customer_name', '')
+    total = order.get('total_amount', 0)
+    otype = order.get('order_type', '')
+    items_count = len(order.get('items', []))
+    print(f'  [SSE] >> #{num} | {name} | {otype} | {items_count} items | {total:.0f} NIS')
+
+    if TEST_MODE:
+        for item in order.get('items', []):
+            iname = item.get('print_name') or item.get('name_he') or item.get('item_name_he') or item.get('name', '?')
+            iqty = item.get('qty') or item.get('quantity', 1)
+            print(f'     {iqty}x {iname}')
+
+    order_id = order.get('id')
+    if print_order(order):
+        print(f'     [OK] Printed (instant via SSE)')
+        _mark_recently_printed(dedup_key)
+        _mark_recently_printed(f'poll_{order_id}')
+        if TEST_MODE:
+            print(f'  [TEST] Would mark order {order_id} as printed')
+        else:
+            api_post('/ops/api/orders/mark-printed', {'order_ids': [order_id]})
+    else:
+        print(f'     [FAIL] Print failed (will retry via polling)')
+
+
+def sse_listener():
+    global SSE_CONNECTED
+    url = f'{SERVER_URL}/ops/api/orders/stream?branch_id={BRANCH_ID}'
+    headers = {'X-Print-Key': PRINT_AGENT_KEY, 'Accept': 'text/event-stream'}
+
+    while True:
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            resp = urllib.request.urlopen(req, timeout=60)
+            SSE_CONNECTED = True
+            print('[SSE] Connected to event stream')
+            buf = ''
+            while True:
+                chunk = resp.read(1)
+                if not chunk:
+                    break
+                buf += chunk.decode('utf-8', errors='replace')
+                while '\n\n' in buf:
+                    msg, buf = buf.split('\n\n', 1)
+                    for line in msg.split('\n'):
+                        if line.startswith('data: '):
+                            data_str = line[6:]
+                            try:
+                                event = json.loads(data_str)
+                                event_type = event.get('type', '')
+                                if event_type == 'connected':
+                                    print('[SSE] Stream ready — listening for print jobs')
+                                elif event_type == 'new_print_job':
+                                    print(f'[SSE] Received print job for order #{event.get("order_number", "?")}')
+                                    _process_sse_order(event)
+                            except json.JSONDecodeError:
+                                pass
+        except Exception as e:
+            SSE_CONNECTED = False
+            print(f'[SSE] Disconnected: {e} — retrying in {SSE_RETRY_INTERVAL}s (polling fallback active)')
+        SSE_CONNECTED = False
+        time.sleep(SSE_RETRY_INTERVAL)
+
+
 def main():
     global FIRST_RUN
     mode_str = 'TEST MODE' if TEST_MODE else 'LIVE MODE'
@@ -560,7 +652,8 @@ def main():
     print('+----------------------------------------------+')
     print(f'| Server:  {SERVER_URL[:42]}')
     print(f'| Branch:  {BRANCH_ID}')
-    print(f'| Poll:    every {POLL_INTERVAL}s')
+    print(f'| Poll:    every {POLL_INTERVAL}s (fallback)')
+    print(f'| SSE:     enabled (primary channel)')
     print('+----------------------------------------------+')
     print()
 
@@ -576,11 +669,18 @@ def main():
     api_thread = threading.Thread(target=start_local_api, daemon=True)
     api_thread.start()
 
+    if not TEST_ONCE:
+        sse_thread = threading.Thread(target=sse_listener, daemon=True)
+        sse_thread.start()
+        print('[SSE] Started SSE listener thread')
+
     print()
     print('[OK] Watching for new orders...\n')
 
     while True:
         try:
+            current_poll = POLL_INTERVAL_SSE_ACTIVE if SSE_CONNECTED else POLL_INTERVAL
+
             data = api_get(f'/ops/api/orders/unprinted?branch_id={BRANCH_ID}')
             if data and data.get('ok'):
                 orders = data.get('orders', [])
@@ -589,21 +689,25 @@ def main():
                         print(f'[SKIP] First run: {len(orders)} old order(s) found, marking as printed')
                         old_ids = [o['id'] for o in orders]
                         api_post('/ops/api/orders/mark-printed', {'order_ids': old_ids})
+                        for oid in old_ids:
+                            _mark_recently_printed(f'poll_{oid}')
                         print(f'[OK] Marked {len(old_ids)} old order(s). Only NEW orders will print.\n')
                         FIRST_RUN = False
-                        time.sleep(POLL_INTERVAL)
+                        time.sleep(current_poll)
                         continue
 
                     FIRST_RUN = False
-                    print(f'[NEW] {len(orders)} new order(s)')
+                    prefix = '[POLL/backup]' if SSE_CONNECTED else '[POLL]'
                     printed_ids = []
                     for order in orders:
+                        if _is_recently_printed(f'poll_{order["id"]}'):
+                            continue
                         num = order['order_number']
                         name = order['customer_name']
                         total = order.get('total_amount', 0)
                         otype = order.get('order_type', '')
                         items_count = len(order.get('items', []))
-                        print(f'  >> #{num} | {name} | {otype} | {items_count} items | {total:.0f} NIS')
+                        print(f'  {prefix} >> #{num} | {name} | {otype} | {items_count} items | {total:.0f} NIS')
 
                         if TEST_MODE:
                             for item in order.get('items', []):
@@ -613,6 +717,7 @@ def main():
 
                         if print_order(order):
                             print(f'     [OK] Printed')
+                            _mark_recently_printed(f'poll_{order["id"]}')
                             printed_ids.append(order['id'])
                         else:
                             print(f'     [FAIL] Print failed')
@@ -640,7 +745,7 @@ def main():
         except Exception as e:
             print(f'  [ERR] {e}')
 
-        time.sleep(POLL_INTERVAL)
+        time.sleep(current_poll)
 
 
 if __name__ == '__main__':

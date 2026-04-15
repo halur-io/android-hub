@@ -4921,18 +4921,23 @@ def api_session_print_check(session_id):
                 for item in (order.get_items() or []):
                     all_items.append(item)
 
+        check_data = _build_dine_in_check(
+            default_printer, table_num, all_items,
+            sess.subtotal_before_discount,
+            sess.discount_type, sess.discount_value,
+            total, sess.payment_url
+        )
+        import base64
+        printer_dict = default_printer.to_dict()
+        ip_parts = (default_printer.ip_address or '').split(':')
         check_job = {
             'type': 'print_check',
             'session_id': sess.id,
             'table_number': table_num,
             'branch_id': effective_branch,
-            'printer': default_printer.to_dict(),
-            'items': all_items,
-            'subtotal': sess.subtotal_before_discount,
-            'discount_type': sess.discount_type or '',
-            'discount_value': sess.discount_value or 0,
-            'total': total,
-            'payment_url': sess.payment_url or '',
+            'printer_ip': ip_parts[0],
+            'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (default_printer.port or 9100),
+            'raw_data': base64.b64encode(bytes(check_data)).decode('ascii'),
         }
         _queue_check_print(effective_branch, check_job)
         return jsonify({'ok': True, 'message': 'חשבון נשלח למדפסת'})

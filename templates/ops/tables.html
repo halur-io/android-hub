@@ -47,6 +47,7 @@
         transition: transform .15s, box-shadow .15s; position: relative;
         border: 2px solid transparent; min-height: 130px;
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+        touch-action: manipulation;
         display: flex; flex-direction: column; align-items: center;
         justify-content: center; gap: 6px;
     }
@@ -166,6 +167,7 @@
         box-shadow: 0 2px 8px rgba(0,0,0,.06);
         transition: transform .15s, box-shadow .15s;
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+        touch-action: manipulation;
     }
     .floor-table:active { transform: scale(.96); }
     .floor-table.shape-rect { border-radius: 10px; }
@@ -387,6 +389,7 @@ var currentAreaFilter = '__all__';
 var knownAreas = [];
 var longPressTimer = null;
 var longPressTriggered = false;
+var pointerHandled = false;
 var movingSessionId = null;
 var hasLayout = {% if has_layout %}true{% else %}false{% endif %};
 var savedView = sessionStorage.getItem('ops_table_view');
@@ -424,32 +427,45 @@ function initFloorTableHandlers() {
     container.style.userSelect = 'none';
     container.style.webkitTouchCallout = 'none';
     var flpCard = null;
-    container.addEventListener('touchstart', function(e) {
+    var startX = 0, startY = 0;
+    container.addEventListener('pointerdown', function(e) {
         var card = e.target.closest('.floor-table');
         if (!card) return;
         longPressTriggered = false;
         flpCard = card;
+        startX = e.clientX; startY = e.clientY;
+        clearTimeout(longPressTimer);
         longPressTimer = setTimeout(function() {
             longPressTriggered = true;
-            showQuickActions(card, e.touches[0]);
+            showQuickActions(card, {clientX: e.clientX, clientY: e.clientY});
         }, 600);
-    }, {passive: true});
-    container.addEventListener('touchend', function(e) {
+    });
+    container.addEventListener('pointerup', function(e) {
         clearTimeout(longPressTimer);
         if (longPressTriggered) {
             e.preventDefault();
+            e.stopPropagation();
             longPressTriggered = false;
+            flpCard = null;
+            pointerHandled = true;
+            setTimeout(function() { pointerHandled = false; }, 300);
             return;
         }
         var card = flpCard || e.target.closest('.floor-table');
         flpCard = null;
         if (!card) return;
+        pointerHandled = true;
+        setTimeout(function() { pointerHandled = false; }, 300);
         handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
     });
-    container.addEventListener('touchmove', function() { clearTimeout(longPressTimer); flpCard = null; }, {passive: true});
+    container.addEventListener('pointermove', function(e) {
+        if (!flpCard) return;
+        var dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
+        if (dx > 10 || dy > 10) { clearTimeout(longPressTimer); flpCard = null; }
+    });
+    container.addEventListener('pointercancel', function() { clearTimeout(longPressTimer); flpCard = null; });
     container.addEventListener('click', function(e) {
-        if (e.detail === 0) return;
-        if ('ontouchstart' in window) return;
+        if (pointerHandled) { e.preventDefault(); e.stopPropagation(); return; }
         var card = e.target.closest('.floor-table');
         if (!card) return;
         handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
@@ -505,32 +521,45 @@ function initTouchHandlers() {
     container.style.userSelect = 'none';
     container.style.webkitTouchCallout = 'none';
     var lpCard = null;
-    container.addEventListener('touchstart', function(e) {
+    var startX = 0, startY = 0;
+    container.addEventListener('pointerdown', function(e) {
         var card = e.target.closest('.table-card');
         if (!card) return;
         longPressTriggered = false;
         lpCard = card;
+        startX = e.clientX; startY = e.clientY;
+        clearTimeout(longPressTimer);
         longPressTimer = setTimeout(function() {
             longPressTriggered = true;
-            showQuickActions(card, e.touches[0]);
+            showQuickActions(card, {clientX: e.clientX, clientY: e.clientY});
         }, 600);
-    }, {passive: true});
-    container.addEventListener('touchend', function(e) {
+    });
+    container.addEventListener('pointerup', function(e) {
         clearTimeout(longPressTimer);
         if (longPressTriggered) {
             e.preventDefault();
+            e.stopPropagation();
             longPressTriggered = false;
+            lpCard = null;
+            pointerHandled = true;
+            setTimeout(function() { pointerHandled = false; }, 300);
             return;
         }
         var card = lpCard || e.target.closest('.table-card');
         lpCard = null;
         if (!card) return;
+        pointerHandled = true;
+        setTimeout(function() { pointerHandled = false; }, 300);
         handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
     });
-    container.addEventListener('touchmove', function() { clearTimeout(longPressTimer); lpCard = null; }, {passive: true});
+    container.addEventListener('pointermove', function(e) {
+        if (!lpCard) return;
+        var dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
+        if (dx > 10 || dy > 10) { clearTimeout(longPressTimer); lpCard = null; }
+    });
+    container.addEventListener('pointercancel', function() { clearTimeout(longPressTimer); lpCard = null; });
     container.addEventListener('click', function(e) {
-        if (e.detail === 0) return;
-        if ('ontouchstart' in window) return;
+        if (pointerHandled) { e.preventDefault(); e.stopPropagation(); return; }
         var card = e.target.closest('.table-card');
         if (!card) return;
         handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);

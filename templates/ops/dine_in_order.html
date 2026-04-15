@@ -635,6 +635,10 @@ function initDragDrop() {
         });
         renderSidebar();
         renderMenu();
+        if (item.option_groups && item.option_groups.length > 0) {
+            pendingDropCartIndex = cart.length - 1;
+            openItem(itemId);
+        }
     });
 }
 
@@ -652,6 +656,7 @@ function bindDragEvents() {
 }
 
 var newItemQty = 1;
+var pendingDropCartIndex = -1;
 
 function openItem(itemId) {
     var item = null;
@@ -714,7 +719,16 @@ function toggleChoice(el, groupId, maxChoices) {
     }
 }
 
-function closeItemModal() { document.getElementById('itemModalOverlay').classList.remove('show'); currentItem = null; }
+function closeItemModal() {
+    document.getElementById('itemModalOverlay').classList.remove('show');
+    if (pendingDropCartIndex >= 0) {
+        cart.splice(pendingDropCartIndex, 1);
+        pendingDropCartIndex = -1;
+        renderSidebar();
+        renderMenu();
+    }
+    currentItem = null;
+}
 
 function addItemToCart() {
     if (!currentItem) return;
@@ -731,10 +745,18 @@ function addItemToCart() {
         });
     });
     var notes = document.getElementById('itemNotes').value.trim();
-    cart.push({
-        id: currentItem.id, name_he: currentItem.name_he, name_en: currentItem.name_en || '',
-        price: currentItem.price + extraPrice, qty: newItemQty, options: selectedOptions, notes: notes
-    });
+    if (pendingDropCartIndex >= 0 && pendingDropCartIndex < cart.length && cart[pendingDropCartIndex].id === currentItem.id) {
+        cart[pendingDropCartIndex].price = currentItem.price + extraPrice;
+        cart[pendingDropCartIndex].qty = newItemQty;
+        cart[pendingDropCartIndex].options = selectedOptions;
+        cart[pendingDropCartIndex].notes = notes;
+        pendingDropCartIndex = -1;
+    } else {
+        cart.push({
+            id: currentItem.id, name_he: currentItem.name_he, name_en: currentItem.name_en || '',
+            price: currentItem.price + extraPrice, qty: newItemQty, options: selectedOptions, notes: notes
+        });
+    }
     closeItemModal();
     renderSidebar();
     renderMenu();

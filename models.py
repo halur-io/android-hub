@@ -2717,7 +2717,7 @@ class ManagerPIN(db.Model):
 
     branch = db.relationship('Branch', foreign_keys=[branch_id])
 
-    OPS_MODULES = ['home', 'orders', 'menu', 'stock', 'deals', 'branches', 'shifts', 'delivery', 'employees', 'history']
+    OPS_MODULES = ['home', 'orders', 'tables', 'menu', 'stock', 'deals', 'branches', 'shifts', 'delivery', 'employees', 'history']
 
     def set_pin(self, pin):
         self.pin_hash = generate_password_hash(pin)
@@ -2729,12 +2729,23 @@ class ManagerPIN(db.Model):
         if self.is_ops_superadmin:
             return True
         perms = self.ops_permissions or []
-        return module in perms
+        if module in perms:
+            return True
+        if module == 'tables' and 'orders' in perms:
+            return True
+        return False
 
     def get_ops_modules(self):
         if self.is_ops_superadmin:
             return self.OPS_MODULES[:]
-        return [m for m in self.OPS_MODULES if m in (self.ops_permissions or [])]
+        perms = self.ops_permissions or []
+        result = []
+        for m in self.OPS_MODULES:
+            if m in perms:
+                result.append(m)
+            elif m == 'tables' and 'orders' in perms:
+                result.append(m)
+        return result
 
     def __repr__(self):
         return f'<ManagerPIN {self.name}>'

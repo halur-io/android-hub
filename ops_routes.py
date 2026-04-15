@@ -1091,14 +1091,18 @@ def orders():
     status_filter = request.args.get('status', 'active')
     type_filter = request.args.get('type', 'all')
 
-    query = FoodOrder.query.filter(FoodOrder.order_type != 'dine_in')
+    query = FoodOrder.query
     if effective_branch:
         query = query.filter_by(branch_id=effective_branch)
 
-    if type_filter == 'delivery':
+    if type_filter == 'dine_in':
+        query = query.filter_by(order_type='dine_in')
+    elif type_filter == 'delivery':
         query = query.filter_by(order_type='delivery')
     elif type_filter == 'pickup':
         query = query.filter_by(order_type='pickup')
+    else:
+        query = query.filter(FoodOrder.order_type != 'dine_in')
 
     if status_filter == 'active':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']))
@@ -1123,13 +1127,17 @@ def orders():
         func.sum(case((FoodOrder.status == 'ready', 1), else_=0)).label('ready_count'),
         func.sum(case((FoodOrder.status.in_(['delivered', 'pickedup']), 1), else_=0)).label('done_count'),
         func.sum(case((FoodOrder.status == 'cancelled', 1), else_=0)).label('cancelled_count'),
-    ).filter(FoodOrder.order_type != 'dine_in')
+    )
     if effective_branch:
         count_q = count_q.filter(FoodOrder.branch_id == effective_branch)
-    if type_filter == 'delivery':
+    if type_filter == 'dine_in':
+        count_q = count_q.filter(FoodOrder.order_type == 'dine_in')
+    elif type_filter == 'delivery':
         count_q = count_q.filter(FoodOrder.order_type == 'delivery')
     elif type_filter == 'pickup':
         count_q = count_q.filter(FoodOrder.order_type == 'pickup')
+    else:
+        count_q = count_q.filter(FoodOrder.order_type != 'dine_in')
     cr = count_q.one()
     counts = {
         'new': cr.new_count or 0,
@@ -3554,7 +3562,7 @@ def device_log_error():
 # ─── Dine-In Table Service ─────────────────────────────────────────
 
 @ops_bp.route('/tables')
-@require_ops_module('orders')
+@require_ops_module('tables')
 def tables_view():
     effective_branch = _get_effective_branch_id()
     tables = DineInTable.query.filter_by(branch_id=effective_branch, is_active=True).order_by(DineInTable.display_order, DineInTable.id).all() if effective_branch else []
@@ -3564,6 +3572,10 @@ def tables_view():
         sess_list = DineInSession.query.filter_by(branch_id=effective_branch).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).all()
         for s in sess_list:
             s.item_count = sum(len((o.get_items() or [])) for o in s.orders if o.status != 'cancelled')
+            try:
+                s.has_pending_voids = bool(s.pending_void_approvals and json.loads(s.pending_void_approvals))
+            except Exception:
+                s.has_pending_voids = False
             active_sessions[s.table_id] = s
         cutoff = datetime.utcnow() - timedelta(hours=4)
         recently_closed = DineInSession.query.filter_by(branch_id=effective_branch).filter(
@@ -3581,7 +3593,7 @@ def tables_view():
 
 
 @ops_bp.route('/api/tables', methods=['GET'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_list_tables():
     effective_branch = _get_effective_branch_id()
     if not effective_branch:
@@ -3594,6 +3606,12 @@ def api_list_tables():
     result = []
     for t in tables:
         s = active_sessions.get(t.id)
+        has_pending_voids = False
+        if s and s.pending_void_approvals:
+            try:
+                has_pending_voids = bool(json.loads(s.pending_void_approvals))
+            except Exception:
+                pass
         result.append({
             'id': t.id,
             'table_number': t.table_number,
@@ -3610,12 +3628,13 @@ def api_list_tables():
             'width': t.width or 100,
             'height': t.height or 80,
             'shape': t.shape or 'rect',
+            'has_pending_voids': has_pending_voids,
         })
     return jsonify({'ok': True, 'tables': result})
 
 
 @ops_bp.route('/api/tables/manage', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_manage_tables():
     effective_branch = _get_effective_branch_id()
     if not effective_branch:
@@ -3654,7 +3673,7 @@ def api_manage_tables():
 
 
 @ops_bp.route('/api/tables/layout', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('branches')
 def api_save_table_layout():
     effective_branch = _get_effective_branch_id()
     if not effective_branch:
@@ -3715,7 +3734,7 @@ def api_save_table_layout():
 
 
 @ops_bp.route('/table-layout')
-@require_ops_module('orders')
+@require_ops_module('branches')
 def table_layout():
     effective_branch = _get_effective_branch_id()
     tables = DineInTable.query.filter_by(branch_id=effective_branch, is_active=True).order_by(DineInTable.display_order, DineInTable.id).all() if effective_branch else []
@@ -3734,7 +3753,7 @@ def table_layout():
 
 
 @ops_bp.route('/api/tables/<int:table_id>/open-session', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_open_session(table_id):
     effective_branch = _get_effective_branch_id()
     table = DineInTable.query.get(table_id)
@@ -3758,7 +3777,7 @@ def api_open_session(table_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>', methods=['GET'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_get_session(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -3797,7 +3816,7 @@ def api_get_session(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/add-items', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_add_items(session_id):
     from standalone_order_service.order_helpers import verify_cart_items
     import secrets as _secrets
@@ -3876,7 +3895,7 @@ def api_session_add_items(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/send-to-kitchen', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_send_to_kitchen(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -3899,7 +3918,7 @@ def api_session_send_to_kitchen(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/remove-item', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_remove_item(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -3981,7 +4000,7 @@ def api_session_remove_item(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/update-item', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_update_item(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4075,7 +4094,7 @@ def api_session_update_item(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/reprint-kitchen', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_reprint_kitchen(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4095,7 +4114,7 @@ def api_session_reprint_kitchen(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/discount', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_discount(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4117,7 +4136,7 @@ def api_session_discount(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/notes', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_notes(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4130,7 +4149,7 @@ def api_session_notes(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/approve-voids', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_approve_voids(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4153,7 +4172,7 @@ def api_session_approve_voids(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/pay-cash', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_pay_cash(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4182,7 +4201,7 @@ def api_session_pay_cash(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/generate-payment-link', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_generate_payment(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4241,7 +4260,7 @@ def api_session_generate_payment(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/send-payment-sms', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_send_payment_sms(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4329,7 +4348,7 @@ def session_payment_callback(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/cancel', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_cancel(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4346,7 +4365,7 @@ def api_session_cancel(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/move-table', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_move_table(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4374,7 +4393,7 @@ def api_session_move_table(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/reopen', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_reopen(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4398,7 +4417,7 @@ def api_session_reopen(session_id):
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/print-check', methods=['POST'])
-@require_ops_module('orders')
+@require_ops_module('tables')
 def api_session_print_check(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)
@@ -4598,7 +4617,7 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
 
 
 @ops_bp.route('/dine-in/<int:session_id>')
-@require_ops_module('orders')
+@require_ops_module('tables')
 def dine_in_order(session_id):
     effective_branch = _get_effective_branch_id()
     sess = DineInSession.query.get(session_id)

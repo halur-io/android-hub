@@ -59,7 +59,7 @@
                             <i class="fas fa-star" style="margin-left:3px;"></i>סופר אדמין
                         </span>
                         {% else %}
-                            {% set module_labels = {'home':'בית','orders':'הזמנות','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
+                            {% set module_labels = {'home':'בית','orders':'הזמנות','tables':'ישיבה','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
                             {% for perm in (pin.ops_permissions or []) %}
                             <span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:2px 8px;border-radius:6px;font-size:0.68rem;font-weight:700;">
                                 {{ module_labels.get(perm, perm) }}
@@ -163,7 +163,7 @@
                 {% endif %}
             </div>
             <div id="em-permissions" style="display:flex;flex-wrap:wrap;gap:6px;">
-                {% set module_labels = {'home':'בית','orders':'הזמנות','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
+                {% set module_labels = {'home':'בית','orders':'הזמנות','tables':'ישיבה','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
                 {% for mod in all_modules %}
                 <label style="display:flex;align-items:center;gap:4px;background:var(--ops-card);border:1px solid var(--ops-border);
                               border-radius:8px;padding:5px 10px;font-size:0.72rem;color:var(--ops-text);cursor:pointer;font-weight:600;">

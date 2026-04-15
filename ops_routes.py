@@ -1091,7 +1091,7 @@ def orders():
     status_filter = request.args.get('status', 'active')
     type_filter = request.args.get('type', 'all')
 
-    query = FoodOrder.query
+    query = FoodOrder.query.filter(FoodOrder.order_type != 'dine_in')
     if effective_branch:
         query = query.filter_by(branch_id=effective_branch)
 
@@ -1123,7 +1123,7 @@ def orders():
         func.sum(case((FoodOrder.status == 'ready', 1), else_=0)).label('ready_count'),
         func.sum(case((FoodOrder.status.in_(['delivered', 'pickedup']), 1), else_=0)).label('done_count'),
         func.sum(case((FoodOrder.status == 'cancelled', 1), else_=0)).label('cancelled_count'),
-    )
+    ).filter(FoodOrder.order_type != 'dine_in')
     if effective_branch:
         count_q = count_q.filter(FoodOrder.branch_id == effective_branch)
     if type_filter == 'delivery':

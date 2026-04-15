@@ -2875,43 +2875,80 @@ def send_test_print_job():
             branch_id = effective
         else:
             return jsonify({'ok': False, 'error': 'missing branch_id'})
-    printers = Printer.query.filter_by(branch_id=branch_id, is_active=True).all()
-    if not printers:
-        return jsonify({'ok': False, 'error': 'no printers for branch'})
-    printer = next((pr for pr in printers if pr.is_default), printers[0])
-    ip_parts = (printer.ip_address or '').split(':')
-    ip = ip_parts[0]
-    port = int(ip_parts[1]) if len(ip_parts) > 1 else (printer.port or 9100)
-    p = DirectPrinter(ip, port, encoding=printer.encoding or 'cp862', codepage_num=printer.codepage_num or 36)
-    p.init()
-    p.align('center')
-    p.font('double')
-    p.text('SUMO')
-    p.font('double_h')
-    p.text('בדיקת מדפסת')
-    p.font('normal')
-    p.dashed()
-    p.text('שורה בעברית לבדיקה')
-    p.text('Hebrew Test Line')
-    p.text(f'סניף: {branch_id} | מדפסת: {printer.name}')
-    p.dashed()
+
     from zoneinfo import ZoneInfo
     il_tz = ZoneInfo('Asia/Jerusalem')
     now_il = datetime.now(il_tz)
-    p.text(now_il.strftime('%H:%M:%S %d/%m/%Y'))
-    p.text('החיבור תקין!')
-    p.cut()
-    test_job = {
-        'type': 'print_check',
-        'session_id': 0,
-        'table_number': 'TEST',
+
+    class _FakeOrder:
+        pass
+    fake = _FakeOrder()
+    fake.id = 0
+    fake.order_number = 9999
+    fake.order_type = 'pickup'
+    fake.branch_id = branch_id
+    fake.status = 'preparing'
+    fake.customer_name = 'בדיקת מדפסת'
+    fake.customer_phone = '050-0000000'
+    fake.delivery_address = ''
+    fake.delivery_city = ''
+    fake.delivery_notes = ''
+    fake.customer_notes = 'הזמנת בדיקה – לא אמיתית!'
+    fake.subtotal = 100
+    fake.delivery_fee = 0
+    fake.discount_amount = 0
+    fake.total_amount = 100
+    fake.payment_method = 'cash'
+    fake.coupon_code = ''
+    fake.created_at = datetime.utcnow()
+    fake.items_json = json.dumps([
+        {'name': 'פריט בדיקה 1', 'name_he': 'פריט בדיקה 1', 'qty': 2, 'price': 30, 'options': [{'choice_name_he': 'תוספת חריף'}]},
+        {'name': 'פריט בדיקה 2', 'name_he': 'פריט בדיקה 2', 'qty': 1, 'price': 40, 'options': []},
+    ])
+    fake.bon_print_options = None
+    fake.source = 'ops'
+
+    items = json.loads(fake.items_json)
+    by_station = {'כללי': items}
+
+    print_jobs = _build_print_jobs(fake, items, by_station, checker_copies=1, payment_copies=1, station_bons=True)
+
+    order_event = {
+        'type': 'new_print_job',
+        'print_job_id': secrets.token_hex(8),
+        'id': fake.id,
+        'order_number': fake.order_number,
+        'order_type': fake.order_type,
         'branch_id': branch_id,
-        'printer_ip': ip,
-        'printer_port': port,
-        'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
+        'status': fake.status,
+        'customer_name': fake.customer_name,
+        'customer_phone': fake.customer_phone,
+        'delivery_address': '',
+        'delivery_city': '',
+        'delivery_notes': '',
+        'customer_notes': fake.customer_notes,
+        'subtotal': fake.subtotal,
+        'delivery_fee': 0,
+        'discount_amount': 0,
+        'total_amount': fake.total_amount,
+        'payment_method': fake.payment_method,
+        'coupon_code': '',
+        'created_at': _to_il(fake.created_at),
+        'items': items,
+        'items_by_station': by_station,
+        'checker_copies': 1,
+        'payment_copies': 1,
+        'station_bons': True,
+        'print_jobs': print_jobs,
     }
-    _queue_check_print(branch_id, test_job)
-    return jsonify({'ok': True, 'message': 'בדיקת הדפסה נשלחה לאפליקציה'})
+    _notify_sse_order_event(order_event)
+
+    return jsonify({
+        'ok': True,
+        'message': 'הזמנת בדיקה נשלחה לאפליקציה',
+        'print_jobs_count': len(print_jobs),
+        'bon_types': [j.get('bon_type') for j in print_jobs],
+    })
 
 
 @ops_bp.route('/api/print/test', methods=['POST'])

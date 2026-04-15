@@ -56,6 +56,11 @@ def _run_safe_migrations(db):
         ("dine_in_tables", "area", "ALTER TABLE dine_in_tables ADD COLUMN area VARCHAR(50) DEFAULT ''"),
         ("food_orders", "void_log", "ALTER TABLE food_orders ADD COLUMN void_log TEXT"),
         ("dine_in_sessions", "pending_void_approvals", "ALTER TABLE dine_in_sessions ADD COLUMN pending_void_approvals TEXT"),
+        ("dine_in_tables", "pos_x", "ALTER TABLE dine_in_tables ADD COLUMN pos_x FLOAT"),
+        ("dine_in_tables", "pos_y", "ALTER TABLE dine_in_tables ADD COLUMN pos_y FLOAT"),
+        ("dine_in_tables", "width", "ALTER TABLE dine_in_tables ADD COLUMN width FLOAT DEFAULT 100"),
+        ("dine_in_tables", "height", "ALTER TABLE dine_in_tables ADD COLUMN height FLOAT DEFAULT 80"),
+        ("dine_in_tables", "shape", "ALTER TABLE dine_in_tables ADD COLUMN shape VARCHAR(10) DEFAULT 'rect'"),
     ]
     for table, column, sql in migrations:
         try:

@@ -3241,6 +3241,11 @@ class DineInTable(db.Model):
     area = db.Column(db.String(50), default='')
     display_order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
+    pos_x = db.Column(db.Float, nullable=True)
+    pos_y = db.Column(db.Float, nullable=True)
+    width = db.Column(db.Float, default=100)
+    height = db.Column(db.Float, default=80)
+    shape = db.Column(db.String(10), default='rect')
 
     branch = db.relationship('Branch', backref=db.backref('dine_in_tables', lazy=True))
     sessions = db.relationship('DineInSession', backref='table', lazy=True)

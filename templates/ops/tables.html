@@ -10,11 +10,22 @@
         background: var(--ops-surface, #fff); flex-shrink: 0;
     }
     .tables-header h2 { font-size: 1.1rem; font-weight: 700; margin: 0; }
-    .tables-header-actions { display: flex; gap: 8px; }
+    .tables-header-actions { display: flex; gap: 8px; align-items: center; }
     .btn-add-table {
         background: var(--ops-accent, #e94560); color: #fff; border: none;
         border-radius: 10px; padding: 8px 16px; font-weight: 600; font-size: .85rem; cursor: pointer;
     }
+    .btn-layout-designer {
+        background: #7c3aed; color: #fff; border: none;
+        border-radius: 10px; padding: 8px 16px; font-weight: 600; font-size: .85rem; cursor: pointer;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .view-toggle-btn {
+        background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px;
+        padding: 6px 12px; font-size: .75rem; font-weight: 600; cursor: pointer;
+        transition: all .15s;
+    }
+    .view-toggle-btn.active { background: var(--ops-accent, #e94560); color: #fff; border-color: var(--ops-accent); }
     .area-tabs {
         display: flex; overflow-x: auto; gap: 0; flex-shrink: 0;
         border-bottom: 1px solid #eee; background: #fafafa;
@@ -140,12 +151,56 @@
         font-size: 1.1rem; cursor: pointer; transition: all .15s;
     }
     .move-table-btn:active { background: #e0e0e0; }
+    .floor-map-container {
+        flex: 1; overflow: auto; position: relative;
+        -webkit-overflow-scrolling: touch; display: none;
+    }
+    .floor-map-container.active { display: block; }
+    .floor-map {
+        position: relative; min-width: 1200px; min-height: 800px;
+        margin: 8px; background: #fff; border-radius: 12px;
+        border: 1px solid #eee;
+    }
+    .floor-table {
+        position: absolute; cursor: pointer;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 2px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        transition: transform .15s, box-shadow .15s;
+        -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    }
+    .floor-table:active { transform: scale(.96); }
+    .floor-table.shape-rect { border-radius: 10px; }
+    .floor-table.shape-round { border-radius: 50%; }
+    .floor-table.available { border: 2px solid #e0e0e0; background: #f8f8f8; }
+    .floor-table.available .ft-num { color: #888; }
+    .floor-table.open { border: 2px solid #ff9800; background: #fff8e1; }
+    .floor-table.open .ft-num { color: #e65100; }
+    .floor-table.awaiting_payment { border: 2px solid #f44336; background: #fce4ec; }
+    .floor-table.awaiting_payment .ft-num { color: #c62828; }
+    .ft-num { font-size: 1.3rem; font-weight: 700; line-height: 1; }
+    .ft-status {
+        font-size: .55rem; font-weight: 600;
+        padding: 1px 5px; border-radius: 4px; display: inline-block;
+    }
+    .floor-table.available .ft-status { background: #e8f5e9; color: #2e7d32; }
+    .floor-table.open .ft-status { background: #fff3e0; color: #e65100; }
+    .floor-table.awaiting_payment .ft-status { background: #ffebee; color: #c62828; }
+    .ft-meta { font-size: .6rem; color: #999; text-align: center; }
+    .ft-meta .amount { font-weight: 600; color: #333; }
 </style>
 
 <div class="tables-page">
     <div class="tables-header">
         <h2><i class="fas fa-utensils me-2"></i>שולחנות</h2>
         <div class="tables-header-actions">
+            {% if tables %}
+            <button class="view-toggle-btn active" id="btnViewGrid" onclick="switchView('grid')"><i class="fas fa-th"></i></button>
+            {% if has_layout %}
+            <button class="view-toggle-btn" id="btnViewFloor" onclick="switchView('floor')"><i class="fas fa-map"></i></button>
+            {% endif %}
+            {% endif %}
+            <a href="{{ url_for('ops.table_layout') }}" class="btn-layout-designer"><i class="fas fa-drafting-compass me-1"></i> עיצוב</a>
             <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוספת שולחן</button>
         </div>
     </div>
@@ -167,7 +222,7 @@
     </div>
     {% endif %}
 
-    <div class="tables-body">
+    <div class="tables-body" id="gridView">
         {% if tables %}
         <div class="tables-grid" id="tablesGrid">
             {% for table in tables %}
@@ -229,6 +284,39 @@
         </div>
         {% endif %}
     </div>
+
+    {% if has_layout %}
+    <div class="floor-map-container" id="floorView">
+        <div class="floor-map" id="floorMap">
+            {% for table in tables %}
+            {% set sess = active_sessions.get(table.id) %}
+            {% set status = sess.status if sess else 'available' %}
+            <div class="floor-table shape-{{ table.shape or 'rect' }} {{ status }}"
+                 data-table-id="{{ table.id }}"
+                 data-area="{{ table.area or '' }}"
+                 data-session-id="{{ sess.id if sess else '' }}"
+                 data-status="{{ status }}"
+                 style="left:{{ table.pos_x if table.pos_x is not none else (loop.index0 % 6) * 140 + 30 }}px; top:{{ table.pos_y if table.pos_y is not none else (loop.index0 // 6) * 120 + 30 }}px; width:{{ table.width or 100 }}px; height:{{ table.height or 80 }}px;">
+                <div class="ft-num">{{ table.table_number }}</div>
+                {% if status == 'available' %}
+                    <span class="ft-status">פנוי</span>
+                {% elif status == 'open' %}
+                    <span class="ft-status">תפוס</span>
+                    <div class="ft-meta">
+                        <span>{{ sess.elapsed_minutes }} דק׳</span>
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                    </div>
+                {% elif status == 'awaiting_payment' %}
+                    <span class="ft-status">ממתין</span>
+                    <div class="ft-meta">
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <div class="modal-overlay" id="addTableOverlay" onclick="hideAddTable()"></div>
@@ -282,6 +370,70 @@ var knownAreas = [];
 var longPressTimer = null;
 var longPressTriggered = false;
 var movingSessionId = null;
+var hasLayout = {% if has_layout %}true{% else %}false{% endif %};
+var savedView = sessionStorage.getItem('ops_table_view');
+var currentView = savedView ? savedView : (hasLayout ? 'floor' : 'grid');
+if (!hasLayout && currentView === 'floor') currentView = 'grid';
+
+function switchView(view) {
+    currentView = view;
+    sessionStorage.setItem('ops_table_view', view);
+    var gridView = document.getElementById('gridView');
+    var floorView = document.getElementById('floorView');
+    var btnGrid = document.getElementById('btnViewGrid');
+    var btnFloor = document.getElementById('btnViewFloor');
+    if (view === 'floor' && floorView) {
+        gridView.style.display = 'none';
+        floorView.classList.add('active');
+        if (btnGrid) btnGrid.classList.remove('active');
+        if (btnFloor) btnFloor.classList.add('active');
+    } else {
+        gridView.style.display = '';
+        if (floorView) floorView.classList.remove('active');
+        if (btnGrid) btnGrid.classList.add('active');
+        if (btnFloor) btnFloor.classList.remove('active');
+    }
+}
+
+if (currentView === 'floor' && document.getElementById('floorView')) {
+    switchView('floor');
+}
+
+function initFloorTableHandlers() {
+    document.querySelectorAll('.floor-table').forEach(function(card) {
+        card.addEventListener('touchstart', function(e) {
+            longPressTriggered = false;
+            var self = this;
+            longPressTimer = setTimeout(function() {
+                longPressTriggered = true;
+                showQuickActions(self, e.touches[0]);
+            }, 600);
+        }, {passive: true});
+        card.addEventListener('touchend', function(e) {
+            clearTimeout(longPressTimer);
+            if (!longPressTriggered) {
+                var tableId = parseInt(this.dataset.tableId);
+                var sessionId = this.dataset.sessionId;
+                var status = this.dataset.status;
+                handleTableClick(tableId, sessionId, status);
+            }
+        });
+        card.addEventListener('touchmove', function() { clearTimeout(longPressTimer); }, {passive: true});
+        card.addEventListener('click', function(e) {
+            if (e.detail === 0) return;
+            if ('ontouchstart' in window) return;
+            var tableId = parseInt(this.dataset.tableId);
+            var sessionId = this.dataset.sessionId;
+            var status = this.dataset.status;
+            handleTableClick(tableId, sessionId, status);
+        });
+        card.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            showQuickActions(this, e);
+        });
+    });
+}
+initFloorTableHandlers();
 
 function collectAreas() {
     var set = {};
@@ -306,7 +458,7 @@ function filterArea(area) {
     document.querySelectorAll('.area-tab').forEach(function(t) {
         t.classList.toggle('active', t.dataset.area === area);
     });
-    document.querySelectorAll('.table-card').forEach(function(card) {
+    document.querySelectorAll('.table-card, .floor-table').forEach(function(card) {
         var cardArea = card.getAttribute('data-area') || '';
         if (area === '__all__') {
             card.style.display = '';
@@ -361,7 +513,8 @@ function showQuickActions(card, evt) {
     var tableId = parseInt(card.dataset.tableId);
     var sessionId = card.dataset.sessionId;
     var status = card.dataset.status;
-    var tableNum = card.querySelector('.table-num').textContent;
+    var numEl = card.querySelector('.table-num') || card.querySelector('.ft-num');
+    var tableNum = numEl ? numEl.textContent : '';
 
     var backdrop = document.createElement('div');
     backdrop.className = 'qa-backdrop';
@@ -598,29 +751,49 @@ setInterval(function() {
     fetch('/ops/api/tables').then(function(r) { return r.json(); }).then(function(d) {
         if (!d.ok) return;
         d.tables.forEach(function(t) {
-            var card = document.querySelector('[data-table-id="' + t.id + '"]');
-            if (!card) return;
-            card.className = 'table-card ' + (t.status || 'available');
-            card.setAttribute('data-session-id', t.session_id || '');
-            card.setAttribute('data-status', t.status || 'available');
-            var meta = '';
-            if (t.status === 'open') {
-                meta = '<div class="table-num">' + t.table_number + '</div>' +
-                    '<span class="table-status">תפוס</span>' +
-                    '<div class="table-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
-                    '<span class="amount">₪' + Math.round(t.total) + '</span>' +
-                    (t.waiter ? '<span>' + t.waiter + '</span>' : '') +
-                    '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
-            } else if (t.status === 'awaiting_payment') {
-                meta = '<div class="table-num">' + t.table_number + '</div>' +
-                    '<span class="table-status">ממתין לתשלום</span>' +
-                    '<div class="table-meta"><span class="amount">₪' + Math.round(t.total) + '</span>' +
-                    '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
-            } else {
-                meta = '<div class="table-num">' + t.table_number + '</div>' +
-                    '<span class="table-status">פנוי</span>';
+            var card = document.querySelector('.table-card[data-table-id="' + t.id + '"]');
+            if (card) {
+                card.className = 'table-card ' + (t.status || 'available');
+                card.setAttribute('data-session-id', t.session_id || '');
+                card.setAttribute('data-status', t.status || 'available');
+                var meta = '';
+                if (t.status === 'open') {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">תפוס</span>' +
+                        '<div class="table-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                        '<span class="amount">₪' + Math.round(t.total) + '</span>' +
+                        (t.waiter ? '<span>' + t.waiter + '</span>' : '') +
+                        '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
+                } else if (t.status === 'awaiting_payment') {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">ממתין לתשלום</span>' +
+                        '<div class="table-meta"><span class="amount">₪' + Math.round(t.total) + '</span>' +
+                        '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
+                } else {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">פנוי</span>';
+                }
+                card.innerHTML = meta;
             }
-            card.innerHTML = meta;
+            var ft = document.querySelector('.floor-table[data-table-id="' + t.id + '"]');
+            if (ft) {
+                var shape = ft.classList.contains('shape-round') ? 'shape-round' : 'shape-rect';
+                ft.className = 'floor-table ' + shape + ' ' + (t.status || 'available');
+                ft.setAttribute('data-session-id', t.session_id || '');
+                ft.setAttribute('data-status', t.status || 'available');
+                var fm = '<div class="ft-num">' + t.table_number + '</div>';
+                if (t.status === 'open') {
+                    fm += '<span class="ft-status">תפוס</span>' +
+                        '<div class="ft-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                        '<span class="amount">₪' + Math.round(t.total) + '</span></div>';
+                } else if (t.status === 'awaiting_payment') {
+                    fm += '<span class="ft-status">ממתין</span>' +
+                        '<div class="ft-meta"><span class="amount">₪' + Math.round(t.total) + '</span></div>';
+                } else {
+                    fm += '<span class="ft-status">פנוי</span>';
+                }
+                ft.innerHTML = fm;
+            }
         });
         if (currentAreaFilter !== '__all__') filterArea(currentAreaFilter);
     });

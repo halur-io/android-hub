@@ -3570,11 +3570,13 @@ def tables_view():
             DineInSession.status.in_(['closed', 'cancelled']),
             DineInSession.closed_at >= cutoff
         ).order_by(DineInSession.closed_at.desc()).limit(10).all()
+    has_layout = any(t.pos_x is not None and t.pos_y is not None for t in tables)
     return render_template('ops/tables.html',
         active_tab='tables',
         tables=tables,
         active_sessions=active_sessions,
         recently_closed=recently_closed,
+        has_layout=has_layout,
     )
 
 
@@ -3603,6 +3605,11 @@ def api_list_tables():
             'total': s.total_amount if s else 0,
             'item_count': sum(len((o.get_items() or [])) for o in s.orders if o.status != 'cancelled') if s else 0,
             'waiter': s.waiter.name if s and s.waiter else '',
+            'pos_x': t.pos_x,
+            'pos_y': t.pos_y,
+            'width': t.width or 100,
+            'height': t.height or 80,
+            'shape': t.shape or 'rect',
         })
     return jsonify({'ok': True, 'tables': result})
 
@@ -3644,6 +3651,86 @@ def api_manage_tables():
             return jsonify({'ok': True, 'message': 'שולחן הוסר'})
         return jsonify({'ok': False, 'error': 'שולחן לא נמצא'})
     return jsonify({'ok': False, 'error': 'פעולה לא ידועה'})
+
+
+@ops_bp.route('/api/tables/layout', methods=['POST'])
+@require_ops_module('orders')
+def api_save_table_layout():
+    effective_branch = _get_effective_branch_id()
+    if not effective_branch:
+        return jsonify({'ok': False, 'error': 'לא נבחר סניף'})
+    data = request.get_json(force=True)
+    positions = data.get('positions', [])
+    if not isinstance(positions, list):
+        return jsonify({'ok': False, 'error': 'נתונים לא תקינים'})
+    def _safe_float(val, mn=0, mx=2000, default=None):
+        if val is None:
+            return default
+        try:
+            v = float(val)
+            return max(mn, min(mx, v))
+        except (ValueError, TypeError):
+            return default
+
+    for pos in positions:
+        table_id = pos.get('id')
+        if not table_id:
+            continue
+        try:
+            table_id = int(table_id)
+        except (ValueError, TypeError):
+            continue
+        t = DineInTable.query.get(table_id)
+        if not t or t.branch_id != effective_branch:
+            continue
+        if pos.get('pos_x') is None and 'pos_x' in pos:
+            t.pos_x = None
+        else:
+            px = _safe_float(pos.get('pos_x'), 0, 5000)
+            if px is not None:
+                t.pos_x = px
+        if pos.get('pos_y') is None and 'pos_y' in pos:
+            t.pos_y = None
+        else:
+            py = _safe_float(pos.get('pos_y'), 0, 5000)
+            if py is not None:
+                t.pos_y = py
+        w = _safe_float(pos.get('width'), 40, 400)
+        if w is not None:
+            t.width = w
+        h = _safe_float(pos.get('height'), 40, 400)
+        if h is not None:
+            t.height = h
+        if pos.get('shape') in ('rect', 'round'):
+            t.shape = pos['shape']
+        if pos.get('area') is not None:
+            t.area = str(pos['area'] or '').strip()[:50]
+    try:
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'הפריסה נשמרה בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f'Error saving table layout: {e}')
+        return jsonify({'ok': False, 'error': 'שגיאה בשמירת הפריסה'})
+
+
+@ops_bp.route('/table-layout')
+@require_ops_module('orders')
+def table_layout():
+    effective_branch = _get_effective_branch_id()
+    tables = DineInTable.query.filter_by(branch_id=effective_branch, is_active=True).order_by(DineInTable.display_order, DineInTable.id).all() if effective_branch else []
+    areas = sorted(set(t.area for t in tables if t.area))
+    active_sessions = {}
+    if effective_branch:
+        sess_list = DineInSession.query.filter_by(branch_id=effective_branch).filter(DineInSession.status.in_(['open', 'awaiting_payment'])).all()
+        for s in sess_list:
+            active_sessions[s.table_id] = s
+    return render_template('ops/table_layout.html',
+        active_tab='tables',
+        tables=tables,
+        areas=areas,
+        active_sessions=active_sessions,
+    )
 
 
 @ops_bp.route('/api/tables/<int:table_id>/open-session', methods=['POST'])

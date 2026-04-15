@@ -2388,7 +2388,9 @@ def _build_checker_bon(p, o):
     if o.customer_notes or o.delivery_notes:
         p.feed(1)
 
+    p.dashed()
     p.align('right')
+    p.font('normal')
     items = json.loads(o.items_json) if o.items_json else []
     for item in items:
         menu_item_id = item.get('menu_item_id') or item.get('item_id')
@@ -2398,29 +2400,41 @@ def _build_checker_bon(p, o):
             if mi and mi.print_name:
                 display_name = mi.print_name
         qty = item.get('qty') or item.get('quantity', 1)
-        p.font('double_h')
-        p.bold()
-        p.text(f'{qty}  {display_name}')
-        p.bold(False)
-        p.font('normal')
+        price = item.get('price') or item.get('unit_price', 0)
+        total_price = float(qty) * float(price)
+        p.columns(f'{total_price:.2f}', f'{qty}  {display_name}')
         opts = item.get('options') or []
         for op in opts:
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
-            p.text(f'   + {op_name}')
+            p.text(f'       ({op_name})')
         notes = item.get('notes') or item.get('special_instructions') or ''
         if notes:
-            p.text(f'   * {notes}')
+            p.text(f'       *{notes}')
+
+    p.dashed()
+    if o.delivery_fee and o.delivery_fee > 0:
+        p.columns(f'{o.delivery_fee:.2f}', 'דמי משלוח')
+    if o.discount_amount and o.discount_amount > 0:
+        p.columns(f'-{o.discount_amount:.2f}', 'הנחה')
 
     p.feed(1)
-    p.dashed()
-
     p.align('right')
     p.font('double_h')
     p.bold()
-    p.columns(f'{o.total_amount:.2f}', 'סה"כ הזמנה')
+    p.columns(f'{o.total_amount:.2f}', 'סה"כ')
     p.bold(False)
     p.font('normal')
     p.feed(1)
+
+    payment_he = {'cash': 'מזומן', 'credit': 'אשראי', 'card': 'אשראי', 'bit': 'ביט'}.get(o.payment_method or '', o.payment_method or '')
+    p.align('center')
+    if payment_he:
+        p.text(f'צורת תשלום: {payment_he}')
+    p.feed(1)
+    p.text('לא כולל שרות')
+    p.text('Tip not included')
+    p.feed(1)
+    p.text(f'הזמנה #{o.order_number}')
     p.text(_to_il_hour(datetime.utcnow()))
     p.feed(1)
     p.cut()
@@ -2464,7 +2478,9 @@ def _build_payment_bon(p, o):
         p.text(addr)
     p.feed(1)
 
+    p.dashed()
     p.align('right')
+    p.font('normal')
     items = json.loads(o.items_json) if o.items_json else []
     for item in items:
         menu_item_id = item.get('menu_item_id') or item.get('item_id')
@@ -2485,7 +2501,7 @@ def _build_payment_bon(p, o):
         if notes:
             p.text(f'       *{notes}')
 
-    p.feed(1)
+    p.dashed()
     if o.delivery_fee and o.delivery_fee > 0:
         p.columns(f'{o.delivery_fee:.2f}', 'דמי משלוח')
     if o.discount_amount and o.discount_amount > 0:
@@ -2495,19 +2511,20 @@ def _build_payment_bon(p, o):
     p.align('right')
     p.font('double_h')
     p.bold()
-    p.columns(f'{o.total_amount:.2f}', 'סה"כ הזמנה')
+    p.columns(f'{o.total_amount:.2f}', 'סה"כ')
     p.bold(False)
     p.font('normal')
     p.feed(1)
 
     payment_he = {'cash': 'מזומן', 'credit': 'אשראי', 'card': 'אשראי', 'bit': 'ביט'}.get(o.payment_method or '', o.payment_method or '')
     p.align('center')
-    p.text(f'צורת תשלום: {payment_he}')
+    if payment_he:
+        p.text(f'צורת תשלום: {payment_he}')
     p.feed(1)
     p.text('לא כולל שרות')
     p.text('Tip not included')
     p.feed(1)
-    p.text(f'חש הזמנה #{o.order_number}')
+    p.text(f'חשבון #{o.order_number}')
     p.text(_to_il_hour(datetime.utcnow()))
     p.feed(1)
     p.cut()
@@ -5281,7 +5298,9 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
     p.font('normal')
     p.feed(1)
 
+    p.dashed()
     p.align('right')
+    p.font('normal')
     for item in items:
         name = item.get('name_he', item.get('item_name_he', ''))
         qty = int(item.get('qty', item.get('quantity', 1)))
@@ -5292,7 +5311,7 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
             note = item.get('notes') or item.get('special_instructions', '')
             p.text(f'       ({note})')
 
-    p.feed(1)
+    p.dashed()
     if discount_type and discount_value and discount_value > 0:
         if discount_type == 'percentage':
             disc_label = f'הנחה {discount_value:.0f}%'
@@ -5305,9 +5324,14 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
     p.align('right')
     p.font('double_h')
     p.bold()
-    p.columns(f'{total:.2f}', 'סה"כ הזמנה')
+    p.columns(f'{total:.2f}', 'סה"כ')
     p.bold(False)
     p.font('normal')
+    p.feed(1)
+
+    p.align('center')
+    p.text('לא כולל שרות')
+    p.text('Tip not included')
     p.feed(1)
 
     if payment_url:

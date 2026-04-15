@@ -1173,6 +1173,7 @@ def orders():
         status_colors=OPS_STATUS_COLORS,
         categories=categories,
         sms_templates=sms_templates_data,
+        effective_branch=effective_branch,
     )
 
 
@@ -1709,6 +1710,22 @@ def create_manual_order():
     except Exception as e:
         import logging
         logging.error(f'Auto-print queue failed for ops order #{order.order_number}: {e}')
+    try:
+        _notify_sse_new_order({
+            'type': 'new_order',
+            'id': order.id,
+            'order_number': order.order_number,
+            'order_type': order.order_type,
+            'branch_id': order.branch_id,
+            'customer_name': order.customer_name or '',
+            'customer_phone': order.customer_phone or '',
+            'total_amount': order.total_amount or 0,
+            'items_count': len(valid_cart),
+            'source': 'ops',
+            'created_at': order.created_at.isoformat() + 'Z' if order.created_at else '',
+        })
+    except Exception:
+        pass
     return jsonify({
         'ok': True,
         'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',
@@ -3476,10 +3493,14 @@ def _notify_sse_status_change(order, old_status, new_status):
 
 @ops_bp.route('/api/orders/stream')
 def sse_order_stream():
-    if not _verify_print_api_key():
+    is_api = _verify_print_api_key()
+    is_ops = _get_ops_user() if not is_api else None
+    if not is_api and not is_ops:
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     branch_id = request.args.get('branch_id', type=int)
+    if not branch_id and is_ops and not getattr(is_ops, 'is_ops_superadmin', False):
+        branch_id = getattr(is_ops, 'branch_id', None)
     q = queue.Queue(maxsize=50)
     sub = {'queue': q, 'branch_id': branch_id}
     with _sse_lock:

@@ -3017,22 +3017,43 @@ def send_test_print_job():
     fake.delivery_city = ''
     fake.delivery_notes = ''
     fake.customer_notes = 'הזמנת בדיקה – לא אמיתית!'
-    fake.subtotal = 100
+    demo_items = [
+        {'name': 'סלמון רול ספיישל', 'name_he': 'סלמון רול ספיישל', 'qty': 2, 'price': 62, 'print_station': 'סושי', 'options': [{'choice_name_he': 'ללא בצל ירוק'}]},
+        {'name': 'דרקון רול', 'name_he': 'דרקון רול', 'qty': 1, 'price': 58, 'print_station': 'סושי', 'options': [{'choice_name_he': 'תוספת אבוקדו'}]},
+        {'name': 'ניגירי סלמון 5 יח׳', 'name_he': 'ניגירי סלמון 5 יח׳', 'qty': 1, 'price': 45, 'print_station': 'סושי', 'options': []},
+        {'name': 'פאד תאי עוף', 'name_he': 'פאד תאי עוף', 'qty': 2, 'price': 52, 'print_station': 'מטבח', 'options': [{'choice_name_he': 'חריף מאוד'}]},
+        {'name': 'ראמן חזיר', 'name_he': 'ראמן חזיר', 'qty': 1, 'price': 58, 'print_station': 'מטבח', 'options': [{'choice_name_he': 'תוספת ביצה'}, {'choice_name_he': 'נורי כפול'}]},
+        {'name': 'אורז מטוגן ירקות', 'name_he': 'אורז מטוגן ירקות', 'qty': 1, 'price': 42, 'print_station': 'מטבח', 'options': []},
+        {'name': 'צ׳יקן קאטסו קארי', 'name_he': 'צ׳יקן קאטסו קארי', 'qty': 1, 'price': 56, 'print_station': 'מטבח', 'options': [{'choice_name_he': 'ללא גלוטן'}]},
+        {'name': 'אדממה', 'name_he': 'אדממה', 'qty': 1, 'price': 28, 'print_station': 'מטבח', 'options': [{'choice_name_he': 'מלח גס'}]},
+        {'name': 'גיוזה עוף 6 יח׳', 'name_he': 'גיוזה עוף 6 יח׳', 'qty': 2, 'price': 38, 'print_station': 'מטבח', 'options': []},
+        {'name': 'סלט ירוק אסייתי', 'name_he': 'סלט ירוק אסייתי', 'qty': 1, 'price': 34, 'print_station': 'מטבח', 'options': [{'choice_name_he': 'ללא בוטנים'}]},
+        {'name': 'סשימי מיקס 12 יח׳', 'name_he': 'סשימי מיקס 12 יח׳', 'qty': 1, 'price': 75, 'print_station': 'סושי', 'options': []},
+        {'name': 'בירה סאפורו 500 מ״ל', 'name_he': 'בירה סאפורו 500 מ״ל', 'qty': 3, 'price': 32, 'print_station': 'בר', 'options': []},
+        {'name': 'סאקה חם', 'name_he': 'סאקה חם', 'qty': 1, 'price': 28, 'print_station': 'בר', 'options': []},
+        {'name': 'לימונדה יוזו', 'name_he': 'לימונדה יוזו', 'qty': 2, 'price': 25, 'print_station': 'בר', 'options': [{'choice_name_he': 'פחות סוכר'}]},
+        {'name': 'מוצ׳י גלידה 3 יח׳', 'name_he': 'מוצ׳י גלידה 3 יח׳', 'qty': 1, 'price': 35, 'print_station': 'מטבח', 'options': []},
+    ]
+    demo_subtotal = sum(i['qty'] * i['price'] for i in demo_items)
+
+    fake.subtotal = demo_subtotal
     fake.delivery_fee = 0
     fake.discount_amount = 0
-    fake.total_amount = 100
+    fake.total_amount = demo_subtotal
     fake.payment_method = 'cash'
     fake.coupon_code = ''
     fake.created_at = datetime.utcnow()
-    fake.items_json = json.dumps([
-        {'name': 'פריט בדיקה 1', 'name_he': 'פריט בדיקה 1', 'qty': 2, 'price': 30, 'options': [{'choice_name_he': 'תוספת חריף'}]},
-        {'name': 'פריט בדיקה 2', 'name_he': 'פריט בדיקה 2', 'qty': 1, 'price': 40, 'options': []},
-    ])
+    fake.items_json = json.dumps(demo_items)
     fake.bon_print_options = None
     fake.source = 'ops'
 
     items = json.loads(fake.items_json)
-    by_station = {'כללי': items}
+    by_station = {}
+    for item in items:
+        st = item.get('print_station', 'כללי')
+        if st not in by_station:
+            by_station[st] = []
+        by_station[st].append(item)
 
     print_jobs = _build_print_jobs(fake, items, by_station, checker_copies=1, payment_copies=1, station_bons=True)
 

@@ -2202,6 +2202,7 @@ class DirectPrinter:
         self.encoding = encoding
         self.codepage_num = codepage_num
         self.buf = bytearray()
+        self._col_width = 42
 
     @staticmethod
     def _reverse_rtl(text):
@@ -2251,7 +2252,9 @@ class DirectPrinter:
         else:
             self.buf.extend(data)
 
-    def columns(self, left_text, right_text, width=42):
+    def columns(self, left_text, right_text, width=None):
+        if width is None:
+            width = self._col_width
         left_text = self._sanitize_for_print(left_text)
         right_text = self._sanitize_for_print(right_text)
         left_enc = self._reverse_rtl(left_text).encode(self.encoding, errors='replace')
@@ -2275,6 +2278,15 @@ class DirectPrinter:
 
     def font(self, s):
         self._add({'double': self.FONT_DOUBLE, 'double_h': self.FONT_DOUBLE_H, 'double_w': self.FONT_DOUBLE_W}.get(s, self.FONT_NORMAL))
+        if s in ('double', 'double_w'):
+            self._col_width = 21
+        elif s == 'double_h':
+            self._col_width = 42
+        else:
+            self._col_width = 42
+
+    def feed(self, lines=1):
+        self._add(b'\n' * lines)
 
     def bold(self, on=True):
         self._add(self.BOLD_ON if on else self.BOLD_OFF)
@@ -2306,45 +2318,75 @@ class DirectPrinter:
 
 def _build_checker_bon(p, o):
     p.init()
+    p.feed(1)
     p.align('center')
     p.font('double')
+    p.bold()
     p.text('SUMO')
+    p.bold(False)
     p.font('normal')
+    p.feed(1)
+
     type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
-    p.font('double_h')
+    source_he = {'ops': 'טלפוני', 'online': 'אונליין', 'dine_in': 'ישיבה'}.get(o.source or '', '')
+    p.font('double')
     p.bold()
     p.text(f'#{o.order_number}  {type_he}')
     p.bold(False)
     p.font('normal')
+    if source_he:
+        p.font('double_h')
+        p.text(source_he)
+        p.font('normal')
     p.text(_to_il(o.created_at) if o.created_at else '')
+    p.feed(1)
     p.thick()
+    p.feed(1)
 
     p.align('right')
-    if o.customer_notes:
-        p.bold()
-        p.text(f'! {o.customer_notes}')
-        p.bold(False)
-    if o.delivery_notes:
-        p.bold()
-        p.text(f'>> {o.delivery_notes}')
-        p.bold(False)
-
+    p.font('double')
+    p.bold()
+    p.text(o.customer_name or '')
+    p.bold(False)
     p.font('double_h')
     p.bold()
-    p.text(f'לכבוד: {o.customer_name or ""}')
+    p.text(o.customer_phone or '')
     p.bold(False)
     p.font('normal')
-    p.text(f'טלפון: {o.customer_phone or ""}')
+    p.feed(1)
     if o.delivery_address:
         addr = o.delivery_address
         if o.delivery_city:
             addr += f', {o.delivery_city}'
-        p.text(f'כתובת: {addr}')
+        p.font('double_h')
+        p.text(addr)
+        p.font('normal')
+        p.feed(1)
     p.thick()
+    p.feed(1)
+
+    if o.customer_notes:
+        p.align('center')
+        p.font('double_h')
+        p.bold()
+        p.text(f'** {o.customer_notes} **')
+        p.bold(False)
+        p.font('normal')
+        p.feed(1)
+    if o.delivery_notes:
+        p.align('center')
+        p.font('double_h')
+        p.bold()
+        p.text(f'>> {o.delivery_notes}')
+        p.bold(False)
+        p.font('normal')
+        p.feed(1)
+    if o.customer_notes or o.delivery_notes:
+        p.dashed()
+        p.feed(1)
 
     p.align('right')
     items = json.loads(o.items_json) if o.items_json else []
-    p._add(b'\n')
     for item in items:
         menu_item_id = item.get('menu_item_id') or item.get('item_id')
         display_name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
@@ -2353,7 +2395,7 @@ def _build_checker_bon(p, o):
             if mi and mi.print_name:
                 display_name = mi.print_name
         qty = item.get('qty') or item.get('quantity', 1)
-        p.font('double_h')
+        p.font('double')
         p.bold()
         p.text(f'{qty}  {display_name}')
         p.bold(False)
@@ -2361,51 +2403,75 @@ def _build_checker_bon(p, o):
         opts = item.get('options') or []
         for op in opts:
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
-            p.text(f'   +{op_name}')
-        p._add(b'\n')
+            p.font('double_h')
+            p.text(f'  + {op_name}')
+            p.font('normal')
+        notes = item.get('notes') or item.get('special_instructions') or ''
+        if notes:
+            p.font('double_h')
+            p.text(f'  * {notes}')
+            p.font('normal')
+        p.feed(1)
 
     p.thick()
+    p.feed(1)
     p.align('center')
     p.font('double')
     p.bold()
     p.text(f'סה"כ: {o.total_amount:.0f}')
     p.bold(False)
     p.font('normal')
-    p._add(b'\n')
-    p.text(f'{_to_il_hour(datetime.utcnow())}')
+    p.feed(2)
+    p.text(_to_il_hour(datetime.utcnow()))
+    p.feed(1)
     p.cut()
 
 
 def _build_payment_bon(p, o):
     p.init()
+    p.feed(1)
     p.align('center')
     p.font('double')
+    p.bold()
     p.text('SUMO')
-    p.font('double_h')
+    p.bold(False)
+    p.font('normal')
+    p.feed(1)
+
+    type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
+    p.font('double')
     p.bold()
     p.text(f'#{o.order_number}  בון תשלום')
     p.bold(False)
     p.font('normal')
-    type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
     p.text(f'{type_he} | {_to_il(o.created_at) if o.created_at else ""}')
+    p.feed(1)
     p.thick()
+    p.feed(1)
 
     p.align('right')
+    p.font('double')
+    p.bold()
+    p.text(o.customer_name or '')
+    p.bold(False)
     p.font('double_h')
     p.bold()
-    p.text(f'לכבוד: {o.customer_name or ""}')
+    p.text(o.customer_phone or '')
     p.bold(False)
     p.font('normal')
-    p.text(f'טלפון: {o.customer_phone or ""}')
+    p.feed(1)
     if o.delivery_address:
         addr = o.delivery_address
         if o.delivery_city:
             addr += f', {o.delivery_city}'
-        p.text(f'כתובת: {addr}')
+        p.font('double_h')
+        p.text(addr)
+        p.font('normal')
+        p.feed(1)
     p.thick()
+    p.feed(1)
 
     p.align('right')
-    p._add(b'\n')
     items = json.loads(o.items_json) if o.items_json else []
     for item in items:
         menu_item_id = item.get('menu_item_id') or item.get('item_id')
@@ -2419,60 +2485,88 @@ def _build_payment_bon(p, o):
         total_price = qty * price
         p.font('double_h')
         p.bold()
-        p.columns(f'{total_price:.2f}', f'{qty}  {display_name}')
+        p.columns(f'{total_price:.0f}', f'{qty}  {display_name}')
         p.bold(False)
         p.font('normal')
         opts = item.get('options') or []
         for op in opts:
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
-            p.text(f'   +{op_name}')
-        p._add(b'\n')
+            p.font('double_h')
+            p.text(f'  + {op_name}')
+            p.font('normal')
+        notes = item.get('notes') or item.get('special_instructions') or ''
+        if notes:
+            p.font('double_h')
+            p.text(f'  * {notes}')
+            p.font('normal')
+        p.feed(1)
 
     p.dashed()
+    p.feed(1)
     p.align('right')
-    p.columns(f'{o.subtotal:.2f}', 'עלות מוצרים')
+    p.font('double_h')
+    p.bold()
+    p.columns(f'{o.subtotal:.0f}', 'סיכום ביניים')
     if o.delivery_fee and o.delivery_fee > 0:
-        p.columns(f'{o.delivery_fee:.2f}', 'דמי משלוח')
+        p.columns(f'{o.delivery_fee:.0f}', 'דמי משלוח')
     if o.discount_amount and o.discount_amount > 0:
-        p.columns(f'-{o.discount_amount:.2f}', 'הנחה')
+        p.columns(f'-{o.discount_amount:.0f}', 'הנחה')
+    p.bold(False)
+    p.font('normal')
+    p.feed(1)
     p.thick()
+    p.feed(1)
 
     p.align('center')
     p.font('double')
     p.bold()
-    p.text(f'סה"כ לתשלום: {o.total_amount:.2f}')
+    p.text(f'סה"כ לתשלום: {o.total_amount:.0f}')
     p.bold(False)
     p.font('normal')
-    p._add(b'\n')
-    payment_he = {'cash': 'מזומן', 'credit': 'אשראי', 'bit': 'ביט'}.get(o.payment_method or '', o.payment_method or '')
+    p.feed(2)
+    payment_he = {'cash': 'מזומן', 'credit': 'אשראי', 'card': 'אשראי', 'bit': 'ביט'}.get(o.payment_method or '', o.payment_method or '')
+    p.font('double_h')
     p.text(f'צורת תשלום: {payment_he}')
-    p.text(f'תשלום: {_to_il_hour(datetime.utcnow())}')
+    p.font('normal')
+    p.text(_to_il_hour(datetime.utcnow()))
+    p.feed(1)
     p.cut()
 
 
 def _build_station_bon(p, o, station_name, station_items):
     p.init()
+    p.feed(1)
     p.align('center')
     p.font('double')
     p.bold()
     p.text(station_name)
     p.bold(False)
-    p.font('double_h')
-    p.bold()
+    p.font('normal')
+    p.feed(1)
+
     type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
+    p.font('double')
+    p.bold()
     p.text(f'#{o.order_number}  {type_he}')
     p.bold(False)
     p.font('normal')
     p.text(_to_il(o.created_at) if o.created_at else '')
+    p.feed(1)
     p.thick()
+    p.feed(1)
+
+    if o.customer_notes:
+        p.align('center')
+        p.font('double_h')
+        p.bold()
+        p.text(f'** {o.customer_notes} **')
+        p.bold(False)
+        p.font('normal')
+        p.feed(1)
+        p.dashed()
+        p.feed(1)
 
     p.align('right')
-    if o.customer_notes:
-        p.bold()
-        p.text(f'! {o.customer_notes}')
-        p.bold(False)
-        p._add(b'\n')
-
     for item in station_items:
         menu_item_id = item.get('menu_item_id') or item.get('item_id')
         display_name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
@@ -2481,7 +2575,7 @@ def _build_station_bon(p, o, station_name, station_items):
             if mi and mi.print_name:
                 display_name = mi.print_name
         qty = item.get('qty') or item.get('quantity', 1)
-        p.font('double_h')
+        p.font('double')
         p.bold()
         p.text(f'{qty}  {display_name}')
         p.bold(False)
@@ -2489,12 +2583,26 @@ def _build_station_bon(p, o, station_name, station_items):
         opts = item.get('options') or []
         for op in opts:
             op_name = op.get('choice_name_he') or op.get('name', str(op)) if isinstance(op, dict) else str(op)
-            p.text(f'   +{op_name}')
-        p._add(b'\n')
+            p.font('double_h')
+            p.text(f'  + {op_name}')
+            p.font('normal')
+        notes = item.get('notes') or item.get('special_instructions') or ''
+        if notes:
+            p.font('double_h')
+            p.text(f'  * {notes}')
+            p.font('normal')
+        p.feed(1)
 
     p.thick()
+    p.feed(1)
     p.align('center')
-    p.text(f'#{o.order_number} | {station_name} | {_to_il_hour(datetime.utcnow())}')
+    p.font('double_h')
+    p.bold()
+    p.text(f'#{o.order_number} | {station_name}')
+    p.bold(False)
+    p.font('normal')
+    p.text(_to_il_hour(datetime.utcnow()))
+    p.feed(1)
     p.cut()
 
 
@@ -5162,19 +5270,26 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
 
     p = DirectPrinter(ip, port, encoding=encoding, codepage_num=codepage)
     p.init()
+    p.feed(1)
 
     p.align('center')
     p.font('double')
+    p.bold()
     p.text('SUMO')
-    p.font('double_h')
+    p.bold(False)
+    p.font('normal')
+    p.feed(1)
+
+    p.font('double')
     p.bold()
     p.text(f'שולחן {table_number}')
     p.bold(False)
     p.font('normal')
+    p.feed(1)
     p.thick()
+    p.feed(1)
 
     p.align('right')
-    p._add(b'\n')
     for item in items:
         name = item.get('name_he', item.get('item_name_he', ''))
         qty = int(item.get('qty', item.get('quantity', 1)))
@@ -5182,38 +5297,51 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
         line_total = qty * price
         p.font('double_h')
         p.bold()
-        p.columns(f'{line_total:.2f}', f'{qty}  {name}')
+        p.columns(f'{line_total:.0f}', f'{qty}  {name}')
         p.bold(False)
         p.font('normal')
         if item.get('notes') or item.get('special_instructions'):
             note = item.get('notes') or item.get('special_instructions', '')
-            p.text(f'   {note}')
-        p._add(b'\n')
+            p.font('double_h')
+            p.text(f'  * {note}')
+            p.font('normal')
+        p.feed(1)
 
     p.dashed()
+    p.feed(1)
 
     if discount_type and discount_value and discount_value > 0:
         p.align('right')
+        p.font('double_h')
+        p.bold()
         if discount_type == 'percentage':
             disc_label = f'הנחה {discount_value:.0f}%'
         else:
             disc_label = f'הנחה {discount_value:.0f}'
         disc_amount = subtotal - total
-        p.columns(f'-{disc_amount:.2f}', disc_label)
+        p.columns(f'-{disc_amount:.0f}', disc_label)
+        p.bold(False)
+        p.font('normal')
+        p.feed(1)
 
     p.thick()
+    p.feed(1)
     p.align('center')
     p.font('double')
     p.bold()
-    p.text(f'סה"כ לתשלום: {total:.2f}')
+    p.text(f'סה"כ לתשלום: {total:.0f}')
     p.bold(False)
     p.font('normal')
-    p._add(b'\n')
+    p.feed(2)
 
     if payment_url:
         p.align('center')
+        p.font('double_h')
+        p.bold()
         p.text('לתשלום - סרקו QR')
-        p._add(b'\n')
+        p.bold(False)
+        p.font('normal')
+        p.feed(1)
         try:
             import qrcode
             qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=6, border=2)
@@ -5233,14 +5361,17 @@ def _build_dine_in_check(printer, table_number, items, subtotal, discount_type, 
                 p._add(row_bytes)
         except ImportError:
             p.text(payment_url)
-        p._add(b'\n')
+        p.feed(2)
 
     p.align('center')
+    p.font('double_h')
     p.text('תאבון טוב!')
+    p.font('normal')
     from zoneinfo import ZoneInfo
     il_tz = ZoneInfo('Asia/Jerusalem')
     now_il = datetime.now(il_tz)
     p.text(now_il.strftime('%H:%M %d/%m/%Y'))
+    p.feed(1)
     p.cut()
     return p.buf
 

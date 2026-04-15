@@ -2659,7 +2659,26 @@ def get_unprinted_orders():
             'print_jobs': print_jobs,
         })
 
-    return jsonify({'ok': True, 'orders': result})
+    check_prints = []
+    if branch_id:
+        check_prints = _get_pending_check_prints(branch_id)
+
+    return jsonify({'ok': True, 'orders': result, 'check_prints': check_prints})
+
+
+@ops_bp.route('/api/check-prints/ack', methods=['POST'])
+def ack_check_print_job():
+    if not _verify_print_api_key():
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    data = request.get_json(force=True)
+    job_id = data.get('job_id')
+    branch_id = data.get('branch_id')
+    if not job_id or not branch_id:
+        return jsonify({'ok': False, 'error': 'missing job_id or branch_id'})
+    _ack_check_print(branch_id, job_id)
+    return jsonify({'ok': True})
 
 
 @ops_bp.route('/api/orders/mark-printed', methods=['POST'])
@@ -3107,6 +3126,29 @@ def delete_order(order_id):
 
 _sse_subscribers = []
 _sse_lock = threading.Lock()
+
+_pending_check_prints = {}
+_check_print_lock = threading.Lock()
+
+def _queue_check_print(branch_id, job):
+    import secrets as _secrets
+    job_id = _secrets.token_hex(8)
+    job['job_id'] = job_id
+    with _check_print_lock:
+        if branch_id not in _pending_check_prints:
+            _pending_check_prints[branch_id] = []
+        _pending_check_prints[branch_id].append(job)
+    _notify_sse_order_event(job)
+    return job_id
+
+def _get_pending_check_prints(branch_id):
+    with _check_print_lock:
+        return list(_pending_check_prints.get(branch_id, []))
+
+def _ack_check_print(branch_id, job_id):
+    with _check_print_lock:
+        jobs = _pending_check_prints.get(branch_id, [])
+        _pending_check_prints[branch_id] = [j for j in jobs if j.get('job_id') != job_id]
 
 def _notify_sse_new_order(order_data):
     _notify_sse_order_event(order_data)
@@ -4892,7 +4934,7 @@ def api_session_print_check(session_id):
             'total': total,
             'payment_url': sess.payment_url or '',
         }
-        _notify_sse_order_event(check_job)
+        _queue_check_print(effective_branch, check_job)
         return jsonify({'ok': True, 'message': 'חשבון נשלח למדפסת'})
     except Exception as e:
         logging.error(f"Check print error for session {session_id}: {e}")

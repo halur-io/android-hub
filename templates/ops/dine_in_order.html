@@ -987,7 +987,7 @@ function getTotalPicked() {
 function addDealFromPick() {
     if (!currentDealData) return;
     if (getTotalPicked() !== currentDealData.pick_count) {
-        alert('נא לבחור ' + currentDealData.pick_count + ' פריטים');
+        showToast('נא לבחור ' + currentDealData.pick_count + ' פריטים', true);
         return;
     }
     var selected = [];
@@ -1232,28 +1232,29 @@ function pinSubmit() {
 
 function removeExistingItem(orderId, itemIdx, isSent) {
     if (isSent) {
-        var choice = confirm('להסיר פריט שנשלח למטבח?\n\nלחץ אישור להסרה (תחכה לאישור מנהל)\nאו בטל וחזור.');
-        if (!choice) return;
-        var reason = prompt('סיבת ביטול (אופציונלי):') || '';
-        fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({order_id: orderId, item_index: itemIdx, void_reason: reason})
-        }).then(function(r) { return r.json(); }).then(function(d) {
-            if (d.ok) {
-                if (d.needs_manager_approval) {
-                    alert('פריט הוסר — ממתין לאישור מנהל לפני סגירת חשבון');
-                }
-                loadSession();
-            } else alert(d.error);
+        opsConfirm({title: 'הסרת פריט', message: 'להסיר פריט שנשלח למטבח?\nהפריט ימתין לאישור מנהל.', type: 'warning', okText: 'הסר'}).then(function(ok) {
+            if (!ok) return;
+            var reason = '';
+            fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({order_id: orderId, item_index: itemIdx, void_reason: reason})
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok) {
+                    if (d.needs_manager_approval) showToast('פריט הוסר — ממתין לאישור מנהל', 'warning', 4000);
+                    loadSession();
+                } else showToast(d.error, true);
+            });
         });
     } else {
-        if (!confirm('להסיר פריט?')) return;
-        fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({order_id: orderId, item_index: itemIdx})
-        }).then(function(r) { return r.json(); }).then(function(d) {
-            if (d.ok) loadSession();
-            else alert(d.error);
+        opsConfirm({title: 'הסרת פריט', message: 'להסיר פריט?', type: 'warning', okText: 'הסר'}).then(function(ok) {
+            if (!ok) return;
+            fetch('/ops/api/sessions/' + SESSION_ID + '/remove-item', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({order_id: orderId, item_index: itemIdx})
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok) loadSession();
+                else showToast(d.error, true);
+            });
         });
     }
 }
@@ -1405,14 +1406,14 @@ function doUpdateItem(orderId, itemIdx, data) {
             pendingPinAction = {type: 'edit_item', order_id: orderId, item_index: itemIdx, qty: data.qty, notes: data.notes, options: data.options};
             showPinModal('עריכת פריט', 'פריט נשלח למטבח — הזן PIN מנהל', false);
         }
-        else alert(d.error);
+        else showToast(d.error, true);
     });
 }
 
 function reprintKitchen() {
     fetch('/ops/api/sessions/' + SESSION_ID + '/reprint-kitchen', {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
-    }).then(function(r) { return r.json(); }).then(function(d) { alert(d.message || d.error); });
+    }).then(function(r) { return r.json(); }).then(function(d) { showToast(d.message || d.error, !d.ok); });
 }
 
 function sendToKitchen() {
@@ -1421,7 +1422,7 @@ function sendToKitchen() {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({items: cart})
         }).then(function(r) { return r.json(); }).then(function(d) {
-            if (!d.ok) { alert(d.error); return; }
+            if (!d.ok) { showToast(d.error, true); return; }
             cart = [];
             renderMenu();
             fetch('/ops/api/sessions/' + SESSION_ID + '/send-to-kitchen', {
@@ -1433,20 +1434,22 @@ function sendToKitchen() {
             method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
         }).then(function(r) { return r.json(); }).then(function(d) {
             if (d.ok) loadSession();
-            alert(d.message);
+            showToast(d.message, !d.ok);
         });
     }
 }
 
 function printCheck() {
+    var doPrint = function() {
+        fetch('/ops/api/sessions/' + SESSION_ID + '/print-check', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            showToast(d.ok ? d.message : d.error, !d.ok);
+        });
+    };
     if (cart.length > 0) {
-        if (!confirm('יש פריטים שלא נשלחו למטבח. להמשיך בהדפסת חשבון?')) return;
-    }
-    fetch('/ops/api/sessions/' + SESSION_ID + '/print-check', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        alert(d.ok ? d.message : d.error);
-    });
+        opsConfirm({title: 'הדפסת חשבון', message: 'יש פריטים שלא נשלחו למטבח. להמשיך בהדפסת חשבון?', type: 'warning', okText: 'המשך'}).then(function(ok) { if (ok) doPrint(); });
+    } else { doPrint(); }
 }
 
 var selectedCancelReason = '';
@@ -1457,7 +1460,7 @@ var currentSplitPayId = null;
 var currentSplitPayAmount = 0;
 
 function payCash() {
-    if (cart.length > 0) { alert('יש פריטים שלא נשלחו — שלח למטבח קודם'); return; }
+    if (cart.length > 0) { showToast('יש פריטים שלא נשלחו — שלח למטבח קודם', true); return; }
     var total = parseFloat(document.getElementById('totalAmount').textContent.replace('₪','').replace(',','')) || 0;
     document.getElementById('cashTotal').textContent = '₪' + (total % 1 === 0 ? total : total.toFixed(2));
     document.getElementById('cashTip').value = '';
@@ -1486,18 +1489,18 @@ function confirmCashClose() {
     var tip = parseFloat(document.getElementById('cashTip').value) || 0;
     var received = parseFloat(document.getElementById('cashReceived').value) || 0;
     var total = parseFloat(document.getElementById('cashTotal').textContent.replace('₪','').replace(',','')) || 0;
-    if (!received || received <= 0) { alert('נא להזין סכום שהתקבל'); return; }
-    if (received < total + tip) { alert('סכום שהתקבל נמוך מהסה"כ'); return; }
+    if (!received || received <= 0) { showToast('נא להזין סכום שהתקבל', true); return; }
+    if (received < total + tip) { showToast('סכום שהתקבל נמוך מהסה"כ', true); return; }
     fetch('/ops/api/sessions/' + SESSION_ID + '/pay-cash', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({tip_amount: tip, cash_received: received})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) window.location.href = '/ops/tables';
+        if (d.ok) { showToast(d.message); setTimeout(function() { window.location.href = '/ops/tables'; }, 800); }
         else if (d.pending_voids) {
             closeCashClose();
-            if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { approveVoids(); }
+            opsConfirm({title: 'ביטולים ממתינים', message: d.error + '\n\nלאשר ביטולים עכשיו?', type: 'warning', okText: 'אשר'}).then(function(ok) { if (ok) approveVoids(); });
         }
-        else alert(d.error);
+        else showToast(d.error, true);
     });
 }
 
@@ -1509,7 +1512,7 @@ function closePaymentLink() { document.getElementById('paymentLinkOverlay').clas
 
 function sendPaymentLink() {
     var phone = document.getElementById('paymentPhone').value.trim();
-    if (!phone) { alert('נא להזין טלפון'); return; }
+    if (!phone) { showToast('נא להזין טלפון', true); return; }
     var tip = parseFloat(document.getElementById('paymentLinkTip').value) || 0;
     fetch('/ops/api/sessions/' + SESSION_ID + '/generate-payment-link', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -1517,8 +1520,9 @@ function sendPaymentLink() {
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (!d.ok) {
             if (d.pending_voids) {
-                if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { closePaymentLink(); approveVoids(); }
-            } else { alert(d.error); }
+                closePaymentLink();
+                opsConfirm({title: 'ביטולים ממתינים', message: d.error + '\n\nלאשר ביטולים עכשיו?', type: 'warning', okText: 'אשר'}).then(function(ok) { if (ok) approveVoids(); });
+            } else { showToast(d.error, true); }
             return;
         }
         fetch('/ops/api/sessions/' + SESSION_ID + '/send-payment-sms', {
@@ -1556,8 +1560,8 @@ function applyDiscount() {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({discount_type: discountType, discount_value: val})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) { closeDiscountModal(); location.reload(); }
-        else alert(d.error);
+        if (d.ok) { closeDiscountModal(); showToast('הנחה עודכנה'); setTimeout(function() { location.reload(); }, 800); }
+        else showToast(d.error, true);
     });
 }
 
@@ -1577,8 +1581,8 @@ function saveNotes() {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({notes: notes})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) closeNotesModal();
-        else alert(d.error);
+        if (d.ok) { closeNotesModal(); showToast('הערות נשמרו'); }
+        else showToast(d.error, true);
     });
 }
 
@@ -1600,7 +1604,7 @@ function selectCancelReason(btn, reason) {
 }
 
 function confirmCancel() {
-    if (!selectedCancelReason) { alert('נא לבחור סיבת ביטול'); return; }
+    if (!selectedCancelReason) { showToast('נא לבחור סיבת ביטול', true); return; }
     var body = {
         cancel_reason: selectedCancelReason,
         cancel_note: document.getElementById('cancelNote').value.trim()
@@ -1612,10 +1616,10 @@ function confirmCancel() {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body)
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) window.location.href = '/ops/tables';
+        if (d.ok) { showToast(d.message || 'ישיבה בוטלה'); setTimeout(function() { window.location.href = '/ops/tables'; }, 800); }
         else if (d.pending_voids) {
             closeCancelModal();
-            if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { approveVoids(); }
+            opsConfirm({title: 'ביטולים ממתינים', message: d.error + '\n\nלאשר ביטולים עכשיו?', type: 'warning', okText: 'אשר'}).then(function(ok) { if (ok) approveVoids(); });
         } else if (d.require_pin) {
             document.getElementById('cancelPinSection').style.display = 'block';
             document.getElementById('cancelError').textContent = d.error;
@@ -1628,7 +1632,7 @@ function confirmCancel() {
 }
 
 function showSplitModal() {
-    if (cart.length > 0) { alert('יש פריטים שלא נשלחו — שלח למטבח קודם'); return; }
+    if (cart.length > 0) { showToast('יש פריטים שלא נשלחו — שלח למטבח קודם', true); return; }
     var total = parseFloat(document.getElementById('totalAmount').textContent.replace('₪','').replace(',','')) || 0;
     document.getElementById('splitTotal').textContent = '₪' + (total % 1 === 0 ? total : total.toFixed(2));
     splitCountVal = 2;
@@ -1804,7 +1808,7 @@ function applySplit() {
         body.portions = customPortions.map(function(p) { return {amount: parseFloat(p.amount) || 0, label: p.label}; });
     } else if (currentSplitMode === 'by_items') {
         var emptyGroups = itemGroups.filter(function(g) { return g.itemIndices.length === 0; });
-        if (emptyGroups.length > 0) { alert('יש קבוצות ללא פריטים'); return; }
+        if (emptyGroups.length > 0) { showToast('יש קבוצות ללא פריטים', true); return; }
         var rawTotal = 0;
         existingItems.forEach(function(item) {
             var qty = parseInt(item.qty || item.quantity || 1);
@@ -1832,7 +1836,7 @@ function applySplit() {
             renderSplitPortions(d.splits);
             document.getElementById('splitSetupSection').style.display = 'none';
             document.getElementById('splitPortionsSection').style.display = 'block';
-        } else { alert(d.error); }
+        } else { showToast(d.error, true); }
     });
 }
 
@@ -1927,8 +1931,8 @@ function confirmSplitPay(method) {
     var tip = parseFloat(document.getElementById('splitPayTip').value) || 0;
     var received = parseFloat(document.getElementById('splitPayCashReceived').value) || 0;
     if (method === 'cash') {
-        if (!received || received <= 0) { alert('נא להזין סכום שהתקבל'); return; }
-        if (received < currentSplitPayAmount + tip) { alert('סכום שהתקבל נמוך מהסה"כ'); return; }
+        if (!received || received <= 0) { showToast('נא להזין סכום שהתקבל', true); return; }
+        if (received < currentSplitPayAmount + tip) { showToast('סכום שהתקבל נמוך מהסה"כ', true); return; }
     }
     fetch('/ops/api/sessions/' + SESSION_ID + '/split/' + currentSplitPayId + '/pay', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -1937,14 +1941,16 @@ function confirmSplitPay(method) {
         if (d.ok) {
             closeSplitPayModal();
             if (d.all_paid) {
-                window.location.href = '/ops/tables';
+                showToast('כל החלקים שולמו'); setTimeout(function() { window.location.href = '/ops/tables'; }, 800);
             } else {
+                showToast('חלק שולם בהצלחה');
                 renderSplitPortions(d.splits);
             }
         } else {
             if (d.pending_voids) {
-                if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { closeSplitPayModal(); approveVoids(); }
-            } else { alert(d.error); }
+                closeSplitPayModal();
+                opsConfirm({title: 'ביטולים ממתינים', message: d.error + '\n\nלאשר ביטולים עכשיו?', type: 'warning', okText: 'אשר'}).then(function(ok) { if (ok) approveVoids(); });
+            } else { showToast(d.error, true); }
         }
     });
 }
@@ -1963,7 +1969,7 @@ function splitPaymentLink() {
         } else {
             if (d.pending_voids) {
                 closeSplitPayModal();
-                if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { approveVoids(); }
+                opsConfirm({title: 'ביטולים ממתינים', message: d.error + '\n\nלאשר ביטולים עכשיו?', type: 'warning', okText: 'אשר'}).then(function(ok) { if (ok) approveVoids(); });
             } else {
                 resultEl.innerHTML = '<div style="color:#f44336;">' + d.error + '</div>';
             }

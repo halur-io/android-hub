@@ -410,13 +410,13 @@ function updateSelectedProp() {
 }
 
 function setSelectedShape(shape) {
-    if (!selectedTableEl) { alert('בחר שולחן קודם'); return; }
+    if (!selectedTableEl) { showToast('בחר שולחן קודם', 'warning'); return; }
     document.getElementById('propShape').value = shape;
     updateSelectedProp();
 }
 
 function setSelectedSize(w, h) {
-    if (!selectedTableEl) { alert('בחר שולחן קודם'); return; }
+    if (!selectedTableEl) { showToast('בחר שולחן קודם', 'warning'); return; }
     document.getElementById('propWidth').value = w;
     document.getElementById('propHeight').value = h;
     updateSelectedProp();
@@ -451,27 +451,28 @@ function autoArrange() {
 }
 
 function clearPositions() {
-    if (!confirm('לנקות את כל המיקומים? השולחנות יחזרו לתצוגת רשת.')) return;
-    var positions = [];
-    document.querySelectorAll('.layout-table').forEach(function(el, i) {
-        el.style.left = ((i % 6) * 140 + 30) + 'px';
-        el.style.top = (Math.floor(i / 6) * 120 + 30) + 'px';
-        positions.push({id: parseInt(el.dataset.id), pos_x: null, pos_y: null});
+    opsConfirm({title: 'ניקוי מיקומים', message: 'לנקות את כל המיקומים? השולחנות יחזרו לתצוגת רשת.', type: 'warning', okText: 'נקה'}).then(function(ok) {
+        if (!ok) return;
+        var positions = [];
+        document.querySelectorAll('.layout-table').forEach(function(el, i) {
+            el.style.left = ((i % 6) * 140 + 30) + 'px';
+            el.style.top = (Math.floor(i / 6) * 120 + 30) + 'px';
+            positions.push({id: parseInt(el.dataset.id), pos_x: null, pos_y: null});
+        });
+        fetch('/ops/api/tables/layout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({positions: positions})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) {
+                isDirty = false;
+                document.getElementById('unsavedBadge').style.display = 'none';
+                showToast('המיקומים נוקו');
+            } else {
+                showToast(d.error || 'שגיאה', true);
+            }
+        }).catch(function() { showToast('שגיאת תקשורת', true); });
     });
-    fetch('/ops/api/tables/layout', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({positions: positions})
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) {
-            isDirty = false;
-            document.getElementById('unsavedBadge').style.display = 'none';
-            if (typeof showToast === 'function') showToast('המיקומים נוקו');
-            else alert('המיקומים נוקו');
-        } else {
-            alert(d.error || 'שגיאה');
-        }
-    }).catch(function() { alert('שגיאת תקשורת'); });
 }
 
 function rebuildAreaButtons() {
@@ -521,7 +522,7 @@ function addArea() {
 }
 
 function renameArea() {
-    if (currentFilter === '__all__') { alert('בחר אזור לשינוי שם'); return; }
+    if (currentFilter === '__all__') { showToast('בחר אזור לשינוי שם', 'warning'); return; }
     var oldName = currentFilter;
     var newName = prompt('שם חדש לאזור "' + oldName + '":', oldName);
     if (!newName || !newName.trim() || newName.trim() === oldName) return;
@@ -540,20 +541,22 @@ function renameArea() {
 }
 
 function deleteArea() {
-    if (currentFilter === '__all__') { alert('בחר אזור למחיקה'); return; }
+    if (currentFilter === '__all__') { showToast('בחר אזור למחיקה', 'warning'); return; }
     var areaName = currentFilter;
-    if (!confirm('למחוק את האזור "' + areaName + '"? השולחנות יועברו לכללי.')) return;
-    document.querySelectorAll('.layout-table').forEach(function(el) {
-        if (el.dataset.area === areaName) {
-            el.dataset.area = '';
-            var tag = el.querySelector('.lt-area-tag');
-            if (tag) tag.remove();
-        }
+    opsConfirm({title: 'מחיקת אזור', message: 'למחוק את האזור "' + areaName + '"? השולחנות יועברו לכללי.', type: 'danger', okText: 'מחק'}).then(function(ok) {
+        if (!ok) return;
+        document.querySelectorAll('.layout-table').forEach(function(el) {
+            if (el.dataset.area === areaName) {
+                el.dataset.area = '';
+                var tag = el.querySelector('.lt-area-tag');
+                if (tag) tag.remove();
+            }
+        });
+        rebuildAreaButtons();
+        filterLayoutArea('__all__', document.querySelector('[data-area="__all__"]'));
+        if (selectedTableEl) document.getElementById('propArea').value = '';
+        markDirty();
     });
-    rebuildAreaButtons();
-    filterLayoutArea('__all__', document.querySelector('[data-area="__all__"]'));
-    if (selectedTableEl) document.getElementById('propArea').value = '';
-    markDirty();
 }
 
 function showDesignerAddTable() {
@@ -574,7 +577,7 @@ function doDesignerAddTable() {
     var num = document.getElementById('designerTableNum').value.trim();
     var cap = parseInt(document.getElementById('designerTableCap').value) || 4;
     var area = document.getElementById('designerTableArea').value.trim();
-    if (!num) { alert('נא להזין מספר שולחן'); return; }
+    if (!num) { showToast('נא להזין מספר שולחן', true); return; }
     fetch('/ops/api/tables/manage', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -582,32 +585,33 @@ function doDesignerAddTable() {
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.ok) {
             hideDesignerAddTable();
-            location.reload();
+            showToast('שולחן נוסף'); setTimeout(function() { location.reload(); }, 800);
         } else {
-            alert(d.error || 'שגיאה');
+            showToast(d.error || 'שגיאה', true);
         }
-    }).catch(function() { alert('שגיאת תקשורת'); });
+    }).catch(function() { showToast('שגיאת תקשורת', true); });
 }
 
 function removeSelectedTable() {
-    if (!selectedTableEl) { alert('בחר שולחן להסרה'); return; }
+    if (!selectedTableEl) { showToast('בחר שולחן להסרה', 'warning'); return; }
     var tableId = parseInt(selectedTableEl.dataset.id);
     var tableNum = selectedTableEl.querySelector('.lt-num').textContent;
-    if (!confirm('להסיר את שולחן ' + tableNum + '?')) return;
-    fetch('/ops/api/tables/manage', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action: 'remove', table_id: tableId})
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) {
-            selectedTableEl.remove();
-            deselectTable();
-            if (typeof showToast === 'function') showToast(d.message || 'שולחן הוסר');
-            else alert(d.message || 'שולחן הוסר');
-        } else {
-            alert(d.error || 'שגיאה');
-        }
-    }).catch(function() { alert('שגיאת תקשורת'); });
+    opsConfirm({title: 'הסרת שולחן', message: 'להסיר את שולחן ' + tableNum + '?', type: 'danger', okText: 'הסר'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/tables/manage', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'remove', table_id: tableId})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) {
+                selectedTableEl.remove();
+                deselectTable();
+                showToast(d.message || 'שולחן הוסר');
+            } else {
+                showToast(d.error || 'שגיאה', true);
+            }
+        }).catch(function() { showToast('שגיאת תקשורת', true); });
+    });
 }
 
 function markDirty() {
@@ -636,12 +640,11 @@ function saveLayout() {
         if (d.ok) {
             isDirty = false;
             document.getElementById('unsavedBadge').style.display = 'none';
-            if (typeof showToast === 'function') showToast(d.message || 'נשמר');
-            else alert(d.message || 'נשמר');
+            showToast(d.message || 'נשמר');
         } else {
-            alert(d.error || 'שגיאה');
+            showToast(d.error || 'שגיאה', true);
         }
-    }).catch(function() { alert('שגיאת תקשורת'); });
+    }).catch(function() { showToast('שגיאת תקשורת', true); });
 }
 
 window.addEventListener('beforeunload', function(e) {

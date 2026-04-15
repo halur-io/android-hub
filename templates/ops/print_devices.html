@@ -378,22 +378,24 @@ function saveConfig() {
             closeConfig();
             location.reload();
         } else {
-            alert(data.error || 'שגיאה בשמירה');
+            showToast(data.error || 'שגיאה בשמירה', true);
         }
     });
 }
 
 function deleteDevice(deviceId, name) {
-    if (!confirm('למחוק את המכשיר "' + name + '"?')) return;
-    fetch('/ops/api/devices/' + deviceId, {
-        method: 'DELETE',
-        headers: {'X-Print-Key': '{{ print_key }}'}
-    }).then(r => r.json()).then(data => {
-        if (data.ok) {
-            location.reload();
-        } else {
-            alert(data.error || 'שגיאה במחיקה');
-        }
+    opsConfirm({title: 'מחיקת מכשיר', message: 'למחוק את המכשיר "' + name + '"?', type: 'danger', okText: 'מחק'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/devices/' + deviceId, {
+            method: 'DELETE',
+            headers: {'X-Print-Key': '{{ print_key }}'}
+        }).then(r => r.json()).then(data => {
+            if (data.ok) {
+                showToast('מכשיר נמחק'); setTimeout(function() { location.reload(); }, 800);
+            } else {
+                showToast(data.error || 'שגיאה במחיקה', true);
+            }
+        });
     });
 }
 

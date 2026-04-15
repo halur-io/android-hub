@@ -492,18 +492,77 @@ html, body {
     transform: translateX(-50%) translateY(100px);
     background: var(--ops-green);
     color: white;
-    padding: 12px 24px;
-    border-radius: var(--ops-radius-sm);
+    padding: 14px 22px;
+    border-radius: 14px;
     font-size: 14px;
     font-weight: 600;
-    z-index: 2000;
-    transition: transform 0.3s ease;
+    z-index: 9999;
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s;
     pointer-events: none;
-    box-shadow: var(--ops-shadow-md);
+    box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    display: flex; align-items: center; gap: 10px;
+    max-width: 92vw;
+    opacity: 0;
+    direction: rtl;
 }
-
-.ops-toast.show { transform: translateX(-50%) translateY(0); }
+.ops-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 .ops-toast.error { background: var(--ops-red); }
+.ops-toast.warning { background: var(--ops-orange); }
+.ops-toast .toast-icon { font-size: 18px; flex-shrink: 0; }
+
+.ops-confirm-overlay {
+    position: fixed; inset: 0; z-index: 9990;
+    background: rgba(0,0,0,.45);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+    padding: 20px;
+}
+.ops-confirm-overlay.show { opacity: 1; pointer-events: auto; }
+.ops-confirm-box {
+    background: #fff; border-radius: 18px;
+    width: 100%; max-width: 360px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.2);
+    overflow: hidden;
+    transform: scale(.92); transition: transform .25s cubic-bezier(.4,0,.2,1);
+    direction: rtl;
+}
+.ops-confirm-overlay.show .ops-confirm-box { transform: scale(1); }
+.ops-confirm-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 18px 20px 10px; font-weight: 700; font-size: 1rem;
+}
+.ops-confirm-header .confirm-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.ops-confirm-header .confirm-icon.danger { background: var(--ops-red-soft); color: var(--ops-red); }
+.ops-confirm-header .confirm-icon.warning { background: var(--ops-orange-soft); color: var(--ops-orange); }
+.ops-confirm-header .confirm-icon.info { background: var(--ops-blue-soft); color: var(--ops-blue); }
+.ops-confirm-body { padding: 0 20px 16px; font-size: .88rem; color: #555; line-height: 1.5; }
+.ops-confirm-actions {
+    display: flex; gap: 10px; padding: 0 20px 18px;
+}
+.ops-confirm-actions button {
+    flex: 1; border: none; border-radius: 12px;
+    padding: 13px 10px; font-weight: 700; font-size: .9rem;
+    cursor: pointer; font-family: 'Heebo', sans-serif;
+    transition: opacity .15s;
+}
+.ops-confirm-actions button:active { opacity: .7; }
+.ops-confirm-actions .confirm-cancel-btn {
+    background: #f0f0f0; color: #555;
+}
+.ops-confirm-actions .confirm-ok-btn {
+    background: var(--ops-accent); color: #fff;
+}
+.ops-confirm-actions .confirm-ok-btn.danger {
+    background: var(--ops-red);
+}
+.ops-confirm-actions .confirm-ok-btn.green {
+    background: var(--ops-green);
+}
 
 .ops-login-wrapper {
     display: flex;

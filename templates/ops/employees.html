@@ -313,9 +313,11 @@ document.addEventListener('click', function(e) {
         var isActive = card.getAttribute('data-active') === '1';
         var action = isActive ? 'להשבית' : 'להפעיל';
         var name = card.getAttribute('data-name');
-        if (!confirm(action + ' את ' + name + '?')) return;
-        opsPost('{{ url_for("ops.employees_toggle") }}', {id: id}, function() {
-            location.reload();
+        opsConfirm({title: action, message: action + ' את ' + name + '?', type: 'warning', okText: action}).then(function(ok) {
+            if (!ok) return;
+            opsPost('{{ url_for("ops.employees_toggle") }}', {id: id}, function() {
+                location.reload();
+            });
         });
         return;
     }

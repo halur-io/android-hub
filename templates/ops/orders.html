@@ -758,7 +758,7 @@ function setStatus(id, status) {
 
 function cancelOrder(id) {
     resetSwipe(id);
-    if(confirm('לבטל הזמנה?')) setStatus(id, 'cancelled');
+    opsConfirm({title: 'ביטול הזמנה', message: 'לבטל הזמנה?', type: 'danger', okText: 'בטל'}).then(function(ok) { if (ok) setStatus(id, 'cancelled'); });
 }
 
 function completeOrder(id, orderType) {
@@ -1229,14 +1229,15 @@ function _setupDeleteGesture(orderId, orderNum, paymentMethod) {
 
 function sendReceipt(id) {
     if (_deleteGestureState.armed) return;
-    if (!confirm('לשלוח קבלה SMS ללקוח?')) return;
-    fetch('/ops/api/orders/' + id + '/send-receipt', { method: 'POST', credentials: 'same-origin' })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.ok) alert(d.message || 'קבלה נשלחה');
-            else alert(d.error || 'שגיאה');
-        })
-        .catch(function() { alert('שגיאת רשת'); });
+    opsConfirm({title: 'שליחת קבלה', message: 'לשלוח קבלה SMS ללקוח?', type: 'info', okText: 'שלח'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/orders/' + id + '/send-receipt', { method: 'POST', credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                showToast(d.ok ? (d.message || 'קבלה נשלחה') : (d.error || 'שגיאה'), !d.ok);
+            })
+            .catch(function() { showToast('שגיאת רשת', true); });
+    });
 }
 
 var _pendingDeleteId = null;
@@ -1277,13 +1278,13 @@ function deleteOrderFromOps(id, orderNum, reason) {
     .then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.ok) {
-            alert(d.message);
-            location.reload();
+            showToast(d.message);
+            setTimeout(function() { location.reload(); }, 800);
         } else {
-            alert(d.error || 'שגיאה');
+            showToast(d.error || 'שגיאה', true);
         }
     })
-    .catch(function() { alert('שגיאת רשת'); });
+    .catch(function() { showToast('שגיאת רשת', true); });
 }
 
 initSwipe();

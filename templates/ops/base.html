@@ -150,12 +150,64 @@
 
     <div id="ops-toast" class="ops-toast"></div>
 
+    <div class="ops-confirm-overlay" id="opsConfirmOverlay">
+        <div class="ops-confirm-box">
+            <div class="ops-confirm-header">
+                <div class="confirm-icon info" id="opsConfirmIcon"><i class="fas fa-question-circle"></i></div>
+                <span id="opsConfirmTitle"></span>
+            </div>
+            <div class="ops-confirm-body" id="opsConfirmBody"></div>
+            <div class="ops-confirm-actions">
+                <button class="confirm-cancel-btn" id="opsConfirmCancelBtn" onclick="opsConfirmResolve(false)"></button>
+                <button class="confirm-ok-btn" id="opsConfirmOkBtn" onclick="opsConfirmResolve(true)"></button>
+            </div>
+        </div>
+    </div>
+
     <script>
-    function showToast(message, isError) {
+    var _toastTimer = null;
+    function showToast(message, isError, duration) {
         var t = document.getElementById('ops-toast');
-        t.textContent = message;
-        t.className = 'ops-toast' + (isError ? ' error' : '') + ' show';
-        setTimeout(function() { t.className = 'ops-toast'; }, 2500);
+        var icon = isError ? '<i class="toast-icon fas fa-times-circle"></i>'
+                          : '<i class="toast-icon fas fa-check-circle"></i>';
+        if (isError === 'warning') {
+            icon = '<i class="toast-icon fas fa-exclamation-triangle"></i>';
+        }
+        t.innerHTML = icon + '<span>' + _escHtml(message) + '</span>';
+        var cls = 'ops-toast show';
+        if (isError === true) cls += ' error';
+        else if (isError === 'warning') cls += ' warning';
+        t.className = cls;
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(function() { t.className = 'ops-toast'; }, duration || 3000);
+    }
+    function _escHtml(s) {
+        var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+    }
+
+    var _confirmResolveFn = null;
+    function opsConfirm(opts) {
+        var ov = document.getElementById('opsConfirmOverlay');
+        var iconEl = document.getElementById('opsConfirmIcon');
+        var titleEl = document.getElementById('opsConfirmTitle');
+        var bodyEl = document.getElementById('opsConfirmBody');
+        var okBtn = document.getElementById('opsConfirmOkBtn');
+        var cancelBtn = document.getElementById('opsConfirmCancelBtn');
+        var type = opts.type || 'info';
+        var icons = {info: 'fa-question-circle', danger: 'fa-exclamation-triangle', warning: 'fa-exclamation-circle'};
+        iconEl.className = 'confirm-icon ' + type;
+        iconEl.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i>';
+        titleEl.textContent = opts.title || '';
+        bodyEl.textContent = opts.message || '';
+        okBtn.textContent = opts.okText || 'אישור';
+        cancelBtn.textContent = opts.cancelText || 'ביטול';
+        okBtn.className = 'confirm-ok-btn' + (type === 'danger' ? ' danger' : type === 'info' ? ' green' : '');
+        ov.classList.add('show');
+        return new Promise(function(resolve) { _confirmResolveFn = resolve; });
+    }
+    function opsConfirmResolve(val) {
+        document.getElementById('opsConfirmOverlay').classList.remove('show');
+        if (_confirmResolveFn) { var fn = _confirmResolveFn; _confirmResolveFn = null; fn(val); }
     }
 
     function toggleStatusPopover() {

@@ -313,9 +313,11 @@ function toggleZone(id) {
 }
 
 function deleteZone(id, name) {
-    if (!confirm('למחוק את אזור המשלוח ' + name + '?')) return;
-    opsPost('{{ url_for("ops.delivery_delete") }}', {id: id}, function() {
-        location.reload();
+    opsConfirm({title: 'מחיקת אזור', message: 'למחוק את אזור המשלוח ' + name + '?', type: 'danger', okText: 'מחק'}).then(function(ok) {
+        if (!ok) return;
+        opsPost('{{ url_for("ops.delivery_delete") }}', {id: id}, function() {
+            location.reload();
+        });
     });
 }
 

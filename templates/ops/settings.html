@@ -245,7 +245,7 @@ function savePrinterPort(val) {
 function testPrinter() {
     var ip = document.getElementById('printerIp').value.trim();
     var port = parseInt(document.getElementById('printerPort').value) || 9100;
-    if (!ip) { alert('יש להזין כתובת IP'); return; }
+    if (!ip) { showToast('יש להזין כתובת IP', true); return; }
     savePrinterIp(ip);
     savePrinterPort(port);
     fetch('/ops/api/print/test', {
@@ -254,8 +254,8 @@ function testPrinter() {
         body: JSON.stringify({printer_ip: ip, printer_port: port})
     })
     .then(function(r) { return r.json(); })
-    .then(function(d) { alert(d.ok ? '✅ ' + d.message : '❌ ' + (d.error || 'שגיאה')); })
-    .catch(function() { alert('❌ שגיאת חיבור לשרת'); });
+    .then(function(d) { showToast(d.ok ? d.message : (d.error || 'שגיאה'), !d.ok); })
+    .catch(function() { showToast('שגיאת חיבור לשרת', true); });
 }
 </script>
 {% endblock %}

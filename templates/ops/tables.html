@@ -736,7 +736,7 @@ function hideSummary() {
 function quickPrintCheck(sessionId) {
     fetch('/ops/api/sessions/' + sessionId + '/print-check', {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
-    }).then(function(r) { return r.json(); }).then(function(d) { alert(d.ok ? d.message : d.error); });
+    }).then(function(r) { return r.json(); }).then(function(d) { showToast(d.ok ? d.message : d.error, !d.ok); });
 }
 
 var qCashSessionId = null;
@@ -777,14 +777,14 @@ function confirmQCashClose() {
     var tip = parseFloat(document.getElementById('qCashTip').value) || 0;
     var received = parseFloat(document.getElementById('qCashReceived').value) || 0;
     var total = parseFloat(document.getElementById('qCashTotal').textContent.replace('₪','').replace(',','')) || 0;
-    if (!received || received <= 0) { alert('נא להזין סכום שהתקבל'); return; }
-    if (received < total + tip) { alert('סכום שהתקבל נמוך מהסה"כ'); return; }
+    if (!received || received <= 0) { showToast('נא להזין סכום שהתקבל', true); return; }
+    if (received < total + tip) { showToast('סכום שהתקבל נמוך מהסה"כ', true); return; }
     fetch('/ops/api/sessions/' + qCashSessionId + '/pay-cash', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({tip_amount: tip, cash_received: received})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) { closeCashCloseQ(); location.reload(); }
-        else alert(d.error);
+        if (d.ok) { closeCashCloseQ(); showToast(d.message); setTimeout(function() { location.reload(); }, 800); }
+        else showToast(d.error, true);
     });
 }
 
@@ -814,7 +814,7 @@ function selectQCancelReason(btn, reason) {
 
 function confirmQCancel() {
     if (!qCancelSessionId) return;
-    if (!qSelectedCancelReason) { alert('נא לבחור סיבת ביטול'); return; }
+    if (!qSelectedCancelReason) { showToast('נא לבחור סיבת ביטול', true); return; }
     var body = {
         cancel_reason: qSelectedCancelReason,
         cancel_note: document.getElementById('qCancelNote').value.trim()
@@ -826,10 +826,10 @@ function confirmQCancel() {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body)
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) { closeCancelQ(); location.reload(); }
+        if (d.ok) { closeCancelQ(); showToast(d.message); setTimeout(function() { location.reload(); }, 800); }
         else if (d.pending_voids) {
             closeCancelQ();
-            alert(d.error);
+            showToast(d.error, true);
         } else if (d.require_pin) {
             document.getElementById('qCancelPinSection').style.display = 'block';
             document.getElementById('qCancelError').textContent = d.error;
@@ -869,8 +869,8 @@ function doMoveTable(newTableId) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({new_table_id: newTableId})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) { hideMoveTable(); location.reload(); }
-        else alert(d.error);
+        if (d.ok) { hideMoveTable(); showToast(d.message); setTimeout(function() { location.reload(); }, 800); }
+        else showToast(d.error, true);
     });
 }
 
@@ -906,24 +906,26 @@ function addTable() {
     var num = document.getElementById('newTableNumber').value.trim();
     var cap = parseInt(document.getElementById('newTableCapacity').value) || 4;
     var area = document.getElementById('newTableArea').value.trim();
-    if (!num) { alert('נא להזין מספר שולחן'); return; }
+    if (!num) { showToast('נא להזין מספר שולחן', true); return; }
     fetch('/ops/api/tables/manage', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'add', table_number: num, capacity: cap, area: area})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) location.reload();
-        else alert(d.error);
+        if (d.ok) { showToast('שולחן נוסף'); setTimeout(function() { location.reload(); }, 800); }
+        else showToast(d.error, true);
     });
 }
 
 function reopenSession(sessionId) {
-    if (!confirm('לפתוח מחדש את הישיבה?')) return;
-    fetch('/ops/api/sessions/' + sessionId + '/reopen', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) window.location.href = '/ops/dine-in/' + d.session_id;
-        else alert(d.error);
+    opsConfirm({title: 'פתיחה מחדש', message: 'לפתוח מחדש את הישיבה?', type: 'info', okText: 'פתח מחדש'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/sessions/' + sessionId + '/reopen', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) window.location.href = '/ops/dine-in/' + d.session_id;
+            else showToast(d.error, true);
+        });
     });
 }
 
@@ -950,7 +952,7 @@ function handleTableClick(tableId, sessionId, status) {
             body: '{}'
         }).then(function(r) { return r.json(); }).then(function(d) {
             if (d.ok) window.location.href = '/ops/dine-in/' + d.session_id;
-            else alert(d.error);
+            else showToast(d.error, true);
         });
     } else if (sessionId) {
         window.location.href = '/ops/dine-in/' + sessionId;

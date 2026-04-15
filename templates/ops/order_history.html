@@ -510,31 +510,34 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endif %}
 
 function reorder(orderId) {
-    if (!confirm('לפתוח הזמנה חוזרת עם אותם פריטים?')) return;
-    fetch('/ops/api/orders/' + orderId + '/reorder', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.ok && d.redirect) {
-                window.location.href = d.redirect;
-            } else if (d.ok) {
-                alert(d.message || 'הזמנה חוזרת מוכנה');
-                window.location.reload();
-            } else {
-                alert(d.error || 'שגיאה');
-            }
-        })
-        .catch(function() { alert('שגיאת רשת'); });
+    opsConfirm({title: 'הזמנה חוזרת', message: 'לפתוח הזמנה חוזרת עם אותם פריטים?', type: 'info', okText: 'כן'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/orders/' + orderId + '/reorder', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.ok && d.redirect) {
+                    window.location.href = d.redirect;
+                } else if (d.ok) {
+                    showToast(d.message || 'הזמנה חוזרת מוכנה');
+                    setTimeout(function() { window.location.reload(); }, 800);
+                } else {
+                    showToast(d.error || 'שגיאה', true);
+                }
+            })
+            .catch(function() { showToast('שגיאת רשת', true); });
+    });
 }
 
 function sendReceipt(orderId) {
-    if (!confirm('לשלוח קבלה SMS ללקוח?')) return;
-    fetch('/ops/api/orders/' + orderId + '/send-receipt', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.ok) alert(d.message);
-            else alert(d.error || 'שגיאה');
-        })
-        .catch(function() { alert('שגיאת רשת'); });
+    opsConfirm({title: 'שליחת קבלה', message: 'לשלוח קבלה SMS ללקוח?', type: 'info', okText: 'שלח'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/orders/' + orderId + '/send-receipt', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                showToast(d.ok ? d.message : (d.error || 'שגיאה'), !d.ok);
+            })
+            .catch(function() { showToast('שגיאת רשת', true); });
+    });
 }
 
 var _pendingDeleteId = null;
@@ -582,10 +585,10 @@ function deleteOrder(orderId, orderNum, reason) {
                 setTimeout(function() { card.remove(); }, 300);
             }
         } else {
-            alert(d.error || 'שגיאה');
+            showToast(d.error || 'שגיאה', true);
         }
     })
-    .catch(function() { alert('שגיאת רשת'); });
+    .catch(function() { showToast('שגיאת רשת', true); });
 }
 
 {% if is_superadmin %}

@@ -428,6 +428,25 @@
                 <i class="fas fa-comment me-1"></i>{{ order.customer_notes }}
             </div>
             {% endif %}
+            {% if order.dine_in_session %}
+                {% if order.dine_in_session.tip_amount and order.dine_in_session.tip_amount > 0 %}
+                <div class="detail-line" style="color:#4caf50;">
+                    <span><i class="fas fa-hand-holding-usd me-1"></i>טיפ</span>
+                    <span>₪{{ '%.0f' % order.dine_in_session.tip_amount }}</span>
+                </div>
+                {% endif %}
+                {% if order.dine_in_session.cancel_reason %}
+                <div style="margin-top:6px; padding:6px 10px; background:#ffebee; border-radius:8px; font-size:.78rem; color:#c62828;">
+                    <i class="fas fa-times-circle me-1"></i>ביטול: {{ order.dine_in_session.cancel_reason }}
+                    {% if order.dine_in_session.cancel_note %} — {{ order.dine_in_session.cancel_note }}{% endif %}
+                </div>
+                {% endif %}
+                {% if order.dine_in_session.payment_splits|length > 0 %}
+                <div style="margin-top:6px; padding:6px 10px; background:#e3f2fd; border-radius:8px; font-size:.78rem; color:#1565c0;">
+                    <i class="fas fa-divide me-1"></i>חשבון מפוצל — {{ order.dine_in_session.payment_splits|length }} חלקים
+                </div>
+                {% endif %}
+            {% endif %}
         </div>
 
         <div class="ocard-actions">

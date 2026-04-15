@@ -24,7 +24,7 @@ from models import (
     StockAlert, Deal, Coupon, CouponUsage, FoodOrder, FoodOrderItem,
     Printer, PrinterStation, PrintStation, TimeLog, PrintDevice, ApiKey,
     MenuItemOptionGroup, MenuItemOptionChoice,
-    DineInTable, DineInSession,
+    DineInTable, DineInSession, DineInPaymentSplit,
 )
 from services.order.order_service import DeliveryZone
 
@@ -4178,6 +4178,9 @@ def api_session_pay_cash(session_id):
     sess = DineInSession.query.get(session_id)
     if not sess or sess.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    active_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).filter(DineInPaymentSplit.payment_status != 'paid').count()
+    if active_splits > 0:
+        return jsonify({'ok': False, 'error': 'יש חלוקת תשלום פעילה — יש לשלם דרך החלקים'})
     if sess.pending_void_approvals:
         try:
             pending = json.loads(sess.pending_void_approvals)
@@ -4185,6 +4188,24 @@ def api_session_pay_cash(session_id):
                 return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
         except Exception:
             pass
+    data = request.get_json(force=True) if request.is_json else {}
+    try:
+        tip = max(0, float(data.get('tip_amount', 0) or 0))
+    except (ValueError, TypeError):
+        tip = 0
+    try:
+        cash_received = data.get('cash_received')
+        if cash_received is not None:
+            cash_received = max(0, float(cash_received))
+    except (ValueError, TypeError):
+        cash_received = None
+    total_due = sess.total_amount + tip
+    if cash_received is None:
+        return jsonify({'ok': False, 'error': 'נא להזין סכום שהתקבל'})
+    if cash_received < total_due:
+        return jsonify({'ok': False, 'error': f'סכום שהתקבל (₪{cash_received:.2f}) נמוך מהסה"כ (₪{total_due:.2f})'})
+    sess.tip_amount = tip
+    sess.cash_received = cash_received
     for order in sess.orders:
         if order.status != 'cancelled':
             order.payment_status = 'cash'
@@ -4207,6 +4228,9 @@ def api_session_generate_payment(session_id):
     sess = DineInSession.query.get(session_id)
     if not sess or sess.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    active_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).filter(DineInPaymentSplit.payment_status != 'paid').count()
+    if active_splits > 0:
+        return jsonify({'ok': False, 'error': 'יש חלוקת תשלום פעילה — יש לשלם דרך החלקים'})
     if sess.pending_void_approvals:
         try:
             pending = json.loads(sess.pending_void_approvals)
@@ -4214,9 +4238,16 @@ def api_session_generate_payment(session_id):
                 return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
         except Exception:
             pass
+    data = request.get_json(force=True) if request.is_json else {}
+    try:
+        tip = max(0, float(data.get('tip_amount', 0) or 0))
+    except (ValueError, TypeError):
+        tip = 0
+    sess.tip_amount = tip
     total = sess.total_amount
     if total <= 0:
         return jsonify({'ok': False, 'error': 'סכום לתשלום 0'})
+    charge_amount = total + tip
     first_order = None
     for o in sess.orders:
         if o.status != 'cancelled':
@@ -4243,7 +4274,7 @@ def api_session_generate_payment(session_id):
         success_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=success&token={cb_token}"
         fail_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=fail&token={cb_token}"
         payment_url = hyp.create_payment_url(
-            amount=total,
+            amount=charge_amount,
             order_id=order_ref,
             description=f'שולחן {table_num}',
             success_url=success_url,
@@ -4279,7 +4310,10 @@ def api_session_send_payment_sms(session_id):
             return jsonify({'ok': False, 'error': 'שליחת SMS לא מוגדרת'})
         table_num = sess.table.table_number if sess.table else '?'
         total = sess.total_amount
-        msg = f'SUMO - שולחן {table_num}\nסה"כ לתשלום: ₪{total:.2f}\nלתשלום: {sess.payment_url}'
+        tip = sess.tip_amount or 0
+        charge = total + tip
+        tip_text = f'\nכולל טיפ: ₪{tip:.2f}' if tip > 0 else ''
+        msg = f'SUMO - שולחן {table_num}\nסה"כ לתשלום: ₪{charge:.2f}{tip_text}\nלתשלום: {sess.payment_url}'
         success = send_sms(phone, msg)
         if not success:
             return jsonify({'ok': False, 'error': 'שליחת SMS נכשלה'})
@@ -4315,9 +4349,10 @@ def session_payment_callback(session_id):
             if sess.branch_id:
                 hyp._load_credentials(branch=Branch.query.get(sess.branch_id))
             response_params = dict(request.args)
+            expected_amt = float(sess.total_amount + (sess.tip_amount or 0))
             verification = hyp.verify_payment_response(
                 response_params,
-                expected_amount=float(sess.total_amount),
+                expected_amount=expected_amt,
                 verify_signature=True
             )
             if verification.get('verified'):
@@ -4354,6 +4389,39 @@ def api_session_cancel(session_id):
     sess = DineInSession.query.get(session_id)
     if not sess or sess.branch_id != effective_branch:
         return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
+    paid_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id, payment_status='paid').first()
+    if paid_splits:
+        return jsonify({'ok': False, 'error': 'לא ניתן לבטל — יש חלקי תשלום ששולמו כבר'})
+    data = request.get_json(force=True) if request.is_json else {}
+    cancel_reason = (data.get('cancel_reason') or '').strip()
+    cancel_note = (data.get('cancel_note') or '').strip()
+    if not cancel_reason:
+        return jsonify({'ok': False, 'error': 'נא לבחור סיבת ביטול'})
+    manager_pin = data.get('manager_pin')
+    has_kitchen_items = False
+    for order in sess.orders:
+        if order.status not in ('cancelled', 'pending'):
+            has_kitchen_items = True
+            break
+    if has_kitchen_items:
+        if not manager_pin:
+            return jsonify({'ok': False, 'error': 'נדרש PIN מנהל — פריטים כבר נשלחו למטבח', 'require_pin': True})
+        manager_name = None
+        for pm in ManagerPIN.query.filter_by(is_ops_superadmin=True).all():
+            if pm.check_pin(str(manager_pin)):
+                manager_name = pm.name
+                break
+        if not manager_name:
+            return jsonify({'ok': False, 'error': 'PIN מנהל לא תקין'})
+    sess.cancel_reason = cancel_reason
+    sess.cancel_note = cancel_note
     for order in sess.orders:
         if order.status != 'cancelled':
             order.status = 'cancelled'
@@ -4362,6 +4430,347 @@ def api_session_cancel(session_id):
     sess.closed_at = datetime.utcnow()
     db.session.commit()
     return jsonify({'ok': True, 'message': 'ישיבה בוטלה'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/split-setup', methods=['POST'])
+@require_ops_module('tables')
+def api_session_split_setup(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
+    existing_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).all()
+    has_paid = any(s.payment_status == 'paid' for s in existing_splits)
+    if has_paid:
+        return jsonify({'ok': False, 'error': 'לא ניתן לחלק מחדש — יש חלקים ששולמו כבר'})
+    has_pending_link = any(s.payment_callback_token and s.payment_status != 'paid' for s in existing_splits)
+    if has_pending_link:
+        return jsonify({'ok': False, 'error': 'לא ניתן לחלק מחדש — יש קישור תשלום פעיל שטרם שולם'})
+    data = request.get_json(force=True)
+    split_mode = data.get('mode', 'equal')
+    portions = data.get('portions', [])
+    total = sess.total_amount
+    if total <= 0:
+        return jsonify({'ok': False, 'error': 'סכום לתשלום 0'})
+    if split_mode == 'equal':
+        try:
+            num_payers = int(data.get('num_payers', 2))
+        except (ValueError, TypeError):
+            return jsonify({'ok': False, 'error': 'מספר משלמים לא תקין'})
+        if num_payers < 2:
+            return jsonify({'ok': False, 'error': 'מספר משלמים חייב להיות לפחות 2'})
+    elif split_mode == 'custom':
+        if not portions:
+            return jsonify({'ok': False, 'error': 'נדרשים סכומים לחלוקה'})
+        for p in portions:
+            try:
+                amt = float(p.get('amount', 0))
+            except (ValueError, TypeError):
+                return jsonify({'ok': False, 'error': 'סכום לא תקין'})
+            if amt < 0 or amt != amt:
+                return jsonify({'ok': False, 'error': 'סכום חייב להיות חיובי'})
+        portions_total = sum(float(p.get('amount', 0)) for p in portions)
+        if abs(portions_total - total) > 0.01:
+            return jsonify({'ok': False, 'error': f'סכום החלוקה ({portions_total:.2f}) לא תואם את הסה"כ ({total:.2f})'})
+    elif split_mode == 'by_items':
+        if not portions:
+            return jsonify({'ok': False, 'error': 'נדרשות קבוצות פריטים'})
+        for p in portions:
+            try:
+                amt = float(p.get('amount', 0))
+            except (ValueError, TypeError):
+                return jsonify({'ok': False, 'error': 'סכום לא תקין'})
+            if amt < 0 or amt != amt:
+                return jsonify({'ok': False, 'error': 'סכום חייב להיות חיובי'})
+        portions_total = sum(float(p.get('amount', 0)) for p in portions)
+        if abs(portions_total - total) > 0.01:
+            return jsonify({'ok': False, 'error': f'סכום החלוקה ({portions_total:.2f}) לא תואם את הסה"כ ({total:.2f})'})
+    else:
+        return jsonify({'ok': False, 'error': 'מצב חלוקה לא תקין'})
+    DineInPaymentSplit.query.filter_by(session_id=sess.id).delete()
+    if split_mode == 'equal':
+        total_cents = int(round(total * 100))
+        base_cents = total_cents // num_payers
+        extra = total_cents % num_payers
+        for i in range(num_payers):
+            amt_cents = base_cents + (1 if i < extra else 0)
+            split = DineInPaymentSplit(
+                session_id=sess.id, portion_index=i,
+                amount=round(amt_cents / 100, 2), payer_label=f'משלם {i+1}'
+            )
+            db.session.add(split)
+    elif split_mode == 'custom':
+        for i, p in enumerate(portions):
+            split = DineInPaymentSplit(
+                session_id=sess.id, portion_index=i,
+                amount=round(float(p.get('amount', 0)), 2),
+                payer_label=p.get('label', f'משלם {i+1}')
+            )
+            db.session.add(split)
+    elif split_mode == 'by_items':
+        for i, p in enumerate(portions):
+            amt = max(0, round(float(p.get('amount', 0)), 2))
+            split = DineInPaymentSplit(
+                session_id=sess.id, portion_index=i,
+                amount=amt,
+                payer_label=p.get('label', f'משלם {i+1}')
+            )
+            db.session.add(split)
+    else:
+        return jsonify({'ok': False, 'error': 'מצב חלוקה לא תקין'})
+    split_meta = {'mode': split_mode, 'num_portions': len(portions) if portions else int(data.get('num_payers', 2))}
+    if split_mode == 'by_items' and portions:
+        split_meta['item_assignments'] = [
+            {'label': p.get('label', ''), 'amount': round(float(p.get('amount', 0)), 2), 'item_indices': p.get('item_indices', [])}
+            for p in portions
+        ]
+    elif split_mode == 'custom' and portions:
+        split_meta['portions'] = [
+            {'label': p.get('label', ''), 'amount': round(float(p.get('amount', 0)), 2)}
+            for p in portions
+        ]
+    sess.split_config = json.dumps(split_meta, ensure_ascii=False)
+    db.session.commit()
+    splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).order_by(DineInPaymentSplit.portion_index).all()
+    return jsonify({
+        'ok': True,
+        'splits': [{'id': s.id, 'index': s.portion_index, 'amount': s.amount,
+                     'label': s.payer_label, 'status': s.payment_status, 'method': s.payment_method} for s in splits]
+    })
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/split/<int:split_id>/pay', methods=['POST'])
+@require_ops_module('tables')
+def api_session_split_pay(session_id, split_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
+    split = DineInPaymentSplit.query.get(split_id)
+    if not split or split.session_id != sess.id:
+        return jsonify({'ok': False, 'error': 'חלוקה לא נמצאה'})
+    if split.payment_status == 'paid':
+        return jsonify({'ok': False, 'error': 'חלק זה כבר שולם'})
+    data = request.get_json(force=True) if request.is_json else {}
+    method = data.get('payment_method', 'cash')
+    if method != 'cash':
+        return jsonify({'ok': False, 'error': 'תשלום ידני זמין במזומן בלבד — לתשלום בקישור השתמש ביצירת קישור'})
+    try:
+        tip = max(0, float(data.get('tip_amount', 0) or 0))
+    except (ValueError, TypeError):
+        tip = 0
+    try:
+        cash_received = data.get('cash_received')
+        if cash_received is not None:
+            cash_received = max(0, float(cash_received))
+    except (ValueError, TypeError):
+        cash_received = None
+    split_due = split.amount + tip
+    if cash_received is None:
+        return jsonify({'ok': False, 'error': 'נא להזין סכום שהתקבל'})
+    if cash_received < split_due:
+        return jsonify({'ok': False, 'error': f'סכום שהתקבל (₪{cash_received:.2f}) נמוך מהסה"כ (₪{split_due:.2f})'})
+    split.payment_method = method
+    split.payment_status = 'paid'
+    split.tip_amount = tip
+    split.cash_received = cash_received
+    split.paid_at = datetime.utcnow()
+    split.payment_callback_token = None
+    all_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).all()
+    all_paid = all(s.payment_status == 'paid' for s in all_splits)
+    if all_paid:
+        total_tip = sum(s.tip_amount or 0 for s in all_splits)
+        sess.tip_amount = total_tip
+        for order in sess.orders:
+            if order.status != 'cancelled':
+                order.payment_status = 'paid'
+                order.payment_method = 'split'
+                if order.status not in ('delivered', 'pickedup', 'cancelled'):
+                    order.status = 'pickedup'
+                    order.completed_at = datetime.utcnow()
+        sess.status = 'closed'
+        sess.closed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'all_paid': all_paid,
+        'message': 'שולחן נסגר — כל החלקים שולמו' if all_paid else f'חלק {split.portion_index + 1} שולם',
+        'splits': [{'id': s.id, 'index': s.portion_index, 'amount': s.amount,
+                     'label': s.payer_label, 'status': s.payment_status, 'method': s.payment_method} for s in all_splits]
+    })
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/split/<int:split_id>/generate-link', methods=['POST'])
+@require_ops_module('tables')
+def api_session_split_generate_link(session_id, split_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
+    split = DineInPaymentSplit.query.get(split_id)
+    if not split or split.session_id != sess.id:
+        return jsonify({'ok': False, 'error': 'חלוקה לא נמצאה'})
+    if split.payment_status == 'paid':
+        return jsonify({'ok': False, 'error': 'חלק זה כבר שולם'})
+    data = request.get_json(force=True) if request.is_json else {}
+    try:
+        tip = max(0, float(data.get('tip_amount', 0) or 0))
+    except (ValueError, TypeError):
+        tip = 0
+    split.tip_amount = tip
+    amount = split.amount
+    if amount <= 0:
+        return jsonify({'ok': False, 'error': 'סכום לתשלום 0'})
+    charge_amount = amount + tip
+    first_order = None
+    for o in sess.orders:
+        if o.status != 'cancelled':
+            first_order = o
+            break
+    if not first_order:
+        return jsonify({'ok': False, 'error': 'אין הזמנות בישיבה'})
+    try:
+        from standalone_order_service.hyp_payment import HYPPayment
+        branch = Branch.query.get(effective_branch)
+        settings = _settings()
+        hyp = HYPPayment(settings=settings)
+        if branch:
+            hyp._load_credentials(branch=branch)
+        if not hyp.is_configured:
+            return jsonify({'ok': False, 'error': 'הגדרות HYP חסרות'})
+        table_num = sess.table.table_number if sess.table else '?'
+        order_ref = first_order.order_number
+        import secrets as _secrets
+        cb_token = _secrets.token_urlsafe(32)
+        scheme = 'https' if _is_secure() else 'http'
+        base_url = f"{scheme}://{request.host}"
+        success_url = f"{base_url}/ops/api/sessions/{sess.id}/split/{split.id}/payment-callback?status=success&token={cb_token}"
+        fail_url = f"{base_url}/ops/api/sessions/{sess.id}/split/{split.id}/payment-callback?status=fail&token={cb_token}"
+        payment_url = hyp.create_payment_url(
+            amount=charge_amount,
+            order_id=f"{order_ref}-S{split.portion_index+1}",
+            description=f'שולחן {table_num} חלק {split.portion_index+1}',
+            success_url=success_url,
+            failure_url=fail_url,
+            customer_name=split.payer_label or f'משלם {split.portion_index+1}',
+        )
+        split.payment_method = 'payment_link'
+        split.payment_callback_token = cb_token
+        db.session.commit()
+        return jsonify({'ok': True, 'payment_url': payment_url, 'message': 'קישור תשלום נוצר'})
+    except Exception as e:
+        logging.error(f"HYP split payment link error for session {session_id}, split {split_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה ביצירת קישור: {str(e)}'})
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/split/<int:split_id>/payment-callback')
+def session_split_payment_callback(session_id, split_id):
+    sess = DineInSession.query.get(session_id)
+    if not sess:
+        return 'Session not found', 404
+    split = DineInPaymentSplit.query.get(split_id)
+    if not split or split.session_id != sess.id:
+        return 'Split not found', 404
+    cb_token = request.args.get('token', '')
+    if not cb_token or not split.payment_callback_token or cb_token != split.payment_callback_token:
+        return 'Invalid callback token', 403
+    if split.payment_status == 'paid':
+        effective_branch = sess.branch_id
+        return redirect(url_for('ops.tables_page', branch=effective_branch))
+    status = request.args.get('status', '')
+    if status == 'success':
+        if sess.pending_void_approvals:
+            try:
+                pending = json.loads(sess.pending_void_approvals)
+                if pending:
+                    logging.warning(f'Split payment callback blocked — {len(pending)} pending void approvals for session {sess.id}')
+                    effective_branch = sess.branch_id
+                    return redirect(url_for('ops.tables_page', branch=effective_branch))
+            except Exception:
+                pass
+        hyp_verified = False
+        expected_amount = float(split.amount + (split.tip_amount or 0))
+        try:
+            from standalone_order_service.hyp_payment import HYPPayment
+            hyp = HYPPayment()
+            if sess.branch_id:
+                hyp._load_credentials(branch=Branch.query.get(sess.branch_id))
+            response_params = dict(request.args)
+            verification = hyp.verify_payment_response(
+                response_params,
+                expected_amount=expected_amount,
+                verify_signature=True
+            )
+            if verification.get('verified'):
+                hyp_verified = True
+                logging.info(f'Split {split.id} session {sess.id}: HYP payment verified (tx={verification.get("transaction_id")})')
+            else:
+                logging.warning(f'Split {split.id} session {sess.id}: HYP verification failed: {verification.get("error_message")}')
+        except Exception as e:
+            logging.error(f'Split {split.id} session {sess.id}: HYP verification error: {e}')
+            hyp_verified = False
+        if not hyp_verified:
+            effective_branch = sess.branch_id
+            return redirect(url_for('ops.tables_page', branch=effective_branch))
+        split.payment_status = 'paid'
+        split.payment_method = 'payment_link'
+        split.paid_at = datetime.utcnow()
+        split.payment_callback_token = None
+        all_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).all()
+        all_paid = all(s.payment_status == 'paid' for s in all_splits)
+        if all_paid:
+            total_tip = sum(s.tip_amount or 0 for s in all_splits)
+            sess.tip_amount = total_tip
+            for order in sess.orders:
+                if order.status != 'cancelled':
+                    order.payment_status = 'paid'
+                    order.payment_method = 'split'
+                    if order.status not in ('delivered', 'pickedup', 'cancelled'):
+                        order.status = 'pickedup'
+                        order.completed_at = datetime.utcnow()
+            sess.status = 'closed'
+            sess.closed_at = datetime.utcnow()
+        db.session.commit()
+    effective_branch = sess.branch_id
+    return redirect(url_for('ops.tables_page', branch=effective_branch))
+
+
+@ops_bp.route('/api/sessions/<int:session_id>/splits', methods=['GET'])
+@require_ops_module('tables')
+def api_session_splits(session_id):
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).order_by(DineInPaymentSplit.portion_index).all()
+    return jsonify({
+        'ok': True,
+        'total': sess.total_amount,
+        'splits': [{'id': s.id, 'index': s.portion_index, 'amount': s.amount,
+                     'label': s.payer_label, 'status': s.payment_status, 'method': s.payment_method,
+                     'tip': s.tip_amount or 0} for s in splits]
+    })
 
 
 @ops_bp.route('/api/sessions/<int:session_id>/move-table', methods=['POST'])

@@ -324,6 +324,15 @@
                 {% elif order.source == 'dine_in' %}
                     <span class="badge-sm" style="background:#9333ea;color:#fff;">{{ 'ישיבה' if (admin_language or 'he') == 'he' else 'Dine-In' }}</span>
                 {% endif %}
+                {% if order.dine_in_session and order.dine_in_session.tip_amount and order.dine_in_session.tip_amount > 0 %}
+                    <span class="badge-sm" style="background:#4caf50;color:#fff;">{{ 'טיפ ₪' if (admin_language or 'he') == 'he' else 'Tip ₪' }}{{ '%.0f' % order.dine_in_session.tip_amount }}</span>
+                {% endif %}
+                {% if order.dine_in_session and order.dine_in_session.cancel_reason %}
+                    <span class="badge-sm" style="background:#ef4444;color:#fff;">{{ order.dine_in_session.cancel_reason }}</span>
+                {% endif %}
+                {% if order.dine_in_session and order.dine_in_session.split_config %}
+                    <span class="badge-sm" style="background:#2196f3;color:#fff;">{{ 'חלוקה' if (admin_language or 'he') == 'he' else 'Split' }}</span>
+                {% endif %}
             </div>
             <div class="order-date">{{ order.created_at|il_time_short }}</div>
         </div>

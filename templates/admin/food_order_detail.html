@@ -119,9 +119,48 @@
                                 <span class="badge bg-warning">{{ 'ממתין' if (admin_language or 'he') == 'he' else 'Pending' }}</span>
                             {% endif %}
                         </td></tr>
+                        {% if order.dine_in_session and order.dine_in_session.tip_amount and order.dine_in_session.tip_amount > 0 %}
+                        <tr><td class="fw-bold">{{ 'טיפ' if (admin_language or 'he') == 'he' else 'Tip' }}</td><td><span class="badge bg-success">₪{{ '%.0f' % order.dine_in_session.tip_amount }}</span></td></tr>
+                        {% endif %}
+                        {% if order.dine_in_session and order.dine_in_session.cash_received %}
+                        <tr><td class="fw-bold">{{ 'סכום שהתקבל' if (admin_language or 'he') == 'he' else 'Cash Received' }}</td><td>₪{{ '%.0f' % order.dine_in_session.cash_received }}</td></tr>
+                        {% endif %}
                     </table>
                 </div>
             </div>
+            {% if order.dine_in_session and order.dine_in_session.cancel_reason %}
+            <div class="card mt-3">
+                <div class="card-header bg-danger bg-opacity-10"><h5 class="mb-0 text-danger"><i class="fas fa-times-circle me-2"></i>{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancellation' }}</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr><td class="fw-bold" style="width:130px">{{ 'סיבה' if (admin_language or 'he') == 'he' else 'Reason' }}</td><td>{{ order.dine_in_session.cancel_reason }}</td></tr>
+                        {% if order.dine_in_session.cancel_note %}
+                        <tr><td class="fw-bold">{{ 'הערה' if (admin_language or 'he') == 'he' else 'Note' }}</td><td>{{ order.dine_in_session.cancel_note }}</td></tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            {% if order.dine_in_session and order.dine_in_session.payment_splits|length > 0 %}
+            <div class="card mt-3">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-divide me-2"></i>{{ 'חלוקת חשבון' if (admin_language or 'he') == 'he' else 'Split Payment' }}</h5></div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead><tr><th>{{ 'משלם' if (admin_language or 'he') == 'he' else 'Payer' }}</th><th>{{ 'סכום' if (admin_language or 'he') == 'he' else 'Amount' }}</th><th>{{ 'אמצעי' if (admin_language or 'he') == 'he' else 'Method' }}</th><th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th></tr></thead>
+                        <tbody>
+                        {% for split in order.dine_in_session.payment_splits %}
+                        <tr>
+                            <td>{{ split.payer_label or ('משלם ' ~ (split.portion_index + 1)) }}</td>
+                            <td>₪{{ '%.0f' % split.amount }}{% if split.tip_amount and split.tip_amount > 0 %} <small class="text-success">(+₪{{ '%.0f' % split.tip_amount }} טיפ)</small>{% endif %}</td>
+                            <td>{{ 'מזומן' if split.payment_method == 'cash' else split.payment_method or '-' }}</td>
+                            <td><span class="badge bg-{{ 'success' if split.payment_status == 'paid' else 'warning' }}">{{ 'שולם' if split.payment_status == 'paid' else 'ממתין' }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 

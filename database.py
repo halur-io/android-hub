@@ -61,6 +61,11 @@ def _run_safe_migrations(db):
         ("dine_in_tables", "width", "ALTER TABLE dine_in_tables ADD COLUMN width FLOAT DEFAULT 100"),
         ("dine_in_tables", "height", "ALTER TABLE dine_in_tables ADD COLUMN height FLOAT DEFAULT 80"),
         ("dine_in_tables", "shape", "ALTER TABLE dine_in_tables ADD COLUMN shape VARCHAR(10) DEFAULT 'rect'"),
+        ("dine_in_sessions", "tip_amount", "ALTER TABLE dine_in_sessions ADD COLUMN tip_amount FLOAT DEFAULT 0"),
+        ("dine_in_sessions", "cash_received", "ALTER TABLE dine_in_sessions ADD COLUMN cash_received FLOAT"),
+        ("dine_in_sessions", "cancel_reason", "ALTER TABLE dine_in_sessions ADD COLUMN cancel_reason VARCHAR(100)"),
+        ("dine_in_sessions", "cancel_note", "ALTER TABLE dine_in_sessions ADD COLUMN cancel_note TEXT"),
+        ("dine_in_sessions", "split_config", "ALTER TABLE dine_in_sessions ADD COLUMN split_config TEXT"),
     ]
     for table, column, sql in migrations:
         try:
@@ -74,6 +79,44 @@ def _run_safe_migrations(db):
         except Exception as e:
             db.session.rollback()
             logging.warning(f"Migration skipped for {table}.{column}: {e}")
+
+    try:
+        result = db.session.execute(text(
+            "SELECT table_name FROM information_schema.tables WHERE table_name='dine_in_payment_splits'"
+        ))
+        if result.fetchone() is None:
+            db.session.execute(text("""
+                CREATE TABLE dine_in_payment_splits (
+                    id SERIAL PRIMARY KEY,
+                    session_id INTEGER NOT NULL REFERENCES dine_in_sessions(id),
+                    portion_index INTEGER NOT NULL,
+                    amount FLOAT NOT NULL,
+                    payment_method VARCHAR(20),
+                    payment_status VARCHAR(20) DEFAULT 'pending',
+                    payer_label VARCHAR(100),
+                    tip_amount FLOAT DEFAULT 0,
+                    cash_received FLOAT,
+                    paid_at TIMESTAMP,
+                    payment_callback_token VARCHAR(64)
+                )
+            """))
+            db.session.commit()
+            logging.info("Migration: created dine_in_payment_splits table")
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"Migration skipped for dine_in_payment_splits: {e}")
+
+    try:
+        result = db.session.execute(text(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='dine_in_payment_splits' AND column_name='payment_callback_token'"
+        ))
+        if result.fetchone() is None:
+            db.session.execute(text("ALTER TABLE dine_in_payment_splits ADD COLUMN payment_callback_token VARCHAR(64)"))
+            db.session.commit()
+            logging.info("Migration: added payment_callback_token to dine_in_payment_splits")
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"Migration skipped for dine_in_payment_splits.payment_callback_token: {e}")
 
     try:
         result = db.session.execute(text(

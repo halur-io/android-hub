@@ -352,6 +352,7 @@
                         <button onclick="reprintKitchen()"><i class="fas fa-print"></i>הדפס</button>
                         <button onclick="payCash()"><i class="fas fa-money-bill-wave"></i>מזומן</button>
                         <button onclick="showPaymentLinkModal()"><i class="fas fa-link"></i>קישור</button>
+                        <button onclick="showSplitModal()"><i class="fas fa-divide"></i>פיצול</button>
                         <button onclick="showDiscountModal()"><i class="fas fa-percent"></i>הנחה</button>
                         <button onclick="showNotesModal()"><i class="fas fa-sticky-note"></i>הערות</button>
                         <button onclick="cancelSession()" style="color:#f44336;"><i class="fas fa-times-circle"></i>ביטול</button>
@@ -426,6 +427,11 @@
     <div class="modal-panel" onclick="event.stopPropagation()">
         <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
         <h4>שליחת קישור תשלום</h4>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">טיפ (אופציונלי)</label>
+            <input type="number" id="paymentLinkTip" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1rem; padding:10px; text-align:center;">
+        </div>
         <input type="tel" id="paymentPhone" class="form-control" placeholder="מספר טלפון" dir="ltr" style="border-radius:10px; font-size:1rem; padding:12px; margin-bottom:12px;">
         <button onclick="sendPaymentLink()" style="width:100%; background:#4caf50; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
             <i class="fas fa-paper-plane me-2"></i> שלח SMS עם קישור תשלום
@@ -496,6 +502,171 @@
         </button>
     </div>
 </div>
+
+<div class="modal-overlay" id="cashCloseOverlay" onclick="closeCashClose()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4><i class="fas fa-money-bill-wave me-2" style="color:#4caf50;"></i>תשלום במזומן</h4>
+        <div style="background:#f8f9fa; border-radius:12px; padding:14px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:.9rem; margin-bottom:6px;">
+                <span>סה"כ לתשלום</span>
+                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="cashTotal">₪0</span>
+            </div>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">טיפ (אופציונלי)</label>
+            <input type="number" id="cashTip" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1rem; padding:10px; text-align:center;" oninput="updateCashChange()">
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">סכום שהתקבל</label>
+            <input type="number" id="cashReceived" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; font-weight:700;" oninput="updateCashChange()">
+        </div>
+        <div id="cashChangeRow" style="display:none; background:#e8f5e9; border-radius:10px; padding:12px; margin-bottom:14px; text-align:center;">
+            <div style="font-size:.8rem; color:#388e3c;">עודף</div>
+            <div style="font-size:1.3rem; font-weight:800; color:#2e7d32;" id="cashChangeAmount">₪0</div>
+        </div>
+        <button onclick="confirmCashClose()" id="cashCloseBtn" style="width:100%; background:#4caf50; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+            <i class="fas fa-check-circle me-2"></i> סגור שולחן
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="cancelOverlay" onclick="closeCancelModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4><i class="fas fa-times-circle me-2" style="color:#f44336;"></i>ביטול ישיבה</h4>
+        <div style="font-size:.8rem; font-weight:600; color:#555; margin-bottom:8px;">סיבת ביטול</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;" id="cancelReasons">
+            <button class="cancel-reason-btn" onclick="selectCancelReason(this,'לקוח עזב')">לקוח עזב</button>
+            <button class="cancel-reason-btn" onclick="selectCancelReason(this,'שולחן שגוי')">שולחן שגוי</button>
+            <button class="cancel-reason-btn" onclick="selectCancelReason(this,'כפול')">כפול</button>
+            <button class="cancel-reason-btn" onclick="selectCancelReason(this,'אחר')">אחר</button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">הערה (אופציונלי)</label>
+            <textarea id="cancelNote" class="form-control" rows="2" style="border-radius:10px; font-size:.85rem;" placeholder="פרטים נוספים..."></textarea>
+        </div>
+        <div id="cancelPinSection" style="display:none; margin-bottom:12px;">
+            <div style="background:#fff3e0; border-radius:10px; padding:10px; margin-bottom:10px; font-size:.8rem; color:#e65100;">
+                <i class="fas fa-exclamation-triangle me-1"></i> פריטים נשלחו למטבח — נדרש PIN מנהל
+            </div>
+            <input type="password" id="cancelManagerPin" class="form-control" placeholder="PIN מנהל" dir="ltr" inputmode="numeric"
+                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; letter-spacing:8px;">
+        </div>
+        <div id="cancelError" style="color:#f44336; font-size:.8rem; text-align:center; margin-bottom:8px; display:none;"></div>
+        <button onclick="confirmCancel()" style="width:100%; background:#f44336; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+            <i class="fas fa-times-circle me-2"></i> בטל ישיבה
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="splitOverlay" onclick="closeSplitModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()" style="max-height:90vh;">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4><i class="fas fa-divide me-2" style="color:#2196f3;"></i>חלוקת חשבון</h4>
+        <div style="background:#f8f9fa; border-radius:12px; padding:14px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:.9rem;">
+                <span>סה"כ</span>
+                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="splitTotal">₪0</span>
+            </div>
+        </div>
+        <div id="splitSetupSection">
+            <div style="display:flex; gap:6px; margin-bottom:14px;">
+                <button class="split-mode-btn active" id="splitModeEqual" onclick="setSplitMode('equal')">חלוקה שווה</button>
+                <button class="split-mode-btn" id="splitModeCustom" onclick="setSplitMode('custom')">סכומים ידניים</button>
+                <button class="split-mode-btn" id="splitModeItems" onclick="setSplitMode('by_items')">לפי פריטים</button>
+            </div>
+            <div id="splitEqualSetup">
+                <label style="font-size:.8rem; font-weight:600; color:#555;">מספר משלמים</label>
+                <div style="display:flex; align-items:center; gap:12px; margin:8px 0 14px;">
+                    <button onclick="adjustSplitCount(-1)" style="width:40px; height:40px; border-radius:50%; border:2px solid #ddd; background:#f5f5f5; font-size:1.2rem; cursor:pointer;">−</button>
+                    <span id="splitCount" style="font-size:1.3rem; font-weight:800; min-width:30px; text-align:center;">2</span>
+                    <button onclick="adjustSplitCount(1)" style="width:40px; height:40px; border-radius:50%; border:2px solid #ddd; background:#f5f5f5; font-size:1.2rem; cursor:pointer;">+</button>
+                    <span style="font-size:.85rem; color:#888;" id="splitPerPerson"></span>
+                </div>
+            </div>
+            <div id="splitCustomSetup" style="display:none;">
+                <div id="splitCustomPortions"></div>
+                <button onclick="addCustomPortion()" style="background:#f0f0f0; border:none; border-radius:8px; padding:8px 14px; font-size:.8rem; cursor:pointer; margin-bottom:10px;">
+                    <i class="fas fa-plus me-1"></i> הוסף משלם
+                </button>
+                <div id="splitCustomRemaining" style="font-size:.8rem; color:#888; margin-bottom:8px;"></div>
+            </div>
+            <div id="splitItemsSetup" style="display:none;">
+                <div id="splitItemsBody"></div>
+                <button onclick="addItemGroup()" style="background:#f0f0f0; border:none; border-radius:8px; padding:8px 14px; font-size:.8rem; cursor:pointer; margin-bottom:10px;">
+                    <i class="fas fa-plus me-1"></i> הוסף קבוצה
+                </button>
+            </div>
+            <button onclick="applySplit()" style="width:100%; background:#2196f3; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+                <i class="fas fa-check me-2"></i> חלק חשבון
+            </button>
+        </div>
+        <div id="splitPortionsSection" style="display:none;">
+            <div id="splitPortionsList"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="splitPayOverlay" onclick="closeSplitPayModal()">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 id="splitPayTitle">תשלום חלק</h4>
+        <div style="background:#f8f9fa; border-radius:12px; padding:14px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:.9rem;">
+                <span>סכום לתשלום</span>
+                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="splitPayAmount">₪0</span>
+            </div>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">טיפ (אופציונלי)</label>
+            <input type="number" id="splitPayTip" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1rem; padding:10px; text-align:center;" oninput="updateSplitPayChange()">
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">סכום שהתקבל (מזומן)</label>
+            <input type="number" id="splitPayCashReceived" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; font-weight:700;" oninput="updateSplitPayChange()">
+        </div>
+        <div id="splitPayChangeRow" style="display:none; background:#e8f5e9; border-radius:10px; padding:12px; margin-bottom:14px; text-align:center;">
+            <div style="font-size:.8rem; color:#388e3c;">עודף</div>
+            <div style="font-size:1.3rem; font-weight:800; color:#2e7d32;" id="splitPayChangeAmount">₪0</div>
+        </div>
+        <input type="hidden" id="splitPaySplitId">
+        <button onclick="confirmSplitPay('cash')" style="width:100%; background:#4caf50; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer; margin-bottom:8px;">
+            <i class="fas fa-money-bill-wave me-2"></i> שלם במזומן
+        </button>
+        <button onclick="splitPaymentLink()" style="width:100%; background:#2196f3; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer; margin-bottom:8px;">
+            <i class="fas fa-link me-2"></i> קישור תשלום
+        </button>
+        <div id="splitPayLinkResult" style="margin-top:8px; text-align:center; font-size:.85rem;"></div>
+    </div>
+</div>
+
+<style>
+.cancel-reason-btn {
+    padding: 8px 14px; border-radius: 20px; border: 2px solid #ddd;
+    background: #fff; font-size: .8rem; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.cancel-reason-btn.selected { border-color: #f44336; background: #ffebee; color: #f44336; }
+.split-mode-btn {
+    flex: 1; padding: 8px 6px; border-radius: 8px; border: 2px solid #ddd;
+    background: #fff; font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .15s; text-align: center;
+}
+.split-mode-btn.active { border-color: #2196f3; background: #e3f2fd; color: #1565c0; }
+.split-portion-card {
+    background: #f8f9fa; border-radius: 10px; padding: 12px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.split-portion-card.paid { background: #e8f5e9; }
+.split-portion-card .portion-label { font-weight: 600; font-size: .85rem; }
+.split-portion-card .portion-amount { font-weight: 800; font-size: .95rem; color: var(--ops-accent,#e94560); }
+.split-portion-card .portion-status { font-size: .72rem; padding: 3px 8px; border-radius: 12px; }
+.split-portion-card .portion-status.pending { background: #fff3e0; color: #e65100; }
+.split-portion-card .portion-status.paid { background: #e8f5e9; color: #2e7d32; }
+</style>
 
 <script>
 var SESSION_ID = {{ din_session.id }};
@@ -1278,17 +1449,53 @@ function printCheck() {
     });
 }
 
+var selectedCancelReason = '';
+var currentSplitMode = 'equal';
+var splitCountVal = 2;
+var customPortions = [];
+var currentSplitPayId = null;
+var currentSplitPayAmount = 0;
+
 function payCash() {
     if (cart.length > 0) { alert('יש פריטים שלא נשלחו — שלח למטבח קודם'); return; }
-    if (!confirm('לסגור שולחן ולסמן תשלום במזומן?')) return;
+    var total = parseFloat(document.getElementById('totalAmount').textContent.replace('₪','').replace(',','')) || 0;
+    document.getElementById('cashTotal').textContent = '₪' + (total % 1 === 0 ? total : total.toFixed(2));
+    document.getElementById('cashTip').value = '';
+    document.getElementById('cashReceived').value = '';
+    document.getElementById('cashChangeRow').style.display = 'none';
+    document.getElementById('cashCloseOverlay').classList.add('show');
+}
+function closeCashClose() { document.getElementById('cashCloseOverlay').classList.remove('show'); }
+
+function updateCashChange() {
+    var total = parseFloat(document.getElementById('cashTotal').textContent.replace('₪','').replace(',','')) || 0;
+    var tip = parseFloat(document.getElementById('cashTip').value) || 0;
+    var received = parseFloat(document.getElementById('cashReceived').value) || 0;
+    var due = total + tip;
+    var change = received - due;
+    if (received > 0) {
+        document.getElementById('cashChangeRow').style.display = 'block';
+        document.getElementById('cashChangeAmount').textContent = '₪' + Math.max(0, change).toFixed(2);
+        document.getElementById('cashChangeAmount').style.color = change >= 0 ? '#2e7d32' : '#f44336';
+    } else {
+        document.getElementById('cashChangeRow').style.display = 'none';
+    }
+}
+
+function confirmCashClose() {
+    var tip = parseFloat(document.getElementById('cashTip').value) || 0;
+    var received = parseFloat(document.getElementById('cashReceived').value) || 0;
+    var total = parseFloat(document.getElementById('cashTotal').textContent.replace('₪','').replace(',','')) || 0;
+    if (!received || received <= 0) { alert('נא להזין סכום שהתקבל'); return; }
+    if (received < total + tip) { alert('סכום שהתקבל נמוך מהסה"כ'); return; }
     fetch('/ops/api/sessions/' + SESSION_ID + '/pay-cash', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tip_amount: tip, cash_received: received})
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.ok) window.location.href = '/ops/tables';
         else if (d.pending_voids) {
-            if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) {
-                approveVoids();
-            }
+            closeCashClose();
+            if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { approveVoids(); }
         }
         else alert(d.error);
     });
@@ -1303,8 +1510,10 @@ function closePaymentLink() { document.getElementById('paymentLinkOverlay').clas
 function sendPaymentLink() {
     var phone = document.getElementById('paymentPhone').value.trim();
     if (!phone) { alert('נא להזין טלפון'); return; }
+    var tip = parseFloat(document.getElementById('paymentLinkTip').value) || 0;
     fetch('/ops/api/sessions/' + SESSION_ID + '/generate-payment-link', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tip_amount: tip})
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (!d.ok) {
             if (d.pending_voids) {
@@ -1374,12 +1583,391 @@ function saveNotes() {
 }
 
 function cancelSession() {
-    if (!confirm('לבטל את כל הישיבה? כל הפריטים יבוטלו.')) return;
+    selectedCancelReason = '';
+    document.getElementById('cancelNote').value = '';
+    document.getElementById('cancelManagerPin') && (document.getElementById('cancelManagerPin').value = '');
+    document.getElementById('cancelPinSection').style.display = 'none';
+    document.getElementById('cancelError').style.display = 'none';
+    document.querySelectorAll('.cancel-reason-btn').forEach(function(b) { b.classList.remove('selected'); });
+    document.getElementById('cancelOverlay').classList.add('show');
+}
+function closeCancelModal() { document.getElementById('cancelOverlay').classList.remove('show'); }
+
+function selectCancelReason(btn, reason) {
+    selectedCancelReason = reason;
+    document.querySelectorAll('.cancel-reason-btn').forEach(function(b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+}
+
+function confirmCancel() {
+    if (!selectedCancelReason) { alert('נא לבחור סיבת ביטול'); return; }
+    var body = {
+        cancel_reason: selectedCancelReason,
+        cancel_note: document.getElementById('cancelNote').value.trim()
+    };
+    var pinEl = document.getElementById('cancelManagerPin');
+    if (pinEl && pinEl.value) body.manager_pin = pinEl.value;
+    document.getElementById('cancelError').style.display = 'none';
     fetch('/ops/api/sessions/' + SESSION_ID + '/cancel', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
     }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.ok) window.location.href = '/ops/tables';
-        else alert(d.error);
+        else if (d.pending_voids) {
+            closeCancelModal();
+            if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { approveVoids(); }
+        } else if (d.require_pin) {
+            document.getElementById('cancelPinSection').style.display = 'block';
+            document.getElementById('cancelError').textContent = d.error;
+            document.getElementById('cancelError').style.display = 'block';
+        } else {
+            document.getElementById('cancelError').textContent = d.error;
+            document.getElementById('cancelError').style.display = 'block';
+        }
+    });
+}
+
+function showSplitModal() {
+    if (cart.length > 0) { alert('יש פריטים שלא נשלחו — שלח למטבח קודם'); return; }
+    var total = parseFloat(document.getElementById('totalAmount').textContent.replace('₪','').replace(',','')) || 0;
+    document.getElementById('splitTotal').textContent = '₪' + (total % 1 === 0 ? total : total.toFixed(2));
+    splitCountVal = 2;
+    currentSplitMode = 'equal';
+    document.getElementById('splitCount').textContent = '2';
+    updateSplitPerPerson();
+    setSplitMode('equal');
+    document.getElementById('splitSetupSection').style.display = 'block';
+    document.getElementById('splitPortionsSection').style.display = 'none';
+    fetch('/ops/api/sessions/' + SESSION_ID + '/splits').then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok && d.splits && d.splits.length > 0) {
+            renderSplitPortions(d.splits);
+            document.getElementById('splitSetupSection').style.display = 'none';
+            document.getElementById('splitPortionsSection').style.display = 'block';
+        }
+    });
+    document.getElementById('splitOverlay').classList.add('show');
+}
+function closeSplitModal() { document.getElementById('splitOverlay').classList.remove('show'); }
+
+function setSplitMode(mode) {
+    currentSplitMode = mode;
+    document.querySelectorAll('.split-mode-btn').forEach(function(b) { b.classList.remove('active'); });
+    var modeIds = {'equal':'splitModeEqual','custom':'splitModeCustom','by_items':'splitModeItems'};
+    document.getElementById(modeIds[mode]).classList.add('active');
+    document.getElementById('splitEqualSetup').style.display = mode === 'equal' ? 'block' : 'none';
+    document.getElementById('splitCustomSetup').style.display = mode === 'custom' ? 'block' : 'none';
+    document.getElementById('splitItemsSetup').style.display = mode === 'by_items' ? 'block' : 'none';
+    if (mode === 'custom') { customPortions = [{amount:'', label:'משלם 1'},{amount:'', label:'משלם 2'}]; renderCustomPortions(); }
+    if (mode === 'by_items') { renderItemGroups(); }
+}
+
+function adjustSplitCount(d) {
+    splitCountVal = Math.max(2, Math.min(20, splitCountVal + d));
+    document.getElementById('splitCount').textContent = splitCountVal;
+    updateSplitPerPerson();
+}
+
+function updateSplitPerPerson() {
+    var total = parseFloat(document.getElementById('splitTotal').textContent.replace('₪','').replace(',','')) || 0;
+    var pp = Math.round(total / splitCountVal);
+    document.getElementById('splitPerPerson').textContent = '₪' + pp + ' לכל אחד';
+}
+
+function addCustomPortion() {
+    customPortions.push({amount:'', label:'משלם ' + (customPortions.length + 1)});
+    renderCustomPortions();
+}
+
+function renderCustomPortions() {
+    var total = parseFloat(document.getElementById('splitTotal').textContent.replace('₪','').replace(',','')) || 0;
+    var h = '';
+    customPortions.forEach(function(p, i) {
+        h += '<div style="display:flex; gap:6px; margin-bottom:6px; align-items:center;">';
+        h += '<input type="text" value="' + p.label + '" onchange="customPortions[' + i + '].label=this.value" style="flex:1; border:1px solid #ddd; border-radius:8px; padding:8px; font-size:.8rem;">';
+        h += '<input type="number" value="' + p.amount + '" placeholder="₪" onchange="customPortions[' + i + '].amount=this.value; updateCustomRemaining()" style="width:80px; border:1px solid #ddd; border-radius:8px; padding:8px; font-size:.85rem; text-align:center;" dir="ltr">';
+        if (i >= 2) h += '<button onclick="customPortions.splice(' + i + ',1); renderCustomPortions()" style="border:none; background:none; color:#f44336; cursor:pointer;"><i class="fas fa-times"></i></button>';
+        h += '</div>';
+    });
+    document.getElementById('splitCustomPortions').innerHTML = h;
+    updateCustomRemaining();
+}
+
+function updateCustomRemaining() {
+    var total = parseFloat(document.getElementById('splitTotal').textContent.replace('₪','').replace(',','')) || 0;
+    var sum = 0;
+    customPortions.forEach(function(p) { sum += parseFloat(p.amount) || 0; });
+    var rem = total - sum;
+    document.getElementById('splitCustomRemaining').textContent = 'נותר: ₪' + (rem % 1 === 0 ? rem : rem.toFixed(2));
+    document.getElementById('splitCustomRemaining').style.color = Math.abs(rem) < 1 ? '#4caf50' : '#f44336';
+}
+
+var itemGroups = [{label:'קבוצה 1', itemIndices:[]},{label:'קבוצה 2', itemIndices:[]}];
+var activeGroupIdx = 0;
+
+function renderItemGroups() {
+    itemGroups = [{label:'קבוצה 1', itemIndices:[]},{label:'קבוצה 2', itemIndices:[]}];
+    activeGroupIdx = 0;
+    renderItemGroupUI();
+}
+
+function renderItemGroupUI() {
+    var total = parseFloat(document.getElementById('splitTotal').textContent.replace('₪','').replace(',','')) || 0;
+    var h = '<p style="font-size:.78rem; color:#888; margin-bottom:6px;">בחר קבוצה, ואז סמן פריטים משמאל</p>';
+    itemGroups.forEach(function(g, gi) {
+        var groupTotal = 0;
+        g.itemIndices.forEach(function(idx) {
+            var item = existingItems[idx];
+            if (item) {
+                var qty = parseInt(item.qty || item.quantity || 1);
+                groupTotal += parseFloat(item.price || item.unit_price || 0) * qty;
+            }
+        });
+        var isActive = gi === activeGroupIdx;
+        h += '<div onclick="activeGroupIdx=' + gi + '; renderItemGroupUI();" style="border:2px solid ' + (isActive ? '#2196f3' : '#ddd') + '; border-radius:10px; padding:10px; margin-bottom:8px; cursor:pointer; background:' + (isActive ? '#e3f2fd' : '#fff') + ';">';
+        h += '<div style="display:flex; justify-content:space-between; align-items:center;">';
+        h += '<input type="text" value="' + g.label + '" onclick="event.stopPropagation()" onchange="itemGroups[' + gi + '].label=this.value" style="border:none; background:transparent; font-weight:600; font-size:.85rem; flex:1;">';
+        h += '<span style="font-weight:700; font-size:.9rem; color:#333;">₪' + (groupTotal % 1 === 0 ? groupTotal : groupTotal.toFixed(2)) + '</span>';
+        if (gi >= 2) h += '<button onclick="event.stopPropagation(); itemGroups.splice(' + gi + ',1); if(activeGroupIdx>=' + gi + ')activeGroupIdx=Math.max(0,activeGroupIdx-1); renderItemGroupUI();" style="border:none; background:none; color:#f44336; cursor:pointer; margin-right:4px;"><i class="fas fa-times"></i></button>';
+        h += '</div>';
+        if (g.itemIndices.length > 0) {
+            h += '<div style="font-size:.75rem; color:#666; margin-top:4px;">';
+            g.itemIndices.forEach(function(idx) {
+                var item = existingItems[idx];
+                if (item) h += (item.name_he || item.item_name_he || '') + ', ';
+            });
+            h = h.replace(/, $/, '');
+            h += '</div>';
+        }
+        h += '</div>';
+    });
+    var assignedSum = 0;
+    itemGroups.forEach(function(g) {
+        g.itemIndices.forEach(function(idx) {
+            var item = existingItems[idx];
+            if (item) {
+                var qty = parseInt(item.qty || item.quantity || 1);
+                assignedSum += parseFloat(item.price || item.unit_price || 0) * qty;
+            }
+        });
+    });
+    var rem = total - assignedSum;
+    h += '<div style="font-size:.78rem; color:' + (Math.abs(rem) < 1 ? '#4caf50' : '#f44336') + '; margin-top:4px;">נותר לחלוקה: ₪' + (rem % 1 === 0 ? rem : rem.toFixed(2)) + '</div>';
+    h += '<div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px;"><div style="font-size:.78rem; font-weight:600; color:#555; margin-bottom:6px;">פריטים:</div>';
+    existingItems.forEach(function(item, idx) {
+        var qty = parseInt(item.qty || item.quantity || 1);
+        var price = parseFloat(item.price || item.unit_price || 0) * qty;
+        var assignedTo = -1;
+        itemGroups.forEach(function(g, gi) {
+            if (g.itemIndices.indexOf(idx) !== -1) assignedTo = gi;
+        });
+        var isAssigned = assignedTo !== -1;
+        var isInActive = assignedTo === activeGroupIdx;
+        h += '<div onclick="toggleItemInGroup(' + idx + ')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-radius:8px; margin-bottom:4px; cursor:pointer; background:' + (isInActive ? '#e3f2fd' : (isAssigned ? '#f5f5f5' : '#fff')) + '; border:1px solid ' + (isInActive ? '#2196f3' : '#eee') + ';">';
+        h += '<div style="display:flex; align-items:center; gap:6px;">';
+        h += '<i class="fas ' + (isInActive ? 'fa-check-square' : 'fa-square') + '" style="color:' + (isInActive ? '#2196f3' : '#ccc') + ';"></i>';
+        h += '<span style="font-size:.8rem;">' + qty + 'x ' + (item.name_he || item.item_name_he || '') + '</span>';
+        h += '</div>';
+        h += '<span style="font-size:.8rem; font-weight:600;">₪' + Math.round(price) + '</span>';
+        if (isAssigned && !isInActive) h += '<span style="font-size:.65rem; color:#888; margin-right:4px;">(' + itemGroups[assignedTo].label + ')</span>';
+        h += '</div>';
+    });
+    h += '</div>';
+    document.getElementById('splitItemsBody').innerHTML = h;
+}
+
+function toggleItemInGroup(itemIdx) {
+    var g = itemGroups[activeGroupIdx];
+    var pos = g.itemIndices.indexOf(itemIdx);
+    if (pos !== -1) {
+        g.itemIndices.splice(pos, 1);
+    } else {
+        itemGroups.forEach(function(grp) {
+            var p = grp.itemIndices.indexOf(itemIdx);
+            if (p !== -1) grp.itemIndices.splice(p, 1);
+        });
+        g.itemIndices.push(itemIdx);
+    }
+    renderItemGroupUI();
+}
+
+function addItemGroup() {
+    itemGroups.push({label:'קבוצה ' + (itemGroups.length + 1), itemIndices:[]});
+    activeGroupIdx = itemGroups.length - 1;
+    renderItemGroupUI();
+}
+
+function applySplit() {
+    var body = {mode: currentSplitMode};
+    if (currentSplitMode === 'equal') {
+        body.num_payers = splitCountVal;
+    } else if (currentSplitMode === 'custom') {
+        body.portions = customPortions.map(function(p) { return {amount: parseFloat(p.amount) || 0, label: p.label}; });
+    } else if (currentSplitMode === 'by_items') {
+        var emptyGroups = itemGroups.filter(function(g) { return g.itemIndices.length === 0; });
+        if (emptyGroups.length > 0) { alert('יש קבוצות ללא פריטים'); return; }
+        var rawTotal = 0;
+        existingItems.forEach(function(item) {
+            var qty = parseInt(item.qty || item.quantity || 1);
+            rawTotal += parseFloat(item.price || item.unit_price || 0) * qty;
+        });
+        var sessionTotal = parseFloat(document.getElementById('splitTotal').textContent.replace('₪','').replace(',','')) || 0;
+        var discountRatio = rawTotal > 0 ? sessionTotal / rawTotal : 1;
+        body.portions = itemGroups.map(function(g) {
+            var groupRaw = 0;
+            g.itemIndices.forEach(function(idx) {
+                var item = existingItems[idx];
+                if (item) {
+                    var qty = parseInt(item.qty || item.quantity || 1);
+                    groupRaw += parseFloat(item.price || item.unit_price || 0) * qty;
+                }
+            });
+            return {amount: Math.round(groupRaw * discountRatio * 100) / 100, label: g.label, item_indices: g.itemIndices};
+        });
+    }
+    fetch('/ops/api/sessions/' + SESSION_ID + '/split-setup', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            renderSplitPortions(d.splits);
+            document.getElementById('splitSetupSection').style.display = 'none';
+            document.getElementById('splitPortionsSection').style.display = 'block';
+        } else { alert(d.error); }
+    });
+}
+
+function escHtml(str) {
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+function renderSplitPortions(splits) {
+    var container = document.getElementById('splitPortionsList');
+    container.innerHTML = '';
+    var header = document.createElement('div');
+    header.style.cssText = 'margin-bottom:10px; font-size:.85rem; font-weight:600; color:#555;';
+    header.textContent = 'חלקי תשלום';
+    container.appendChild(header);
+    var anyPaid = false;
+    splits.forEach(function(s) {
+        var isPaid = s.status === 'paid';
+        if (isPaid) anyPaid = true;
+        var card = document.createElement('div');
+        card.className = 'split-portion-card ' + (isPaid ? 'paid' : '');
+        var labelDiv = document.createElement('div');
+        labelDiv.className = 'portion-label';
+        labelDiv.textContent = s.label || 'משלם ' + (s.index + 1);
+        var amountDiv = document.createElement('div');
+        amountDiv.className = 'portion-amount';
+        amountDiv.textContent = '₪' + (s.amount % 1 === 0 ? s.amount : s.amount.toFixed(2));
+        var leftCol = document.createElement('div');
+        leftCol.appendChild(labelDiv);
+        leftCol.appendChild(amountDiv);
+        var rightCol = document.createElement('div');
+        rightCol.style.cssText = 'display:flex; align-items:center; gap:6px;';
+        var statusSpan = document.createElement('span');
+        statusSpan.className = 'portion-status ' + s.status;
+        statusSpan.textContent = isPaid ? 'שולם' : 'ממתין';
+        rightCol.appendChild(statusSpan);
+        if (!isPaid) {
+            var payBtn = document.createElement('button');
+            payBtn.style.cssText = 'background:#4caf50; color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:.75rem; font-weight:600; cursor:pointer;';
+            payBtn.innerHTML = '<i class="fas fa-money-bill-wave me-1"></i>שלם';
+            (function(sid, amt, lbl) {
+                payBtn.addEventListener('click', function() { openSplitPay(sid, amt, lbl); });
+            })(s.id, s.amount, s.label || '');
+            rightCol.appendChild(payBtn);
+        }
+        card.appendChild(leftCol);
+        card.appendChild(rightCol);
+        container.appendChild(card);
+    });
+    if (!anyPaid) {
+        var resetBtn = document.createElement('button');
+        resetBtn.style.cssText = 'width:100%; background:#f0f0f0; border:none; border-radius:8px; padding:10px; font-size:.8rem; cursor:pointer; margin-top:8px;';
+        resetBtn.innerHTML = '<i class="fas fa-redo me-1"></i>חלוקה מחדש';
+        resetBtn.addEventListener('click', function() {
+            document.getElementById('splitSetupSection').style.display = 'block';
+            document.getElementById('splitPortionsSection').style.display = 'none';
+        });
+        container.appendChild(resetBtn);
+    }
+}
+
+function openSplitPay(splitId, amount, label) {
+    currentSplitPayId = splitId;
+    currentSplitPayAmount = amount;
+    document.getElementById('splitPayTitle').textContent = 'תשלום — ' + (label || 'חלק');
+    document.getElementById('splitPayAmount').textContent = '₪' + (amount % 1 === 0 ? amount : amount.toFixed(2));
+    document.getElementById('splitPayTip').value = '';
+    document.getElementById('splitPayCashReceived').value = '';
+    document.getElementById('splitPayChangeRow').style.display = 'none';
+    document.getElementById('splitPaySplitId').value = splitId;
+    document.getElementById('splitPayOverlay').classList.add('show');
+}
+function closeSplitPayModal() { document.getElementById('splitPayOverlay').classList.remove('show'); }
+
+function updateSplitPayChange() {
+    var amount = currentSplitPayAmount;
+    var tip = parseFloat(document.getElementById('splitPayTip').value) || 0;
+    var received = parseFloat(document.getElementById('splitPayCashReceived').value) || 0;
+    var due = amount + tip;
+    var change = received - due;
+    if (received > 0) {
+        document.getElementById('splitPayChangeRow').style.display = 'block';
+        document.getElementById('splitPayChangeAmount').textContent = '₪' + Math.max(0, change).toFixed(2);
+        document.getElementById('splitPayChangeAmount').style.color = change >= 0 ? '#2e7d32' : '#f44336';
+    } else {
+        document.getElementById('splitPayChangeRow').style.display = 'none';
+    }
+}
+
+function confirmSplitPay(method) {
+    var tip = parseFloat(document.getElementById('splitPayTip').value) || 0;
+    var received = parseFloat(document.getElementById('splitPayCashReceived').value) || 0;
+    if (method === 'cash') {
+        if (!received || received <= 0) { alert('נא להזין סכום שהתקבל'); return; }
+        if (received < currentSplitPayAmount + tip) { alert('סכום שהתקבל נמוך מהסה"כ'); return; }
+    }
+    fetch('/ops/api/sessions/' + SESSION_ID + '/split/' + currentSplitPayId + '/pay', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({payment_method: method, tip_amount: tip, cash_received: received || null})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            closeSplitPayModal();
+            if (d.all_paid) {
+                window.location.href = '/ops/tables';
+            } else {
+                renderSplitPortions(d.splits);
+            }
+        } else {
+            if (d.pending_voids) {
+                if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { closeSplitPayModal(); approveVoids(); }
+            } else { alert(d.error); }
+        }
+    });
+}
+
+function splitPaymentLink() {
+    var tip = parseFloat(document.getElementById('splitPayTip').value) || 0;
+    var resultEl = document.getElementById('splitPayLinkResult');
+    resultEl.innerHTML = '<div style="color:#888;"><i class="fas fa-spinner fa-spin"></i> יוצר קישור...</div>';
+    fetch('/ops/api/sessions/' + SESSION_ID + '/split/' + currentSplitPayId + '/generate-link', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tip_amount: tip})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            resultEl.innerHTML = '<div style="color:#4caf50;"><i class="fas fa-check-circle me-1"></i>' + d.message + '</div>' +
+                '<a href="' + d.payment_url + '" target="_blank" style="display:block; margin-top:6px; color:#2196f3; font-size:.8rem; word-break:break-all;">' + d.payment_url + '</a>';
+        } else {
+            if (d.pending_voids) {
+                closeSplitPayModal();
+                if (confirm(d.error + '\n\nלאשר ביטולים עכשיו?')) { approveVoids(); }
+            } else {
+                resultEl.innerHTML = '<div style="color:#f44336;">' + d.error + '</div>';
+            }
+        }
     });
 }
 

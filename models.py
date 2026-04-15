@@ -3283,12 +3283,18 @@ class DineInSession(db.Model):
     payment_url = db.Column(db.String(500), nullable=True)
     payment_callback_token = db.Column(db.String(64), nullable=True)
     pending_void_approvals = db.Column(db.Text, nullable=True)
+    tip_amount = db.Column(db.Float, default=0)
+    cash_received = db.Column(db.Float, nullable=True)
+    cancel_reason = db.Column(db.String(100), nullable=True)
+    cancel_note = db.Column(db.Text, nullable=True)
+    split_config = db.Column(db.Text, nullable=True)
     opened_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True)
 
     branch = db.relationship('Branch', backref=db.backref('dine_in_sessions', lazy=True))
     waiter = db.relationship('ManagerPIN', backref=db.backref('dine_in_sessions', lazy=True))
     orders = db.relationship('FoodOrder', backref='dine_in_session', lazy=True)
+    payment_splits = db.relationship('DineInPaymentSplit', backref='session', lazy=True, cascade='all, delete-orphan')
 
     @property
     def status_display_he(self):
@@ -3329,3 +3335,21 @@ class DineInSession(db.Model):
 
     def __repr__(self):
         return f'<DineInSession table={self.table_id} status={self.status}>'
+
+
+class DineInPaymentSplit(db.Model):
+    __tablename__ = 'dine_in_payment_splits'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('dine_in_sessions.id'), nullable=False)
+    portion_index = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    payment_method = db.Column(db.String(20), nullable=True)
+    payment_status = db.Column(db.String(20), default='pending')
+    payer_label = db.Column(db.String(100), nullable=True)
+    tip_amount = db.Column(db.Float, default=0)
+    cash_received = db.Column(db.Float, nullable=True)
+    paid_at = db.Column(db.DateTime, nullable=True)
+    payment_callback_token = db.Column(db.String(64), nullable=True)
+
+    def __repr__(self):
+        return f'<DineInPaymentSplit session={self.session_id} portion={self.portion_index} status={self.payment_status}>'

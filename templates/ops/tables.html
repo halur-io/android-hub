@@ -384,6 +384,69 @@
     <div class="move-table-grid" id="moveTableGrid"></div>
 </div>
 
+<div class="modal-overlay" id="cashCloseOverlayQ" onclick="closeCashCloseQ()" style="z-index:1060; display:none; align-items:flex-end; justify-content:center;">
+    <div style="background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:400px; padding:20px; animation:slideUp .3s ease;" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 style="font-weight:700;"><i class="fas fa-money-bill-wave me-2" style="color:#4caf50;"></i>תשלום במזומן</h4>
+        <div style="background:#f8f9fa; border-radius:12px; padding:14px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:.9rem;">
+                <span>סה"כ לתשלום</span>
+                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="qCashTotal">₪0</span>
+            </div>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">טיפ (אופציונלי)</label>
+            <input type="number" id="qCashTip" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1rem; padding:10px; text-align:center;" oninput="updateQCashChange()">
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">סכום שהתקבל</label>
+            <input type="number" id="qCashReceived" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
+                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; font-weight:700;" oninput="updateQCashChange()">
+        </div>
+        <div id="qCashChangeRow" style="display:none; background:#e8f5e9; border-radius:10px; padding:12px; margin-bottom:14px; text-align:center;">
+            <div style="font-size:.8rem; color:#388e3c;">עודף</div>
+            <div style="font-size:1.3rem; font-weight:800; color:#2e7d32;" id="qCashChangeAmount">₪0</div>
+        </div>
+        <button onclick="confirmQCashClose()" style="width:100%; background:#4caf50; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+            <i class="fas fa-check-circle me-2"></i> סגור שולחן
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="cancelOverlayQ" onclick="closeCancelQ()" style="z-index:1060; display:none; align-items:flex-end; justify-content:center;">
+    <div style="background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:400px; padding:20px; animation:slideUp .3s ease;" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 style="font-weight:700;"><i class="fas fa-times-circle me-2" style="color:#f44336;"></i>ביטול ישיבה</h4>
+        <div style="font-size:.8rem; font-weight:600; color:#555; margin-bottom:8px;">סיבת ביטול</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'לקוח עזב')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">לקוח עזב</button>
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'שולחן שגוי')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">שולחן שגוי</button>
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'כפול')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">כפול</button>
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'אחר')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">אחר</button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">הערה (אופציונלי)</label>
+            <textarea id="qCancelNote" class="form-control" rows="2" style="border-radius:10px; font-size:.85rem;" placeholder="פרטים נוספים..."></textarea>
+        </div>
+        <div id="qCancelPinSection" style="display:none; margin-bottom:12px;">
+            <div style="background:#fff3e0; border-radius:10px; padding:10px; margin-bottom:10px; font-size:.8rem; color:#e65100;">
+                <i class="fas fa-exclamation-triangle me-1"></i> פריטים נשלחו למטבח — נדרש PIN מנהל
+            </div>
+            <input type="password" id="qCancelManagerPin" class="form-control" placeholder="PIN מנהל" dir="ltr" inputmode="numeric"
+                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; letter-spacing:8px;">
+        </div>
+        <div id="qCancelError" style="color:#f44336; font-size:.8rem; text-align:center; margin-bottom:8px; display:none;"></div>
+        <button onclick="confirmQCancel()" style="width:100%; background:#f44336; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+            <i class="fas fa-times-circle me-2"></i> בטל ישיבה
+        </button>
+    </div>
+</div>
+
+<style>
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+</style>
+
 <script>
 var currentAreaFilter = '__all__';
 var knownAreas = [];
@@ -676,23 +739,105 @@ function quickPrintCheck(sessionId) {
     }).then(function(r) { return r.json(); }).then(function(d) { alert(d.ok ? d.message : d.error); });
 }
 
+var qCashSessionId = null;
+var qCancelSessionId = null;
+var qSelectedCancelReason = '';
+
 function quickPayCash(sessionId) {
-    if (!confirm('לסגור שולחן ולסמן תשלום במזומן?')) return;
-    fetch('/ops/api/sessions/' + sessionId + '/pay-cash', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+    qCashSessionId = sessionId;
+    fetch('/ops/api/sessions/' + sessionId).then(function(r) { return r.json(); }).then(function(d) {
+        var total = d.ok ? d.session.total : 0;
+        document.getElementById('qCashTotal').textContent = '₪' + (total % 1 === 0 ? total : total.toFixed(2));
+        document.getElementById('qCashTip').value = '';
+        document.getElementById('qCashReceived').value = '';
+        document.getElementById('qCashChangeRow').style.display = 'none';
+        var ov = document.getElementById('cashCloseOverlayQ');
+        ov.style.display = 'flex';
+    });
+}
+function closeCashCloseQ() { document.getElementById('cashCloseOverlayQ').style.display = 'none'; qCashSessionId = null; }
+
+function updateQCashChange() {
+    var total = parseFloat(document.getElementById('qCashTotal').textContent.replace('₪','').replace(',','')) || 0;
+    var tip = parseFloat(document.getElementById('qCashTip').value) || 0;
+    var received = parseFloat(document.getElementById('qCashReceived').value) || 0;
+    var due = total + tip;
+    var change = received - due;
+    if (received > 0) {
+        document.getElementById('qCashChangeRow').style.display = 'block';
+        document.getElementById('qCashChangeAmount').textContent = '₪' + Math.max(0, change).toFixed(2);
+        document.getElementById('qCashChangeAmount').style.color = change >= 0 ? '#2e7d32' : '#f44336';
+    } else {
+        document.getElementById('qCashChangeRow').style.display = 'none';
+    }
+}
+
+function confirmQCashClose() {
+    if (!qCashSessionId) return;
+    var tip = parseFloat(document.getElementById('qCashTip').value) || 0;
+    var received = parseFloat(document.getElementById('qCashReceived').value) || 0;
+    var total = parseFloat(document.getElementById('qCashTotal').textContent.replace('₪','').replace(',','')) || 0;
+    if (!received || received <= 0) { alert('נא להזין סכום שהתקבל'); return; }
+    if (received < total + tip) { alert('סכום שהתקבל נמוך מהסה"כ'); return; }
+    fetch('/ops/api/sessions/' + qCashSessionId + '/pay-cash', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tip_amount: tip, cash_received: received})
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) location.reload();
+        if (d.ok) { closeCashCloseQ(); location.reload(); }
         else alert(d.error);
     });
 }
 
 function quickCancelSession(sessionId) {
-    if (!confirm('לבטל את הישיבה? כל הפריטים יבוטלו.')) return;
-    fetch('/ops/api/sessions/' + sessionId + '/cancel', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+    qCancelSessionId = sessionId;
+    qSelectedCancelReason = '';
+    document.getElementById('qCancelNote').value = '';
+    var pinEl = document.getElementById('qCancelManagerPin');
+    if (pinEl) pinEl.value = '';
+    document.getElementById('qCancelPinSection').style.display = 'none';
+    document.getElementById('qCancelError').style.display = 'none';
+    document.querySelectorAll('.q-cancel-reason-btn').forEach(function(b) {
+        b.style.borderColor = '#ddd'; b.style.background = '#fff'; b.style.color = '';
+    });
+    var ov = document.getElementById('cancelOverlayQ');
+    ov.style.display = 'flex';
+}
+function closeCancelQ() { document.getElementById('cancelOverlayQ').style.display = 'none'; qCancelSessionId = null; }
+
+function selectQCancelReason(btn, reason) {
+    qSelectedCancelReason = reason;
+    document.querySelectorAll('.q-cancel-reason-btn').forEach(function(b) {
+        b.style.borderColor = '#ddd'; b.style.background = '#fff'; b.style.color = '';
+    });
+    btn.style.borderColor = '#f44336'; btn.style.background = '#ffebee'; btn.style.color = '#f44336';
+}
+
+function confirmQCancel() {
+    if (!qCancelSessionId) return;
+    if (!qSelectedCancelReason) { alert('נא לבחור סיבת ביטול'); return; }
+    var body = {
+        cancel_reason: qSelectedCancelReason,
+        cancel_note: document.getElementById('qCancelNote').value.trim()
+    };
+    var pinEl = document.getElementById('qCancelManagerPin');
+    if (pinEl && pinEl.value) body.manager_pin = pinEl.value;
+    document.getElementById('qCancelError').style.display = 'none';
+    fetch('/ops/api/sessions/' + qCancelSessionId + '/cancel', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
     }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) location.reload();
-        else alert(d.error);
+        if (d.ok) { closeCancelQ(); location.reload(); }
+        else if (d.pending_voids) {
+            closeCancelQ();
+            alert(d.error);
+        } else if (d.require_pin) {
+            document.getElementById('qCancelPinSection').style.display = 'block';
+            document.getElementById('qCancelError').textContent = d.error;
+            document.getElementById('qCancelError').style.display = 'block';
+        } else {
+            document.getElementById('qCancelError').textContent = d.error;
+            document.getElementById('qCancelError').style.display = 'block';
+        }
     });
 }
 

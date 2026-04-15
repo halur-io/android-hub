@@ -418,37 +418,38 @@ if (currentView === 'floor' && document.getElementById('floorView')) {
 }
 
 function initFloorTableHandlers() {
-    document.querySelectorAll('.floor-table').forEach(function(card) {
-        card.addEventListener('touchstart', function(e) {
-            longPressTriggered = false;
-            var self = this;
-            longPressTimer = setTimeout(function() {
-                longPressTriggered = true;
-                showQuickActions(self, e.touches[0]);
-            }, 600);
-        }, {passive: true});
-        card.addEventListener('touchend', function(e) {
-            clearTimeout(longPressTimer);
-            if (!longPressTriggered) {
-                var tableId = parseInt(this.dataset.tableId);
-                var sessionId = this.dataset.sessionId;
-                var status = this.dataset.status;
-                handleTableClick(tableId, sessionId, status);
-            }
-        });
-        card.addEventListener('touchmove', function() { clearTimeout(longPressTimer); }, {passive: true});
-        card.addEventListener('click', function(e) {
-            if (e.detail === 0) return;
-            if ('ontouchstart' in window) return;
-            var tableId = parseInt(this.dataset.tableId);
-            var sessionId = this.dataset.sessionId;
-            var status = this.dataset.status;
-            handleTableClick(tableId, sessionId, status);
-        });
-        card.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            showQuickActions(this, e);
-        });
+    var container = document.getElementById('floorView');
+    if (!container) return;
+    container.addEventListener('touchstart', function(e) {
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        longPressTriggered = false;
+        longPressTimer = setTimeout(function() {
+            longPressTriggered = true;
+            showQuickActions(card, e.touches[0]);
+        }, 600);
+    }, {passive: true});
+    container.addEventListener('touchend', function(e) {
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        clearTimeout(longPressTimer);
+        if (!longPressTriggered) {
+            handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+        }
+    });
+    container.addEventListener('touchmove', function() { clearTimeout(longPressTimer); }, {passive: true});
+    container.addEventListener('click', function(e) {
+        if (e.detail === 0) return;
+        if ('ontouchstart' in window) return;
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+    });
+    container.addEventListener('contextmenu', function(e) {
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        e.preventDefault();
+        showQuickActions(card, e);
     });
 }
 initFloorTableHandlers();
@@ -489,39 +490,38 @@ function filterArea(area) {
 }
 
 function initTouchHandlers() {
-    document.querySelectorAll('.table-card').forEach(function(card) {
-        card.addEventListener('touchstart', function(e) {
-            longPressTriggered = false;
-            var self = this;
-            longPressTimer = setTimeout(function() {
-                longPressTriggered = true;
-                showQuickActions(self, e.touches[0]);
-            }, 600);
-        }, {passive: true});
-        card.addEventListener('touchend', function(e) {
-            clearTimeout(longPressTimer);
-            if (!longPressTriggered) {
-                var tableId = parseInt(this.dataset.tableId);
-                var sessionId = this.dataset.sessionId;
-                var status = this.dataset.status;
-                handleTableClick(tableId, sessionId, status);
-            }
-        });
-        card.addEventListener('touchmove', function() {
-            clearTimeout(longPressTimer);
-        }, {passive: true});
-        card.addEventListener('click', function(e) {
-            if (e.detail === 0) return;
-            if ('ontouchstart' in window) return;
-            var tableId = parseInt(this.dataset.tableId);
-            var sessionId = this.dataset.sessionId;
-            var status = this.dataset.status;
-            handleTableClick(tableId, sessionId, status);
-        });
-        card.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            showQuickActions(this, e);
-        });
+    var container = document.getElementById('tablesGrid');
+    if (!container) return;
+    container.addEventListener('touchstart', function(e) {
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        longPressTriggered = false;
+        longPressTimer = setTimeout(function() {
+            longPressTriggered = true;
+            showQuickActions(card, e.touches[0]);
+        }, 600);
+    }, {passive: true});
+    container.addEventListener('touchend', function(e) {
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        clearTimeout(longPressTimer);
+        if (!longPressTriggered) {
+            handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+        }
+    });
+    container.addEventListener('touchmove', function() { clearTimeout(longPressTimer); }, {passive: true});
+    container.addEventListener('click', function(e) {
+        if (e.detail === 0) return;
+        if ('ontouchstart' in window) return;
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+    });
+    container.addEventListener('contextmenu', function(e) {
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        e.preventDefault();
+        showQuickActions(card, e);
     });
 }
 initTouchHandlers();

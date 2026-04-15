@@ -3363,6 +3363,21 @@ class PendingPrintJob(db.Model):
     job_type = db.Column(db.String(30), nullable=False, default='check_print')
     payload_json = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    claimed_at = db.Column(db.DateTime, nullable=True)
+    claimed_by = db.Column(db.String(128), nullable=True)
 
     def __repr__(self):
         return f'<PendingPrintJob {self.job_id} branch={self.branch_id} type={self.job_type}>'
+
+
+class PrintSyncLog(db.Model):
+    __tablename__ = 'print_sync_log'
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, nullable=True)
+    job_id = db.Column(db.String(32), nullable=True)
+    device_id = db.Column(db.String(128), nullable=True)
+    branch_id = db.Column(db.Integer, nullable=True)
+    action = db.Column(db.String(30), nullable=False)
+    status = db.Column(db.String(30), nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

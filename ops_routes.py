@@ -26,6 +26,7 @@ from models import (
     MenuItemOptionGroup, MenuItemOptionChoice,
     DineInTable, DineInSession, DineInPaymentSplit,
     PendingPrintJob,
+    PrintSyncLog,
 )
 from services.order.order_service import DeliveryZone
 
@@ -2919,6 +2920,194 @@ def mark_orders_printed():
             order.bon_printed_at = dt.utcnow()
     db.session.commit()
     return jsonify({'ok': True, 'message': f'{len(order_ids)} orders marked as printed'})
+
+
+CLAIM_TIMEOUT_SECONDS = 120
+
+
+@ops_bp.route('/api/print-sync', methods=['POST'])
+def print_sync():
+    if not _verify_print_api_key():
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    data = request.get_json(force=True) if request.content_length else {}
+    branch_id = data.get('branch_id')
+    device_id = data.get('device_id', 'unknown')
+
+    ack_order_ids = data.get('ack_order_ids', [])
+    ack_job_ids = data.get('ack_job_ids', [])
+    failed_order_ids = data.get('failed_order_ids', [])
+    failed_job_ids = data.get('failed_job_ids', [])
+
+    if not branch_id:
+        return jsonify({'ok': False, 'error': 'missing branch_id'}), 400
+
+    now = datetime.utcnow()
+    acked_orders = 0
+    acked_jobs = 0
+
+    for oid in ack_order_ids:
+        order = FoodOrder.query.get(oid)
+        if order and order.branch_id == branch_id:
+            order.bon_printed = True
+            order.bon_printed_at = now
+            order.bon_acked_at = now
+            order.bon_acked_device_id = device_id
+            acked_orders += 1
+            try:
+                db.session.add(PrintSyncLog(
+                    order_id=oid, device_id=device_id, branch_id=branch_id,
+                    action='ack_order', status='success'))
+            except Exception:
+                pass
+
+    for jid in ack_job_ids:
+        _ack_check_print(branch_id, jid)
+        acked_jobs += 1
+        try:
+            db.session.add(PrintSyncLog(
+                job_id=jid, device_id=device_id, branch_id=branch_id,
+                action='ack_job', status='success'))
+        except Exception:
+            pass
+
+    for oid in failed_order_ids:
+        order = FoodOrder.query.get(oid)
+        if order and order.branch_id == branch_id:
+            order.bon_print_attempts = (order.bon_print_attempts or 0) + 1
+            order.bon_print_error = f'Print failed on device {device_id}'
+            try:
+                db.session.add(PrintSyncLog(
+                    order_id=oid, device_id=device_id, branch_id=branch_id,
+                    action='fail_order', status='failed'))
+            except Exception:
+                pass
+
+    for jid in failed_job_ids:
+        row = PendingPrintJob.query.filter_by(branch_id=branch_id, job_id=jid).first()
+        if row:
+            row.claimed_at = None
+            row.claimed_by = None
+        try:
+            db.session.add(PrintSyncLog(
+                job_id=jid, device_id=device_id, branch_id=branch_id,
+                action='fail_job', status='failed'))
+        except Exception:
+            pass
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    claim_cutoff = now - timedelta(seconds=CLAIM_TIMEOUT_SECONDS)
+
+    query = FoodOrder.query.filter(
+        FoodOrder.bon_printed == False,
+        FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']),
+        FoodOrder.branch_id == branch_id,
+    )
+    orders = query.order_by(FoodOrder.created_at.asc()).all()
+
+    result = []
+    claimed_order_ids = []
+    for o in orders:
+        items = json.loads(o.items_json) if o.items_json else []
+        by_station = {}
+        for item in items:
+            menu_item_id = item.get('menu_item_id') or item.get('item_id')
+            st = 'כללי'
+            if menu_item_id:
+                mi = MenuItem.query.get(menu_item_id)
+                if mi:
+                    if mi.print_station:
+                        st = mi.print_station
+                    if o.branch_id:
+                        bmi = BranchMenuItem.query.filter_by(branch_id=o.branch_id, menu_item_id=menu_item_id).first()
+                        if bmi and bmi.print_station:
+                            st = bmi.print_station
+                    if mi.print_name:
+                        item['print_name'] = mi.print_name
+            if st not in by_station:
+                by_station[st] = []
+            by_station[st].append(item)
+
+        print_options = {}
+        if o.bon_print_options:
+            try:
+                print_options = json.loads(o.bon_print_options)
+            except Exception:
+                pass
+
+        p_checker = print_options.get('checker_copies', 2)
+        p_payment = print_options.get('payment_copies', 1)
+        p_station = print_options.get('station_bons', True)
+        print_jobs = _build_print_jobs(o, items, by_station, p_checker, p_payment, p_station)
+
+        result.append({
+            'id': o.id,
+            'order_number': o.order_number,
+            'order_type': o.order_type,
+            'status': o.status,
+            'branch_id': o.branch_id,
+            'customer_name': o.customer_name or '',
+            'customer_phone': o.customer_phone or '',
+            'delivery_address': o.delivery_address or '',
+            'delivery_city': o.delivery_city or '',
+            'delivery_notes': o.delivery_notes or '',
+            'customer_notes': o.customer_notes or '',
+            'subtotal': o.subtotal or 0,
+            'delivery_fee': o.delivery_fee or 0,
+            'discount_amount': o.discount_amount or 0,
+            'total_amount': o.total_amount or 0,
+            'payment_method': o.payment_method or '',
+            'coupon_code': o.coupon_code or '',
+            'created_at': _to_il(o.created_at) if o.created_at else '',
+            'items': items,
+            'items_by_station': by_station,
+            'print_options': print_options,
+            'print_jobs': print_jobs,
+        })
+        claimed_order_ids.append(o.id)
+
+    check_prints = []
+    try:
+        rows = PendingPrintJob.query.filter(
+            PendingPrintJob.branch_id == branch_id,
+            db.or_(
+                PendingPrintJob.claimed_at.is_(None),
+                PendingPrintJob.claimed_at < claim_cutoff,
+            )
+        ).order_by(PendingPrintJob.created_at.asc()).all()
+        for r in rows:
+            try:
+                payload = json.loads(r.payload_json)
+                check_prints.append(payload)
+                r.claimed_at = now
+                r.claimed_by = device_id
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    try:
+        db.session.add(PrintSyncLog(
+            device_id=device_id, branch_id=branch_id,
+            action='sync', status='ok',
+            error_message=f'orders={len(result)},jobs={len(check_prints)},acked_o={acked_orders},acked_j={acked_jobs}'
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    return jsonify({
+        'ok': True,
+        'orders': result,
+        'check_prints': check_prints,
+        'acked_orders': acked_orders,
+        'acked_jobs': acked_jobs,
+        'server_time': now.isoformat() + 'Z',
+    })
 
 
 @ops_bp.route('/api/branch/<int:branch_id>/printers', methods=['GET'])

@@ -3353,3 +3353,16 @@ class DineInPaymentSplit(db.Model):
 
     def __repr__(self):
         return f'<DineInPaymentSplit session={self.session_id} portion={self.portion_index} status={self.payment_status}>'
+
+
+class PendingPrintJob(db.Model):
+    __tablename__ = 'pending_print_jobs'
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    branch_id = db.Column(db.Integer, nullable=False, index=True)
+    job_type = db.Column(db.String(30), nullable=False, default='check_print')
+    payload_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<PendingPrintJob {self.job_id} branch={self.branch_id} type={self.job_type}>'

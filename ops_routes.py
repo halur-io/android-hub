@@ -25,6 +25,7 @@ from models import (
     Printer, PrinterStation, PrintStation, TimeLog, PrintDevice, ApiKey,
     MenuItemOptionGroup, MenuItemOptionChoice,
     DineInTable, DineInSession, DineInPaymentSplit,
+    PendingPrintJob,
 )
 from services.order.order_service import DeliveryZone
 
@@ -2913,35 +2914,10 @@ def send_test_print_job():
 
     print_jobs = _build_print_jobs(fake, items, by_station, checker_copies=1, payment_copies=1, station_bons=True)
 
-    order_event = {
-        'type': 'new_print_job',
-        'print_job_id': secrets.token_hex(8),
-        'id': fake.id,
-        'order_number': fake.order_number,
-        'order_type': fake.order_type,
-        'branch_id': branch_id,
-        'status': fake.status,
-        'customer_name': fake.customer_name,
-        'customer_phone': fake.customer_phone,
-        'delivery_address': '',
-        'delivery_city': '',
-        'delivery_notes': '',
-        'customer_notes': fake.customer_notes,
-        'subtotal': fake.subtotal,
-        'delivery_fee': 0,
-        'discount_amount': 0,
-        'total_amount': fake.total_amount,
-        'payment_method': fake.payment_method,
-        'coupon_code': '',
-        'created_at': _to_il(fake.created_at),
-        'items': items,
-        'items_by_station': by_station,
-        'checker_copies': 1,
-        'payment_copies': 1,
-        'station_bons': True,
-        'print_jobs': print_jobs,
-    }
-    _notify_sse_order_event(order_event)
+    for pj in print_jobs:
+        pj['type'] = 'print_order'
+        pj['branch_id'] = branch_id
+        _queue_check_print(branch_id, pj)
 
     return jsonify({
         'ok': True,
@@ -3275,28 +3251,46 @@ def delete_order(order_id):
 _sse_subscribers = []
 _sse_lock = threading.Lock()
 
-_pending_check_prints = {}
-_check_print_lock = threading.Lock()
-
 def _queue_check_print(branch_id, job):
     import secrets as _secrets
     job_id = _secrets.token_hex(8)
     job['job_id'] = job_id
-    with _check_print_lock:
-        if branch_id not in _pending_check_prints:
-            _pending_check_prints[branch_id] = []
-        _pending_check_prints[branch_id].append(job)
+    job['branch_id'] = branch_id
+    try:
+        pj = PendingPrintJob(
+            job_id=job_id,
+            branch_id=branch_id,
+            job_type=job.get('type', 'check_print'),
+            payload_json=json.dumps(job),
+        )
+        db.session.add(pj)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     _notify_sse_order_event(job)
     return job_id
 
 def _get_pending_check_prints(branch_id):
-    with _check_print_lock:
-        return list(_pending_check_prints.get(branch_id, []))
+    try:
+        rows = PendingPrintJob.query.filter_by(branch_id=branch_id).order_by(PendingPrintJob.created_at.asc()).all()
+        result = []
+        for r in rows:
+            try:
+                result.append(json.loads(r.payload_json))
+            except Exception:
+                pass
+        return result
+    except Exception:
+        return []
 
 def _ack_check_print(branch_id, job_id):
-    with _check_print_lock:
-        jobs = _pending_check_prints.get(branch_id, [])
-        _pending_check_prints[branch_id] = [j for j in jobs if j.get('job_id') != job_id]
+    try:
+        row = PendingPrintJob.query.filter_by(branch_id=branch_id, job_id=job_id).first()
+        if row:
+            db.session.delete(row)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 def _notify_sse_new_order(order_data):
     _notify_sse_order_event(order_data)

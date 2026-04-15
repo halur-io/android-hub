@@ -28,12 +28,12 @@
         display: flex; align-items: center; gap: 6px; padding: 3px 12px;
         background: #fff3e0; font-size: .72rem; color: #e65100; flex-shrink: 0;
     }
-    .din-main { flex: 1; display: flex; overflow: hidden; }
+    .din-main { flex: 1; display: flex; overflow: hidden; direction: ltr; }
 
     .din-order-panel {
-        width: 340px; display: flex; flex-direction: column;
+        flex: 1; display: flex; flex-direction: column;
         background: var(--ops-surface, #fff); overflow: hidden;
-        border-left: 1px solid #eee;
+        border-right: 1px solid #eee; direction: rtl;
     }
     .order-panel-header {
         padding: 8px 12px; border-bottom: 1px solid #eee;
@@ -106,7 +106,8 @@
     .pending-voids-bar:hover { background: #ffe0b2; }
 
     .din-menu-panel {
-        flex: 1; display: flex; overflow: hidden;
+        width: 340px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;
+        border-left: 1px solid #eee; direction: rtl;
     }
     .din-menu-content {
         flex: 1; display: flex; flex-direction: column; overflow: hidden;
@@ -125,14 +126,13 @@
         -webkit-overflow-scrolling: touch;
     }
     .din-item-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 8px;
+        display: flex; flex-direction: column; gap: 4px;
     }
     .din-item-card {
-        background: #fff; border: 1px solid #eee; border-radius: 10px;
-        padding: 10px; cursor: pointer; transition: all .15s;
+        background: #fff; border: 1px solid #eee; border-radius: 8px;
+        padding: 8px 10px; cursor: pointer; transition: all .15s;
         text-align: right; position: relative;
+        display: flex; align-items: center; gap: 8px;
     }
     .din-item-card:active { transform: scale(0.97); }
     .din-item-card.in-cart {
@@ -140,14 +140,14 @@
         box-shadow: 0 0 0 1px var(--ops-accent, #e94560);
     }
     .din-item-card.drag-source { opacity: .4; }
-    .din-item-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; line-height: 1.2; }
-    .din-item-price { font-size: 12px; font-weight: 800; color: var(--ops-accent, #e94560); }
-    .din-item-desc { font-size: 10px; color: #999; margin-top: 1px; line-height: 1.2; max-height: 24px; overflow: hidden; }
+    .din-item-info { flex: 1; min-width: 0; }
+    .din-item-name { font-size: 13px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .din-item-price { font-size: 12px; font-weight: 800; color: var(--ops-accent, #e94560); flex-shrink: 0; }
+    .din-item-desc { display: none; }
     .din-item-badge {
-        position: absolute; top: -5px; left: -5px;
         background: var(--ops-accent, #e94560); color: #fff;
         width: 20px; height: 20px; border-radius: 50%;
-        font-size: 11px; font-weight: 800;
+        font-size: 11px; font-weight: 800; flex-shrink: 0;
         display: flex; align-items: center; justify-content: center;
     }
     .din-deal-card {
@@ -163,26 +163,26 @@
     .din-deal-card .din-deal-orig { font-size: 12px; color: #d97706; text-decoration: line-through; }
 
     .din-cat-strip {
-        width: 72px; flex-shrink: 0; overflow-y: auto;
-        background: #fafafa; border-right: 1px solid #eee;
+        flex-shrink: 0; overflow-x: auto; overflow-y: hidden;
+        background: #fafafa; border-bottom: 1px solid #eee;
         -webkit-overflow-scrolling: touch;
-        display: flex; flex-direction: column;
+        display: flex; flex-direction: row;
     }
     .din-cat-strip::-webkit-scrollbar { display: none; }
     .cat-strip-item {
-        padding: 10px 4px; text-align: center; cursor: pointer;
-        font-size: 10px; font-weight: 700; color: #888;
-        border-right: 3px solid transparent; transition: all .15s;
-        word-break: break-word; line-height: 1.2;
+        padding: 8px 12px; text-align: center; cursor: pointer;
+        font-size: 11px; font-weight: 700; color: #888;
+        border-bottom: 3px solid transparent; transition: all .15s;
+        white-space: nowrap; line-height: 1.2; flex-shrink: 0;
     }
     .cat-strip-item.active {
         color: var(--ops-accent, #e94560);
-        border-right-color: var(--ops-accent, #e94560);
+        border-bottom-color: var(--ops-accent, #e94560);
         background: rgba(233, 69, 96, 0.05);
     }
     .cat-strip-item.deals-cat { color: #f59e0b; }
-    .cat-strip-item.deals-cat.active { color: #f59e0b; border-right-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
-    .cat-strip-item i { display: block; font-size: 16px; margin-bottom: 2px; }
+    .cat-strip-item.deals-cat.active { color: #f59e0b; border-bottom-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
+    .cat-strip-item i { display: inline; font-size: 13px; margin-left: 3px; }
 
     .drop-zone-active {
         background: rgba(233, 69, 96, 0.08) !important;
@@ -277,41 +277,20 @@
     .opt-choice .choice-price { font-size: .78rem; color: #888; }
 
     @media (max-width: 1024px) {
-        .din-order-panel { width: 280px; }
+        .din-menu-panel { width: 280px; }
     }
 
     @media (max-width: 768px) {
-        .din-main { flex-direction: column-reverse; }
+        .din-main { flex-direction: column; direction: rtl; }
         .din-menu-panel {
-            flex: 1; flex-direction: column-reverse !important; min-height: 0;
+            width: 100% !important; height: auto; max-height: 45vh;
+            border-left: none !important; border-bottom: 2px solid #eee;
         }
-        .din-cat-strip {
-            width: 100% !important; height: auto !important;
-            flex-direction: row !important; flex-shrink: 0 !important;
-            overflow-x: auto !important; overflow-y: hidden !important;
-            border-right: none !important; border-bottom: 2px solid #eee;
-            -webkit-overflow-scrolling: touch;
-        }
-        .cat-strip-item {
-            border-right: none !important; border-bottom: 3px solid transparent;
-            white-space: nowrap !important; padding: 8px 14px; min-width: auto;
-            word-break: normal !important; font-size: 12px;
-            flex-shrink: 0;
-        }
-        .cat-strip-item.active {
-            border-bottom-color: var(--ops-accent, #e94560) !important;
-            border-right-color: transparent !important;
-        }
-        .cat-strip-item.deals-cat.active {
-            border-bottom-color: #f59e0b !important;
-            border-right-color: transparent !important;
+        .din-order-panel {
+            flex: 1; border-right: none !important;
+            border-top: none;
         }
         .din-menu-content { flex: 1; min-height: 0; }
-        .din-item-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-        .din-order-panel {
-            width: 100% !important; max-height: 40vh; border-left: none !important;
-            border-top: 2px solid #eee; flex-shrink: 0;
-        }
         .order-footer { padding: 6px 8px; }
         .btn-kitchen { padding: 8px; font-size: .8rem; }
         .action-icons { flex-wrap: wrap; }
@@ -382,13 +361,13 @@
         </div>
 
         <div class="din-menu-panel">
+            <div class="din-cat-strip" id="dinCatStrip"></div>
             <div class="din-menu-content">
                 <div class="din-search-bar">
                     <input type="text" class="din-search-input" id="dinSearch" placeholder="חיפוש פריט..." oninput="filterItems()">
                 </div>
                 <div class="din-item-scroll" id="dinMenuPanel"></div>
             </div>
-            <div class="din-cat-strip" id="dinCatStrip"></div>
         </div>
     </div>
 </div>
@@ -613,12 +592,10 @@ function renderMenu() {
         h += '<div class="din-item-grid">';
         items.forEach(function(item) {
             var inCartQty = getCartQty(item.id);
-            var badgeHtml = inCartQty > 0 ? '<div class="din-item-badge">'+inCartQty+'</div>' : '';
             h += '<div class="din-item-card'+(inCartQty > 0 ? ' in-cart' : '')+'" onclick="openItem('+item.id+')" draggable="true" data-item-id="'+item.id+'">';
-            h += badgeHtml;
-            h += '<div class="din-item-name">'+item.name_he+'</div>';
+            if (inCartQty > 0) h += '<div class="din-item-badge">'+inCartQty+'</div>';
+            h += '<div class="din-item-info"><div class="din-item-name">'+item.name_he+'</div></div>';
             h += '<div class="din-item-price">₪'+item.price.toFixed(0)+'</div>';
-            if (item.description_he) h += '<div class="din-item-desc">'+item.description_he+'</div>';
             h += '</div>';
         });
         h += '</div>';
@@ -646,7 +623,18 @@ function initDragDrop() {
         e.preventDefault();
         dropZone.classList.remove('drop-zone-active');
         var itemId = parseInt(e.dataTransfer.getData('text/plain'));
-        if (itemId) openItem(itemId);
+        if (!itemId) return;
+        var item = null;
+        MENU_DATA.forEach(function(cat) {
+            cat.items.forEach(function(it) { if (it.id === itemId) item = it; });
+        });
+        if (!item) return;
+        cart.push({
+            id: item.id, name_he: item.name_he, name_en: item.name_en || '',
+            price: item.price, qty: 1, options: [], notes: ''
+        });
+        renderSidebar();
+        renderMenu();
     });
 }
 

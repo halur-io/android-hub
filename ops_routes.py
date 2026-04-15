@@ -2192,8 +2192,34 @@ class DirectPrinter:
         self.codepage_num = codepage_num
         self.buf = bytearray()
 
+    @staticmethod
+    def _reverse_rtl(text):
+        parts = []
+        current = []
+        is_heb = False
+        for ch in text:
+            ch_heb = '\u0590' <= ch <= '\u05FF'
+            if current and ch_heb != is_heb:
+                parts.append((''.join(current), is_heb))
+                current = []
+            current.append(ch)
+            is_heb = ch_heb
+        if current:
+            parts.append((''.join(current), is_heb))
+        has_hebrew = any(h for _, h in parts)
+        if not has_hebrew:
+            return text
+        result = []
+        for segment, is_h in reversed(parts):
+            if is_h:
+                result.append(segment[::-1])
+            else:
+                result.append(segment)
+        return ''.join(result)
+
     def _add(self, data):
         if isinstance(data, str):
+            data = self._reverse_rtl(data)
             self.buf.extend(data.encode(self.encoding, errors='replace'))
         else:
             self.buf.extend(data)
@@ -2419,40 +2445,70 @@ def _get_printer_routing(branch_id):
     return default_printer, station_map, printers
 
 
+def _printer_obj_from_dict(pd):
+    if not pd:
+        return None
+    ip_parts = (pd.get('ip_address') or '').split(':')
+    ip = ip_parts[0]
+    port = int(ip_parts[1]) if len(ip_parts) > 1 else (pd.get('port') or 9100)
+    return DirectPrinter(
+        ip=ip, port=port,
+        encoding=pd.get('encoding') or 'cp862',
+        codepage_num=pd.get('codepage_num') or 36,
+    )
+
+
 def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, station_bons):
+    import base64
     default_printer, station_map, printers = _get_printer_routing(order.branch_id or 0)
     fallback = default_printer or (printers[0].to_dict() if printers else None)
 
     jobs = []
 
     for _ in range(checker_copies):
-        jobs.append({
-            'bon_type': 'checker',
-            'printer': fallback,
-            'order_id': order.id,
-            'order_number': order.order_number,
-            'items': items,
-        })
+        p = _printer_obj_from_dict(fallback)
+        if p:
+            _build_checker_bon(p, order)
+            ip_parts = (fallback.get('ip_address') or '').split(':')
+            jobs.append({
+                'bon_type': 'checker',
+                'printer_ip': ip_parts[0],
+                'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (fallback.get('port') or 9100),
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
+            })
 
     for _ in range(payment_copies):
-        jobs.append({
-            'bon_type': 'payment',
-            'printer': fallback,
-            'order_id': order.id,
-            'order_number': order.order_number,
-        })
+        p = _printer_obj_from_dict(fallback)
+        if p:
+            _build_payment_bon(p, order)
+            ip_parts = (fallback.get('ip_address') or '').split(':')
+            jobs.append({
+                'bon_type': 'payment',
+                'printer_ip': ip_parts[0],
+                'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (fallback.get('port') or 9100),
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
+            })
 
     if station_bons and by_station:
         for st_name, st_items in by_station.items():
             target = station_map.get(st_name, fallback)
-            jobs.append({
-                'bon_type': 'station',
-                'station_name': st_name,
-                'printer': target,
-                'order_id': order.id,
-                'order_number': order.order_number,
-                'items': st_items,
-            })
+            p = _printer_obj_from_dict(target)
+            if p:
+                _build_station_bon(p, order, st_name, st_items)
+                ip_parts = (target.get('ip_address') or '').split(':')
+                jobs.append({
+                    'bon_type': 'station',
+                    'station_name': st_name,
+                    'printer_ip': ip_parts[0],
+                    'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (target.get('port') or 9100),
+                    'order_id': order.id,
+                    'order_number': order.order_number,
+                    'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
+                })
 
     return jobs
 

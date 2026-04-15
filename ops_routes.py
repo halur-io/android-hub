@@ -4868,35 +4868,32 @@ def api_session_print_check(session_id):
         except Exception as e:
             logging.warning(f"Could not generate payment URL for check print: {e}")
     try:
-        printers = Printer.query.filter_by(branch_id=effective_branch).all()
+        printers = Printer.query.filter_by(branch_id=effective_branch, is_active=True).all()
         if not printers:
             return jsonify({'ok': False, 'error': 'לא נמצאה מדפסת לסניף'})
-        printer = printers[0]
+        default_printer = next((p for p in printers if p.is_default), printers[0])
         table_num = sess.table.table_number if sess.table else '?'
         all_items = []
         for order in sess.orders:
             if order.status != 'cancelled':
                 for item in (order.get_items() or []):
                     all_items.append(item)
-        check_data = _build_dine_in_check(
-            printer, table_num, all_items,
-            sess.subtotal_before_discount,
-            sess.discount_type, sess.discount_value,
-            total, sess.payment_url
-        )
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            ip_parts = printer.ip_address.split(':')
-            ip = ip_parts[0]
-            port = int(ip_parts[1]) if len(ip_parts) > 1 else 9100
-            sock.connect((ip, port))
-            sock.sendall(bytes(check_data))
-            sock.close()
-            return jsonify({'ok': True, 'message': 'חשבון הודפס'})
-        except Exception as e:
-            logging.warning(f"Direct print failed for session {session_id}: {e}")
-            return jsonify({'ok': False, 'error': f'לא ניתן להתחבר למדפסת: {str(e)}'})
+
+        check_job = {
+            'type': 'print_check',
+            'session_id': sess.id,
+            'table_number': table_num,
+            'branch_id': effective_branch,
+            'printer': default_printer.to_dict(),
+            'items': all_items,
+            'subtotal': sess.subtotal_before_discount,
+            'discount_type': sess.discount_type or '',
+            'discount_value': sess.discount_value or 0,
+            'total': total,
+            'payment_url': sess.payment_url or '',
+        }
+        _notify_sse_order_event(check_job)
+        return jsonify({'ok': True, 'message': 'חשבון נשלח למדפסת'})
     except Exception as e:
         logging.error(f"Check print error for session {session_id}: {e}")
         return jsonify({'ok': False, 'error': f'שגיאה בהדפסה: {str(e)}'})

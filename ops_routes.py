@@ -1699,6 +1699,16 @@ def create_manual_order():
                 oi.options_json = json.dumps(item['options'], ensure_ascii=False)
         db.session.add(oi)
     db.session.commit()
+    try:
+        _queue_print_for_app(order)
+        order.bon_printed = True
+        order.bon_printed_at = dt.utcnow()
+        db.session.commit()
+        import logging
+        logging.info(f'Auto-queued print for ops order #{order.order_number}')
+    except Exception as e:
+        import logging
+        logging.error(f'Auto-print queue failed for ops order #{order.order_number}: {e}')
     return jsonify({
         'ok': True,
         'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',

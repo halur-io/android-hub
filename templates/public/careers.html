@@ -330,7 +330,7 @@
                 
                 {% if position.description_he or position.description_en %}
                 <div class="position-description">
-                    {{ (position.description_he if language == 'he' else position.description_en) | safe }}
+                    {{ (position.description_he if language == 'he' else position.description_en) | sanitize_html | safe }}
                 </div>
                 {% endif %}
                 
@@ -338,7 +338,7 @@
                 <div class="position-requirements">
                     <h4>{{ 'דרישות התפקיד:' if language == 'he' else 'Requirements:' }}</h4>
                     <div dir="{{ 'rtl' if language == 'he' else 'ltr' }}">
-                        {{ (position.requirements_he if language == 'he' else position.requirements_en) | safe }}
+                        {{ (position.requirements_he if language == 'he' else position.requirements_en) | sanitize_html | safe }}
                     </div>
                 </div>
                 {% endif %}

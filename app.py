@@ -331,7 +331,7 @@ try:
         clear_cache=None,
     )
     app.register_blueprint(kds_bp)
-    csrf.exempt(kds_bp)
+    csrf.exempt(kds_bp)  # Flask-WTF requires blueprint-level exempt; origin validation enforced via before_request in kds_routes.py
 
     logging.info("Standalone order service registered: /order and /order-dashboard")
 except Exception as e:
@@ -342,7 +342,7 @@ except Exception as e:
 try:
     from ops_routes import ops_bp
     app.register_blueprint(ops_bp)
-    csrf.exempt(ops_bp)
+    csrf.exempt(ops_bp)  # Flask-WTF requires blueprint-level exempt; origin validation enforced via before_request in ops_routes.py
     logging.info("Ops dashboard registered: /ops")
 except Exception as e:
     logging.error(f"Error registering ops blueprint: {e}")

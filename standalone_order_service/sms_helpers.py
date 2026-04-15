@@ -79,18 +79,18 @@ def create_sms4free_sender(
                     result = resp.json()
                     status = result.get('status', -1)
                     if status == 0 or status == 1:
-                        logger.info(f"[SMS4FREE] SMS sent to {cleaned}")
+                        logger.info("[SMS4FREE] SMS sent successfully")
                         return True
-                    logger.warning(f"[SMS4FREE] API returned status {status}: {result}")
+                    logger.warning(f"[SMS4FREE] API returned status {status}")
                     return False
                 except Exception:
                     if '1' in resp.text or 'ok' in resp.text.lower():
-                        logger.info(f"[SMS4FREE] SMS sent to {cleaned}")
+                        logger.info("[SMS4FREE] SMS sent successfully")
                         return True
-            logger.warning(f"[SMS4FREE] HTTP {resp.status_code}: {resp.text[:200]}")
+            logger.warning(f"[SMS4FREE] HTTP {resp.status_code}")
             return False
         except Exception as e:
-            logger.error(f"[SMS4FREE] SMS to {to_phone} failed: {e}")
+            logger.error(f"[SMS4FREE] SMS send failed: {e}")
             return False
     return send
 

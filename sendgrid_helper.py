@@ -1,6 +1,7 @@
 import os
 import requests
 import logging
+from markupsafe import escape as html_escape
 
 def get_sendgrid_credentials():
     """Get SendGrid API credentials from Replit connector"""
@@ -46,10 +47,10 @@ def send_email_notification(to_email, subject, html_content, plain_text=None):
     api_key, from_email = get_sendgrid_credentials()
     
     if not api_key or not from_email:
-        logging.error(f'SendGrid credentials not available - api_key: {bool(api_key)}, from_email: {from_email}')
+        logging.error('SendGrid credentials not available')
         return False
     
-    logging.info(f'Sending email to {to_email} from {from_email} with subject: {subject}')
+    logging.info(f'Sending email with subject: {subject}')
     
     try:
         response = requests.post(
@@ -70,10 +71,10 @@ def send_email_notification(to_email, subject, html_content, plain_text=None):
         )
         
         if response.status_code in (200, 201, 202):
-            logging.info(f'Email sent successfully to {to_email}')
+            logging.info('Email sent successfully')
             return True
         else:
-            logging.error(f'SendGrid API error: {response.status_code} - {response.text}')
+            logging.error(f'SendGrid API error: status {response.status_code}')
             return False
     except Exception as e:
         logging.error(f'Error sending email via SendGrid: {e}')
@@ -81,47 +82,50 @@ def send_email_notification(to_email, subject, html_content, plain_text=None):
 
 def send_new_message_notification(message_type, message_data, admin_email, custom_subject=None):
     """Send notification for new message received"""
+    def _esc(val, default='-'):
+        return html_escape(str(val)) if val else default
+
     if message_type == 'contact':
-        subject = custom_subject or f"הודעת יצירת קשר חדשה - {message_data.get('name', 'לקוח')}"
+        subject = custom_subject or f"הודעת יצירת קשר חדשה - {_esc(message_data.get('name', 'לקוח'))}"
         html_content = f"""
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>הודעת יצירת קשר חדשה</h2>
-            <p><strong>שם:</strong> {message_data.get('name', '-')}</p>
-            <p><strong>אימייל:</strong> {message_data.get('email', '-')}</p>
-            <p><strong>טלפון:</strong> {message_data.get('phone', '-')}</p>
+            <p><strong>שם:</strong> {_esc(message_data.get('name'))}</p>
+            <p><strong>אימייל:</strong> {_esc(message_data.get('email'))}</p>
+            <p><strong>טלפון:</strong> {_esc(message_data.get('phone'))}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
-            <p>{message_data.get('message', '-')}</p>
+            <p>{_esc(message_data.get('message'))}</p>
         </div>
         """
     elif message_type == 'catering':
-        subject = custom_subject or f"פנייה חדשה לקייטרינג - {message_data.get('name', 'לקוח')}"
+        subject = custom_subject or f"פנייה חדשה לקייטרינג - {_esc(message_data.get('name', 'לקוח'))}"
         html_content = f"""
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>פנייה חדשה לקייטרינג</h2>
-            <p><strong>שם:</strong> {message_data.get('name', '-')}</p>
-            <p><strong>אימייל:</strong> {message_data.get('email', '-')}</p>
-            <p><strong>טלפון:</strong> {message_data.get('phone', '-')}</p>
-            <p><strong>סוג אירוע:</strong> {message_data.get('event_type', '-')}</p>
-            <p><strong>תאריך אירוע:</strong> {message_data.get('event_date', '-')}</p>
-            <p><strong>מספר אורחים:</strong> {message_data.get('guest_count', '-')}</p>
+            <p><strong>שם:</strong> {_esc(message_data.get('name'))}</p>
+            <p><strong>אימייל:</strong> {_esc(message_data.get('email'))}</p>
+            <p><strong>טלפון:</strong> {_esc(message_data.get('phone'))}</p>
+            <p><strong>סוג אירוע:</strong> {_esc(message_data.get('event_type'))}</p>
+            <p><strong>תאריך אירוע:</strong> {_esc(message_data.get('event_date'))}</p>
+            <p><strong>מספר אורחים:</strong> {_esc(message_data.get('guest_count'))}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
-            <p>{message_data.get('message', '-')}</p>
+            <p>{_esc(message_data.get('message'))}</p>
         </div>
         """
     elif message_type == 'career':
-        subject = custom_subject or f"מועמדות חדשה לעבודה - {message_data.get('name', 'מועמד')}"
+        subject = custom_subject or f"מועמדות חדשה לעבודה - {_esc(message_data.get('name', 'מועמד'))}"
         html_content = f"""
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>מועמדות חדשה לעבודה</h2>
-            <p><strong>שם:</strong> {message_data.get('name', '-')}</p>
-            <p><strong>אימייל:</strong> {message_data.get('email', '-')}</p>
-            <p><strong>טלפון:</strong> {message_data.get('phone', '-')}</p>
-            <p><strong>משרה:</strong> {message_data.get('position', '-')}</p>
+            <p><strong>שם:</strong> {_esc(message_data.get('name'))}</p>
+            <p><strong>אימייל:</strong> {_esc(message_data.get('email'))}</p>
+            <p><strong>טלפון:</strong> {_esc(message_data.get('phone'))}</p>
+            <p><strong>משרה:</strong> {_esc(message_data.get('position'))}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
-            <p>{message_data.get('message', '-')}</p>
+            <p>{_esc(message_data.get('message'))}</p>
         </div>
         """
     else:

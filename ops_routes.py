@@ -35,7 +35,6 @@ ops_bp = Blueprint(
     url_prefix='/ops',
 )
 
-
 @ops_bp.after_request
 def _restore_device_cookie_if_needed(response):
     restore_token = getattr(g, '_ops_restore_device_cookie', None)
@@ -103,6 +102,36 @@ def _verify_print_api_key():
             db.session.rollback()
         return True
     return False
+
+
+from urllib.parse import urlparse as _urlparse
+
+@ops_bp.before_request
+def _validate_csrf_origin():
+    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        return None
+    if _verify_print_api_key():
+        return None
+    origin = request.headers.get('Origin') or ''
+    referer = request.headers.get('Referer') or ''
+    host = request.host
+    if origin:
+        parsed = _urlparse(origin)
+        if parsed.netloc == host:
+            return None
+    if referer:
+        parsed = _urlparse(referer)
+        if parsed.netloc == host:
+            return None
+    from flask_wtf.csrf import validate_csrf
+    token = request.headers.get('X-CSRFToken') or request.form.get('csrf_token')
+    if token:
+        try:
+            validate_csrf(token)
+            return None
+        except Exception:
+            pass
+    return jsonify({'ok': False, 'error': 'CSRF validation failed'}), 403
 
 
 def _check_device():

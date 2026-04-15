@@ -115,20 +115,11 @@ def send_otp():
         db.session.add(verification)
         db.session.commit()
         
-        # TODO: Send SMS via SMS4Free or other provider
-        # For now, return code in development mode
-        if os.environ.get('ENVIRONMENT') == 'development':
-            return jsonify({
-                'success': True,
-                'message': 'OTP sent',
-                'dev_code': code  # Remove in production
-            })
-        
         return jsonify({'success': True, 'message': 'OTP sent to your phone'})
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 @auth_bp.route('/verify-otp', methods=['POST'])
 def verify_otp():
@@ -181,7 +172,7 @@ def verify_otp():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 @auth_bp.route('/profile', methods=['GET'])
 def get_profile():
@@ -217,7 +208,7 @@ def get_profile():
     except jwt.ExpiredSignatureError:
         return jsonify({'error': 'Token expired'}), 401
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 @auth_bp.route('/profile', methods=['PUT'])
 def update_profile():
@@ -245,7 +236,7 @@ def update_profile():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 @auth_bp.route('/addresses', methods=['POST'])
 def add_address():
@@ -284,4 +275,4 @@ def add_address():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An internal error occurred'}), 500

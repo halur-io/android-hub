@@ -264,11 +264,11 @@
         </div>
         {% elif section.section_type == 'html' %}
         <div class="section-content">
-            {{ (section.content_he if language == 'he' else section.content_en) | safe }}
+            {{ (section.content_he if language == 'he' else section.content_en) | sanitize_html | safe }}
         </div>
         {% elif section.section_type == 'embed' and section.embed_code %}
         <div class="section-content embed-content">
-            {{ section.embed_code | safe }}
+            {{ section.embed_code | sanitize_html | safe }}
         </div>
         {% endif %}
     </div>

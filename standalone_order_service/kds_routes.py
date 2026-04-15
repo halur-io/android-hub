@@ -62,6 +62,33 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         url_prefix='/order-dashboard',
     )
 
+    from urllib.parse import urlparse as _urlparse
+
+    @bp.before_request
+    def _validate_csrf_origin():
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return None
+        origin = request.headers.get('Origin') or ''
+        referer = request.headers.get('Referer') or ''
+        host = request.host
+        if origin:
+            parsed = _urlparse(origin)
+            if parsed.netloc == host:
+                return None
+        if referer:
+            parsed = _urlparse(referer)
+            if parsed.netloc == host:
+                return None
+        from flask_wtf.csrf import validate_csrf
+        token = request.headers.get('X-CSRFToken') or request.form.get('csrf_token')
+        if token:
+            try:
+                validate_csrf(token)
+                return None
+            except Exception:
+                pass
+        return jsonify({'success': False, 'error': 'CSRF validation failed'}), 403
+
     FoodOrder = models['FoodOrder']
     ManagerPIN = models['ManagerPIN']
     MenuItem = models['MenuItem']
@@ -708,8 +735,10 @@ def create_kds_blueprint(db, models, send_sms=None, get_settings=None, clear_cac
         item_id = request.form.get('item_id')
         item = MenuItem.query.get_or_404(item_id)
         try:
-            price = float(request.form.get('price', 0))
-            if price < 0:
+            raw_price = request.form.get('price', '0')
+            price = float(raw_price)
+            import math
+            if math.isnan(price) or math.isinf(price) or price < 0:
                 return jsonify({'success': False, 'error': 'Invalid price'})
             item.base_price = price
             db.session.commit()

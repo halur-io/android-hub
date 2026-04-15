@@ -9,6 +9,9 @@ from datetime import datetime
 from sqlalchemy.orm import joinedload
 import logging
 import os
+from sanitize_html import sanitize_html
+
+app.jinja_env.filters['sanitize_html'] = sanitize_html
 
 def get_language():
     """Get current language from session or query param"""
@@ -582,7 +585,7 @@ def not_found(error):
                              error_code=404,
                              error_title='Page Not Found',
                              error_message='The admin page you are looking for does not exist.',
-                             suggestion='Try accessing the admin panel at <a href="/admin/">/admin/</a>'), 404
+                             suggestion='Try accessing the admin panel at /admin/'), 404
     
     # Return proper 404 page for public routes
     context = get_context_data()

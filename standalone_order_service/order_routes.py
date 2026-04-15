@@ -184,9 +184,9 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             send_sms = create_sender_from_env()
             if send_sms:
                 send_sms(phone, f'קוד האימות שלך: {code}')
-                logging.info(f"[OTP] Sent to {phone}")
+                logging.info("[OTP] Code sent successfully")
             else:
-                logging.warning(f"[OTP] No SMS provider configured. Code: {code}")
+                logging.warning("[OTP] No SMS provider configured")
         except Exception as e:
             logging.error(f"[OTP] SMS error: {e}")
         return jsonify({'ok': True})

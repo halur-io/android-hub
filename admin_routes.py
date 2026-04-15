@@ -1,12 +1,13 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from app import csrf
-# from flask_wtf.csrf import exempt  # Not available in this version
 from werkzeug.utils import secure_filename
+from markupsafe import escape as html_escape
 from database import db
 from models import *
 from permissions import require_permission, require_role, superadmin_required, has_permission
 from app import mail
+from sanitize_html import sanitize_html
 import os
 from datetime import datetime, timedelta
 import json
@@ -5017,20 +5018,20 @@ def forward_catering_contact(id):
     try:
         event_date_str = contact.event_date.strftime('%Y-%m-%d') if hasattr(contact.event_date, 'strftime') else (str(contact.event_date) if contact.event_date else 'לא צוין')
         created_at_str = contact.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(contact.created_at, 'strftime') else str(contact.created_at)
-        subject = f'העברה: פנייה לקייטרינג מ-{contact.name}'
+        subject = f'העברה: פנייה לקייטרינג מ-{html_escape(contact.name or "")}'
         html_content = f'''
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>פנייה לקייטרינג מועברת</h2>
-            <p><strong>שם:</strong> {contact.name}</p>
-            <p><strong>אימייל:</strong> {contact.email}</p>
-            <p><strong>טלפון:</strong> {contact.phone}</p>
-            <p><strong>תאריך אירוע:</strong> {event_date_str}</p>
-            <p><strong>סוג אירוע:</strong> {contact.event_type or 'לא צוין'}</p>
-            <p><strong>מספר אורחים:</strong> {contact.guest_count or 'לא צוין'}</p>
-            <p><strong>תאריך קבלה:</strong> {created_at_str}</p>
+            <p><strong>שם:</strong> {html_escape(contact.name or '')}</p>
+            <p><strong>אימייל:</strong> {html_escape(contact.email or '')}</p>
+            <p><strong>טלפון:</strong> {html_escape(contact.phone or '')}</p>
+            <p><strong>תאריך אירוע:</strong> {html_escape(event_date_str)}</p>
+            <p><strong>סוג אירוע:</strong> {html_escape(contact.event_type or 'לא צוין')}</p>
+            <p><strong>מספר אורחים:</strong> {html_escape(str(contact.guest_count or 'לא צוין'))}</p>
+            <p><strong>תאריך קבלה:</strong> {html_escape(created_at_str)}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
-            <p>{contact.message}</p>
+            <p>{html_escape(contact.message or '')}</p>
         </div>
         '''
         success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
@@ -5061,18 +5062,18 @@ def forward_career_application(id):
     
     try:
         created_at_str = application.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(application.created_at, 'strftime') else str(application.created_at)
-        subject = f'העברה: מועמדות לעבודה מ-{application.name} - {position_name}'
+        subject = f'העברה: מועמדות לעבודה מ-{html_escape(application.name or "")} - {html_escape(position_name or "")}'
         html_content = f'''
         <div dir="rtl" style="font-family: Arial, sans-serif;">
             <h2>מועמדות לעבודה מועברת</h2>
-            <p><strong>שם:</strong> {application.name}</p>
-            <p><strong>אימייל:</strong> {application.email}</p>
-            <p><strong>טלפון:</strong> {application.phone}</p>
-            <p><strong>משרה:</strong> {position_name}</p>
-            <p><strong>תאריך קבלה:</strong> {created_at_str}</p>
+            <p><strong>שם:</strong> {html_escape(application.name or '')}</p>
+            <p><strong>אימייל:</strong> {html_escape(application.email or '')}</p>
+            <p><strong>טלפון:</strong> {html_escape(application.phone or '')}</p>
+            <p><strong>משרה:</strong> {html_escape(position_name or '')}</p>
+            <p><strong>תאריך קבלה:</strong> {html_escape(created_at_str)}</p>
             <hr>
             <p><strong>הודעה:</strong></p>
-            <p>{application.message}</p>
+            <p>{html_escape(application.message or '')}</p>
         </div>
         '''
         success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
@@ -8839,10 +8840,10 @@ def careers_add():
         position = CareerPosition(
             title_he=request.form.get('title_he', ''),
             title_en=request.form.get('title_en', ''),
-            description_he=request.form.get('description_he', ''),
-            description_en=request.form.get('description_en', ''),
-            requirements_he=request.form.get('requirements_he', ''),
-            requirements_en=request.form.get('requirements_en', ''),
+            description_he=sanitize_html(request.form.get('description_he', '')),
+            description_en=sanitize_html(request.form.get('description_en', '')),
+            requirements_he=sanitize_html(request.form.get('requirements_he', '')),
+            requirements_en=sanitize_html(request.form.get('requirements_en', '')),
             location_he=request.form.get('location_he', ''),
             location_en=request.form.get('location_en', ''),
             employment_type_he=request.form.get('employment_type_he', ''),
@@ -8872,10 +8873,10 @@ def careers_edit():
         
         position.title_he = request.form.get('title_he', '')
         position.title_en = request.form.get('title_en', '')
-        position.description_he = request.form.get('description_he', '')
-        position.description_en = request.form.get('description_en', '')
-        position.requirements_he = request.form.get('requirements_he', '')
-        position.requirements_en = request.form.get('requirements_en', '')
+        position.description_he = sanitize_html(request.form.get('description_he', ''))
+        position.description_en = sanitize_html(request.form.get('description_en', ''))
+        position.requirements_he = sanitize_html(request.form.get('requirements_he', ''))
+        position.requirements_en = sanitize_html(request.form.get('requirements_en', ''))
         position.location_he = request.form.get('location_he', '')
         position.location_en = request.form.get('location_en', '')
         position.employment_type_he = request.form.get('employment_type_he', '')

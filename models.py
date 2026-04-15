@@ -2,6 +2,8 @@ from database import db
 from datetime import datetime, timedelta
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.orm import validates as _validates
+from sanitize_html import sanitize_html as _sanitize_html
 
 # Association table for menu items and dietary properties (define before classes)
 menu_item_dietary_properties = db.Table('menu_item_dietary_properties',
@@ -287,6 +289,12 @@ class CustomSection(db.Model):
     show_on_homepage = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @_validates('content_he', 'content_en', 'embed_code')
+    def _sanitize_content(self, key, value):
+        if value and self.section_type in ('html', 'embed'):
+            return _sanitize_html(value)
+        return value
 
 # Reservation Settings
 class ReservationSettings(db.Model):
@@ -689,6 +697,12 @@ class CareerPosition(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    @_validates('description_he', 'description_en', 'requirements_he', 'requirements_en')
+    def _sanitize_content(self, key, value):
+        if value:
+            return _sanitize_html(value)
+        return value
+
     def __repr__(self):
         return f'<CareerPosition {self.title_en}>'
 

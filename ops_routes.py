@@ -2859,6 +2859,61 @@ def print_test_bytes():
     })
 
 
+@ops_bp.route('/api/print/test-job', methods=['POST'])
+def send_test_print_job():
+    import base64
+    is_api_key_auth = _verify_print_api_key()
+    if not is_api_key_auth:
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    data = request.get_json(force=True) if request.is_json else {}
+    branch_id = data.get('branch_id') or request.args.get('branch_id', type=int)
+    if not branch_id:
+        effective = _get_effective_branch_id() if not is_api_key_auth else None
+        if effective:
+            branch_id = effective
+        else:
+            return jsonify({'ok': False, 'error': 'missing branch_id'})
+    printers = Printer.query.filter_by(branch_id=branch_id, is_active=True).all()
+    if not printers:
+        return jsonify({'ok': False, 'error': 'no printers for branch'})
+    printer = next((pr for pr in printers if pr.is_default), printers[0])
+    ip_parts = (printer.ip_address or '').split(':')
+    ip = ip_parts[0]
+    port = int(ip_parts[1]) if len(ip_parts) > 1 else (printer.port or 9100)
+    p = DirectPrinter(ip, port, encoding=printer.encoding or 'cp862', codepage_num=printer.codepage_num or 36)
+    p.init()
+    p.align('center')
+    p.font('double')
+    p.text('SUMO')
+    p.font('double_h')
+    p.text('בדיקת מדפסת')
+    p.font('normal')
+    p.dashed()
+    p.text('שורה בעברית לבדיקה')
+    p.text('Hebrew Test Line')
+    p.text(f'סניף: {branch_id} | מדפסת: {printer.name}')
+    p.dashed()
+    from zoneinfo import ZoneInfo
+    il_tz = ZoneInfo('Asia/Jerusalem')
+    now_il = datetime.now(il_tz)
+    p.text(now_il.strftime('%H:%M:%S %d/%m/%Y'))
+    p.text('החיבור תקין!')
+    p.cut()
+    test_job = {
+        'type': 'print_check',
+        'session_id': 0,
+        'table_number': 'TEST',
+        'branch_id': branch_id,
+        'printer_ip': ip,
+        'printer_port': port,
+        'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
+    }
+    _queue_check_print(branch_id, test_job)
+    return jsonify({'ok': True, 'message': 'בדיקת הדפסה נשלחה לאפליקציה'})
+
+
 @ops_bp.route('/api/print/test', methods=['POST'])
 @require_ops_module('orders')
 def direct_print_test():

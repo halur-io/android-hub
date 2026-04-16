@@ -48,6 +48,14 @@ try:
 except Exception as e:
     logging.error(f"Error registering API blueprint: {e}")
 
+try:
+    from api.v1 import api_v1
+    app.register_blueprint(api_v1)
+    csrf.exempt(api_v1)
+    logging.info("API v1 blueprint registered")
+except Exception as e:
+    logging.error(f"Error registering API v1 blueprint: {e}")
+
 # Register Swagger UI for API documentation at /api/docs
 try:
     from flask_swagger_ui import get_swaggerui_blueprint

@@ -3825,10 +3825,13 @@ def poll_new_orders():
 @ops_bp.route('/api/orders/stream')
 def sse_order_stream():
     is_api = _verify_print_api_key()
-    if not is_api:
+    is_ops = _get_ops_user() if not is_api else None
+    if not is_api and not is_ops:
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     branch_id = request.args.get('branch_id', type=int)
+    if not branch_id and is_ops and not getattr(is_ops, 'is_ops_superadmin', False):
+        branch_id = getattr(is_ops, 'branch_id', None)
     q = queue.Queue(maxsize=50)
     sub = {'queue': q, 'branch_id': branch_id}
     with _sse_lock:

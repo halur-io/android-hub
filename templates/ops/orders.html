@@ -1377,6 +1377,54 @@ initSwipe();
     var _lastPollTs = Date.now() / 1000;
     var _pollInterval = null;
     var _seenOrderIds = {};
+    var _sseActive = false;
+    var _sseRetries = 0;
+    var _maxSseRetries = 3;
+
+    function handleOrderEvent(data) {
+        if (data.type === 'connected') return;
+        if (data.type === 'new_order') {
+            if (_seenOrderIds[data.id]) return;
+            _seenOrderIds[data.id] = true;
+            playAlert();
+            flashScreen();
+            showNotification(data);
+            showOrderBanner(data);
+            setTimeout(function() { location.reload(); }, 3000);
+        }
+        if (data.type === 'order_status_changed') {
+            location.reload();
+        }
+    }
+
+    function connectSSE() {
+        var branchId = '{{ effective_branch or "" }}';
+        var url = '/ops/api/orders/stream';
+        if (branchId) url += '?branch_id=' + branchId;
+        var es = new EventSource(url);
+
+        es.onopen = function() {
+            _sseActive = true;
+            _sseRetries = 0;
+            if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+        };
+
+        es.onmessage = function(e) {
+            try { handleOrderEvent(JSON.parse(e.data)); } catch(err) {}
+        };
+
+        es.onerror = function() {
+            es.close();
+            _sseActive = false;
+            _sseRetries++;
+            if (_sseRetries <= _maxSseRetries) {
+                var delay = Math.min(5000 * _sseRetries, 15000);
+                setTimeout(connectSSE, delay);
+            } else {
+                startPolling();
+            }
+        };
+    }
 
     function pollOrders() {
         var branchId = '{{ effective_branch or "" }}';
@@ -1386,29 +1434,23 @@ initSwipe();
             if (!resp.ok) return;
             if (resp.server_ts) _lastPollTs = resp.server_ts;
             var newOrders = resp.orders || [];
-            var hasNew = false;
             for (var i = 0; i < newOrders.length; i++) {
-                var data = newOrders[i];
-                if (_seenOrderIds[data.id]) continue;
-                _seenOrderIds[data.id] = true;
-                hasNew = true;
-                playAlert();
-                flashScreen();
-                showNotification(data);
-                showOrderBanner(data);
-            }
-            if (hasNew) {
-                setTimeout(function() { location.reload(); }, 3000);
+                handleOrderEvent(newOrders[i]);
             }
         }).catch(function() {});
+    }
+
+    function startPolling() {
+        if (!_pollInterval) {
+            _pollInterval = setInterval(pollOrders, 5000);
+        }
     }
 
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
 
-    pollOrders();
-    _pollInterval = setInterval(pollOrders, 5000);
+    connectSSE();
     setInterval(function() { location.reload(); }, 60000);
 })();
 </script>

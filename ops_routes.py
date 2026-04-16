@@ -3946,6 +3946,22 @@ def _ack_check_print(branch_id, job_id):
 
 def _notify_sse_new_order(order_data):
     _notify_sse_order_event(order_data)
+    # Also fire Web Push (background thread so we never block order creation)
+    try:
+        def _push_job(data):
+            try:
+                from app import app as _flask_app
+            except Exception:
+                return
+            try:
+                from utils.ops_push import broadcast_new_order_push
+                with _flask_app.app_context():
+                    broadcast_new_order_push(data)
+            except Exception:
+                pass
+        threading.Thread(target=_push_job, args=(dict(order_data),), daemon=True).start()
+    except Exception:
+        pass
 
 
 def _notify_sse_order_event(event_data):
@@ -6019,3 +6035,156 @@ def dine_in_order(session_id):
         menu_data=menu_data,
         deals_data=deals_data,
     )
+
+
+# ============================================================================
+# PWA SUPPORT — Service Worker, Manifest, Offline Fallback, Web Push
+# ============================================================================
+
+@ops_bp.route('/sw.js')
+def pwa_service_worker():
+    """Serve the service worker from /ops/sw.js so default scope is /ops/."""
+    from flask import send_from_directory, current_app
+    static_folder = current_app.static_folder
+    resp = send_from_directory(static_folder, 'ops/sw.js', mimetype='application/javascript')
+    resp.headers['Service-Worker-Allowed'] = '/ops/'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
+
+@ops_bp.route('/manifest.json')
+def pwa_manifest():
+    from flask import send_from_directory, current_app
+    return send_from_directory(current_app.static_folder, 'ops/manifest.json',
+                               mimetype='application/manifest+json')
+
+
+@ops_bp.route('/offline')
+def pwa_offline():
+    return render_template('ops/offline.html')
+
+
+@ops_bp.route('/api/ping')
+def pwa_ping():
+    return jsonify({'ok': True, 'ts': datetime.utcnow().timestamp()})
+
+
+@ops_bp.route('/api/push/vapid-public-key')
+def pwa_vapid_public_key():
+    """Return VAPID public key for client-side subscription."""
+    try:
+        from utils.ops_push import get_vapid
+        from models import OpsPushVAPID
+        vapid = get_vapid(db, OpsPushVAPID)
+        return jsonify({'ok': True, 'public_key': vapid['public']})
+    except Exception as e:
+        logging.error(f"[PUSH] vapid-public-key error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@ops_bp.route('/api/push/subscribe', methods=['POST'])
+def pwa_push_subscribe():
+    """Save a Web Push subscription for the current authenticated device/user."""
+    from models import OpsPushSubscription
+    # Require an enrolled device AND an authenticated Ops PIN — push payloads
+    # contain order/customer data, so we never accept anonymous subscriptions.
+    device = _check_device()
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not enrolled'}), 401
+    user = _get_ops_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'login required'}), 401
+
+    data = request.get_json(silent=True) or {}
+    sub = data.get('subscription') or {}
+    endpoint = sub.get('endpoint')
+    keys = sub.get('keys') or {}
+    p256dh = keys.get('p256dh')
+    auth = keys.get('auth')
+    if not endpoint or not p256dh or not auth:
+        return jsonify({'ok': False, 'error': 'invalid subscription'}), 400
+
+    branch_id = None
+    if user and getattr(user, 'branch_id', None):
+        branch_id = user.branch_id
+    elif session.get('ops_branch_id'):
+        branch_id = session.get('ops_branch_id')
+
+    existing = OpsPushSubscription.query.filter_by(endpoint=endpoint).first()
+    try:
+        if existing:
+            existing.p256dh = p256dh
+            existing.auth = auth
+            existing.is_active = True
+            existing.failure_count = 0
+            existing.user_agent = request.headers.get('User-Agent', '')[:500]
+            existing.device_id = device.id if device else existing.device_id
+            existing.branch_id = branch_id if branch_id else existing.branch_id
+        else:
+            row = OpsPushSubscription(
+                endpoint=endpoint,
+                p256dh=p256dh,
+                auth=auth,
+                user_agent=request.headers.get('User-Agent', '')[:500],
+                device_id=device.id if device else None,
+                branch_id=branch_id,
+                is_active=True,
+            )
+            db.session.add(row)
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"[PUSH] subscribe error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@ops_bp.route('/api/push/unsubscribe', methods=['POST'])
+def pwa_push_unsubscribe():
+    from models import OpsPushSubscription
+    device = _check_device()
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not enrolled'}), 401
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get('endpoint')
+    if not endpoint:
+        return jsonify({'ok': False, 'error': 'missing endpoint'}), 400
+    try:
+        row = OpsPushSubscription.query.filter_by(endpoint=endpoint).first()
+        # Only the owning device may unsubscribe its own subscription
+        if row and row.device_id == device.id:
+            row.is_active = False
+            db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@ops_bp.route('/api/push/test', methods=['POST'])
+def pwa_push_test():
+    """Send a test push to the current device's subscriptions."""
+    from models import OpsPushSubscription, OpsPushVAPID as _VAPIDModel
+    from utils.ops_push import get_vapid, send_push_to_subscription
+    user = _get_ops_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    device = _check_device()
+    q = OpsPushSubscription.query.filter_by(is_active=True)
+    if device:
+        q = q.filter_by(device_id=device.id)
+    subs = q.all()
+    if not subs:
+        return jsonify({'ok': False, 'error': 'no active subscriptions'}), 404
+    vapid = get_vapid(db, _VAPIDModel)
+    sent = 0
+    payload = {
+        'title': 'התראת בדיקה',
+        'body': 'התראות PUSH פועלות תקין ✓',
+        'tag': 'sumo-ops-test',
+        'url': '/ops/',
+    }
+    for s in subs:
+        if send_push_to_subscription(s, payload, vapid):
+            sent += 1
+    return jsonify({'ok': True, 'sent': sent, 'total': len(subs)})

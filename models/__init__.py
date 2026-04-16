@@ -53,3 +53,4 @@ from models.print_ import (
 )
 from models.dine_in import DineInTable, DineInSession, DineInPaymentSplit
 from models.audit import AuditLog
+from models.push import OpsPushSubscription, OpsPushVAPID

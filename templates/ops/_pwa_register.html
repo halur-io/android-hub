@@ -1,0 +1,7 @@
+{# Minimal SW registration — for entry templates that don't extend base.html #}
+<script>
+(function() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/ops/sw.js', { scope: '/ops/' }).catch(function(){});
+}());
+</script>

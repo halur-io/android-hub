@@ -6163,17 +6163,17 @@ def pwa_push_unsubscribe():
 
 @ops_bp.route('/api/push/test', methods=['POST'])
 def pwa_push_test():
-    """Send a test push to the current device's subscriptions."""
+    """Send a test push to the CURRENT device's subscriptions only."""
     from models import OpsPushSubscription, OpsPushVAPID as _VAPIDModel
     from utils.ops_push import get_vapid, send_push_to_subscription
+    device = _check_device()
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not enrolled'}), 401
     user = _get_ops_user()
     if not user:
-        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
-    device = _check_device()
-    q = OpsPushSubscription.query.filter_by(is_active=True)
-    if device:
-        q = q.filter_by(device_id=device.id)
-    subs = q.all()
+        return jsonify({'ok': False, 'error': 'login required'}), 401
+    # Strictly scope to the current device — never broadcast on /test.
+    subs = OpsPushSubscription.query.filter_by(is_active=True, device_id=device.id).all()
     if not subs:
         return jsonify({'ok': False, 'error': 'no active subscriptions'}), 404
     vapid = get_vapid(db, _VAPIDModel)

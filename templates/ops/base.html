@@ -433,11 +433,29 @@
             maybeShowBanner();
         });
 
+        // iOS / Safari never fires beforeinstallprompt — show the banner anyway
+        // so users see "Add to Home Screen" guidance. Detect iOS/iPadOS Safari.
+        var ua = navigator.userAgent || '';
+        var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+        if (isIOS || (isSafari && !window.chrome)) {
+            // Defer slightly so the page settles before showing
+            setTimeout(maybeShowBanner, 1500);
+        }
+
         installBtn.addEventListener('click', function() {
             if (!deferredPrompt) {
-                // iOS / unsupported — show instructions
+                // iOS / unsupported — show inline "Add to Home Screen" instructions
                 banner.classList.remove('show');
-                showToast('הוסף למסך הראשי דרך תפריט הדפדפן', 'warning', 4500);
+                opsConfirm({
+                    type: 'info',
+                    title: 'התקנה במכשיר Apple',
+                    message: 'לחץ על כפתור השיתוף בסרגל הדפדפן ואז על "הוסף למסך הבית" (Add to Home Screen) כדי להתקין את SUMO Ops.',
+                    okText: 'הבנתי',
+                    cancelText: 'סגור'
+                });
+                try { localStorage.setItem('pwa_install_dismissed_at', String(Date.now())); } catch(e) {}
                 return;
             }
             deferredPrompt.prompt();

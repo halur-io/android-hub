@@ -176,6 +176,27 @@
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
         touch-action: manipulation;
     }
+    .floor-map.mobile-grid {
+        display: grid; gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+        padding: 12px;
+        width: 100% !important;
+        height: auto !important;
+        transform: none !important;
+        min-height: 140px;
+    }
+    .floor-map.mobile-grid .floor-table {
+        position: static !important;
+        left: auto !important; top: auto !important;
+        width: 100% !important; height: 95px !important;
+        padding: 6px;
+    }
+    .floor-map.mobile-grid .floor-table.shape-round { border-radius: 50%; aspect-ratio: 1 / 1; height: auto !important; }
+    .mobile-area-header {
+        grid-column: 1 / -1;
+        font-size: .85rem; font-weight: 700; color: #555;
+        padding: 8px 4px 4px; border-bottom: 1px solid #eee;
+    }
     .floor-table:active { transform: scale(.96); }
     .floor-table.shape-rect { border-radius: 10px; }
     .floor-table.shape-round { border-radius: 50%; }
@@ -496,6 +517,27 @@ function fitFloorMap() {
     if (!map || !vp || !cont) return;
     var tables = map.querySelectorAll('.floor-table');
     if (!tables.length) return;
+
+    var isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Mobile: ignore designer coordinates; use a responsive grid so each
+        // table renders at a comfortable native size and the whole area is
+        // visible without horizontal scrolling.
+        map.classList.add('mobile-grid');
+        map.style.transform = '';
+        map.style.width = '';
+        map.style.height = '';
+        vp.style.width = '100%';
+        vp.style.height = 'auto';
+        _injectMobileAreaHeaders(map);
+        return;
+    }
+
+    // Desktop / tablet: use designer coordinates with fit-to-screen scaling
+    map.classList.remove('mobile-grid');
+    _removeMobileAreaHeaders(map);
+
     var maxX = 0, maxY = 0;
     tables.forEach(function(el) {
         var x = parseFloat(el.style.left) || 0;
@@ -511,26 +553,40 @@ function fitFloorMap() {
     map.style.width = contentW + 'px';
     map.style.height = contentH + 'px';
 
-    // available area inside the scroll container (minus its padding)
     var vpW = Math.max((cont.clientWidth || 0) - 16, 1);
     var vpH = Math.max((cont.clientHeight || 0) - 16, 1);
-    var isMobile = window.innerWidth <= 768;
-    var scale;
-    if (isMobile) {
-        // mobile: fit to width so tables are natural-sized relative to screen,
-        // allow vertical scroll if the floor is taller than the screen
-        scale = vpW / contentW;
-        if (scale > 1.2) scale = 1.2;
-        if (scale < 0.5) scale = 0.5;
-    } else {
-        // desktop/tablet: fit both dimensions, don't up-scale past natural
-        scale = Math.min(vpW / contentW, vpH / contentH, 1);
-        if (scale < 0.3) scale = 0.3;
-    }
+    var scale = Math.min(vpW / contentW, vpH / contentH, 1);
+    if (scale < 0.3) scale = 0.3;
     map.style.transform = 'scale(' + scale + ')';
-    // size viewport to scaled footprint so scroll area matches
     vp.style.width = Math.ceil(contentW * scale) + 'px';
     vp.style.height = Math.ceil(contentH * scale) + 'px';
+}
+
+function _removeMobileAreaHeaders(map) {
+    map.querySelectorAll('.mobile-area-header').forEach(function(h) { h.remove(); });
+}
+
+function _injectMobileAreaHeaders(map) {
+    _removeMobileAreaHeaders(map);
+    var tables = Array.prototype.slice.call(map.querySelectorAll('.floor-table'));
+    // Group: sort tables by area then put them in order, inserting headers
+    var byArea = {};
+    var areaOrder = [];
+    tables.forEach(function(t) {
+        var a = (t.getAttribute('data-area') || '').trim();
+        if (!a) a = '—';
+        if (!(a in byArea)) { byArea[a] = []; areaOrder.push(a); }
+        byArea[a].push(t);
+    });
+    if (areaOrder.length <= 1) return; // no need for headers
+    // Re-append in area order with header separators
+    areaOrder.forEach(function(a) {
+        var h = document.createElement('div');
+        h.className = 'mobile-area-header';
+        h.textContent = a;
+        map.appendChild(h);
+        byArea[a].forEach(function(t) { map.appendChild(t); });
+    });
 }
 
 window.addEventListener('resize', function() {

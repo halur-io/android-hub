@@ -542,13 +542,16 @@
         </div>
 
         <div class="mo-form-group">
-            <label class="mo-form-label">אמצעי תשלום</label>
-            <div class="mo-payment-options">
+            <label class="mo-form-label">בחר אמצעי תשלום</label>
+            <div class="mo-payment-options" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
                 <button class="mo-payment-btn selected" data-method="cash" onclick="selectPayMethod('cash')">
-                    <i class="fas fa-money-bill-wave"></i> מזומן
+                    <i class="fas fa-money-bill-wave"></i><br>מזומן
                 </button>
                 <button class="mo-payment-btn" data-method="card" onclick="selectPayMethod('card')">
-                    <i class="fas fa-credit-card"></i> כרטיס אשראי
+                    <i class="fas fa-credit-card"></i><br>כרטיס אשראי
+                </button>
+                <button class="mo-payment-btn" data-method="later" onclick="selectPayMethod('later')">
+                    <i class="fas fa-clock"></i><br>מאוחר יותר
                 </button>
             </div>
         </div>
@@ -567,35 +570,71 @@
         </div>
 
         <div id="cardSection" class="mo-payment-section" style="display:none;">
-            <div class="mo-hyp-section">
-                <p style="font-size:14px;color:var(--ops-text-dim);margin-bottom:12px;">יצירת קישור תשלום HYP</p>
-                <button class="mo-checkout-btn" style="margin-top:0;background:#7c3aed;" id="genHypBtn" onclick="generateHypLink()">
-                    <i class="fas fa-link"></i> צור קישור תשלום
+            <p style="font-size:13px;color:var(--ops-text-dim);margin-bottom:10px;">בחר דרך לגביית תשלום בכרטיס אשראי:</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                <button class="mo-card-sub-btn" onclick="cardSubAction(event, 'qr')">
+                    <i class="fas fa-qrcode"></i><br>קוד QR
                 </button>
-                <div id="hypLinkContainer" style="display:none;">
-                    <a id="hypPayLink" class="mo-hyp-link" href="#" target="_blank"></a>
-                    <button class="mo-checkout-btn" style="margin-top:8px;background:#22c55e;font-size:13px;" onclick="sendPaymentSms()">
-                        <i class="fas fa-sms"></i> שלח SMS ללקוח
-                    </button>
-                </div>
+                <button class="mo-card-sub-btn" onclick="cardSubAction(event, 'sms')">
+                    <i class="fas fa-sms"></i><br>SMS
+                </button>
+                <button class="mo-card-sub-btn" onclick="cardSubAction(event, 'manual')">
+                    <i class="fas fa-keyboard"></i><br>הזנה ידנית
+                </button>
+            </div>
+            <div id="qrContainer" style="display:none;text-align:center;margin-top:12px;padding:14px;background:#fff;border-radius:10px;">
+                <img id="qrImage" alt="QR" style="max-width:220px;width:100%;height:auto;display:block;margin:0 auto;">
+                <p style="font-size:11px;color:#555;margin-top:8px;">הלקוח סורק את הקוד ומשלם בטלפון. הסטטוס יעודכן אוטומטית.</p>
+                <a id="qrLink" href="#" target="_blank" style="font-size:11px;color:#7c3aed;word-break:break-all;display:block;margin-top:6px;"></a>
+            </div>
+            <div id="manualNote" style="display:none;margin-top:12px;padding:12px;background:#fef3c7;border-radius:10px;font-size:13px;color:#92400e;">
+                <i class="fas fa-external-link-alt"></i> דף התשלום של HYP נפתח בחלון חדש. הזן את פרטי הכרטיס שם — הסטטוס יעודכן אוטומטית בסיום.
             </div>
         </div>
 
-        <div id="cashPayActions" style="display:flex;gap:10px;margin-top:20px;">
+        <div id="laterSection" class="mo-payment-section" style="display:none;">
+            <div style="padding:14px;background:#f1f5f9;border-radius:10px;font-size:14px;color:#475569;text-align:center;">
+                <i class="fas fa-clock" style="font-size:20px;color:#64748b;"></i>
+                <div style="margin-top:6px;font-weight:700;">ההזמנה תישלח למטבח ללא תשלום</div>
+                <div style="font-size:12px;color:#64748b;margin-top:4px;">תוכל לסגור את התשלום מאוחר יותר מרשימת ההזמנות</div>
+            </div>
+        </div>
+
+        <div id="cashPayActions" style="margin-top:20px;">
             <button class="mo-checkout-btn" style="margin-top:0;background:#22c55e;" id="payConfirmBtn" onclick="confirmCashPayment()">
                 <i class="fas fa-check-circle"></i> סגור תשלום מזומן
             </button>
-            <button class="mo-checkout-btn" style="margin-top:0;background:#64748b;flex:0.7;" onclick="skipPayment()">
-                <i class="fas fa-clock"></i> ללא תשלום
-            </button>
         </div>
         <div id="cardPayActions" style="display:none;margin-top:20px;">
-            <button class="mo-checkout-btn" style="margin-top:0;background:#64748b;" onclick="skipPayment()">
-                <i class="fas fa-clock"></i> סגור ללא תשלום (ממתין ל-HYP)
+            <button class="mo-checkout-btn" style="margin-top:0;background:#64748b;" onclick="payLater()">
+                <i class="fas fa-clock"></i> סגור — ממתין לאישור HYP
+            </button>
+        </div>
+        <div id="laterPayActions" style="display:none;margin-top:20px;">
+            <button class="mo-checkout-btn" style="margin-top:0;background:#64748b;" onclick="payLater()">
+                <i class="fas fa-check"></i> סיים ועבור לרשימה
             </button>
         </div>
     </div>
 </div>
+
+<style>
+.mo-card-sub-btn {
+    background: #fff;
+    border: 2px solid var(--ops-border);
+    border-radius: 10px;
+    padding: 12px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ops-text);
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.3;
+}
+.mo-card-sub-btn i { font-size: 20px; margin-bottom: 4px; color: var(--ops-accent); }
+.mo-card-sub-btn:hover, .mo-card-sub-btn.active { background: var(--ops-accent); color: #fff; border-color: var(--ops-accent); }
+.mo-card-sub-btn:hover i, .mo-card-sub-btn.active i { color: #fff; }
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -1322,24 +1361,24 @@ function submitOrder() {
     });
 }
 
+var _payPollTimer = null;
+
 function showPaymentModal(orderNum, total) {
     document.getElementById('payOrderNum').textContent = '#' + orderNum;
     document.getElementById('payTotalAmt').textContent = '₪' + total.toFixed(0);
     document.getElementById('cashReceived').value = '';
     document.getElementById('changeAmount').textContent = '₪0';
-    document.getElementById('hypLinkContainer').style.display = 'none';
-    selectedPayMethod = 'cash';
-    document.querySelectorAll('#paymentModal .mo-payment-btn').forEach(function(b) {
-        b.classList.toggle('selected', b.dataset.method === 'cash');
-    });
-    document.getElementById('cashSection').style.display = '';
-    document.getElementById('cardSection').style.display = 'none';
+    document.getElementById('qrContainer').style.display = 'none';
+    document.getElementById('manualNote').style.display = 'none';
+    document.querySelectorAll('#paymentModal .mo-card-sub-btn').forEach(function(b) { b.classList.remove('active'); });
+    selectPayMethod('cash');
     document.getElementById('paymentModal').classList.add('show');
 }
 
 function closePaymentModal() {
     document.getElementById('paymentModal').classList.remove('show');
     document.getElementById('moCheckoutBtn').disabled = false;
+    stopPaymentPolling();
 }
 
 function selectPayMethod(method) {
@@ -1349,8 +1388,80 @@ function selectPayMethod(method) {
     });
     document.getElementById('cashSection').style.display = method === 'cash' ? '' : 'none';
     document.getElementById('cardSection').style.display = method === 'card' ? '' : 'none';
-    document.getElementById('cashPayActions').style.display = method === 'cash' ? 'flex' : 'none';
+    document.getElementById('laterSection').style.display = method === 'later' ? '' : 'none';
+    document.getElementById('cashPayActions').style.display = method === 'cash' ? '' : 'none';
     document.getElementById('cardPayActions').style.display = method === 'card' ? '' : 'none';
+    document.getElementById('laterPayActions').style.display = method === 'later' ? '' : 'none';
+    if (method !== 'card') stopPaymentPolling();
+}
+
+function cardSubAction(ev, action) {
+    document.querySelectorAll('#paymentModal .mo-card-sub-btn').forEach(function(b) { b.classList.remove('active'); });
+    if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+    document.getElementById('qrContainer').style.display = 'none';
+    document.getElementById('manualNote').style.display = 'none';
+    if (action === 'qr') { showQR(createdOrderId); }
+    else if (action === 'sms') { sendSmsLink(createdOrderId, document.getElementById('cfPhone').value.trim()); }
+    else if (action === 'manual') { openManualEntry(createdOrderId); }
+}
+
+function showQR(orderId) {
+    if (!orderId) return;
+    fetch('/ops/api/orders/' + orderId + '/payment-qr', { method: 'POST', headers: {'Content-Type':'application/json'}, body:'{}' })
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if (d.ok) {
+            document.getElementById('qrImage').src = 'data:image/png;base64,' + d.qr_png_base64;
+            document.getElementById('qrLink').href = d.payment_url;
+            document.getElementById('qrLink').textContent = d.payment_url;
+            document.getElementById('qrContainer').style.display = '';
+            startPaymentPolling(orderId);
+        } else { showToast(d.error || 'שגיאה ביצירת QR', true); }
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function sendSmsLink(orderId, phone) {
+    if (!orderId) return;
+    if (!phone) { showToast('אין מספר טלפון', true); return; }
+    fetch('/ops/api/orders/' + orderId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if (!d.ok) { showToast(d.error || 'שגיאה ביצירת קישור', true); return; }
+        fetch('/ops/api/orders/' + orderId + '/send-payment-sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({phone: phone}) })
+        .then(function(r){return r.json();})
+        .then(function(d2){
+            if (d2.ok) { showToast('SMS נשלח ללקוח'); startPaymentPolling(orderId); }
+            else showToast(d2.error || 'שגיאה בשליחת SMS', true);
+        });
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function openManualEntry(orderId) {
+    if (!orderId) return;
+    fetch('/ops/api/orders/' + orderId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+    .then(function(r){return r.json();})
+    .then(function(d){
+        if (!d.ok) { showToast(d.error || 'שגיאה ביצירת קישור', true); return; }
+        window.open(d.payment_url, '_blank');
+        document.getElementById('manualNote').style.display = '';
+        startPaymentPolling(orderId);
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function startPaymentPolling(orderId) {
+    stopPaymentPolling();
+    _payPollTimer = setInterval(function(){
+        fetch('/ops/api/orders/' + orderId + '/payment-status').then(function(r){return r.json();}).then(function(d){
+            if (d.ok && d.payment_status === 'paid') {
+                stopPaymentPolling();
+                showToast('התשלום אושר!');
+                setTimeout(function(){ location.href = '{{ url_for("ops.orders") }}'; }, 700);
+            }
+        }).catch(function(){});
+    }, 3000);
+}
+function stopPaymentPolling() {
+    if (_payPollTimer) { clearInterval(_payPollTimer); _payPollTimer = null; }
 }
 
 function calcChange() {
@@ -1393,56 +1504,10 @@ function confirmCashPayment() {
     });
 }
 
-function skipPayment() {
+function payLater() {
+    stopPaymentPolling();
     showToast('הזמנה #' + createdOrderNumber + ' נוצרה (תשלום ממתין)');
     setTimeout(function() { location.href = '{{ url_for("ops.orders") }}'; }, 600);
-}
-
-function generateHypLink() {
-    if (!createdOrderId) return;
-    var btn = document.getElementById('genHypBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> יוצר קישור...';
-    fetch('/ops/api/orders/' + createdOrderId + '/generate-payment-link', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: '{}'
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-link"></i> צור קישור תשלום';
-        if (d.ok) {
-            document.getElementById('hypPayLink').href = d.payment_url;
-            document.getElementById('hypPayLink').textContent = d.payment_url;
-            document.getElementById('hypLinkContainer').style.display = '';
-            showToast('קישור תשלום נוצר');
-        } else {
-            showToast(d.error || 'שגיאה ביצירת קישור', true);
-        }
-    })
-    .catch(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-link"></i> צור קישור תשלום';
-        showToast('שגיאת תקשורת', true);
-    });
-}
-
-function sendPaymentSms() {
-    if (!createdOrderId) return;
-    var phone = document.getElementById('cfPhone').value.trim();
-    if (!phone) { showToast('אין מספר טלפון', true); return; }
-    fetch('/ops/api/orders/' + createdOrderId + '/send-payment-sms', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({phone: phone})
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.ok) showToast('SMS נשלח ללקוח');
-        else showToast(d.error || 'שגיאה', true);
-    })
-    .catch(function() { showToast('שגיאת תקשורת', true); });
 }
 
 init();

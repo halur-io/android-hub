@@ -2106,6 +2106,85 @@ def api_order_generate_payment(order_id):
         return jsonify({'ok': False, 'error': f'שגיאה ביצירת קישור: {str(e)}'})
 
 
+@ops_bp.route('/api/orders/<int:order_id>/payment-qr', methods=['POST'])
+@require_ops_module('orders')
+def api_order_payment_qr(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    try:
+        if not order.payment_url:
+            from standalone_order_service.hyp_payment import HYPPayment
+            branch = Branch.query.get(effective_branch) if effective_branch else None
+            settings = _settings()
+            hyp = HYPPayment(settings=settings)
+            if branch:
+                hyp._load_credentials(branch=branch)
+            if not hyp.is_configured:
+                return jsonify({'ok': False, 'error': 'הגדרות HYP חסרות'})
+            import secrets as _secrets
+            cb_token = _secrets.token_urlsafe(32)
+            order.payment_callback_token = cb_token
+            scheme = 'https' if _is_secure() else 'http'
+            base_url = f"{scheme}://{request.host}"
+            success_url = f"{base_url}/ops/api/orders/{order.id}/payment-callback?status=success&token={cb_token}"
+            fail_url = f"{base_url}/ops/api/orders/{order.id}/payment-callback?status=fail&token={cb_token}"
+            payment_url = hyp.create_payment_url(
+                amount=order.total_amount,
+                order_id=order.order_number,
+                description=f'הזמנה {order.order_number}',
+                success_url=success_url,
+                failure_url=fail_url,
+                customer_name=order.customer_name or '',
+            )
+            order.payment_url = payment_url
+            db.session.commit()
+
+        import qrcode
+        import io
+        import base64
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(order.payment_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        qr_b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return jsonify({
+            'ok': True,
+            'payment_url': order.payment_url,
+            'qr_png_base64': qr_b64,
+        })
+    except Exception as e:
+        import logging
+        logging.error(f"HYP payment QR error for order {order_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה ביצירת QR: {str(e)}'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/payment-status', methods=['GET'])
+@require_ops_module('orders')
+def api_order_payment_status(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'}), 404
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'}), 404
+    return jsonify({
+        'ok': True,
+        'payment_status': order.payment_status or 'pending',
+        'payment_method': order.payment_method or '',
+    })
+
+
 @ops_bp.route('/api/orders/<int:order_id>/payment-callback')
 def order_payment_callback(order_id):
     order = FoodOrder.query.get(order_id)

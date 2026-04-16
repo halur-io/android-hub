@@ -678,6 +678,10 @@ function renderDetail(o) {
     var s = o.status;
     if (s === 'pending' || s === 'confirmed') {
         actionsHtml += '<button class="ops-btn ops-btn-primary ops-btn-sm" style="flex:1;" onclick="openPrepFromDetail('+o.id+',\''+o.order_number+'\')"><i class="fas fa-fire"></i> התחל הכנה</button>';
+        if (o.source === 'ops') {
+            var editType = (o.order_type === 'delivery') ? 'delivery' : 'takeaway';
+            actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#e0f2fe;color:#0369a1;border:none;" onclick="editOrder('+o.id+',\''+editType+'\')"><i class="fas fa-edit"></i> ערוך</button>';
+        }
         actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#fdecea;color:#c62828;border:none;" onclick="cancelOrder('+o.id+');closeModal(\'orderModal\')"><i class="fas fa-times"></i> בטל</button>';
     } else if (s === 'preparing') {
         actionsHtml += '<button class="ops-btn ops-btn-success ops-btn-sm" style="flex:1;" onclick="setStatus('+o.id+',\'ready\')"><i class="fas fa-bell"></i> מוכנה!</button>';
@@ -754,6 +758,11 @@ function setStatus(id, status) {
         closeModal('orderModal');
         setTimeout(function(){location.reload();}, 300);
     });
+}
+
+function editOrder(id, orderType) {
+    var t = (orderType === 'delivery') ? 'delivery' : 'takeaway';
+    location.href = '/ops/orders/new/' + t + '?edit=' + id;
 }
 
 function cancelOrder(id) {

@@ -1,5 +1,5 @@
 {% extends "ops/base.html" %}
-{% block header_title %}הזמנה חדשה — {{ 'משלוח' if order_type == 'delivery' else 'איסוף עצמי' }}{% endblock %}
+{% block header_title %}{% if edit_order %}עריכת הזמנה #{{ edit_order.order_number }}{% else %}הזמנה חדשה — {{ 'משלוח' if order_type == 'delivery' else 'איסוף עצמי' }}{% endif %}{% endblock %}
 {% block title %}הזמנה חדשה{% endblock %}
 
 {% block head %}
@@ -604,6 +604,8 @@ var ORDER_TYPE = '{{ order_type }}';
 var MENU_DATA = {{ menu_data|tojson }};
 var DEALS_DATA = {{ deals_data|tojson }};
 var DELIVERY_ZONES = {{ delivery_zones_data|tojson }};
+var EDIT_ORDER = {{ edit_order|tojson if edit_order else 'null' }};
+var IS_EDIT = !!EDIT_ORDER;
 var cart = [];
 var currentItemData = null;
 var currentDealData = null;
@@ -715,6 +717,69 @@ function init() {
         activeCat = MENU_DATA[0].id;
     }
     renderMenu();
+    if (IS_EDIT) {
+        prefillEditMode();
+    }
+}
+
+function prefillEditMode() {
+    try {
+        var e = EDIT_ORDER || {};
+        // Prefill customer fields
+        var nameEl = document.getElementById('cfName');
+        var phoneEl = document.getElementById('cfPhone');
+        if (nameEl) nameEl.value = e.customer_name || '';
+        if (phoneEl) phoneEl.value = e.customer_phone || '';
+        var notesEl = document.getElementById('cfNotes');
+        if (notesEl) notesEl.value = e.customer_notes || '';
+        if (ORDER_TYPE === 'delivery') {
+            var addrEl = document.getElementById('cfAddress');
+            if (addrEl) addrEl.value = e.delivery_address || '';
+            var dNotesEl = document.getElementById('cfDeliveryNotes');
+            if (dNotesEl) dNotesEl.value = e.delivery_notes || '';
+            var zoneEl = document.getElementById('cfZone');
+            if (zoneEl && e.delivery_zone_id) {
+                zoneEl.value = String(e.delivery_zone_id);
+                onZoneChange();
+            } else if (zoneEl && e.delivery_city) {
+                var city = String(e.delivery_city).trim().toLowerCase();
+                for (var i = 0; i < zoneEl.options.length; i++) {
+                    var opt = zoneEl.options[i];
+                    if (opt.dataset.city && opt.dataset.city.trim().toLowerCase() === city) {
+                        zoneEl.value = opt.value;
+                        onZoneChange();
+                        break;
+                    }
+                }
+            }
+        }
+        // Prefill discount
+        if (e.discount_value && e.discount_value > 0) {
+            discountType = (e.discount_type === 'percent') ? 'percent' : 'fixed';
+            var discInput = document.getElementById('discountInput');
+            if (discInput) discInput.value = e.discount_value;
+            document.querySelectorAll('.mo-discount-type-btn').forEach(function(b) {
+                if (b.dataset.type) b.classList.toggle('selected', b.dataset.type === discountType);
+            });
+        }
+        // Prefill cart
+        cart = (e.items || []).map(function(it) {
+            var row = Object.assign({}, it);
+            if (row.qty == null && row.quantity != null) row.qty = row.quantity;
+            if (row.price == null && row.unit_price != null) row.price = row.unit_price;
+            if (!row.name_he && row.item_name_he) row.name_he = row.item_name_he;
+            return row;
+        });
+        // Change checkout button label
+        var btn = document.getElementById('moCheckoutBtn');
+        if (btn) btn.innerHTML = '<i class="fas fa-save"></i> שמור שינויים';
+        // Jump directly to menu step
+        goToMenu();
+        updateCart();
+        showToast('עריכת הזמנה #' + (e.order_number || ''));
+    } catch (err) {
+        console.error('prefillEditMode failed', err);
+    }
 }
 
 function renderCatTabs() {
@@ -1180,6 +1245,10 @@ function editNote(idx) {
 
 function openPayment() {
     if (cart.length === 0) return;
+    if (IS_EDIT) {
+        submitOrder();
+        return;
+    }
     if (createdOrderId) {
         showPaymentModal(createdOrderNumber, createdOrderTotal);
         return;
@@ -1212,9 +1281,13 @@ function submitOrder() {
 
     var btn = document.getElementById('moCheckoutBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (IS_EDIT ? 'שומר...' : 'שולח...');
 
-    fetch('{{ url_for("ops.create_manual_order") }}', {
+    var url = IS_EDIT
+        ? ('/ops/api/orders/' + EDIT_ORDER.id + '/update')
+        : '{{ url_for("ops.create_manual_order") }}';
+
+    fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
@@ -1222,21 +1295,30 @@ function submitOrder() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.ok) {
+            if (IS_EDIT) {
+                showToast('הזמנה #' + d.order_number + ' עודכנה');
+                setTimeout(function() { location.href = '{{ url_for("ops.orders") }}'; }, 600);
+                return;
+            }
             createdOrderId = d.order_id;
             createdOrderNumber = d.order_number;
             createdOrderTotal = d.total_amount;
             showPaymentModal(d.order_number, d.total_amount);
             btn.innerHTML = '<i class="fas fa-cash-register"></i> חזור לתשלום';
         } else {
-            showToast(d.error || 'שגיאה ביצירת הזמנה', true);
+            showToast(d.error || (IS_EDIT ? 'שגיאה בעדכון ההזמנה' : 'שגיאה ביצירת הזמנה'), true);
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-cash-register"></i> שלח הזמנה ותשלום';
+            btn.innerHTML = IS_EDIT
+                ? '<i class="fas fa-save"></i> שמור שינויים'
+                : '<i class="fas fa-cash-register"></i> שלח הזמנה ותשלום';
         }
     })
     .catch(function() {
         showToast('שגיאת תקשורת', true);
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-cash-register"></i> שלח הזמנה ותשלום';
+        btn.innerHTML = IS_EDIT
+            ? '<i class="fas fa-save"></i> שמור שינויים'
+            : '<i class="fas fa-cash-register"></i> שלח הזמנה ותשלום';
     });
 }
 

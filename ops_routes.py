@@ -1467,6 +1467,63 @@ def manual_order(order_type):
     if order_type not in ('takeaway', 'delivery'):
         return redirect(url_for('ops.orders'))
     effective_branch = _get_effective_branch_id()
+    # Optional edit mode: /ops/orders/new/<type>?edit=<order_id>
+    edit_order_data = None
+    edit_id_raw = request.args.get('edit')
+    if edit_id_raw:
+        try:
+            edit_order_id = int(edit_id_raw)
+        except (TypeError, ValueError):
+            edit_order_id = None
+        if edit_order_id:
+            eo = FoodOrder.query.get(edit_order_id)
+            if eo and (not effective_branch or eo.branch_id == effective_branch) \
+                    and (eo.source or 'online') == 'ops' \
+                    and eo.status in ('pending', 'confirmed'):
+                expected_type = 'delivery' if eo.order_type == 'delivery' else 'takeaway'
+                if expected_type != order_type:
+                    return redirect(url_for('ops.manual_order', order_type=expected_type, edit=eo.id))
+                try:
+                    cart_items = json.loads(eo.items_json) if eo.items_json else []
+                except Exception:
+                    cart_items = []
+                dv = 0.0
+                dtype = 'fixed'
+                try:
+                    subt = float(eo.subtotal or 0)
+                    disc = float(eo.discount_amount or 0)
+                    if disc > 0 and subt > 0:
+                        pct = round(disc / subt * 100, 2)
+                        # Heuristic: prefer percent if it's a clean integer 5..90
+                        if abs(pct - round(pct)) < 0.01 and 1 <= round(pct) <= 90:
+                            dtype = 'percent'
+                            dv = float(round(pct))
+                        else:
+                            dtype = 'fixed'
+                            dv = round(disc, 2)
+                except Exception:
+                    pass
+                # Match the delivery zone for delivery orders (best-effort by city)
+                edit_zone_id = None
+                if eo.order_type == 'delivery' and eo.delivery_city:
+                    from services.order.order_service import DeliveryZone as _DZ
+                    z = _DZ.query.filter_by(is_active=True, city_name=eo.delivery_city).first()
+                    if z:
+                        edit_zone_id = z.id
+                edit_order_data = {
+                    'id': eo.id,
+                    'order_number': eo.order_number,
+                    'customer_name': eo.customer_name or '',
+                    'customer_phone': eo.customer_phone or '',
+                    'delivery_address': eo.delivery_address or '',
+                    'delivery_city': eo.delivery_city or '',
+                    'delivery_notes': eo.delivery_notes or '',
+                    'customer_notes': eo.customer_notes or '',
+                    'delivery_zone_id': edit_zone_id,
+                    'discount_type': dtype,
+                    'discount_value': dv,
+                    'items': cart_items,
+                }
     categories = MenuCategory.query.filter_by(is_active=True, show_in_order=True).order_by(MenuCategory.display_order).all()
     menu_data = []
     for cat in categories:
@@ -1623,6 +1680,7 @@ def manual_order(order_type):
         menu_data=menu_data,
         deals_data=deals_data,
         delivery_zones_data=delivery_zones_data,
+        edit_order=edit_order_data,
     )
 
 
@@ -1763,6 +1821,166 @@ def create_manual_order():
     return jsonify({
         'ok': True,
         'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',
+        'order_id': order.id,
+        'order_number': order.order_number,
+        'total_amount': order.total_amount,
+    })
+
+
+@ops_bp.route('/api/orders/<int:order_id>/update', methods=['POST'])
+@require_ops_module('orders')
+def update_manual_order(order_id):
+    """Edit a manual Ops order while it is still pending/confirmed (pre-kitchen)."""
+    from standalone_order_service.order_helpers import (
+        sanitize_phone, validate_phone_digits,
+        verify_cart_items, calculate_delivery_fee,
+    )
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'}), 404
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'}), 404
+    if (order.source or 'online') != 'ops':
+        return jsonify({'ok': False, 'error': 'ניתן לערוך רק הזמנות שנפתחו ידנית'}), 400
+    if order.status not in ('pending', 'confirmed'):
+        return jsonify({'ok': False, 'error': 'ההזמנה כבר נשלחה למטבח ולא ניתנת לעריכה'}), 400
+
+    data = request.get_json(force=True)
+    customer_name = (data.get('customer_name') or '').strip()[:120]
+    customer_phone = sanitize_phone(data.get('customer_phone'))
+    delivery_address = (data.get('delivery_address') or '').strip()[:300]
+    delivery_city = (data.get('delivery_city') or '').strip()[:100]
+    delivery_notes = (data.get('delivery_notes') or '').strip()[:500]
+    customer_notes = (data.get('customer_notes') or '').strip()[:500]
+    discount_type = data.get('discount_type', 'none')
+    try:
+        discount_value = max(0, float(data.get('discount_value', 0) or 0))
+    except (ValueError, TypeError):
+        discount_value = 0
+    if not customer_name or not customer_phone:
+        return jsonify({'ok': False, 'error': 'נא למלא שם וטלפון'})
+    if not validate_phone_digits(customer_phone):
+        return jsonify({'ok': False, 'error': 'מספר טלפון לא תקין'})
+    order_type = order.order_type  # locked — cannot switch takeaway<->delivery
+    if order_type == 'delivery' and not delivery_address:
+        return jsonify({'ok': False, 'error': 'נא למלא כתובת למשלוח'})
+    cart = data.get('items', [])
+    if not cart:
+        return jsonify({'ok': False, 'error': 'לא נבחרו פריטים'})
+
+    valid_cart, verified_subtotal = verify_cart_items(cart, effective_branch)
+    if not valid_cart:
+        return jsonify({'ok': False, 'error': 'סל ריק או פריטים לא תקינים'})
+    settings = _settings()
+    delivery_zone_id = data.get('delivery_zone_id') if order_type == 'delivery' else None
+    delivery_fee, min_order_error = calculate_delivery_fee(
+        order_type, verified_subtotal, delivery_zone_id, effective_branch, settings
+    )
+    if min_order_error:
+        return jsonify({'ok': False, 'error': min_order_error})
+    discount_amount = 0
+    if discount_type == 'percent' and discount_value > 0:
+        discount_amount = round(verified_subtotal * min(discount_value, 100) / 100, 2)
+    elif discount_type == 'fixed' and discount_value > 0:
+        discount_amount = min(discount_value, verified_subtotal)
+    total_amount = max(0, verified_subtotal + delivery_fee - discount_amount)
+
+    # Capture previous snapshot for activity log
+    try:
+        prev_total = float(order.total_amount or 0)
+        prev_items_count = len(json.loads(order.items_json) if order.items_json else [])
+    except Exception:
+        prev_total = 0.0
+        prev_items_count = 0
+
+    # Apply updates
+    order.customer_name = customer_name
+    order.customer_phone = customer_phone
+    if order_type == 'delivery':
+        order.delivery_address = delivery_address
+        order.delivery_city = delivery_city
+        order.delivery_notes = delivery_notes
+    order.customer_notes = customer_notes
+    order.subtotal = verified_subtotal
+    order.delivery_fee = delivery_fee
+    order.discount_amount = discount_amount
+    order.total_amount = total_amount
+    order.items_json = json.dumps(valid_cart, ensure_ascii=False)
+
+    # Replace line items
+    FoodOrderItem.query.filter_by(order_id=order.id).delete()
+    for item in valid_cart:
+        oi = FoodOrderItem()
+        oi.order_id = order.id
+        if item.get('is_deal'):
+            oi.menu_item_id = None
+            oi.item_name_he = item.get('name_he', '')
+            oi.item_name_en = item.get('name_en', '')
+            oi.quantity = int(item.get('qty', 1))
+            oi.unit_price = float(item.get('price', 0))
+            oi.total_price = oi.quantity * oi.unit_price
+            oi.special_instructions = item.get('notes', '')
+            deal_data = {'is_deal': True, 'deal_id': item.get('deal_id')}
+            if item.get('deal_type') == 'customer_picks':
+                deal_data['deal_type'] = 'customer_picks'
+                deal_data['selected_items'] = item.get('selected_items', [])
+                deal_data['included_items'] = []
+            else:
+                deal_data['included_items'] = item.get('included_items', [])
+            oi.options_json = json.dumps(deal_data, ensure_ascii=False)
+        else:
+            oi.menu_item_id = item.get('id')
+            oi.item_name_he = item.get('name_he', '')
+            oi.item_name_en = item.get('name_en', '')
+            oi.quantity = int(item.get('qty', 1))
+            oi.unit_price = float(item.get('price', 0))
+            oi.total_price = oi.quantity * oi.unit_price
+            oi.special_instructions = item.get('notes', '')
+            if item.get('options'):
+                oi.options_json = json.dumps(item['options'], ensure_ascii=False)
+        db.session.add(oi)
+
+    # Activity log entry (best-effort)
+    try:
+        from models import OrderActivityLog
+        staff_name = None
+        try:
+            user = _get_ops_user()
+            staff_name = (user.full_name or user.username) if user else None
+        except Exception:
+            staff_name = None
+        log = OrderActivityLog()
+        log.order_id = order.id
+        log.action = 'edited'
+        log.old_value = f'₪{prev_total:.2f} / {prev_items_count} פריטים'
+        log.new_value = f'₪{total_amount:.2f} / {len(valid_cart)} פריטים'
+        log.staff_name = staff_name
+        db.session.add(log)
+    except Exception:
+        pass
+
+    # The bon was auto-printed on creation; mark it stale and re-queue a print
+    # so the kitchen sees the updated order.
+    order.bon_printed = False
+    order.bon_printed_at = None
+    order.bon_acked_at = None
+    order.bon_acked_device_id = None
+    order.bon_print_attempts = 0
+    db.session.commit()
+
+    try:
+        _queue_print_for_app(order)
+        order.bon_printed = True
+        order.bon_printed_at = datetime.utcnow()
+        db.session.commit()
+    except Exception as e:
+        import logging
+        logging.error(f'Re-print queue failed for edited ops order #{order.order_number}: {e}')
+
+    return jsonify({
+        'ok': True,
+        'message': f'הזמנה #{order.order_number} עודכנה',
         'order_id': order.id,
         'order_number': order.order_number,
         'total_amount': order.total_amount,

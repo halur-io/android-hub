@@ -2810,58 +2810,74 @@ def bon_preview(order_id=None):
     orders_list = q.order_by(FoodOrder.created_at.desc()).limit(30).all()
 
     selected_order = None
-    preview_jobs = []
+    preview_items = []
+    station_previews = []
     if order_id:
         selected_order = FoodOrder.query.get(order_id)
     elif orders_list:
         selected_order = orders_list[0]
 
     if selected_order:
-        import base64
         items = json.loads(selected_order.items_json) if selected_order.items_json else []
         by_station = {}
         for item in items:
             menu_item_id = item.get('menu_item_id') or item.get('item_id')
+            display_name = item.get('name_he') or item.get('item_name_he') or item.get('name', '')
             st = 'כללי'
             if menu_item_id:
                 mi = MenuItem.query.get(menu_item_id)
                 if mi:
+                    if mi.print_name:
+                        display_name = mi.print_name
                     if mi.print_station:
                         st = mi.print_station
                     if selected_order.branch_id:
                         bmi = BranchMenuItem.query.filter_by(branch_id=selected_order.branch_id, menu_item_id=menu_item_id).first()
                         if bmi and bmi.print_station:
                             st = bmi.print_station
-                    if mi.print_name:
-                        item['print_name'] = mi.print_name
+            qty = item.get('qty') or item.get('quantity', 1)
+            price = item.get('price') or item.get('unit_price', 0)
+            opts_raw = item.get('options') or []
+            opt_names = []
+            for op in opts_raw:
+                if isinstance(op, dict):
+                    opt_names.append(op.get('choice_name_he') or op.get('name', str(op)))
+                else:
+                    opt_names.append(str(op))
+            notes = item.get('notes') or item.get('special_instructions') or ''
+            pi = {
+                'display_name': display_name,
+                'qty': qty,
+                'price': float(price),
+                'line_total': float(qty) * float(price),
+                'options': opt_names,
+                'notes': notes,
+                'station': st,
+            }
+            preview_items.append(pi)
             if st not in by_station:
                 by_station[st] = []
-            by_station[st].append(item)
+            by_station[st].append(pi)
 
-        bon_types = [
-            ('checker', 'בון הזמנה', lambda p: _build_checker_bon(p, selected_order)),
-            ('payment', 'בון תשלום', lambda p: _build_payment_bon(p, selected_order)),
-        ]
         for st_name, st_items in by_station.items():
-            bon_types.append(('station', f'בון עמדה - {st_name}', lambda p, sn=st_name, si=st_items: _build_station_bon(p, selected_order, sn, si)))
+            station_previews.append({'name': st_name, 'items': st_items})
 
-        for bon_type, label, builder in bon_types:
-            p = DirectPrinter('0.0.0.0', 9100, encoding='cp862', codepage_num=0)
-            builder(p)
-            raw = bytes(p.buf)
-            preview_jobs.append({
-                'type': bon_type,
-                'label': label,
-                'raw_b64': base64.b64encode(raw).decode('ascii'),
-                'raw_hex': raw.hex(),
-                'size': len(raw),
-            })
+    from zoneinfo import ZoneInfo
+    il_tz = ZoneInfo('Asia/Jerusalem')
+    now_il = datetime.now(il_tz).strftime('%H:%M:%S')
+
+    order_branch = None
+    if selected_order and selected_order.branch_id:
+        order_branch = Branch.query.get(selected_order.branch_id)
 
     return render_template('ops/bon_preview.html',
         active_tab='orders',
         orders_list=orders_list,
         selected_order=selected_order,
-        preview_jobs=preview_jobs,
+        preview_items=preview_items,
+        station_previews=station_previews,
+        now_il=now_il,
+        order_branch=order_branch,
     )
 
 

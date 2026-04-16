@@ -3785,16 +3785,50 @@ def _notify_sse_status_change(order, old_status, new_status):
     })
 
 
-@ops_bp.route('/api/orders/stream')
-def sse_order_stream():
-    is_api = _verify_print_api_key()
-    is_ops = _get_ops_user() if not is_api else None
-    if not is_api and not is_ops:
+@ops_bp.route('/api/orders/poll')
+def poll_new_orders():
+    is_ops = _get_ops_user()
+    if not is_ops:
         return jsonify({'ok': False, 'error': 'unauthorized'}), 401
 
     branch_id = request.args.get('branch_id', type=int)
-    if not branch_id and is_ops and not getattr(is_ops, 'is_ops_superadmin', False):
+    if not branch_id and not getattr(is_ops, 'is_ops_superadmin', False):
         branch_id = getattr(is_ops, 'branch_id', None)
+
+    since = request.args.get('since', type=float)
+    if not since:
+        return jsonify({'ok': True, 'orders': [], 'server_ts': datetime.utcnow().timestamp()})
+
+    since_dt = datetime.utcfromtimestamp(since)
+    q = FoodOrder.query.filter(FoodOrder.created_at > since_dt)
+    if branch_id:
+        q = q.filter_by(branch_id=branch_id)
+    new_orders = q.order_by(FoodOrder.created_at.desc()).limit(10).all()
+
+    orders_data = []
+    for o in new_orders:
+        orders_data.append({
+            'type': 'new_order',
+            'id': o.id,
+            'order_number': o.order_number,
+            'order_type': o.order_type,
+            'branch_id': o.branch_id,
+            'customer_name': o.customer_name or '',
+            'total_amount': o.total_amount or 0,
+            'source': getattr(o, 'source', 'online') or 'online',
+            'created_at': o.created_at.isoformat() + 'Z' if o.created_at else '',
+        })
+
+    return jsonify({'ok': True, 'orders': orders_data, 'server_ts': datetime.utcnow().timestamp()})
+
+
+@ops_bp.route('/api/orders/stream')
+def sse_order_stream():
+    is_api = _verify_print_api_key()
+    if not is_api:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    branch_id = request.args.get('branch_id', type=int)
     q = queue.Queue(maxsize=50)
     sub = {'queue': q, 'branch_id': branch_id}
     with _sse_lock:

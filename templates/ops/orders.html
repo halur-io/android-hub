@@ -1374,49 +1374,41 @@ initSwipe();
         }, 8000);
     }
 
-    var _sseRetries = 0;
-    function connectSSE() {
+    var _lastPollTs = Date.now() / 1000;
+    var _pollInterval = null;
+    var _seenOrderIds = {};
+
+    function pollOrders() {
         var branchId = '{{ effective_branch or "" }}';
-        var url = '/ops/api/orders/stream';
-        if (branchId) url += '?branch_id=' + branchId;
-        var es = new EventSource(url);
-
-        es.onopen = function() {
-            _sseRetries = 0;
-        };
-
-        es.onmessage = function(e) {
-            try {
-                var data = JSON.parse(e.data);
-                if (data.type === 'connected') return;
-
-                if (data.type === 'new_order') {
-                    playAlert();
-                    flashScreen();
-                    showNotification(data);
-                    showOrderBanner(data);
-                    setTimeout(function() { location.reload(); }, 3000);
-                }
-
-                if (data.type === 'order_status_changed') {
-                    location.reload();
-                }
-            } catch(err) {}
-        };
-
-        es.onerror = function() {
-            es.close();
-            _sseRetries++;
-            var delay = Math.min(5000 * _sseRetries, 30000);
-            setTimeout(connectSSE, delay);
-        };
+        var url = '/ops/api/orders/poll?since=' + _lastPollTs;
+        if (branchId) url += '&branch_id=' + branchId;
+        fetch(url).then(function(r) { return r.json(); }).then(function(resp) {
+            if (!resp.ok) return;
+            if (resp.server_ts) _lastPollTs = resp.server_ts;
+            var newOrders = resp.orders || [];
+            var hasNew = false;
+            for (var i = 0; i < newOrders.length; i++) {
+                var data = newOrders[i];
+                if (_seenOrderIds[data.id]) continue;
+                _seenOrderIds[data.id] = true;
+                hasNew = true;
+                playAlert();
+                flashScreen();
+                showNotification(data);
+                showOrderBanner(data);
+            }
+            if (hasNew) {
+                setTimeout(function() { location.reload(); }, 3000);
+            }
+        }).catch(function() {});
     }
 
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
 
-    connectSSE();
+    pollOrders();
+    _pollInterval = setInterval(pollOrders, 5000);
     setInterval(function() { location.reload(); }, 60000);
 })();
 </script>

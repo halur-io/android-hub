@@ -151,14 +151,20 @@
     }
     .move-table-btn:active { background: #e0e0e0; }
     .floor-map-container {
-        flex: 1; overflow: auto; position: relative;
-        -webkit-overflow-scrolling: touch; display: none;
+        flex: 1; overflow: hidden; position: relative;
+        display: none; padding: 8px;
     }
-    .floor-map-container.active { display: block; }
+    .floor-map-container.active { display: flex; align-items: flex-start; justify-content: center; }
+    .floor-map-viewport {
+        position: relative; width: 100%; height: 100%;
+        display: flex; align-items: flex-start; justify-content: center;
+    }
     .floor-map {
-        position: relative; min-width: 1200px; min-height: 800px;
-        margin: 8px; background: #fff; border-radius: 12px;
+        position: relative;
+        background: #fff; border-radius: 12px;
         border: 1px solid #eee;
+        transform-origin: top center;
+        will-change: transform;
     }
     .floor-table {
         position: absolute; cursor: pointer;
@@ -299,6 +305,7 @@
 
     {% if has_layout %}
     <div class="floor-map-container" id="floorView">
+      <div class="floor-map-viewport" id="floorMapViewport">
         <div class="floor-map" id="floorMap">
             {% for table in tables %}
             {% set sess = active_sessions.get(table.id) %}
@@ -335,6 +342,7 @@
             </div>
             {% endfor %}
         </div>
+      </div>
     </div>
     {% endif %}
 </div>
@@ -471,6 +479,7 @@ function switchView(view) {
         floorView.classList.add('active');
         if (btnGrid) btnGrid.classList.remove('active');
         if (btnFloor) btnFloor.classList.add('active');
+        requestAnimationFrame(fitFloorMap);
     } else {
         gridView.style.display = '';
         if (floorView) floorView.classList.remove('active');
@@ -479,8 +488,44 @@ function switchView(view) {
     }
 }
 
+function fitFloorMap() {
+    var map = document.getElementById('floorMap');
+    var vp = document.getElementById('floorMapViewport');
+    if (!map || !vp) return;
+    var tables = map.querySelectorAll('.floor-table');
+    if (!tables.length) return;
+    var maxX = 0, maxY = 0;
+    tables.forEach(function(el) {
+        var x = parseFloat(el.style.left) || 0;
+        var y = parseFloat(el.style.top) || 0;
+        var w = parseFloat(el.style.width) || el.offsetWidth || 100;
+        var h = parseFloat(el.style.height) || el.offsetHeight || 80;
+        if (x + w > maxX) maxX = x + w;
+        if (y + h > maxY) maxY = y + h;
+    });
+    var pad = 20;
+    var contentW = Math.max(maxX + pad, 200);
+    var contentH = Math.max(maxY + pad, 200);
+    map.style.width = contentW + 'px';
+    map.style.height = contentH + 'px';
+    var vpW = vp.clientWidth || 1;
+    var vpH = vp.clientHeight || 1;
+    var scale = Math.min(vpW / contentW, vpH / contentH, 1);
+    if (scale < 0.25) scale = 0.25;
+    map.style.transform = 'scale(' + scale + ')';
+}
+
+window.addEventListener('resize', function() {
+    if (currentView === 'floor') fitFloorMap();
+});
+window.addEventListener('orientationchange', function() {
+    if (currentView === 'floor') setTimeout(fitFloorMap, 150);
+});
+
 if (currentView === 'floor' && document.getElementById('floorView')) {
     switchView('floor');
+} else if (document.getElementById('floorMap')) {
+    requestAnimationFrame(fitFloorMap);
 }
 
 function initFloorTableHandlers() {

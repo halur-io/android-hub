@@ -2860,7 +2860,7 @@ def bon_preview(order_id=None):
             by_station[st].append(pi)
 
         for st_name, st_items in by_station.items():
-            station_previews.append({'name': st_name, 'items': st_items})
+            station_previews.append({'name': st_name, 'station_items': st_items})
 
     from zoneinfo import ZoneInfo
     il_tz = ZoneInfo('Asia/Jerusalem')

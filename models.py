@@ -2580,6 +2580,8 @@ class FoodOrder(db.Model):
     payment_provider = db.Column(db.String(20))
     hyp_transaction_id = db.Column(db.String(100))
     hyp_order_ref = db.Column(db.String(100))
+    payment_url = db.Column(db.String(500), nullable=True)
+    payment_callback_token = db.Column(db.String(64), nullable=True)
     customer_notes = db.Column(db.Text)
     admin_notes = db.Column(db.Text)
     confirmation_sms_sent = db.Column(db.Boolean, default=False)

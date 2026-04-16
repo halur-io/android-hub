@@ -66,6 +66,8 @@ def _run_safe_migrations(db):
         ("dine_in_sessions", "cancel_reason", "ALTER TABLE dine_in_sessions ADD COLUMN cancel_reason VARCHAR(100)"),
         ("dine_in_sessions", "cancel_note", "ALTER TABLE dine_in_sessions ADD COLUMN cancel_note TEXT"),
         ("dine_in_sessions", "split_config", "ALTER TABLE dine_in_sessions ADD COLUMN split_config TEXT"),
+        ("food_orders", "payment_url", "ALTER TABLE food_orders ADD COLUMN payment_url VARCHAR(500)"),
+        ("food_orders", "payment_callback_token", "ALTER TABLE food_orders ADD COLUMN payment_callback_token VARCHAR(64)"),
     ]
     for table, column, sql in migrations:
         try:

@@ -1623,8 +1623,14 @@ def create_manual_order():
     delivery_notes = (data.get('delivery_notes') or '').strip()[:500]
     customer_notes = (data.get('customer_notes') or '').strip()[:500]
     payment_method = data.get('payment_method', 'cash')
-    if payment_method not in ('cash', 'card'):
+    if payment_method not in ('cash', 'card', 'pending'):
         payment_method = 'cash'
+    discount_type = data.get('discount_type', 'none')
+    discount_value = 0
+    try:
+        discount_value = max(0, float(data.get('discount_value', 0) or 0))
+    except (ValueError, TypeError):
+        discount_value = 0
     if not customer_name or not customer_phone:
         return jsonify({'ok': False, 'error': 'נא למלא שם וטלפון'})
     if not validate_phone_digits(customer_phone):
@@ -1646,7 +1652,12 @@ def create_manual_order():
     )
     if min_order_error:
         return jsonify({'ok': False, 'error': min_order_error})
-    total_amount = verified_subtotal + delivery_fee
+    discount_amount = 0
+    if discount_type == 'percent' and discount_value > 0:
+        discount_amount = round(verified_subtotal * min(discount_value, 100) / 100, 2)
+    elif discount_type == 'fixed' and discount_value > 0:
+        discount_amount = min(discount_value, verified_subtotal)
+    total_amount = max(0, verified_subtotal + delivery_fee - discount_amount)
     order = FoodOrder()
     order.set_order_number()
     order.tracking_token = _secrets.token_urlsafe(24)
@@ -1663,9 +1674,10 @@ def create_manual_order():
     order.payment_method = payment_method
     order.subtotal = verified_subtotal
     order.delivery_fee = delivery_fee
+    order.discount_amount = discount_amount
     order.total_amount = total_amount
     order.status = 'pending'
-    order.payment_status = 'cash' if payment_method == 'cash' else 'pending'
+    order.payment_status = 'pending'
     order.source = 'ops'
     order.items_json = json.dumps(valid_cart, ensure_ascii=False)
     db.session.add(order)
@@ -1732,7 +1744,172 @@ def create_manual_order():
         'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',
         'order_id': order.id,
         'order_number': order.order_number,
+        'total_amount': order.total_amount,
     })
+
+
+@ops_bp.route('/api/orders/lookup-customer')
+@require_ops_module('orders')
+def lookup_customer():
+    phone = request.args.get('phone', '').strip()
+    if not phone or len(phone) < 9:
+        return jsonify({'ok': False})
+    from standalone_order_service.order_helpers import sanitize_phone
+    phone = sanitize_phone(phone)
+    effective_branch = _get_effective_branch_id()
+    query = FoodOrder.query.filter_by(customer_phone=phone)
+    if effective_branch:
+        query = query.filter_by(branch_id=effective_branch)
+    order = query.order_by(FoodOrder.created_at.desc()).first()
+    if order:
+        return jsonify({
+            'ok': True,
+            'customer': {
+                'name': order.customer_name or '',
+                'address': order.delivery_address or '',
+                'city': order.delivery_city or '',
+            }
+        })
+    return jsonify({'ok': False})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/send-payment-sms', methods=['POST'])
+@require_ops_module('orders')
+def send_order_payment_sms(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    if not order.payment_url:
+        return jsonify({'ok': False, 'error': 'יש ליצור קישור תשלום קודם'})
+    data = request.get_json(force=True)
+    phone = (data.get('phone') or '').strip()
+    if not phone or len(phone) < 9:
+        return jsonify({'ok': False, 'error': 'נא להזין מספר טלפון'})
+    try:
+        from standalone_order_service.sms_helpers import create_sender_from_env
+        send_sms = create_sender_from_env()
+        if not send_sms:
+            return jsonify({'ok': False, 'error': 'שליחת SMS לא מוגדרת'})
+        total = order.total_amount or 0
+        msg = f'SUMO - הזמנה {order.order_number}\nסה"כ לתשלום: ₪{total:.2f}\nלתשלום: {order.payment_url}'
+        success = send_sms(phone, msg)
+        if not success:
+            return jsonify({'ok': False, 'error': 'שליחת SMS נכשלה'})
+        return jsonify({'ok': True, 'message': 'SMS נשלח בהצלחה'})
+    except Exception as e:
+        import logging
+        logging.error(f"SMS send error for order {order_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה בשליחת SMS: {str(e)}'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/mark-paid', methods=['POST'])
+@require_ops_module('orders')
+def mark_order_paid(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    data = request.get_json(force=True) if request.is_json else {}
+    method = data.get('payment_method', 'cash')
+    if method != 'cash':
+        return jsonify({'ok': False, 'error': 'תשלום בכרטיס יתבצע דרך קישור HYP בלבד'})
+    order.payment_method = 'cash'
+    order.payment_status = 'paid'
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'התשלום סומן כשולם'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/generate-payment-link', methods=['POST'])
+@require_ops_module('orders')
+def api_order_generate_payment(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    effective_branch = _get_effective_branch_id()
+    if effective_branch and order.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'הזמנה לא נמצאה'})
+    try:
+        from standalone_order_service.hyp_payment import HYPPayment
+        branch = Branch.query.get(effective_branch) if effective_branch else None
+        settings = _settings()
+        hyp = HYPPayment(settings=settings)
+        if branch:
+            hyp._load_credentials(branch=branch)
+        if not hyp.is_configured:
+            return jsonify({'ok': False, 'error': 'הגדרות HYP חסרות'})
+        import secrets as _secrets
+        cb_token = _secrets.token_urlsafe(32)
+        order.payment_callback_token = cb_token
+        scheme = 'https' if _is_secure() else 'http'
+        base_url = f"{scheme}://{request.host}"
+        success_url = f"{base_url}/ops/api/orders/{order.id}/payment-callback?status=success&token={cb_token}"
+        fail_url = f"{base_url}/ops/api/orders/{order.id}/payment-callback?status=fail&token={cb_token}"
+        charge_amount = order.total_amount
+        payment_url = hyp.create_payment_url(
+            amount=charge_amount,
+            order_id=order.order_number,
+            description=f'הזמנה {order.order_number}',
+            success_url=success_url,
+            failure_url=fail_url,
+            customer_name=order.customer_name or '',
+        )
+        order.payment_url = payment_url
+        db.session.commit()
+        return jsonify({'ok': True, 'payment_url': payment_url, 'message': 'קישור תשלום נוצר'})
+    except Exception as e:
+        import logging
+        logging.error(f"HYP payment link error for order {order_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה ביצירת קישור: {str(e)}'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/payment-callback')
+def order_payment_callback(order_id):
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return '<h1>הזמנה לא נמצאה</h1>', 404
+    cb_token = request.args.get('token', '')
+    if not cb_token or not order.payment_callback_token or cb_token != order.payment_callback_token:
+        return '<h1>טוקן לא תקין</h1>', 403
+    status = request.args.get('status', '')
+    if status == 'success':
+        hyp_verified = False
+        try:
+            from standalone_order_service.hyp_payment import HYPPayment
+            hyp = HYPPayment()
+            if order.branch_id:
+                hyp._load_credentials(branch=Branch.query.get(order.branch_id))
+            response_params = dict(request.args)
+            verification = hyp.verify_payment_response(
+                response_params,
+                expected_amount=float(order.total_amount),
+                verify_signature=True
+            )
+            if verification.get('verified'):
+                hyp_verified = True
+                import logging
+                logging.info(f'Order {order.order_number}: HYP payment verified (tx={verification.get("transaction_id")})')
+            else:
+                import logging
+                logging.warning(f'Order {order.order_number}: HYP verification failed: {verification.get("error_message")}')
+        except Exception as e:
+            import logging
+            logging.error(f'Order {order.order_number}: HYP verification error: {e}')
+        if not hyp_verified:
+            return render_template('ops/order_payment_result.html', order=order, success=False)
+        order.payment_status = 'paid'
+        order.payment_method = 'card'
+        order.payment_provider = 'hyp'
+        order.hyp_transaction_id = request.args.get('Id', '')
+        order.payment_callback_token = None
+        db.session.commit()
+        return render_template('ops/order_payment_result.html', order=order, success=True)
+    else:
+        return render_template('ops/order_payment_result.html', order=order, success=False)
 
 
 @ops_bp.route('/api/toggle-setting', methods=['POST'])

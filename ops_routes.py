@@ -1597,11 +1597,32 @@ def manual_order(order_type):
                         })
             deal_info['included_details'] = included_details
         deals_data.append(deal_info)
+    delivery_zones_data = []
+    if order_type == 'delivery':
+        from services.order.order_service import DeliveryZone
+        dz_query = DeliveryZone.query.filter_by(is_active=True)
+        if effective_branch:
+            from sqlalchemy import or_
+            dz_query = dz_query.filter(
+                or_(DeliveryZone.branch_id == effective_branch, DeliveryZone.branch_id.is_(None))
+            )
+        dz_query = dz_query.order_by(DeliveryZone.display_order)
+        for dz in dz_query.all():
+            delivery_zones_data.append({
+                'id': dz.id,
+                'city_name': dz.city_name,
+                'name': dz.name or dz.city_name,
+                'delivery_fee': float(dz.delivery_fee or 0),
+                'minimum_order': float(dz.minimum_order or 0),
+                'free_delivery_above': float(dz.free_delivery_above or 0) if dz.free_delivery_above else 0,
+            })
+
     return render_template('ops/manual_order.html',
         active_tab='orders',
         order_type=order_type,
         menu_data=menu_data,
         deals_data=deals_data,
+        delivery_zones_data=delivery_zones_data,
     )
 
 

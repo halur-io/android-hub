@@ -434,8 +434,13 @@
                 <input type="text" id="cfAddress" placeholder="רחוב ומספר">
             </div>
             <div class="mo-field">
-                <label>עיר</label>
-                <input type="text" id="cfCity" placeholder="עיר">
+                <label>אזור משלוח <span class="req">*</span></label>
+                <select id="cfZone" class="mo-form-input" onchange="onZoneChange()" style="appearance:auto;">
+                    <option value="">— בחר אזור משלוח —</option>
+                    {% for dz in delivery_zones_data %}
+                    <option value="{{ dz.id }}" data-fee="{{ dz.delivery_fee }}" data-min="{{ dz.minimum_order }}" data-free="{{ dz.free_delivery_above }}" data-city="{{ dz.city_name }}">{{ dz.name }} (₪{{ dz.delivery_fee|int }})</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="mo-field">
                 <label>הערות למשלוח</label>
@@ -486,6 +491,7 @@
                     <div class="mo-total-row discount" id="moDiscountRow" style="display:none;"><span>הנחה</span><span id="moDiscountAmt">-₪0</span></div>
                     {% if order_type == 'delivery' %}
                     <div class="mo-total-row"><span>דמי משלוח</span><span id="moDeliveryFee">₪0</span></div>
+                    <div id="moMinOrderWarn" style="display:none;font-size:11px;color:#f59e0b;margin-bottom:4px;"></div>
                     {% endif %}
                     <div class="mo-total-row grand"><span>סה"כ</span><span id="moTotal">₪0</span></div>
                     <button class="mo-checkout-btn" id="moCheckoutBtn" onclick="openPayment()" disabled>
@@ -597,6 +603,7 @@
 var ORDER_TYPE = '{{ order_type }}';
 var MENU_DATA = {{ menu_data|tojson }};
 var DEALS_DATA = {{ deals_data|tojson }};
+var DELIVERY_ZONES = {{ delivery_zones_data|tojson }};
 var cart = [];
 var currentItemData = null;
 var currentDealData = null;
@@ -608,6 +615,24 @@ var modalQty = 1;
 var createdOrderId = null;
 var createdOrderNumber = null;
 var createdOrderTotal = 0;
+var selectedZone = null;
+
+function onZoneChange() {
+    var sel = document.getElementById('cfZone');
+    if (sel && sel.value) {
+        var opt = sel.options[sel.selectedIndex];
+        selectedZone = {
+            id: parseInt(sel.value),
+            fee: parseFloat(opt.dataset.fee) || 0,
+            min: parseFloat(opt.dataset.min) || 0,
+            freeAbove: parseFloat(opt.dataset.free) || 0,
+            city: opt.dataset.city || ''
+        };
+    } else {
+        selectedZone = null;
+    }
+    updateCart();
+}
 
 function goBack() {
     var menuStep = document.getElementById('stepMenu');
@@ -626,13 +651,16 @@ function goToMenu() {
     {% if order_type == 'delivery' %}
     var addr = document.getElementById('cfAddress').value.trim();
     if (!addr) { showToast('נא למלא כתובת למשלוח', true); document.getElementById('cfAddress').focus(); return; }
+    var zoneEl = document.getElementById('cfZone');
+    if (!zoneEl.value) { showToast('נא לבחור אזור משלוח', true); zoneEl.focus(); return; }
+    onZoneChange();
     {% endif %}
     document.getElementById('stepCustomer').classList.remove('active');
     document.getElementById('stepMenu').classList.add('active');
     document.getElementById('ciName').textContent = name;
     document.getElementById('ciPhone').textContent = phone;
     {% if order_type == 'delivery' %}
-    document.getElementById('ciAddress').textContent = document.getElementById('cfAddress').value.trim();
+    document.getElementById('ciAddress').textContent = document.getElementById('cfAddress').value.trim() + (selectedZone ? ' — ' + selectedZone.city : '');
     {% endif %}
     if (!activeCat && MENU_DATA.length > 0) {
         activeCat = MENU_DATA[0].id;
@@ -661,8 +689,18 @@ function lookupCustomer() {
                 {% if order_type == 'delivery' %}
                 var addrEl = document.getElementById('cfAddress');
                 if (!addrEl.value.trim() && d.customer.address) addrEl.value = d.customer.address;
-                var cityEl = document.getElementById('cfCity');
-                if (!cityEl.value.trim() && d.customer.city) cityEl.value = d.customer.city;
+                var zoneEl = document.getElementById('cfZone');
+                if (!zoneEl.value && d.customer.city) {
+                    var custCity = d.customer.city.trim().toLowerCase();
+                    var opts = zoneEl.options;
+                    for (var i = 0; i < opts.length; i++) {
+                        if (opts[i].dataset.city && opts[i].dataset.city.trim().toLowerCase() === custCity) {
+                            zoneEl.value = opts[i].value;
+                            onZoneChange();
+                            break;
+                        }
+                    }
+                }
                 {% endif %}
                 showToast('פרטי לקוח חוזר נטענו');
             }
@@ -1092,10 +1130,30 @@ function updateCart() {
     }
 
     var deliveryFee = 0;
+    var belowMinOrder = false;
+    var minOrderWarnEl = document.getElementById('moMinOrderWarn');
+    if (ORDER_TYPE === 'delivery' && selectedZone) {
+        if (selectedZone.min > 0 && subtotal < selectedZone.min) {
+            belowMinOrder = true;
+            if (minOrderWarnEl) {
+                minOrderWarnEl.style.display = '';
+                minOrderWarnEl.textContent = 'הזמנה מינימלית ל' + selectedZone.city + ': ₪' + selectedZone.min.toFixed(0);
+            }
+        } else {
+            if (minOrderWarnEl) minOrderWarnEl.style.display = 'none';
+            if (selectedZone.freeAbove > 0 && subtotal >= selectedZone.freeAbove) {
+                deliveryFee = 0;
+            } else {
+                deliveryFee = selectedZone.fee;
+            }
+        }
+    } else {
+        if (minOrderWarnEl) minOrderWarnEl.style.display = 'none';
+    }
     var grandTotal = Math.max(0, subtotal - discount + deliveryFee);
     totalEl.textContent = '₪' + grandTotal.toFixed(0);
     if (deliveryFeeEl) deliveryFeeEl.textContent = '₪' + deliveryFee.toFixed(0);
-    checkBtn.disabled = false;
+    checkBtn.disabled = belowMinOrder;
     renderMenu();
 }
 
@@ -1147,8 +1205,9 @@ function submitOrder() {
     };
     {% if order_type == 'delivery' %}
     payload.delivery_address = document.getElementById('cfAddress').value.trim();
-    payload.delivery_city = (document.getElementById('cfCity') || {}).value || '';
+    payload.delivery_city = selectedZone ? selectedZone.city : '';
     payload.delivery_notes = (document.getElementById('cfDeliveryNotes') || {}).value || '';
+    payload.delivery_zone_id = selectedZone ? selectedZone.id : null;
     {% endif %}
 
     var btn = document.getElementById('moCheckoutBtn');

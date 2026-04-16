@@ -151,19 +151,20 @@
     }
     .move-table-btn:active { background: #e0e0e0; }
     .floor-map-container {
-        flex: 1; overflow: hidden; position: relative;
+        flex: 1; overflow: auto; position: relative;
         display: none; padding: 8px;
+        -webkit-overflow-scrolling: touch;
     }
-    .floor-map-container.active { display: flex; align-items: flex-start; justify-content: center; }
+    .floor-map-container.active { display: block; }
     .floor-map-viewport {
-        position: relative; width: 100%; height: 100%;
-        display: flex; align-items: flex-start; justify-content: center;
+        position: relative;
+        margin: 0 auto;
     }
     .floor-map {
         position: relative;
         background: #fff; border-radius: 12px;
         border: 1px solid #eee;
-        transform-origin: top center;
+        transform-origin: top left;
         will-change: transform;
     }
     .floor-table {
@@ -226,7 +227,6 @@
         {% for area in all_areas %}
         <div class="area-tab" data-area="{{ area|e }}">{{ area }}</div>
         {% endfor %}
-        <div class="area-tab" data-area="__none__">כללי</div>
     </div>
     {% endif %}
 
@@ -363,9 +363,10 @@
         </div>
     </div>
     <div style="margin-bottom:16px;">
-        <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">אזור ישיבה (לא חובה)</label>
-        <input type="text" id="newTableArea" class="form-control" placeholder="לדוגמא: פנים, מרפסת, בר..." style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+        <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">אזור ישיבה <span style="color:#e94560;">*</span></label>
+        <input type="text" id="newTableArea" class="form-control" placeholder="לדוגמא: פנים, מרפסת, בר..." style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;" required>
         <div id="existingAreas" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+        <div style="font-size:.7rem;color:#888;margin-top:4px;">חובה לבחור או ליצור אזור לפני הוספת שולחן</div>
     </div>
     <button class="btn-add-table" style="width:100%; padding:14px; font-size:.95rem;" onclick="addTable()">
         <i class="fas fa-plus me-1"></i> הוסף שולחן
@@ -491,7 +492,8 @@ function switchView(view) {
 function fitFloorMap() {
     var map = document.getElementById('floorMap');
     var vp = document.getElementById('floorMapViewport');
-    if (!map || !vp) return;
+    var cont = document.getElementById('floorView');
+    if (!map || !vp || !cont) return;
     var tables = map.querySelectorAll('.floor-table');
     if (!tables.length) return;
     var maxX = 0, maxY = 0;
@@ -508,11 +510,27 @@ function fitFloorMap() {
     var contentH = Math.max(maxY + pad, 200);
     map.style.width = contentW + 'px';
     map.style.height = contentH + 'px';
-    var vpW = vp.clientWidth || 1;
-    var vpH = vp.clientHeight || 1;
-    var scale = Math.min(vpW / contentW, vpH / contentH, 1);
-    if (scale < 0.25) scale = 0.25;
+
+    // available area inside the scroll container (minus its padding)
+    var vpW = Math.max((cont.clientWidth || 0) - 16, 1);
+    var vpH = Math.max((cont.clientHeight || 0) - 16, 1);
+    var isMobile = window.innerWidth <= 768;
+    var scale;
+    if (isMobile) {
+        // mobile: fit to width so tables are natural-sized relative to screen,
+        // allow vertical scroll if the floor is taller than the screen
+        scale = vpW / contentW;
+        if (scale > 1.2) scale = 1.2;
+        if (scale < 0.5) scale = 0.5;
+    } else {
+        // desktop/tablet: fit both dimensions, don't up-scale past natural
+        scale = Math.min(vpW / contentW, vpH / contentH, 1);
+        if (scale < 0.3) scale = 0.3;
+    }
     map.style.transform = 'scale(' + scale + ')';
+    // size viewport to scaled footprint so scroll area matches
+    vp.style.width = Math.ceil(contentW * scale) + 'px';
+    vp.style.height = Math.ceil(contentH * scale) + 'px';
 }
 
 window.addEventListener('resize', function() {
@@ -952,6 +970,7 @@ function addTable() {
     var cap = parseInt(document.getElementById('newTableCapacity').value) || 4;
     var area = document.getElementById('newTableArea').value.trim();
     if (!num) { showToast('נא להזין מספר שולחן', true); return; }
+    if (!area) { showToast('חובה לבחור אזור ישיבה', true); document.getElementById('newTableArea').focus(); return; }
     fetch('/ops/api/tables/manage', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -976,6 +995,7 @@ function reopenSession(sessionId) {
 
 function bulkAddTables() {
     var area = document.getElementById('newTableArea').value.trim();
+    if (!area) { showToast('חובה לבחור אזור ישיבה', true); document.getElementById('newTableArea').focus(); return; }
     var promises = [];
     for (var i = 1; i <= 10; i++) {
         promises.push(

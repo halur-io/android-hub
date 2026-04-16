@@ -2793,6 +2793,78 @@ def direct_print():
     return jsonify({'ok': True, 'message': 'נשלח לאפליקציית ההדפסה'})
 
 
+@ops_bp.route('/bon-preview')
+@ops_bp.route('/bon-preview/<int:order_id>')
+def bon_preview(order_id=None):
+    from flask_login import current_user
+    is_admin = current_user and current_user.is_authenticated
+    is_ops = _get_ops_user()
+    if not is_admin and not is_ops:
+        return redirect(url_for('ops.login'))
+
+    orders_list = []
+    effective_branch = _get_effective_branch_id() if is_ops else None
+    q = FoodOrder.query
+    if effective_branch:
+        q = q.filter_by(branch_id=effective_branch)
+    orders_list = q.order_by(FoodOrder.created_at.desc()).limit(30).all()
+
+    selected_order = None
+    preview_jobs = []
+    if order_id:
+        selected_order = FoodOrder.query.get(order_id)
+    elif orders_list:
+        selected_order = orders_list[0]
+
+    if selected_order:
+        import base64
+        items = json.loads(selected_order.items_json) if selected_order.items_json else []
+        by_station = {}
+        for item in items:
+            menu_item_id = item.get('menu_item_id') or item.get('item_id')
+            st = 'כללי'
+            if menu_item_id:
+                mi = MenuItem.query.get(menu_item_id)
+                if mi:
+                    if mi.print_station:
+                        st = mi.print_station
+                    if selected_order.branch_id:
+                        bmi = BranchMenuItem.query.filter_by(branch_id=selected_order.branch_id, menu_item_id=menu_item_id).first()
+                        if bmi and bmi.print_station:
+                            st = bmi.print_station
+                    if mi.print_name:
+                        item['print_name'] = mi.print_name
+            if st not in by_station:
+                by_station[st] = []
+            by_station[st].append(item)
+
+        bon_types = [
+            ('checker', 'בון הזמנה', lambda p: _build_checker_bon(p, selected_order)),
+            ('payment', 'בון תשלום', lambda p: _build_payment_bon(p, selected_order)),
+        ]
+        for st_name, st_items in by_station.items():
+            bon_types.append(('station', f'בון עמדה - {st_name}', lambda p, sn=st_name, si=st_items: _build_station_bon(p, selected_order, sn, si)))
+
+        for bon_type, label, builder in bon_types:
+            p = DirectPrinter('0.0.0.0', 9100, encoding='cp862', codepage_num=0)
+            builder(p)
+            raw = bytes(p.buf)
+            preview_jobs.append({
+                'type': bon_type,
+                'label': label,
+                'raw_b64': base64.b64encode(raw).decode('ascii'),
+                'raw_hex': raw.hex(),
+                'size': len(raw),
+            })
+
+    return render_template('ops/bon_preview.html',
+        active_tab='orders',
+        orders_list=orders_list,
+        selected_order=selected_order,
+        preview_jobs=preview_jobs,
+    )
+
+
 @ops_bp.route('/api/orders/unprinted', methods=['GET'])
 def get_unprinted_orders():
     is_api_key_auth = _verify_print_api_key()

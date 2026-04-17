@@ -6499,6 +6499,34 @@ def pwa_push_unsubscribe():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@ops_bp.route('/api/test-new-order-sound', methods=['POST', 'GET'])
+def test_new_order_sound():
+    """Broadcast a synthetic new_order SSE event so you can verify the alert sound on the Ops orders page."""
+    device = _check_device()
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not enrolled'}), 401
+    user = _get_ops_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'login required'}), 401
+    branch_id = _get_effective_branch_id() or getattr(user, 'branch_id', None)
+    fake = {
+        'type': 'new_order',
+        'id': 0,
+        'order_number': 'TEST-' + datetime.utcnow().strftime('%H%M%S'),
+        'order_type': 'pickup',
+        'branch_id': branch_id,
+        'customer_name': 'בדיקת התראה',
+        'total_amount': 0,
+        'source': 'test',
+        'created_at': datetime.utcnow().isoformat() + 'Z',
+        'is_test': True,
+    }
+    _notify_sse_order_event(fake)
+    with _sse_lock:
+        subscriber_count = len(_sse_subscribers)
+    return jsonify({'ok': True, 'broadcast_to_subscribers': subscriber_count, 'payload': fake})
+
+
 @ops_bp.route('/api/push/test', methods=['POST'])
 def pwa_push_test():
     """Send a test push to the CURRENT device's subscriptions only."""

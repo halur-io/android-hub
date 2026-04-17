@@ -431,6 +431,42 @@
         var staleSub = document.getElementById('ops-stale-sub');
         var lastOnline = navigator.onLine;
         var bannerDismissed = false;
+        var autoReloadTimer = null;
+        var autoReloadCountdown = null;
+        var autoReloadSecondsLeft = 0;
+        var AUTO_RELOAD_DELAY = 5;
+
+        function autoReloadEnabled() {
+            try { return localStorage.getItem('ops_auto_refresh_on_reconnect') === '1'; }
+            catch (e) { return false; }
+        }
+        function cancelAutoReload() {
+            if (autoReloadTimer) { clearTimeout(autoReloadTimer); autoReloadTimer = null; }
+            if (autoReloadCountdown) { clearInterval(autoReloadCountdown); autoReloadCountdown = null; }
+            autoReloadSecondsLeft = 0;
+        }
+        function startAutoReload() {
+            cancelAutoReload();
+            if (!autoReloadEnabled() || bannerDismissed) return;
+            autoReloadSecondsLeft = AUTO_RELOAD_DELAY;
+            updateAutoReloadSub();
+            autoReloadCountdown = setInterval(function() {
+                autoReloadSecondsLeft--;
+                if (autoReloadSecondsLeft <= 0) {
+                    clearInterval(autoReloadCountdown); autoReloadCountdown = null;
+                } else {
+                    updateAutoReloadSub();
+                }
+            }, 1000);
+            autoReloadTimer = setTimeout(function() {
+                cancelAutoReload();
+                try { location.reload(); } catch(e) {}
+            }, AUTO_RELOAD_DELAY * 1000);
+        }
+        function updateAutoReloadSub() {
+            if (!staleSub) return;
+            staleSub.textContent = 'רענון אוטומטי בעוד ' + autoReloadSecondsLeft + ' שנ׳…';
+        }
 
         function fmtAgo(ms) {
             var sec = Math.max(0, Math.floor(ms / 1000));
@@ -486,10 +522,14 @@
                     var ok = r && r.ok;
                     var wasOffline = !lastOnline;
                     lastOnline = !!ok;
-                    if (ok) hideStaleBanner();
+                    if (ok && !wasOffline) {
+                        hideStaleBanner();
+                        cancelAutoReload();
+                    }
                     if (ok && wasOffline) {
                         // Came back online — encourage a refresh to load fresh data
                         showStaleBanner();
+                        startAutoReload();
                     }
                     render();
                 })
@@ -511,6 +551,7 @@
         document.getElementById('ops-stale-refresh').addEventListener('click', window.opsRefreshNow);
         document.getElementById('ops-stale-close').addEventListener('click', function() {
             bannerDismissed = true;
+            cancelAutoReload();
             hideStaleBanner();
         });
 

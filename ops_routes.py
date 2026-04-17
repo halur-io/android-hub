@@ -6409,8 +6409,14 @@ def pwa_push_subscribe():
         branch_id = session.get('ops_branch_id')
 
     existing = OpsPushSubscription.query.filter_by(endpoint=endpoint).first()
+    is_new_subscription = False
     try:
         if existing:
+            # Re-activating a previously inactive subscription counts as "new"
+            # for confirmation purposes — the device may have re-granted
+            # permission after a long pause or keystore rotation.
+            if not existing.is_active:
+                is_new_subscription = True
             existing.p256dh = p256dh
             existing.auth = auth
             existing.is_active = True
@@ -6418,8 +6424,9 @@ def pwa_push_subscribe():
             existing.user_agent = request.headers.get('User-Agent', '')[:500]
             existing.device_id = device.id if device else existing.device_id
             existing.branch_id = branch_id if branch_id else existing.branch_id
+            sub_row = existing
         else:
-            row = OpsPushSubscription(
+            sub_row = OpsPushSubscription(
                 endpoint=endpoint,
                 p256dh=p256dh,
                 auth=auth,
@@ -6428,13 +6435,39 @@ def pwa_push_subscribe():
                 branch_id=branch_id,
                 is_active=True,
             )
-            db.session.add(row)
+            db.session.add(sub_row)
+            is_new_subscription = True
         db.session.commit()
-        return jsonify({'ok': True})
     except Exception as e:
         db.session.rollback()
         logging.error(f"[PUSH] subscribe error: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+    # Send a one-time confirmation push so staff immediately see that the
+    # subscription is wired up end-to-end. Only fire on a genuinely new (or
+    # re-activated) subscription to avoid spamming on benign re-subscribes.
+    confirmation = {'sent': False, 'attempted': False}
+    if is_new_subscription:
+        confirmation['attempted'] = True
+        try:
+            from utils.ops_push import get_vapid, send_push_to_subscription
+            from models import OpsPushVAPID as _VAPIDModel
+            vapid = get_vapid(db, _VAPIDModel)
+            payload = {
+                'title': 'ההתראות מוכנות ✓',
+                'body': 'המכשיר הזה יקבל מעכשיו התראות על הזמנות חדשות.',
+                'tag': 'sumo-ops-welcome',
+                'url': '/ops/',
+            }
+            if send_push_to_subscription(sub_row, payload, vapid):
+                confirmation['sent'] = True
+            else:
+                confirmation['error'] = 'push delivery failed'
+        except Exception as e:
+            logging.warning(f"[PUSH] confirmation push error: {e}")
+            confirmation['error'] = str(e)
+
+    return jsonify({'ok': True, 'confirmation': confirmation})
 
 
 @ops_bp.route('/api/push/unsubscribe', methods=['POST'])

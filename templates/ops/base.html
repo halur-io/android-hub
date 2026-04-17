@@ -734,10 +734,10 @@
         }
 
         function subscribePush(reg) {
-            fetch('/ops/api/push/vapid-public-key', { credentials: 'same-origin' })
+            return fetch('/ops/api/push/vapid-public-key', { credentials: 'same-origin' })
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
-                    if (!d.ok || !d.public_key) return;
+                    if (!d.ok || !d.public_key) return null;
                     return reg.pushManager.getSubscription().then(function(existing) {
                         if (existing) return existing;
                         return reg.pushManager.subscribe({
@@ -747,7 +747,7 @@
                     });
                 })
                 .then(function(sub) {
-                    if (!sub) return;
+                    if (!sub) return null;
                     return fetch('/ops/api/push/subscribe', {
                         method: 'POST',
                         headers: {
@@ -756,7 +756,15 @@
                         },
                         credentials: 'same-origin',
                         body: JSON.stringify({ subscription: sub.toJSON() }),
-                    });
+                    }).then(function(r) { return r.json().catch(function() { return {}; }); });
+                })
+                .then(function(resp) {
+                    if (!resp) return null;
+                    var conf = resp.confirmation || {};
+                    if (conf.attempted && !conf.sent && typeof showToast === 'function') {
+                        showToast('ההתראות נרשמו אך התראת האישור לא נשלחה — בדוק הגדרות התראות במכשיר', true);
+                    }
+                    return resp;
                 })
                 .catch(function(err) { console.warn('[PUSH] subscribe failed', err); });
         }

@@ -1066,18 +1066,45 @@ function bulkAddTables() {
 }
 
 function handleTableClick(tableId, sessionId, status) {
-    if (status === 'available') {
-        fetch('/ops/api/tables/' + tableId + '/open-session', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: '{}'
-        }).then(function(r) { return r.json(); }).then(function(d) {
-            if (d.ok) window.location.href = '/ops/dine-in/' + d.session_id;
-            else showToast(d.error, true);
-        });
-    } else if (sessionId) {
-        window.location.href = '/ops/dine-in/' + sessionId;
+    if (status !== 'available') {
+        if (sessionId) {
+            window.location.href = '/ops/dine-in/' + sessionId;
+        } else {
+            showToast('שולחן ללא ישיבה פעילה — רענן את הדף', true);
+        }
+        return;
     }
+    var card = document.querySelector('.table-card[data-table-id="' + tableId + '"], .floor-table[data-table-id="' + tableId + '"]');
+    if (card && card.dataset.opening === '1') return;
+    if (card) card.dataset.opening = '1';
+    fetch('/ops/api/tables/' + tableId + '/open-session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+        credentials: 'same-origin',
+        body: '{}'
+    }).then(function(r) {
+        return r.text().then(function(txt) {
+            var d;
+            try { d = JSON.parse(txt); } catch (e) {
+                throw new Error('שרת החזיר תגובה לא צפויה (' + r.status + ')');
+            }
+            if (r.status >= 400 && !d.ok) {
+                throw new Error(d.error || ('שגיאת שרת ' + r.status));
+            }
+            return d;
+        });
+    }).then(function(d) {
+        if (d && d.ok && d.session_id) {
+            window.location.href = '/ops/dine-in/' + d.session_id;
+        } else {
+            if (card) delete card.dataset.opening;
+            showToast((d && d.error) || 'לא התקבל מזהה ישיבה — נסה שוב', true);
+        }
+    }).catch(function(err) {
+        if (card) delete card.dataset.opening;
+        console.error('[open-session] failed', err);
+        showToast('שגיאה בפתיחת שולחן: ' + (err && err.message ? err.message : 'נסה שוב'), true);
+    });
 }
 
 setInterval(function() {

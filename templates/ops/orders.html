@@ -1090,6 +1090,48 @@ function _toggleRowSelected(card, force) {
     if (!on && _bulkSelectedIdList().length === 0) { _exitSelectMode(); return; }
     _persistBulkSelection();
 }
+function _reapplyBulkSelectionAfterRerender(savedIds) {
+    if (!savedIds || !savedIds.length) return;
+    var list = document.getElementById('ordersList');
+    if (!list) return;
+    var newSelected = {};
+    var present = 0;
+    savedIds.forEach(function(id) {
+        var card = list.querySelector('.order-row[data-order-id="' + id + '"]');
+        if (card) {
+            newSelected[id] = true;
+            card.classList.add('row-selected');
+            card.setAttribute('aria-pressed', 'true');
+            present++;
+        }
+    });
+    _selectedIds = newSelected;
+    var missing = savedIds.length - present;
+    if (present === 0) {
+        _exitSelectMode();
+        if (missing > 0) _showBulkMissingNotice(missing);
+        return;
+    }
+    if (_selectMode) list.classList.add('select-mode');
+    _updateBulkBar();
+    _persistBulkSelection();
+    if (missing > 0) _showBulkMissingNotice(missing);
+}
+function _refreshOrdersListInPlace() {
+    var savedIds = _bulkSelectedIdList();
+    fetch(window.location.href, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var newList = doc.getElementById('ordersList');
+            var oldList = document.getElementById('ordersList');
+            if (!newList || !oldList) return;
+            oldList.innerHTML = newList.innerHTML;
+            if (_selectMode) oldList.classList.add('select-mode');
+            _reapplyBulkSelectionAfterRerender(savedIds);
+            if (typeof updateOrderAges === 'function') updateOrderAges();
+        }).catch(function() {});
+}
 function _restoreBulkSelection() {
     var navType = 'navigate';
     try {
@@ -2534,10 +2576,11 @@ _restoreBulkSelection();
             flashScreen();
             showNotification(data);
             showOrderBanner(data);
-            setTimeout(function() { if (!_selectMode) location.reload(); }, 3000);
+            setTimeout(function() { if (!_selectMode) location.reload(); else _refreshOrdersListInPlace(); }, 3000);
         }
         if (data.type === 'order_status_changed') {
             if (!_selectMode) location.reload();
+            else _refreshOrdersListInPlace();
         }
     }
 
@@ -2595,7 +2638,7 @@ _restoreBulkSelection();
     }
 
     connectSSE();
-    setInterval(function() { if (!_selectMode) location.reload(); }, 60000);
+    setInterval(function() { if (!_selectMode) location.reload(); else _refreshOrdersListInPlace(); }, 60000);
 })();
 </script>
 

@@ -175,6 +175,39 @@
 </div>
 
 <div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-bell" style="color: var(--ops-accent);"></i> התראות PUSH</div>
+    <div class="ops-card">
+        <div class="ops-toggle-row">
+            <div style="flex:1; min-width:0;">
+                <div class="ops-toggle-label">התראות על הזמנות חדשות</div>
+                <div class="ops-toggle-sublabel" id="notifStatusText">בודק סטטוס…</div>
+            </div>
+            <span id="notifStatusBadge" class="ops-badge" style="margin-right:8px;">—</span>
+        </div>
+        <div id="notifBlockedHelp" style="display:none; padding:12px 4px; font-size:12px; color:var(--ops-text-dim); line-height:1.6;">
+            <i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i>
+            ההרשאה נחסמה. כדי לאפשר שוב: לחץ על סמל המנעול/האתר שליד כתובת האתר בדפדפן ← הרשאות ← אפשר התראות. לאחר מכן רענן את הדף.
+        </div>
+        <div id="notifIosHelp" style="display:none; padding:12px 4px; font-size:12px; color:var(--ops-text-dim); line-height:1.6;">
+            <i class="fas fa-mobile-alt" style="color:var(--ops-blue);"></i>
+            ב‑iPhone/iPad: יש להוסיף תחילה את האפליקציה למסך הבית (כפתור שיתוף ← "הוסף למסך הבית"). פתח את האפליקציה מהמסך הראשי ולאחר מכן הפעל את ההתראות.
+        </div>
+        <div id="notifUnsupportedHelp" style="display:none; padding:12px 4px; font-size:12px; color:var(--ops-text-dim); line-height:1.6;">
+            <i class="fas fa-info-circle"></i>
+            הדפדפן הנוכחי אינו תומך בהתראות PUSH. נסה דפדפן אחר (Chrome/Edge/Firefox/Safari עדכני).
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+            <button id="notifEnableBtn" class="ops-btn" style="background:var(--ops-accent); color:#fff; flex:1; min-width:140px; display:none;" onclick="opsSettingsEnableNotifs()">
+                <i class="fas fa-bell"></i> הפעל התראות
+            </button>
+            <button id="notifTestBtn" class="ops-btn ops-btn-secondary" style="flex:1; min-width:140px; display:none;" onclick="opsSettingsTestNotif(this)">
+                <i class="fas fa-paper-plane"></i> שלח התראת בדיקה
+            </button>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
     <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-info-circle" style="color: var(--ops-blue);"></i> מידע מכשיר</div>
     <div class="ops-card" style="font-size: 13px; color: var(--ops-text-dim);">
         <div style="padding: 8px 0; border-bottom: 1px solid var(--ops-border);">
@@ -241,6 +274,107 @@ function savePrinterPort(val) {
     ps.printer_port = parseInt(val) || 9100;
     localStorage.setItem('ops_print_settings', JSON.stringify(ps));
 }
+
+function opsNotifsRefresh() {
+    var statusText = document.getElementById('notifStatusText');
+    var badge = document.getElementById('notifStatusBadge');
+    var enableBtn = document.getElementById('notifEnableBtn');
+    var testBtn = document.getElementById('notifTestBtn');
+    var blockedHelp = document.getElementById('notifBlockedHelp');
+    var iosHelp = document.getElementById('notifIosHelp');
+    var unsupportedHelp = document.getElementById('notifUnsupportedHelp');
+
+    blockedHelp.style.display = 'none';
+    iosHelp.style.display = 'none';
+    unsupportedHelp.style.display = 'none';
+    enableBtn.style.display = 'none';
+    testBtn.style.display = 'none';
+
+    var hasNotif = ('Notification' in window);
+    var hasPush = ('serviceWorker' in navigator) && ('PushManager' in window);
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (!hasNotif || !hasPush) {
+        if (isIOS && !isStandalone) {
+            statusText.textContent = 'נדרש להוסיף את האפליקציה למסך הבית';
+            badge.textContent = 'לא זמין';
+            badge.className = 'ops-badge ops-badge-red';
+            iosHelp.style.display = 'block';
+        } else {
+            statusText.textContent = 'הדפדפן אינו תומך בהתראות';
+            badge.textContent = 'לא נתמך';
+            badge.className = 'ops-badge ops-badge-red';
+            unsupportedHelp.style.display = 'block';
+        }
+        return;
+    }
+
+    var perm = Notification.permission;
+    if (perm === 'granted') {
+        statusText.textContent = 'התראות פעילות במכשיר זה';
+        badge.textContent = 'מופעל';
+        badge.className = 'ops-badge';
+        badge.style.background = 'rgba(34,197,94,.15)';
+        badge.style.color = '#16a34a';
+        testBtn.style.display = 'inline-flex';
+    } else if (perm === 'denied') {
+        statusText.textContent = 'ההרשאה נחסמה בדפדפן';
+        badge.textContent = 'חסום';
+        badge.className = 'ops-badge ops-badge-red';
+        badge.style.background = '';
+        badge.style.color = '';
+        blockedHelp.style.display = 'block';
+    } else {
+        statusText.textContent = 'עדיין לא הופעלו';
+        badge.textContent = 'מבוטל';
+        badge.className = 'ops-badge';
+        badge.style.background = 'rgba(245,158,11,.15)';
+        badge.style.color = '#b45309';
+        enableBtn.style.display = 'inline-flex';
+        if (isIOS && !isStandalone) iosHelp.style.display = 'block';
+    }
+}
+
+function opsSettingsEnableNotifs() {
+    if (typeof window.opsEnableNotifications !== 'function') {
+        showToast('פונקציית ההתראות לא זמינה', true);
+        return;
+    }
+    window.opsEnableNotifications().then(function() {
+        setTimeout(opsNotifsRefresh, 300);
+    });
+}
+
+function opsSettingsTestNotif(btn) {
+    btn.disabled = true;
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח…';
+    fetch('/ops/api/push/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        credentials: 'same-origin',
+        body: '{}'
+    })
+    .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+    .then(function(res) {
+        if (res.d && res.d.ok) {
+            showToast('נשלחה התראת בדיקה (' + (res.d.sent || 0) + '/' + (res.d.total || 0) + ')');
+        } else {
+            var err = (res.d && (res.d.error || res.d.message)) || 'שגיאה';
+            if (err === 'no active subscriptions') err = 'אין מנוי פעיל במכשיר זה — הפעל מחדש את ההתראות';
+            showToast(err, true);
+        }
+    })
+    .catch(function() { showToast('שגיאת תקשורת', true); })
+    .finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    });
+}
+
+opsNotifsRefresh();
 
 function testPrinter() {
     var ip = document.getElementById('printerIp').value.trim();

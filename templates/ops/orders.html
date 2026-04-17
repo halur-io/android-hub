@@ -965,6 +965,7 @@ var LP_MOVE_CANCEL = 10;
 /* ===== Bulk select mode ===== */
 var _selectMode = false;
 var _selectedIds = {};
+var BULK_SELECTION_KEY = 'opsOrdersBulkSelection_v1';
 
 function _bulkSelectedIdList() {
     var ids = [];
@@ -981,6 +982,19 @@ function _bulkSelectedCancellableIds() {
         if (card && _isCancellableStatus(card.getAttribute('data-status'))) ids.push(id);
     });
     return ids;
+}
+function _persistBulkSelection() {
+    try {
+        var ids = _bulkSelectedIdList();
+        if (_selectMode && ids.length) {
+            sessionStorage.setItem(BULK_SELECTION_KEY, JSON.stringify(ids));
+        } else {
+            sessionStorage.removeItem(BULK_SELECTION_KEY);
+        }
+    } catch (e) {}
+}
+function _clearPersistedBulkSelection() {
+    try { sessionStorage.removeItem(BULK_SELECTION_KEY); } catch (e) {}
 }
 function _updateBulkBar() {
     var bar = document.getElementById('bulkActionBar');
@@ -1006,6 +1020,7 @@ function _enterSelectMode(initialCard) {
     if (list) list.classList.add('select-mode');
     if (initialCard) _toggleRowSelected(initialCard, true);
     _updateBulkBar();
+    _persistBulkSelection();
 }
 function _exitSelectMode() {
     _selectMode = false;
@@ -1014,6 +1029,7 @@ function _exitSelectMode() {
     if (list) list.classList.remove('select-mode');
     document.querySelectorAll('.order-row.row-selected').forEach(function(r){ r.classList.remove('row-selected'); });
     _updateBulkBar();
+    _clearPersistedBulkSelection();
 }
 function _toggleRowSelected(card, force) {
     var id = parseInt(card.dataset.orderId, 10);
@@ -1023,7 +1039,47 @@ function _toggleRowSelected(card, force) {
     card.classList.toggle('row-selected', on);
     card.setAttribute('aria-pressed', on ? 'true' : 'false');
     _updateBulkBar();
-    if (!on && _bulkSelectedIdList().length === 0) _exitSelectMode();
+    if (!on && _bulkSelectedIdList().length === 0) { _exitSelectMode(); return; }
+    _persistBulkSelection();
+}
+function _restoreBulkSelection() {
+    var navType = 'navigate';
+    try {
+        var entries = (performance && performance.getEntriesByType) ? performance.getEntriesByType('navigation') : null;
+        if (entries && entries.length && entries[0].type) {
+            navType = entries[0].type;
+        } else if (performance && performance.navigation) {
+            var t = performance.navigation.type;
+            navType = (t === 1 ? 'reload' : (t === 2 ? 'back_forward' : 'navigate'));
+        }
+    } catch (e) {}
+    if (navType !== 'reload' && navType !== 'back_forward') {
+        _clearPersistedBulkSelection();
+        return;
+    }
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(BULK_SELECTION_KEY) || 'null'); } catch (e) {}
+    if (!saved || !saved.length) return;
+    var list = document.getElementById('ordersList');
+    if (!list) return;
+    var restored = 0;
+    saved.forEach(function(id) {
+        var card = list.querySelector('.order-row[data-order-id="' + id + '"]');
+        if (card) {
+            _selectedIds[id] = true;
+            card.classList.add('row-selected');
+            card.setAttribute('aria-pressed', 'true');
+            restored++;
+        }
+    });
+    if (restored > 0) {
+        _selectMode = true;
+        list.classList.add('select-mode');
+        _updateBulkBar();
+        _persistBulkSelection();
+    } else {
+        _clearPersistedBulkSelection();
+    }
 }
 
 function _lpCancel() {
@@ -2076,6 +2132,7 @@ function deleteOrderFromOps(id, orderNum, reason) {
 }
 
 initLongPress();
+_restoreBulkSelection();
 
 /* ===== Search input ===== */
 (function() {

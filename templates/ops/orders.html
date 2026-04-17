@@ -101,59 +101,92 @@
 
 .order-row-wrap {
     position: relative;
-    overflow: hidden;
     border-bottom: 1px solid var(--ops-border);
 }
 .order-row-wrap:last-child { border-bottom: none; }
 
-.order-swipe-actions {
-    position: absolute;
-    top: 0; bottom: 0;
-    display: flex;
-    align-items: stretch;
-    z-index: 1;
-}
-.order-swipe-actions.left { left: 0; }
-.order-swipe-actions.right { right: 0; }
-.swipe-action {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 70px;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 600;
-    color: #fff;
-    cursor: pointer;
-}
-.swipe-action.print-bon { background: #3498db; }
-.swipe-action.send-sms { background: #0f9b58; }
-.swipe-action.set-time { background: #f39c12; }
-.swipe-action.cancel-order { background: #e74c3c; }
-.swipe-action.complete-order { background: #0f9b58; }
-.swipe-action i { font-size: 18px; }
-
 .order-row {
     position: relative;
-    z-index: 2;
     display: flex;
     align-items: center;
     padding: 10px 16px;
     background: #fff;
     cursor: pointer;
-    transition: transform 0.25s ease;
     touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
     min-height: 64px;
     gap: 10px;
+    transition: background 0.15s ease;
 }
 .order-row:active { background: #f8f9fb; }
-.order-row.swiped-left { transform: translateX(-210px); }
-.order-row.swiped-right { transform: translateX(140px); }
+.order-row.lp-arming { background: #eef2ff; }
 .order-row.age-warn { border-left: 4px solid #f59e0b; }
 .order-row.age-urgent { border-left: 4px solid #dc2626; }
+
+/* ===== Action sheet ===== */
+.as-header {
+    display:flex; align-items:center; gap:10px;
+    padding-bottom:12px; margin-bottom:12px;
+    border-bottom:1px solid #2a2a2a;
+}
+.as-header .as-num { font-size:14px; font-weight:800; color:#94a3b8; min-width:24px; }
+.as-header .as-icon {
+    width:36px; height:36px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; flex-shrink:0;
+}
+.as-header .as-icon.delivery { background:#1e3a5f; color:#60a5fa; }
+.as-header .as-icon.pickup { background:#1f3a2a; color:#4ade80; }
+.as-header .as-icon.dine-in { background:#3a2348; color:#c084fc; }
+.as-header .as-info { flex:1; min-width:0; }
+.as-header .as-cust { font-size:15px; font-weight:700; color:#e5e7eb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.as-header .as-meta { font-size:11px; color:#94a3b8; }
+.as-header .as-total { font-size:16px; font-weight:900; color:#22c55e; flex-shrink:0; }
+
+.as-primary {
+    width:100%; padding:16px; margin-bottom:12px;
+    border:none; border-radius:12px;
+    color:#fff; font-size:16px; font-weight:800;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.as-primary i { font-size:18px; }
+.as-primary.start-prep { background:#f97316; }
+.as-primary.mark-ready { background:#22c55e; }
+.as-primary.mark-delivered { background:#0f9b58; }
+.as-primary.mark-out { background:#3b82f6; }
+
+.as-row {
+    display:grid; gap:8px; margin-bottom:10px;
+}
+.as-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.as-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.as-row.cols-1 { grid-template-columns: 1fr; }
+.as-btn {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; padding:14px 8px;
+    border:1px solid #334155; border-radius:10px;
+    background:#1e293b; color:#e2e8f0;
+    font-size:12px; font-weight:700;
+    cursor:pointer; text-align:center;
+    text-decoration:none;
+}
+.as-btn i { font-size:18px; }
+.as-btn.call    { color:#60a5fa; }
+.as-btn.sms     { color:#4ade80; }
+.as-btn.print   { color:#38bdf8; }
+.as-btn.waze    { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.as-btn.waze i  { color:#fff; }
+.as-btn.pay     { background:#f59e0b; color:#fff; border-color:#f59e0b; }
+.as-btn.pay i   { color:#fff; }
+.as-btn.time    { color:#fbbf24; }
+.as-btn.detail  { color:#94a3b8; }
+.as-btn.danger  { color:#fca5a5; border-color:#7f1d1d; }
+.as-section-label {
+    font-size:11px; font-weight:700; color:#64748b;
+    margin: 6px 0 6px; text-transform:uppercase; letter-spacing:.5px;
+}
+.as-divider { height:1px; background:#2a2a2a; margin:14px 0 12px; }
 
 .row-order-num {
     font-weight: 800;
@@ -461,21 +494,18 @@
     {% set s_class = 's-new' if order.status in ('pending','confirmed') else ('s-preparing' if order.status == 'preparing' else ('s-ready' if order.status == 'ready' else ('s-cancelled' if order.status == 'cancelled' else 's-done'))) %}
     {% set s_label = 'לטיפול' if order.status in ('pending','confirmed') else ('בהכנה' if order.status == 'preparing' else ('מוכן' if order.status == 'ready' else ('בוטל' if order.status == 'cancelled' else 'נמסר'))) %}
     <div class="order-row-wrap" data-order-id="{{ order.id }}">
-        <div class="order-swipe-actions right">
-            <div class="swipe-action print-bon" onclick="openPrintMenu({{ order.id }})"><i class="fas fa-print"></i><span>הדפס</span></div>
-            <div class="swipe-action send-sms" onclick="sendSms({{ order.id }})"><i class="fas fa-sms"></i><span>SMS</span></div>
-            {% if order.status not in ('delivered', 'pickedup', 'cancelled') %}
-            <div class="swipe-action set-time" onclick="openTimeModal({{ order.id }})"><i class="fas fa-clock"></i><span>זמן</span></div>
-            {% endif %}
-        </div>
-        <div class="order-swipe-actions left">
-            {% if order.status in ('preparing', 'ready') %}
-            <div class="swipe-action complete-order" onclick="completeOrder({{ order.id }}, '{{ order.order_type }}')"><i class="fas fa-check-circle"></i><span>סגור</span></div>
-            {% endif %}
-            <div class="swipe-action cancel-order" onclick="cancelOrder({{ order.id }})"><i class="fas fa-ban"></i><span>בטל</span></div>
-            <div class="swipe-action print-bon" onclick="openPrintMenu({{ order.id }})"><i class="fas fa-print"></i><span>הדפס</span></div>
-        </div>
-        <div class="order-row" onclick="openOrder({{ order.id }})" id="card-{{ order.id }}">
+        <div class="order-row" id="card-{{ order.id }}"
+             data-order-id="{{ order.id }}"
+             data-order-num="{{ order.order_number or loop.index }}"
+             data-customer="{{ order.customer_name or '' }}"
+             data-phone="{{ order.customer_phone or '' }}"
+             data-status="{{ order.status }}"
+             data-type="{{ order.order_type }}"
+             data-payment-status="{{ order.payment_status or '' }}"
+             data-total="{{ '%.2f'|format(order.total_amount or 0) }}"
+             data-address="{{ order.delivery_address or '' }}"
+             data-city="{{ order.delivery_city or '' }}"
+             data-source="{{ order.source or '' }}">
             <div class="row-order-num">{{ loop.index }}</div>
             <div class="row-type-icon {{ 'delivery' if order.order_type == 'delivery' else ('dine-in' if order.order_type == 'dine_in' else 'pickup') }}">
                 <i class="fas fa-{{ 'motorcycle' if order.order_type == 'delivery' else ('utensils' if order.order_type == 'dine_in' else 'shopping-bag') }}"></i>
@@ -516,6 +546,13 @@
     <div class="modal-sheet">
         <div class="modal-handle"></div>
         <div id="orderDetail"></div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="actionSheet" onclick="if(event.target===this)closeActionSheet()">
+    <div class="modal-sheet" style="max-height:80vh;overflow-y:auto;">
+        <div class="modal-handle"></div>
+        <div id="actionSheetBody"></div>
     </div>
 </div>
 
@@ -666,53 +703,195 @@ var selectedPrepTime = 0;
 var timeModalOrderId = null;
 var cachedOrders = {};
 
-function initSwipe() {
-    document.querySelectorAll('.order-row').forEach(function(card) {
-        var startX, currentX, swiping = false;
-        card.addEventListener('touchstart', function(e) {
-            startX = e.touches[0].clientX;
-            currentX = startX;
-            swiping = true;
-            card.style.transition = 'none';
-        }, {passive: true});
-        card.addEventListener('touchmove', function(e) {
-            if (!swiping) return;
-            currentX = e.touches[0].clientX;
-            var dx = currentX - startX;
-            if (Math.abs(dx) > 10) {
-                var max = dx > 0 ? 140 : -210;
-                var clamped = dx > 0 ? Math.min(dx, max) : Math.max(dx, max);
-                card.style.transform = 'translateX(' + clamped + 'px)';
-            }
-        }, {passive: true});
-        card.addEventListener('touchend', function() {
-            swiping = false;
-            card.style.transition = 'transform 0.25s ease';
-            var dx = currentX - startX;
-            if (dx < -70) {
-                card.style.transform = 'translateX(-210px)';
-                card.classList.add('swiped-left');
-                card.classList.remove('swiped-right');
-            } else if (dx > 50) {
-                card.style.transform = 'translateX(140px)';
-                card.classList.add('swiped-right');
-                card.classList.remove('swiped-left');
-            } else {
-                card.style.transform = 'translateX(0)';
-                card.classList.remove('swiped-left', 'swiped-right');
-            }
-        });
+/* ===== Long-press + action sheet ===== */
+var _lpTimer = null;
+var _lpCard = null;
+var _lpStartX = 0;
+var _lpStartY = 0;
+var _lpFired = false;
+var _lpSuppressClickUntil = 0;
+var LP_DELAY = 500;
+var LP_MOVE_CANCEL = 10;
+
+function _lpCancel() {
+    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+    if (_lpCard) { _lpCard.classList.remove('lp-arming'); _lpCard = null; }
+}
+function initLongPress() {
+    var list = document.querySelector('.orders-list');
+    if (!list) return;
+    list.addEventListener('pointerdown', function(e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        var card = e.target.closest('.order-row');
+        if (!card) return;
+        if (e.target.closest('a, button')) return;
+        _lpCancel();
+        _lpFired = false;
+        _lpCard = card;
+        _lpStartX = e.clientX; _lpStartY = e.clientY;
+        card.classList.add('lp-arming');
+        _lpTimer = setTimeout(function() {
+            _lpTimer = null;
+            if (!_lpCard) return;
+            _lpFired = true;
+            _lpSuppressClickUntil = Date.now() + 600;
+            try { if (navigator.vibrate) navigator.vibrate(50); } catch (e) {}
+            var c = _lpCard;
+            c.classList.remove('lp-arming');
+            _lpCard = null;
+            openActionSheet(c);
+        }, LP_DELAY);
+    });
+    list.addEventListener('pointermove', function(e) {
+        if (!_lpCard) return;
+        var dx = Math.abs(e.clientX - _lpStartX);
+        var dy = Math.abs(e.clientY - _lpStartY);
+        if (dx > LP_MOVE_CANCEL || dy > LP_MOVE_CANCEL) _lpCancel();
+    });
+    list.addEventListener('pointerup', _lpCancel);
+    list.addEventListener('pointercancel', _lpCancel);
+    list.addEventListener('pointerleave', _lpCancel);
+    list.addEventListener('click', function(e) {
+        var card = e.target.closest('.order-row');
+        if (!card) return;
+        if (e.target.closest('a, button')) return;
+        if (Date.now() < _lpSuppressClickUntil) {
+            e.preventDefault(); e.stopPropagation();
+            return;
+        }
+        var id = parseInt(card.dataset.orderId, 10);
+        if (id) openOrder(id);
     });
 }
 
-function resetSwipe(id) {
-    var c = document.getElementById('card-' + id);
-    if (c) { c.style.transition = 'transform 0.25s ease'; c.style.transform = 'translateX(0)'; c.classList.remove('swiped-left','swiped-right'); }
+function openActionSheet(card) {
+    var d = card.dataset;
+    var id = parseInt(d.orderId, 10);
+    var status = d.status || '';
+    var type = d.type || '';
+    var paymentStatus = d.paymentStatus || '';
+    var phone = (d.phone || '').trim();
+    var addr = (d.address || '').trim();
+    var city = (d.city || '').trim();
+    var customer = d.customer || '';
+    var num = d.orderNum || ('' + id);
+    var total = parseFloat(d.total || '0') || 0;
+    var totalIl = '₪' + total.toFixed(0);
+
+    var typeIcon = type === 'delivery' ? 'motorcycle' : (type === 'dine_in' ? 'utensils' : 'shopping-bag');
+    var typeClass = type === 'delivery' ? 'delivery' : (type === 'dine_in' ? 'dine-in' : 'pickup');
+    var typeLabel = type === 'delivery' ? 'משלוח' : (type === 'dine_in' ? 'ישיבה' : 'איסוף');
+
+    var idAttr = ' data-as-id="' + id + '"';
+    var html = '';
+    html += '<div class="as-header">';
+    html += '<div class="as-num">#' + _esc(num) + '</div>';
+    html += '<div class="as-icon ' + typeClass + '"><i class="fas fa-' + typeIcon + '"></i></div>';
+    html += '<div class="as-info"><div class="as-cust">' + _esc(customer) + '</div><div class="as-meta">' + typeLabel + (phone ? ' · ' + _esc(phone) : '') + '</div></div>';
+    html += '<div class="as-total">' + totalIl + '</div>';
+    html += '</div>';
+
+    var primary = '';
+    if (status === 'pending' || status === 'confirmed') {
+        primary = '<button class="as-primary start-prep" data-as-action="start-prep"' + idAttr + ' data-as-extra="' + _esc(num) + '"><i class="fas fa-fire"></i> התחל הכנה</button>';
+    } else if (status === 'preparing') {
+        primary = '<button class="as-primary mark-ready" data-as-action="mark-ready"' + idAttr + '><i class="fas fa-bell"></i> סמן כמוכן</button>';
+    } else if (status === 'ready') {
+        if (type === 'delivery') {
+            primary = '<button class="as-primary mark-out" data-as-action="mark-out"' + idAttr + '><i class="fas fa-motorcycle"></i> יצא לשליחות</button>';
+        } else {
+            primary = '<button class="as-primary mark-delivered" data-as-action="complete"' + idAttr + ' data-as-extra="' + _esc(type) + '"><i class="fas fa-check-circle"></i> נמסר ללקוח</button>';
+        }
+    } else if (status === 'out_for_delivery') {
+        primary = '<button class="as-primary mark-delivered" data-as-action="complete"' + idAttr + ' data-as-extra="delivery"><i class="fas fa-check-circle"></i> נמסר ללקוח</button>';
+    }
+    html += primary;
+
+    var custBtns = [];
+    if (phone) custBtns.push('<a class="as-btn call" href="tel:' + _esc(phone) + '" data-as-action="close"><i class="fas fa-phone"></i><span>התקשר</span></a>');
+    custBtns.push('<button class="as-btn sms" data-as-action="sms"' + idAttr + '><i class="fas fa-sms"></i><span>SMS</span></button>');
+    custBtns.push('<button class="as-btn print" data-as-action="print"' + idAttr + '><i class="fas fa-print"></i><span>הדפס בון</span></button>');
+    var cols = custBtns.length === 3 ? 'cols-3' : (custBtns.length === 2 ? 'cols-2' : 'cols-1');
+    html += '<div class="as-row ' + cols + '">' + custBtns.join('') + '</div>';
+
+    if (type === 'delivery' && (addr || city)) {
+        var q = encodeURIComponent((addr + (city ? ', ' + city : '')).trim());
+        html += '<div class="as-row cols-1"><a class="as-btn waze" href="https://waze.com/ul?q=' + q + '&navigate=yes" target="_blank" rel="noopener" data-as-action="close"><i class="fab fa-waze"></i><span>נווט בוויז</span></a></div>';
+    }
+
+    if (paymentStatus === 'pending' && status !== 'cancelled') {
+        html += '<div class="as-row cols-1"><button class="as-btn pay" data-as-action="pay"' + idAttr + '><i class="fas fa-credit-card"></i><span>סיום תשלום</span></button></div>';
+    }
+
+    var secondary = [];
+    if (status === 'confirmed' || status === 'preparing') {
+        secondary.push('<button class="as-btn time" data-as-action="set-time"' + idAttr + '><i class="fas fa-clock"></i><span>עדכן זמן</span></button>');
+    }
+    secondary.push('<button class="as-btn detail" data-as-action="detail"' + idAttr + '><i class="fas fa-info-circle"></i><span>פתח פרטים</span></button>');
+    var sCols = secondary.length === 2 ? 'cols-2' : 'cols-1';
+    html += '<div class="as-row ' + sCols + '">' + secondary.join('') + '</div>';
+
+    if (status !== 'cancelled' && status !== 'delivered' && status !== 'pickedup') {
+        html += '<div class="as-divider"></div>';
+        html += '<button class="as-btn danger" style="width:100%;" data-as-action="cancel"' + idAttr + '><i class="fas fa-ban"></i><span>בטל הזמנה</span></button>';
+    }
+
+    document.getElementById('actionSheetBody').innerHTML = html;
+    document.getElementById('actionSheet').classList.add('show');
 }
 
+document.getElementById('actionSheetBody').addEventListener('click', function(e) {
+    var el = e.target.closest('[data-as-action]');
+    if (!el) return;
+    var kind = el.getAttribute('data-as-action');
+    if (kind === 'close') { closeActionSheet(); return; }
+    var id = parseInt(el.getAttribute('data-as-id'), 10);
+    var extra = el.getAttribute('data-as-extra') || undefined;
+    if (!id) return;
+    asAction(kind, id, extra);
+});
+
+function closeActionSheet() {
+    document.getElementById('actionSheet').classList.remove('show');
+}
+
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function asAction(kind, id, extra) {
+    closeActionSheet();
+    setTimeout(function() {
+        if (kind === 'start-prep')      openPrepModal(id, extra);
+        else if (kind === 'mark-ready') setStatus(id, 'ready');
+        else if (kind === 'mark-out')   setStatus(id, 'out_for_delivery');
+        else if (kind === 'complete')   completeOrder(id, extra);
+        else if (kind === 'sms')        sendSms(id);
+        else if (kind === 'print')      openPrintMenu(id);
+        else if (kind === 'pay')        _asOpenCheckout(id);
+        else if (kind === 'set-time')   openTimeModal(id);
+        else if (kind === 'detail')     openOrder(id);
+        else if (kind === 'cancel')     cancelOrder(id);
+    }, 120);
+}
+
+function _asOpenCheckout(id) {
+    var o = cachedOrders[id];
+    if (o) { openCheckout(id); return; }
+    fetch('{{ url_for("ops.get_order_detail", order_id=0) }}'.replace('/0', '/' + id), {credentials:'same-origin'})
+    .then(function(r){return r.json();}).then(function(d){
+        if (!d.ok) { showToast(d.error || 'שגיאה', true); return; }
+        cachedOrders[id] = d.order;
+        openCheckout(id);
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var sheet = document.getElementById('actionSheet');
+        if (sheet && sheet.classList.contains('show')) closeActionSheet();
+    }
+});
+
 function openOrder(id) {
-    var card = document.getElementById('card-' + id);
-    if (card && (card.classList.contains('swiped-left') || card.classList.contains('swiped-right'))) return;
     currentOrderId = id;
     fetch('{{ url_for("ops.get_order_detail", order_id=0) }}'.replace('/0', '/' + id), {credentials:'same-origin'})
     .then(function(r){return r.json();})
@@ -1022,12 +1201,10 @@ function editOrder(id, orderType) {
 }
 
 function cancelOrder(id) {
-    resetSwipe(id);
     opsConfirm({title: 'ביטול הזמנה', message: 'לבטל הזמנה?', type: 'danger', okText: 'בטל'}).then(function(ok) { if (ok) setStatus(id, 'cancelled'); });
 }
 
 function completeOrder(id, orderType) {
-    resetSwipe(id);
     var newStatus = (orderType === 'delivery') ? 'delivered' : 'pickedup';
     opsPost('{{ url_for("ops.update_order_status", order_id=0) }}'.replace('/0/', '/'+id+'/'), {status: newStatus}, function(){
         var wrap = document.querySelector('.order-row-wrap[data-order-id="'+id+'"]');
@@ -1073,7 +1250,6 @@ function updateCountersLocal() {
 
 function openTimeModal(id) {
     timeModalOrderId = id;
-    resetSwipe(id);
     document.getElementById('timeModal').classList.add('show');
 }
 
@@ -1088,7 +1264,6 @@ var smsOrderId = null;
 var smsTemplates = {{ sms_templates|tojson }};
 
 function sendSms(id) {
-    resetSwipe(id);
     smsOrderId = id;
     var order = cachedOrders[id];
     if (!order) {
@@ -1146,7 +1321,6 @@ function doSendSms() {
 }
 
 function openPrintMenu(id) {
-    resetSwipe(id);
     var order = cachedOrders[id];
     if (!order) {
         fetch('{{ url_for("ops.get_order_detail", order_id=0) }}'.replace('/0', '/'+id), {credentials:'same-origin'})
@@ -1552,7 +1726,7 @@ function deleteOrderFromOps(id, orderNum, reason) {
     .catch(function() { showToast('שגיאת רשת', true); });
 }
 
-initSwipe();
+initLongPress();
 
 (function() {
     var WARN_MIN = 10;

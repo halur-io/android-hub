@@ -550,8 +550,10 @@
 </div>
 
 <div class="modal-backdrop" id="actionSheet" onclick="if(event.target===this)closeActionSheet()">
-    <div class="modal-sheet" style="max-height:80vh;overflow-y:auto;">
+    <div class="modal-sheet" style="max-height:80vh;overflow-y:auto;position:relative;">
         <div class="modal-handle"></div>
+        <button type="button" aria-label="סגור" onclick="closeActionSheet()"
+                style="position:absolute;top:8px;left:10px;width:34px;height:34px;border-radius:50%;border:none;background:#1e293b;color:#e2e8f0;font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:2;">×</button>
         <div id="actionSheetBody"></div>
     </div>
 </div>
@@ -869,7 +871,7 @@ function asAction(kind, id, extra) {
         else if (kind === 'pay')        _asOpenCheckout(id);
         else if (kind === 'set-time')   openTimeModal(id);
         else if (kind === 'detail')     openOrder(id);
-        else if (kind === 'cancel')     cancelOrder(id);
+        else if (kind === 'cancel')     { if (window.confirm('לבטל הזמנה?')) setStatus(id, 'cancelled'); }
     }, 120);
 }
 

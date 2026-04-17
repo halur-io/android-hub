@@ -219,6 +219,25 @@
     .floor-table.pending_voids .ft-status { background: #ede9fe; color: #6d28d9; }
     .ft-meta { font-size: .6rem; color: #999; text-align: center; }
     .ft-meta .amount { font-weight: 600; color: #333; }
+
+    /* ===== Add-table modal mobile fixes ===== */
+    .modal-sheet .form-control,
+    .modal-sheet input[type="text"],
+    .modal-sheet input[type="number"],
+    .modal-sheet textarea {
+        width: 100%;
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+    .add-table-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .add-table-row > div { min-width: 0; }
+    @media (max-width: 480px) {
+        .modal-sheet { max-height: 85vh; padding: 16px; }
+        .add-table-row { flex-direction: column; gap: 12px; }
+        .add-table-row > div { flex: 1 1 auto !important; }
+        .modal-sheet h4 { font-size: 1rem; }
+        .modal-sheet p { font-size: .75rem; margin-bottom: 12px; }
+    }
 </style>
 
 <div class="tables-page">
@@ -373,7 +392,7 @@
     <div class="sheet-handle"></div>
     <h4 style="font-weight:700; margin-bottom:4px; font-size:1.1rem;">הוספת שולחן</h4>
     <p style="color:#888; font-size:.8rem; margin-bottom:16px;">הזן מספר שולחן, מספר מקומות ואזור ישיבה</p>
-    <div style="display:flex; gap:10px; margin-bottom:12px;">
+    <div class="add-table-row">
         <div style="flex:2;">
             <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מספר שולחן</label>
             <input type="text" id="newTableNumber" class="form-control" placeholder="לדוגמא: 1" style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">

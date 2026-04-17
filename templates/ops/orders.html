@@ -27,6 +27,217 @@
     border-bottom-color: var(--ops-accent);
 }
 
+/* ===== Search bar ===== */
+.orders-search-wrap {
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    margin: -16px -20px 0;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.orders-search-box {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.orders-search-box i.search-ico {
+    position: absolute;
+    right: 12px;
+    color: var(--ops-text-dim);
+    font-size: 13px;
+    pointer-events: none;
+}
+.orders-search-input {
+    width: 100%;
+    padding: 10px 36px 10px 36px;
+    border-radius: 10px;
+    border: 1px solid var(--ops-border);
+    background: var(--ops-bg, #fff);
+    color: var(--ops-text);
+    font-size: 14px;
+    font-family: 'Heebo', sans-serif;
+    direction: rtl;
+    text-align: right;
+    min-height: 40px;
+}
+.orders-search-input:focus { outline: 2px solid var(--ops-accent); outline-offset: -1px; }
+.orders-search-clear {
+    position: absolute;
+    left: 8px;
+    background: transparent;
+    border: none;
+    color: var(--ops-text-dim);
+    width: 28px; height: 28px;
+    cursor: pointer;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+.orders-search-clear.show { display: inline-flex; }
+
+/* ===== Type chips ===== */
+.type-chips {
+    display: flex;
+    gap: 8px;
+    background: var(--ops-surface);
+    border-bottom: 1px solid var(--ops-border);
+    margin: 0 -20px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.type-chips::-webkit-scrollbar { display: none; }
+.type-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--ops-border);
+    background: var(--ops-bg, #fff);
+    color: var(--ops-text-dim);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.15s;
+    min-height: 34px;
+}
+.type-chip i { font-size: 13px; }
+.type-chip.active {
+    background: var(--ops-accent);
+    color: #fff;
+    border-color: var(--ops-accent);
+}
+
+/* ===== More button on row ===== */
+.row-more-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--ops-text-dim);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-left: -4px;
+}
+.row-more-btn:hover, .row-more-btn:focus { background: #f1f5f9; color: var(--ops-text); outline: none; }
+.row-more-btn:focus-visible { outline: 2px solid var(--ops-accent); outline-offset: 1px; }
+
+.order-row:focus-visible {
+    outline: 2px solid var(--ops-accent);
+    outline-offset: -2px;
+}
+
+/* ===== Select mode / bulk ===== */
+.orders-list.select-mode .order-row { cursor: pointer; }
+.order-row.row-selected {
+    background: #e0f2fe;
+}
+.order-row.row-selected:active { background: #bae6fd; }
+.row-select-check {
+    flex-shrink: 0;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid #94a3b8;
+    background: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    margin-left: 4px;
+}
+.orders-list.select-mode .row-select-check { display: inline-flex; }
+.order-row.row-selected .row-select-check {
+    background: #0284c7;
+    border-color: #0284c7;
+}
+
+.bulk-action-bar {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: -120px;
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 14px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.25);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: bottom 0.25s cubic-bezier(.4,0,.2,1);
+    font-family: 'Heebo', sans-serif;
+}
+.bulk-action-bar.show { bottom: 0; }
+.bulk-count {
+    font-size: 14px;
+    font-weight: 800;
+    flex: 0 0 auto;
+    background: rgba(255,255,255,0.1);
+    padding: 6px 12px;
+    border-radius: 8px;
+    min-width: 56px;
+    text-align: center;
+}
+.bulk-btn {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 8px;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+}
+.bulk-btn.primary { background: #22c55e; color: #fff; }
+.bulk-btn.print { background: #3b82f6; color: #fff; }
+.bulk-btn.cancel { background: #475569; color: #fff; flex: 0 0 auto; padding: 10px 14px; }
+.bulk-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== Pull to refresh ===== */
+.ptr-indicator {
+    position: relative;
+    height: 0;
+    overflow: hidden;
+    text-align: center;
+    color: var(--ops-text-dim);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Heebo', sans-serif;
+    transition: height 0.15s ease;
+    background: var(--ops-surface);
+}
+.ptr-indicator.dragging { transition: none; }
+.ptr-indicator .ptr-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+}
+.ptr-indicator i { transition: transform 0.2s ease; }
+.ptr-indicator.ready i { transform: rotate(180deg); color: var(--ops-accent); }
+.ptr-indicator.refreshing i { animation: ptr-spin 0.8s linear infinite; color: var(--ops-accent); }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+
 .sub-tabs {
     display: flex;
     gap: 0;
@@ -458,43 +669,66 @@
     </a>
 </div>
 
-<div class="type-tabs">
-    <a href="{{ url_for('ops.orders', status=status_filter, type='all') }}" class="type-tab {% if type_filter == 'all' %}active{% endif %}">משלוחים | איסוף עצמי</a>
-    <a href="{{ url_for('ops.orders', status=status_filter, type='delivery') }}" class="type-tab {% if type_filter == 'delivery' %}active{% endif %}">משלוחים</a>
-    <a href="{{ url_for('ops.orders', status=status_filter, type='pickup') }}" class="type-tab {% if type_filter == 'pickup' %}active{% endif %}">איסוף עצמי</a>
-    <a href="{{ url_for('ops.orders', status=status_filter, type='dine_in') }}" class="type-tab {% if type_filter == 'dine_in' %}active{% endif %}">ישיבה</a>
+<form method="get" action="{{ url_for('ops.orders') }}" class="orders-search-wrap" id="ordersSearchForm" role="search">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <input type="hidden" name="type" value="{{ type_filter }}">
+    <div class="orders-search-box">
+        <i class="fas fa-search search-ico"></i>
+        <input type="search" name="q" id="ordersSearchInput" class="orders-search-input"
+               value="{{ search_q or '' }}" placeholder="חפש לפי מס׳ הזמנה, שם או טלפון…"
+               autocomplete="off" inputmode="search">
+        <button type="button" class="orders-search-clear {% if search_q %}show{% endif %}"
+                id="ordersSearchClear" aria-label="נקה חיפוש"><i class="fas fa-times"></i></button>
+    </div>
+</form>
+
+<div class="type-chips" id="typeChips" role="tablist">
+    <a href="{{ url_for('ops.orders', status=status_filter, type='all', q=search_q or None) }}"
+       class="type-chip {% if type_filter == 'all' %}active{% endif %}" role="tab"><i class="fas fa-layer-group"></i> הכל</a>
+    <a href="{{ url_for('ops.orders', status=status_filter, type='delivery', q=search_q or None) }}"
+       class="type-chip {% if type_filter == 'delivery' %}active{% endif %}" role="tab"><i class="fas fa-motorcycle"></i> משלוח</a>
+    <a href="{{ url_for('ops.orders', status=status_filter, type='pickup', q=search_q or None) }}"
+       class="type-chip {% if type_filter == 'pickup' %}active{% endif %}" role="tab"><i class="fas fa-shopping-bag"></i> איסוף</a>
+    <a href="{{ url_for('ops.orders', status=status_filter, type='dine_in', q=search_q or None) }}"
+       class="type-chip {% if type_filter == 'dine_in' %}active{% endif %}" role="tab"><i class="fas fa-utensils"></i> ישיבה</a>
 </div>
 
 <div class="counter-bar">
-    <a class="counter-item {% if status_filter == 'new' %}active{% endif %}" href="{{ url_for('ops.orders', status='new', type=type_filter) }}">
+    <a class="counter-item {% if status_filter == 'new' %}active{% endif %}" href="{{ url_for('ops.orders', status='new', type=type_filter, q=search_q or None) }}">
         <span class="counter-label">ממתין</span>
         <span class="counter-num">{{ counts.get('new', 0) }}</span>
     </a>
-    <a class="counter-item {% if status_filter == 'preparing' %}active{% endif %}" href="{{ url_for('ops.orders', status='preparing', type=type_filter) }}">
+    <a class="counter-item {% if status_filter == 'preparing' %}active{% endif %}" href="{{ url_for('ops.orders', status='preparing', type=type_filter, q=search_q or None) }}">
         <span class="counter-label">בהכנה</span>
         <span class="counter-num">{{ counts.get('preparing', 0) }}</span>
     </a>
-    <a class="counter-item {% if status_filter == 'ready' %}active{% endif %}" href="{{ url_for('ops.orders', status='ready', type=type_filter) }}">
+    <a class="counter-item {% if status_filter == 'ready' %}active{% endif %}" href="{{ url_for('ops.orders', status='ready', type=type_filter, q=search_q or None) }}">
         <span class="counter-label">מוכן</span>
         <span class="counter-num">{{ counts.get('ready', 0) }}</span>
     </a>
-    <a class="counter-item {% if status_filter == 'done' %}active{% endif %}" href="{{ url_for('ops.orders', status='done', type=type_filter) }}">
+    <a class="counter-item {% if status_filter == 'done' %}active{% endif %}" href="{{ url_for('ops.orders', status='done', type=type_filter, q=search_q or None) }}">
         <span class="counter-label">נמסר</span>
         <span class="counter-num">{{ counts.get('done', 0) }}</span>
     </a>
-    <a class="counter-item {% if status_filter == 'active' %}active{% endif %}" href="{{ url_for('ops.orders', status='active', type=type_filter) }}">
+    <a class="counter-item {% if status_filter == 'active' %}active{% endif %}" href="{{ url_for('ops.orders', status='active', type=type_filter, q=search_q or None) }}">
         <span class="counter-label">הכל</span>
         <span class="counter-num">{{ counts.get('active', 0) }}</span>
     </a>
 </div>
 
 {% if orders %}
-<div class="orders-list">
+<div class="ptr-indicator" id="ptrIndicator" aria-hidden="true">
+    <span class="ptr-inner"><i class="fas fa-arrow-down"></i><span id="ptrLabel">משוך לטעינה מחדש</span></span>
+</div>
+<div class="orders-list" id="ordersList">
     {% for order in orders %}
     {% set s_class = 's-new' if order.status in ('pending','confirmed') else ('s-preparing' if order.status == 'preparing' else ('s-ready' if order.status == 'ready' else ('s-cancelled' if order.status == 'cancelled' else 's-done'))) %}
     {% set s_label = 'ממתין' if order.status in ('pending','confirmed') else ('בהכנה' if order.status == 'preparing' else ('מוכן' if order.status == 'ready' else ('בוטל' if order.status == 'cancelled' else 'נמסר'))) %}
     <div class="order-row-wrap" data-order-id="{{ order.id }}">
         <div class="order-row" id="card-{{ order.id }}"
+             tabindex="0"
+             role="button"
+             aria-label="הזמנה {{ order.order_number or loop.index }} — {{ order.customer_name or '' }}"
              data-order-id="{{ order.id }}"
              data-order-num="{{ order.order_number or loop.index }}"
              data-customer="{{ order.customer_name or '' }}"
@@ -506,6 +740,10 @@
              data-address="{{ order.delivery_address or '' }}"
              data-city="{{ order.delivery_city or '' }}"
              data-source="{{ order.source or '' }}">
+            <button type="button" class="row-more-btn" aria-label="פעולות להזמנה" data-row-more="{{ order.id }}">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+            <span class="row-select-check" aria-hidden="true"><i class="fas fa-check"></i></span>
             <div class="row-order-num">{{ loop.index }}</div>
             <div class="row-type-icon {{ 'delivery' if order.order_type == 'delivery' else ('dine-in' if order.order_type == 'dine_in' else 'pickup') }}">
                 <i class="fas fa-{{ 'motorcycle' if order.order_type == 'delivery' else ('utensils' if order.order_type == 'dine_in' else 'shopping-bag') }}"></i>
@@ -538,9 +776,16 @@
 {% else %}
 <div class="ops-empty">
     <i class="fas fa-inbox"></i>
-    <div>אין הזמנות</div>
+    <div>{% if search_q %}לא נמצאו הזמנות עבור "{{ search_q }}"{% else %}אין הזמנות{% endif %}</div>
 </div>
 {% endif %}
+
+<div class="bulk-action-bar" id="bulkActionBar" role="toolbar" aria-hidden="true">
+    <span class="bulk-count" id="bulkCount">0</span>
+    <button type="button" class="bulk-btn primary" id="bulkMarkReady"><i class="fas fa-bell"></i> סמן כמוכנות</button>
+    <button type="button" class="bulk-btn print" id="bulkPrint"><i class="fas fa-print"></i> הדפס בונים</button>
+    <button type="button" class="bulk-btn cancel" id="bulkCancel" aria-label="בטל בחירה"><i class="fas fa-times"></i></button>
+</div>
 
 <div class="modal-backdrop" id="orderModal" onclick="if(event.target===this)closeModal('orderModal')">
     <div class="modal-sheet">
@@ -715,6 +960,53 @@ var _lpSuppressClickUntil = 0;
 var LP_DELAY = 500;
 var LP_MOVE_CANCEL = 10;
 
+/* ===== Bulk select mode ===== */
+var _selectMode = false;
+var _selectedIds = {};
+
+function _bulkSelectedIdList() {
+    var ids = [];
+    for (var k in _selectedIds) { if (_selectedIds[k]) ids.push(parseInt(k, 10)); }
+    return ids;
+}
+function _updateBulkBar() {
+    var bar = document.getElementById('bulkActionBar');
+    var ids = _bulkSelectedIdList();
+    document.getElementById('bulkCount').textContent = ids.length;
+    if (_selectMode) {
+        bar.classList.add('show');
+        bar.setAttribute('aria-hidden', 'false');
+    } else {
+        bar.classList.remove('show');
+        bar.setAttribute('aria-hidden', 'true');
+    }
+}
+function _enterSelectMode(initialCard) {
+    _selectMode = true;
+    var list = document.getElementById('ordersList');
+    if (list) list.classList.add('select-mode');
+    if (initialCard) _toggleRowSelected(initialCard, true);
+    _updateBulkBar();
+}
+function _exitSelectMode() {
+    _selectMode = false;
+    _selectedIds = {};
+    var list = document.getElementById('ordersList');
+    if (list) list.classList.remove('select-mode');
+    document.querySelectorAll('.order-row.row-selected').forEach(function(r){ r.classList.remove('row-selected'); });
+    _updateBulkBar();
+}
+function _toggleRowSelected(card, force) {
+    var id = parseInt(card.dataset.orderId, 10);
+    if (!id) return;
+    var on = (force === undefined) ? !_selectedIds[id] : !!force;
+    _selectedIds[id] = on;
+    card.classList.toggle('row-selected', on);
+    card.setAttribute('aria-pressed', on ? 'true' : 'false');
+    _updateBulkBar();
+    if (!on && _bulkSelectedIdList().length === 0) _exitSelectMode();
+}
+
 function _lpCancel() {
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
     if (_lpCard) { _lpCard.classList.remove('lp-arming'); _lpCard = null; }
@@ -741,7 +1033,11 @@ function initLongPress() {
             var c = _lpCard;
             c.classList.remove('lp-arming');
             _lpCard = null;
-            openActionSheet(c);
+            if (_selectMode) {
+                _toggleRowSelected(c);
+            } else {
+                openActionSheet(c);
+            }
         }, LP_DELAY);
     });
     list.addEventListener('pointermove', function(e) {
@@ -754,6 +1050,14 @@ function initLongPress() {
     list.addEventListener('pointercancel', _lpCancel);
     list.addEventListener('pointerleave', _lpCancel);
     list.addEventListener('click', function(e) {
+        // 3-dot more button -> always open action sheet (even in select mode)
+        var moreBtn = e.target.closest('[data-row-more]');
+        if (moreBtn) {
+            e.preventDefault(); e.stopPropagation();
+            var card = moreBtn.closest('.order-row');
+            if (card) openActionSheet(card);
+            return;
+        }
         var card = e.target.closest('.order-row');
         if (!card) return;
         if (e.target.closest('a, button')) return;
@@ -761,8 +1065,27 @@ function initLongPress() {
             e.preventDefault(); e.stopPropagation();
             return;
         }
+        if (_selectMode) {
+            e.preventDefault(); e.stopPropagation();
+            _toggleRowSelected(card);
+            return;
+        }
         var id = parseInt(card.dataset.orderId, 10);
         if (id) openOrder(id);
+    });
+    // Keyboard: Enter/Space activates row
+    list.addEventListener('keydown', function(e) {
+        var card = e.target.closest('.order-row');
+        if (!card) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+            if (e.target.closest('[data-row-more]')) return;
+            e.preventDefault();
+            if (_selectMode) { _toggleRowSelected(card); }
+            else {
+                var id = parseInt(card.dataset.orderId, 10);
+                if (id) openOrder(id);
+            }
+        }
     });
 }
 
@@ -830,7 +1153,8 @@ function openActionSheet(card) {
         secondary.push('<button class="as-btn time" data-as-action="set-time"' + idAttr + '><i class="fas fa-clock"></i><span>עדכן זמן</span></button>');
     }
     secondary.push('<button class="as-btn detail" data-as-action="detail"' + idAttr + '><i class="fas fa-info-circle"></i><span>פתח פרטים</span></button>');
-    var sCols = secondary.length === 2 ? 'cols-2' : 'cols-1';
+    secondary.push('<button class="as-btn select" data-as-action="select-mode"' + idAttr + '><i class="fas fa-check-square"></i><span>בחירה מרובה</span></button>');
+    var sCols = secondary.length >= 3 ? 'cols-3' : (secondary.length === 2 ? 'cols-2' : 'cols-1');
     html += '<div class="as-row ' + sCols + '">' + secondary.join('') + '</div>';
 
     if (status !== 'cancelled' && status !== 'delivered' && status !== 'pickedup') {
@@ -871,6 +1195,10 @@ function asAction(kind, id, extra) {
         else if (kind === 'pay')        _asOpenCheckout(id);
         else if (kind === 'set-time')   openTimeModal(id);
         else if (kind === 'detail')     openOrder(id);
+        else if (kind === 'select-mode') {
+            var card = document.querySelector('.order-row[data-order-id="' + id + '"]');
+            if (card) { if (!_selectMode) _enterSelectMode(card); else _toggleRowSelected(card); }
+        }
         else if (kind === 'cancel')     { if (window.confirm('לבטל הזמנה?')) setStatus(id, 'cancelled'); }
     }, 120);
 }
@@ -1730,6 +2058,190 @@ function deleteOrderFromOps(id, orderNum, reason) {
 
 initLongPress();
 
+/* ===== Search input ===== */
+(function() {
+    var input = document.getElementById('ordersSearchInput');
+    var clearBtn = document.getElementById('ordersSearchClear');
+    var form = document.getElementById('ordersSearchForm');
+    if (!input || !form) return;
+    var _searchTimer = null;
+    function refreshClear() {
+        if (input.value && input.value.length > 0) clearBtn.classList.add('show');
+        else clearBtn.classList.remove('show');
+    }
+    refreshClear();
+    input.addEventListener('input', function() {
+        refreshClear();
+        if (_searchTimer) clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(function(){ form.submit(); }, 450);
+    });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (input.value) {
+                input.value = '';
+                refreshClear();
+                form.submit();
+            } else {
+                input.blur();
+            }
+        }
+    });
+    clearBtn.addEventListener('click', function() {
+        input.value = '';
+        refreshClear();
+        form.submit();
+    });
+    form.addEventListener('submit', function() {
+        if (_searchTimer) { clearTimeout(_searchTimer); _searchTimer = null; }
+    });
+})();
+
+/* ===== Bulk actions ===== */
+(function() {
+    var bar = document.getElementById('bulkActionBar');
+    if (!bar) return;
+    document.getElementById('bulkCancel').addEventListener('click', function() { _exitSelectMode(); });
+
+    function _runBulk(ids, runOne, summaryFmt) {
+        if (!ids.length) return;
+        var btns = bar.querySelectorAll('button');
+        btns.forEach(function(b){ b.disabled = true; });
+        var ok = 0, fail = 0, done = 0;
+        ids.forEach(function(id) {
+            runOne(id, function(success) {
+                if (success) ok++; else fail++;
+                done++;
+                if (done === ids.length) {
+                    btns.forEach(function(b){ b.disabled = false; });
+                    showToast(summaryFmt(ok, fail), fail > 0 && ok === 0);
+                    setTimeout(function() { _exitSelectMode(); location.reload(); }, 700);
+                }
+            });
+        });
+    }
+
+    document.getElementById('bulkMarkReady').addEventListener('click', function() {
+        var ids = _bulkSelectedIdList();
+        if (!ids.length) return;
+        var url = '{{ url_for("ops.update_order_status", order_id=0) }}';
+        _runBulk(ids, function(id, cb) {
+            fetch(url.replace('/0/', '/' + id + '/'), {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                body: JSON.stringify({status: 'ready'}),
+                credentials: 'same-origin'
+            }).then(function(r){ return r.json(); })
+              .then(function(d){ cb(!!(d && (d.ok || d.success))); })
+              .catch(function(){ cb(false); });
+        }, function(ok, fail) {
+            if (fail === 0) return 'סומנו ' + ok + ' הזמנות כמוכנות';
+            if (ok === 0) return 'שגיאה בסימון ' + fail + ' הזמנות';
+            return 'סומנו ' + ok + ' • נכשלו ' + fail;
+        });
+    });
+
+    document.getElementById('bulkPrint').addEventListener('click', function() {
+        var ids = _bulkSelectedIdList();
+        if (!ids.length) return;
+        _runBulk(ids, function(id, cb) {
+            fetch('/ops/api/print', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                body: JSON.stringify({
+                    order_id: id,
+                    checker_copies: PRINT_SETTINGS.checker_copies,
+                    payment_copies: PRINT_SETTINGS.payment_copies,
+                    station_bons: PRINT_SETTINGS.station_bons
+                }),
+                credentials: 'same-origin'
+            }).then(function(r){ return r.json(); })
+              .then(function(d){ cb(!!(d && d.ok)); })
+              .catch(function(){ cb(false); });
+        }, function(ok, fail) {
+            if (fail === 0) return 'נשלחו ' + ok + ' בונים להדפסה';
+            if (ok === 0) return 'שגיאה בהדפסה (' + fail + ')';
+            return 'הודפסו ' + ok + ' • נכשלו ' + fail;
+        });
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && _selectMode) _exitSelectMode();
+    });
+})();
+
+/* ===== Pull to refresh ===== */
+(function() {
+    var indicator = document.getElementById('ptrIndicator');
+    var label = document.getElementById('ptrLabel');
+    if (!indicator) return;
+    var THRESHOLD = 70;
+    var MAX = 110;
+    var startY = 0;
+    var pulling = false;
+    var dist = 0;
+    var refreshing = false;
+
+    function getScrollTop() {
+        return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    }
+    function setIndicatorHeight(h, ready) {
+        indicator.style.height = h + 'px';
+        if (ready) indicator.classList.add('ready');
+        else indicator.classList.remove('ready');
+        if (h > 30) {
+            label.textContent = ready ? 'שחרר לטעינה מחדש' : 'משוך לטעינה מחדש';
+        }
+    }
+    function reset() {
+        pulling = false;
+        dist = 0;
+        indicator.classList.remove('dragging', 'ready');
+        indicator.style.height = '';
+    }
+    function doRefresh() {
+        refreshing = true;
+        indicator.classList.add('refreshing');
+        indicator.classList.remove('ready', 'dragging');
+        indicator.style.height = '46px';
+        label.textContent = 'טוען מחדש…';
+        setTimeout(function() { try { location.reload(); } catch(e) {} }, 250);
+    }
+
+    document.addEventListener('touchstart', function(e) {
+        if (refreshing) return;
+        if (getScrollTop() > 0) { pulling = false; return; }
+        if (!e.touches || !e.touches.length) return;
+        startY = e.touches[0].clientY;
+        pulling = true;
+        dist = 0;
+    }, {passive: true});
+
+    document.addEventListener('touchmove', function(e) {
+        if (!pulling || refreshing) return;
+        if (getScrollTop() > 0) { reset(); return; }
+        var y = e.touches[0].clientY;
+        dist = y - startY;
+        if (dist <= 0) { reset(); return; }
+        var pulled = Math.min(MAX, dist * 0.55);
+        indicator.classList.add('dragging');
+        setIndicatorHeight(pulled, pulled >= THRESHOLD);
+    }, {passive: true});
+
+    document.addEventListener('touchend', function() {
+        if (!pulling || refreshing) { reset(); return; }
+        var pulled = Math.min(MAX, dist * 0.55);
+        if (pulled >= THRESHOLD) {
+            doRefresh();
+        } else {
+            reset();
+        }
+        pulling = false;
+        dist = 0;
+    });
+
+    document.addEventListener('touchcancel', function() { if (!refreshing) reset(); });
+})();
+
 (function() {
     var WARN_MIN = 10;
     var URGENT_MIN = 20;
@@ -1869,10 +2381,10 @@ initLongPress();
             flashScreen();
             showNotification(data);
             showOrderBanner(data);
-            setTimeout(function() { location.reload(); }, 3000);
+            setTimeout(function() { if (!_selectMode) location.reload(); }, 3000);
         }
         if (data.type === 'order_status_changed') {
-            location.reload();
+            if (!_selectMode) location.reload();
         }
     }
 
@@ -1930,7 +2442,7 @@ initLongPress();
     }
 
     connectSSE();
-    setInterval(function() { location.reload(); }, 60000);
+    setInterval(function() { if (!_selectMode) location.reload(); }, 60000);
 })();
 </script>
 

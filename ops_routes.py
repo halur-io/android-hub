@@ -1093,6 +1093,7 @@ def orders():
     effective_branch = _get_effective_branch_id()
     status_filter = request.args.get('status', 'active')
     type_filter = request.args.get('type', 'all')
+    search_q = (request.args.get('q', '') or '').strip()
 
     query = FoodOrder.query
     if effective_branch:
@@ -1104,8 +1105,15 @@ def orders():
         query = query.filter_by(order_type='delivery')
     elif type_filter == 'pickup':
         query = query.filter_by(order_type='pickup')
-    else:
-        query = query.filter(FoodOrder.order_type != 'dine_in')
+
+    if search_q:
+        from sqlalchemy import or_ as _or_
+        like = f"%{search_q}%"
+        query = query.filter(_or_(
+            FoodOrder.order_number.ilike(like),
+            FoodOrder.customer_name.ilike(like),
+            FoodOrder.customer_phone.ilike(like),
+        ))
 
     if status_filter == 'active':
         query = query.filter(FoodOrder.status.in_(['pending', 'confirmed', 'preparing', 'ready']))
@@ -1139,8 +1147,6 @@ def orders():
         count_q = count_q.filter(FoodOrder.order_type == 'delivery')
     elif type_filter == 'pickup':
         count_q = count_q.filter(FoodOrder.order_type == 'pickup')
-    else:
-        count_q = count_q.filter(FoodOrder.order_type != 'dine_in')
     cr = count_q.one()
     counts = {
         'new': cr.new_count or 0,
@@ -1176,6 +1182,7 @@ def orders():
         categories=categories,
         sms_templates=sms_templates_data,
         effective_branch=effective_branch,
+        search_q=search_q,
     )
 
 

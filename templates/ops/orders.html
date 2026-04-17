@@ -210,6 +210,7 @@
 }
 .bulk-btn.primary { background: #22c55e; color: #fff; }
 .bulk-btn.print { background: #3b82f6; color: #fff; }
+.bulk-btn.danger { background: #dc2626; color: #fff; }
 .bulk-btn.cancel { background: #475569; color: #fff; flex: 0 0 auto; padding: 10px 14px; }
 .bulk-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -784,6 +785,7 @@
     <span class="bulk-count" id="bulkCount">0</span>
     <button type="button" class="bulk-btn primary" id="bulkMarkReady"><i class="fas fa-bell"></i> סמן כמוכנות</button>
     <button type="button" class="bulk-btn print" id="bulkPrint"><i class="fas fa-print"></i> הדפס בונים</button>
+    <button type="button" class="bulk-btn danger" id="bulkCancelOrders"><i class="fas fa-ban"></i> בטל הזמנות</button>
     <button type="button" class="bulk-btn cancel" id="bulkCancel" aria-label="בטל בחירה"><i class="fas fa-times"></i></button>
 </div>
 
@@ -969,10 +971,27 @@ function _bulkSelectedIdList() {
     for (var k in _selectedIds) { if (_selectedIds[k]) ids.push(parseInt(k, 10)); }
     return ids;
 }
+function _isCancellableStatus(s) {
+    return s && s !== 'delivered' && s !== 'pickedup' && s !== 'cancelled';
+}
+function _bulkSelectedCancellableIds() {
+    var ids = [];
+    _bulkSelectedIdList().forEach(function(id) {
+        var card = document.getElementById('card-' + id);
+        if (card && _isCancellableStatus(card.getAttribute('data-status'))) ids.push(id);
+    });
+    return ids;
+}
 function _updateBulkBar() {
     var bar = document.getElementById('bulkActionBar');
     var ids = _bulkSelectedIdList();
     document.getElementById('bulkCount').textContent = ids.length;
+    var cancelBtn = document.getElementById('bulkCancelOrders');
+    if (cancelBtn) {
+        var cancellable = _bulkSelectedCancellableIds().length;
+        cancelBtn.disabled = (cancellable === 0);
+        cancelBtn.style.display = (ids.length > 0 && cancellable === 0) ? 'none' : '';
+    }
     if (_selectMode) {
         bar.classList.add('show');
         bar.setAttribute('aria-hidden', 'false');
@@ -2163,6 +2182,33 @@ initLongPress();
             return 'הודפסו ' + ok + ' • נכשלו ' + fail;
         });
     });
+
+    var cancelOrdersBtn = document.getElementById('bulkCancelOrders');
+    if (cancelOrdersBtn) {
+        cancelOrdersBtn.addEventListener('click', function() {
+            var ids = _bulkSelectedCancellableIds();
+            if (!ids.length) {
+                showToast('אין הזמנות שניתן לבטל בבחירה', true);
+                return;
+            }
+            if (!window.confirm('לבטל ' + ids.length + ' הזמנות?')) return;
+            var url = '{{ url_for("ops.update_order_status", order_id=0) }}';
+            _runBulk(ids, function(id, cb) {
+                fetch(url.replace('/0/', '/' + id + '/'), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+                    body: JSON.stringify({status: 'cancelled'}),
+                    credentials: 'same-origin'
+                }).then(function(r){ return r.json(); })
+                  .then(function(d){ cb(!!(d && (d.ok || d.success))); })
+                  .catch(function(){ cb(false); });
+            }, function(ok, fail) {
+                if (fail === 0) return 'בוטלו ' + ok + ' הזמנות';
+                if (ok === 0) return 'שגיאה בביטול ' + fail + ' הזמנות';
+                return 'בוטלו ' + ok + ' • נכשלו ' + fail;
+            });
+        });
+    }
 
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && _selectMode) _exitSelectMode();

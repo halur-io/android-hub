@@ -11,7 +11,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_VAPID_CACHE = {'public': None, 'private': None, 'subject': None}
+_VAPID_CACHE = {'public': None, 'private': None, 'subject': None, 'vapid_obj': None}
 
 
 def _b64url(b: bytes) -> str:
@@ -59,12 +59,33 @@ def get_vapid(db, OpsPushVAPID) -> dict:
     return dict(_VAPID_CACHE)
 
 
+def _get_vapid_object(vapid: dict):
+    """Build (and cache) a py_vapid.Vapid02 instance from the stored PEM private key.
+    pywebpush can't parse the PEM string directly in some versions, so we pass the
+    instance instead."""
+    if _VAPID_CACHE.get('vapid_obj') is not None:
+        return _VAPID_CACHE['vapid_obj']
+    try:
+        from py_vapid import Vapid02
+        v = Vapid02.from_pem(vapid['private'].encode())
+        _VAPID_CACHE['vapid_obj'] = v
+        return v
+    except Exception as e:
+        logger.error(f"[PUSH] Failed to build Vapid02 from PEM: {e}")
+        return None
+
+
 def send_push_to_subscription(sub, payload: dict, vapid: dict) -> bool:
-    """Send a single push. Returns True on success, False on failure (caller may deactivate)."""
+    """Send a single push. Returns True on success, False on failure.
+    Sets sub.last_send_status / last_send_error for diagnostics if those columns exist.
+    """
     try:
         from pywebpush import webpush, WebPushException
     except ImportError:
         logger.warning("[PUSH] pywebpush not installed")
+        return False
+    vapid_obj = _get_vapid_object(vapid)
+    if vapid_obj is None:
         return False
     try:
         webpush(
@@ -73,20 +94,23 @@ def send_push_to_subscription(sub, payload: dict, vapid: dict) -> bool:
                 'keys': {'p256dh': sub.p256dh, 'auth': sub.auth},
             },
             data=json.dumps(payload, ensure_ascii=False),
-            vapid_private_key=vapid['private'],
+            vapid_private_key=vapid_obj,
             vapid_claims={'sub': vapid['subject']},
             ttl=120,
         )
+        logger.info(f"[PUSH] Sent OK to sub {getattr(sub,'id','?')} ({sub.endpoint[:60]})")
         return True
     except WebPushException as e:
         status = getattr(getattr(e, 'response', None), 'status_code', None)
-        logger.warning(f"[PUSH] Send failed (status={status}): {e}")
-        # 404/410 = subscription dead -> caller should deactivate
-        if status in (404, 410):
-            return False
+        body = ''
+        try:
+            body = e.response.text[:200] if e.response is not None else ''
+        except Exception:
+            pass
+        logger.warning(f"[PUSH] Send failed sub={getattr(sub,'id','?')} status={status} body={body} err={e}")
         return False
     except Exception as e:
-        logger.warning(f"[PUSH] Unexpected send error: {e}")
+        logger.warning(f"[PUSH] Unexpected send error sub={getattr(sub,'id','?')}: {type(e).__name__}: {e}")
         return False
 
 

@@ -300,6 +300,7 @@ def inject_ops_context():
         is_ops_superadmin=is_ops_superadmin,
         can_switch_branch=is_ops_superadmin,
         all_branches=all_branches,
+        page_rendered_at=datetime.utcnow().isoformat() + 'Z',
     )
 
 

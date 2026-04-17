@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="SUMO Ops">
     <meta name="application-name" content="SUMO Ops">
     <meta name="format-detection" content="telephone=no">
+    <meta name="page-rendered-at" content="{{ page_rendered_at }}">
     <link rel="manifest" href="{{ url_for('ops.pwa_manifest') }}">
     <link rel="apple-touch-icon" href="/static/ops/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/ops/icons/icon-192.png">
@@ -77,6 +78,68 @@
             font-family: 'Heebo', sans-serif;
         }
         .pwa-update-toast.show { top: 16px; }
+
+        /* Connectivity / freshness indicator in header */
+        .ops-conn-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: var(--ops-card, rgba(255,255,255,0.06));
+            border: 1px solid var(--ops-border, rgba(255,255,255,0.1));
+            font-size: 0.7rem;
+            font-family: 'Heebo', sans-serif;
+            color: var(--ops-text-dim, #a0a8c0);
+            margin-left: 8px;
+            min-height: 28px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .ops-conn-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #6b7a90;
+            flex-shrink: 0;
+        }
+        .ops-conn-dot.online  { background: #22c55e; }
+        .ops-conn-dot.offline { background: #ef4444; animation: ops-conn-pulse 1.4s ease-in-out infinite; }
+        .ops-conn-dot.checking { background: #f59e0b; }
+        @keyframes ops-conn-pulse {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .ops-stale-banner {
+            position: fixed;
+            top: -80px;
+            left: 12px;
+            right: 12px;
+            max-width: 520px;
+            margin: 0 auto;
+            background: #f59e0b;
+            color: #1a1a2e;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            z-index: 9997;
+            transition: top 0.35s cubic-bezier(.4,0,.2,1);
+        }
+        .ops-stale-banner.show { top: 12px; }
+        .ops-stale-banner .ops-stale-text { flex: 1; min-width: 0; line-height: 1.35; }
+        .ops-stale-banner button {
+            background: #1a1a2e; color: #fff; border: none;
+            padding: 7px 12px; border-radius: 8px; cursor: pointer;
+            font-family: inherit; font-weight: 700; font-size: 12px;
+        }
+        .ops-stale-banner .ops-stale-close {
+            background: transparent; color: #1a1a2e; padding: 4px 8px;
+            font-size: 18px; font-weight: 800;
+        }
         .pwa-update-toast button {
             background: rgba(255,255,255,0.22);
             color: #fff; border: none; cursor: pointer;
@@ -149,6 +212,11 @@
                     </div>
                 </div>
                 {% endif %}
+                <span class="ops-conn-indicator" id="ops-conn-indicator"
+                      title="לחץ לרענון" onclick="opsRefreshNow()">
+                    <span class="ops-conn-dot checking" id="ops-conn-dot"></span>
+                    <span id="ops-conn-text">בודק...</span>
+                </span>
                 <span class="ops-header-user">
                     <i class="fas fa-user-circle"></i>
                     {{ session.get('ops_user_name', '') }}
@@ -338,6 +406,126 @@
     }
     </script>
     {% block scripts %}{% endblock %}
+
+    <!-- ===== Stale (served-from-cache) banner ===== -->
+    <div id="ops-stale-banner" class="ops-stale-banner" role="status" aria-live="polite">
+        <i class="fas fa-triangle-exclamation"></i>
+        <div class="ops-stale-text">
+            <div>תצוגה מהמטמון — ייתכן שהנתונים אינם מעודכנים</div>
+            <div id="ops-stale-sub" style="font-weight:500;font-size:11px;opacity:.85;margin-top:2px;"></div>
+        </div>
+        <button type="button" id="ops-stale-refresh">רענן</button>
+        <button type="button" class="ops-stale-close" id="ops-stale-close" aria-label="סגור">×</button>
+    </div>
+
+    <!-- ===== Connectivity / freshness logic ===== -->
+    <script>
+    (function() {
+        var meta = document.querySelector('meta[name="page-rendered-at"]');
+        var renderedAt = meta && meta.content ? new Date(meta.content) : new Date();
+        if (isNaN(renderedAt.getTime())) renderedAt = new Date();
+
+        var dot   = document.getElementById('ops-conn-dot');
+        var text  = document.getElementById('ops-conn-text');
+        var banner = document.getElementById('ops-stale-banner');
+        var staleSub = document.getElementById('ops-stale-sub');
+        var lastOnline = navigator.onLine;
+        var bannerDismissed = false;
+
+        function fmtAgo(ms) {
+            var sec = Math.max(0, Math.floor(ms / 1000));
+            if (sec < 60) return 'כעת';
+            var mins = Math.floor(sec / 60);
+            if (mins < 60) return 'לפני ' + mins + ' דק׳';
+            var hrs = Math.floor(mins / 60);
+            if (hrs < 24) return 'לפני ' + hrs + ' שע׳';
+            var days = Math.floor(hrs / 24);
+            return 'לפני ' + days + ' ימים';
+        }
+
+        function setDot(state) {
+            dot.className = 'ops-conn-dot ' + state;
+        }
+
+        function render() {
+            var ago = fmtAgo(Date.now() - renderedAt.getTime());
+            text.textContent = (lastOnline ? '' : 'לא מקוון • ') + 'מעודכן ' + ago;
+            setDot(lastOnline ? 'online' : 'offline');
+            if (staleSub) staleSub.textContent = 'נטען ' + ago;
+        }
+
+        function showStaleBanner() {
+            if (bannerDismissed) return;
+            banner.classList.add('show');
+        }
+        function hideStaleBanner() {
+            banner.classList.remove('show');
+        }
+
+        // Detect that current page was served by SW from cache by re-fetching
+        // current URL with a HEAD-ish request and inspecting headers.
+        function checkServedFromCache() {
+            try {
+                fetch(location.pathname + location.search, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: { 'X-Freshness-Probe': '1' },
+                    credentials: 'same-origin'
+                }).then(function(r) {
+                    if (r && r.headers && r.headers.get('X-From-SW-Cache') === '1') {
+                        showStaleBanner();
+                    }
+                }).catch(function() { /* offline — handled elsewhere */ });
+            } catch (e) {}
+        }
+
+        function pingServer() {
+            setDot('checking');
+            fetch('/ops/api/ping', { method: 'GET', cache: 'no-store' })
+                .then(function(r) {
+                    var ok = r && r.ok;
+                    var wasOffline = !lastOnline;
+                    lastOnline = !!ok;
+                    if (ok) hideStaleBanner();
+                    if (ok && wasOffline) {
+                        // Came back online — encourage a refresh to load fresh data
+                        showStaleBanner();
+                    }
+                    render();
+                })
+                .catch(function() {
+                    lastOnline = false;
+                    showStaleBanner();
+                    render();
+                });
+        }
+
+        window.opsRefreshNow = function() {
+            // Reload the page. The SW uses a network-first strategy for
+            // navigations, so when the network is reachable this will fetch
+            // a fresh copy; if still offline, it will fall back to cache or
+            // the offline screen.
+            try { location.reload(); } catch(e) {}
+        };
+
+        document.getElementById('ops-stale-refresh').addEventListener('click', window.opsRefreshNow);
+        document.getElementById('ops-stale-close').addEventListener('click', function() {
+            bannerDismissed = true;
+            hideStaleBanner();
+        });
+
+        window.addEventListener('online',  function() { lastOnline = true;  pingServer(); });
+        window.addEventListener('offline', function() { lastOnline = false; render(); showStaleBanner(); });
+
+        render();
+        // Initial cache-served probe + first ping shortly after load
+        setTimeout(checkServedFromCache, 500);
+        setTimeout(pingServer, 800);
+        // Update "X minutes ago" every 30s and re-ping every 45s
+        setInterval(render, 30 * 1000);
+        setInterval(pingServer, 45 * 1000);
+    })();
+    </script>
 
     <!-- ===== PWA: install banner + update toast ===== -->
     <div id="pwa-install-banner" class="pwa-install-banner" role="dialog" aria-label="התקנת אפליקציה">

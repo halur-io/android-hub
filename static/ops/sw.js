@@ -1,8 +1,30 @@
 // SUMO Ops Service Worker
-const SW_VERSION = 'sumo-ops-v1';
+const SW_VERSION = 'sumo-ops-v2';
 const STATIC_CACHE = 'sumo-ops-static-v1';
-const RUNTIME_CACHE = 'sumo-ops-runtime-v1';
+const RUNTIME_CACHE = 'sumo-ops-runtime-v2';
 const OFFLINE_URL = '/ops/offline';
+
+// Pages that must NEVER be served stale — staff rely on live data here.
+// On network failure these go straight to the offline screen.
+const NO_CACHE_PATHS = [
+  '/ops/orders',
+  '/ops/tables',
+  '/ops/order_history',
+  '/ops/history',
+];
+
+function isNoCachePath(url) {
+  return NO_CACHE_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(p + '/'));
+}
+
+function withCacheHeader(response) {
+  if (!response) return response;
+  const headers = new Headers(response.headers);
+  headers.set('X-From-SW-Cache', '1');
+  return response.blob().then((body) =>
+    new Response(body, { status: response.status, statusText: response.statusText, headers })
+  );
+}
 
 const PRECACHE_URLS = [
   OFFLINE_URL,
@@ -88,18 +110,25 @@ self.addEventListener('fetch', (event) => {
 
   // Navigations: network-first with offline fallback
   if (req.mode === 'navigate' && url.pathname.startsWith('/ops')) {
+    const noCache = isNoCachePath(url);
     event.respondWith(
       fetch(req)
         .then((resp) => {
-          if (resp && resp.status === 200) {
+          if (resp && resp.status === 200 && !noCache) {
             const respClone = resp.clone();
             caches.open(RUNTIME_CACHE).then((c) => c.put(req, respClone));
           }
           return resp;
         })
-        .catch(() =>
-          caches.match(req).then((cached) => cached || caches.match(OFFLINE_URL))
-        )
+        .catch(() => {
+          if (noCache) {
+            // Critical pages: never serve stale — go to offline screen
+            return caches.match(OFFLINE_URL);
+          }
+          return caches.match(req).then((cached) =>
+            cached ? withCacheHeader(cached) : caches.match(OFFLINE_URL)
+          );
+        })
     );
     return;
   }
@@ -107,7 +136,9 @@ self.addEventListener('fetch', (event) => {
   // Other GETs under /ops/: network with cache fallback
   if (url.pathname.startsWith('/ops/')) {
     event.respondWith(
-      fetch(req).catch(() => caches.match(req))
+      fetch(req).catch(() =>
+        caches.match(req).then((cached) => cached ? withCacheHeader(cached) : undefined)
+      )
     );
   }
 });

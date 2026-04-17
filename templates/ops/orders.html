@@ -152,6 +152,8 @@
 .order-row:active { background: #f8f9fb; }
 .order-row.swiped-left { transform: translateX(-210px); }
 .order-row.swiped-right { transform: translateX(140px); }
+.order-row.age-warn { border-left: 4px solid #f59e0b; }
+.order-row.age-urgent { border-left: 4px solid #dc2626; }
 
 .row-order-num {
     font-weight: 800;
@@ -1573,9 +1575,16 @@ initSwipe();
             el.classList.remove('warn', 'urgent');
             var status = el.getAttribute('data-status');
             var inactive = status === 'delivered' || status === 'pickedup' || status === 'cancelled' || status === 'done';
+            var row = el.closest('.order-row');
+            if (row) row.classList.remove('age-warn', 'age-urgent');
             if (!inactive) {
-                if (mins >= URGENT_MIN) el.classList.add('urgent');
-                else if (mins >= WARN_MIN) el.classList.add('warn');
+                if (mins >= URGENT_MIN) {
+                    el.classList.add('urgent');
+                    if (row) row.classList.add('age-urgent');
+                } else if (mins >= WARN_MIN) {
+                    el.classList.add('warn');
+                    if (row) row.classList.add('age-warn');
+                }
             }
         });
     }

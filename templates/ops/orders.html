@@ -271,6 +271,20 @@
     font-size: 10px;
     color: #bbb;
 }
+.row-age-badge {
+    display: inline-block;
+    margin-top: 3px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.5;
+    background: #eef2f7;
+    color: #475569;
+    white-space: nowrap;
+}
+.row-age-badge.warn { background: #fef3c7; color: #92400e; }
+.row-age-badge.urgent { background: #fee2e2; color: #b91c1c; }
 
 .row-amount {
     font-size: 13px;
@@ -480,6 +494,9 @@
                 <div class="row-prep-time">{{ order.estimated_ready_at|il_hour }}</div>
                 {% endif %}
                 <div class="row-order-time">{{ order.created_at|il_hour }}</div>
+                {% if order.created_at %}
+                <div class="row-age-badge" data-created-at="{{ order.created_at.isoformat() }}{% if not order.created_at.tzinfo %}Z{% endif %}" data-status="{{ order.status }}">·</div>
+                {% endif %}
             </div>
             <div class="row-amount">₪{{ "%.2f"|format(order.total_amount) }}</div>
         </div>
@@ -1534,6 +1551,37 @@ function deleteOrderFromOps(id, orderNum, reason) {
 }
 
 initSwipe();
+
+(function() {
+    var WARN_MIN = 10;
+    var URGENT_MIN = 20;
+    function updateOrderAges() {
+        var now = Date.now();
+        document.querySelectorAll('.row-age-badge[data-created-at]').forEach(function(el) {
+            var ts = Date.parse(el.getAttribute('data-created-at'));
+            if (isNaN(ts)) return;
+            var mins = Math.max(0, Math.floor((now - ts) / 60000));
+            var text;
+            if (mins < 1) text = 'עכשיו';
+            else if (mins < 60) text = 'לפני ' + mins + ' דק׳';
+            else {
+                var h = Math.floor(mins / 60);
+                var rem = mins % 60;
+                text = 'לפני ' + h + 'ש׳' + (rem ? ' ' + rem + 'ד׳' : '');
+            }
+            el.textContent = text;
+            el.classList.remove('warn', 'urgent');
+            var status = el.getAttribute('data-status');
+            var inactive = status === 'delivered' || status === 'pickedup' || status === 'cancelled' || status === 'done';
+            if (!inactive) {
+                if (mins >= URGENT_MIN) el.classList.add('urgent');
+                else if (mins >= WARN_MIN) el.classList.add('warn');
+            }
+        });
+    }
+    updateOrderAges();
+    setInterval(updateOrderAges, 30000);
+})();
 
 (function() {
     var ORDER_SOUND = null;

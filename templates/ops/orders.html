@@ -213,6 +213,31 @@
 .bulk-btn.danger { background: #dc2626; color: #fff; }
 .bulk-btn.cancel { background: #475569; color: #fff; flex: 0 0 auto; padding: 10px 14px; }
 .bulk-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.bulk-missing-notice {
+    position: fixed;
+    left: 12px; right: 12px;
+    bottom: -120px;
+    background: #f59e0b;
+    color: #1e293b;
+    padding: 8px 12px;
+    border-radius: 10px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
+    z-index: 9001;
+    font-family: 'Heebo', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: bottom 0.25s cubic-bezier(.4,0,.2,1), opacity 0.25s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+.bulk-missing-notice.show {
+    opacity: 1;
+    pointer-events: auto;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0));
+}
 
 /* ===== Pull to refresh ===== */
 .ptr-indicator {
@@ -789,6 +814,11 @@
     <button type="button" class="bulk-btn cancel" id="bulkCancel" aria-label="בטל בחירה"><i class="fas fa-times"></i></button>
 </div>
 
+<div class="bulk-missing-notice" id="bulkMissingNotice" role="status" aria-live="polite">
+    <i class="fas fa-info-circle"></i>
+    <span id="bulkMissingNoticeText"></span>
+</div>
+
 <div class="modal-backdrop" id="orderModal" onclick="if(event.target===this)closeModal('orderModal')">
     <div class="modal-sheet">
         <div class="modal-handle"></div>
@@ -1030,6 +1060,23 @@ function _exitSelectMode() {
     document.querySelectorAll('.order-row.row-selected').forEach(function(r){ r.classList.remove('row-selected'); });
     _updateBulkBar();
     _clearPersistedBulkSelection();
+    _hideBulkMissingNotice();
+}
+var _bulkMissingNoticeTimer = null;
+function _showBulkMissingNotice(missing) {
+    var el = document.getElementById('bulkMissingNotice');
+    var txt = document.getElementById('bulkMissingNoticeText');
+    if (!el || !txt || !missing) return;
+    var word = (missing === 1) ? 'הזמנה אחת שנבחרה אינה בתצוגה' : (missing + ' הזמנות שנבחרו אינן בתצוגה');
+    txt.textContent = word;
+    el.classList.add('show');
+    if (_bulkMissingNoticeTimer) clearTimeout(_bulkMissingNoticeTimer);
+    _bulkMissingNoticeTimer = setTimeout(_hideBulkMissingNotice, 6000);
+}
+function _hideBulkMissingNotice() {
+    var el = document.getElementById('bulkMissingNotice');
+    if (el) el.classList.remove('show');
+    if (_bulkMissingNoticeTimer) { clearTimeout(_bulkMissingNoticeTimer); _bulkMissingNoticeTimer = null; }
 }
 function _toggleRowSelected(card, force) {
     var id = parseInt(card.dataset.orderId, 10);
@@ -1038,6 +1085,7 @@ function _toggleRowSelected(card, force) {
     _selectedIds[id] = on;
     card.classList.toggle('row-selected', on);
     card.setAttribute('aria-pressed', on ? 'true' : 'false');
+    _hideBulkMissingNotice();
     _updateBulkBar();
     if (!on && _bulkSelectedIdList().length === 0) { _exitSelectMode(); return; }
     _persistBulkSelection();
@@ -1072,6 +1120,7 @@ function _restoreBulkSelection() {
             restored++;
         }
     });
+    var missing = saved.length - restored;
     if (restored > 0) {
         _selectMode = true;
         list.classList.add('select-mode');
@@ -1080,6 +1129,7 @@ function _restoreBulkSelection() {
     } else {
         _clearPersistedBulkSelection();
     }
+    if (missing > 0) _showBulkMissingNotice(missing);
 }
 
 function _lpCancel() {

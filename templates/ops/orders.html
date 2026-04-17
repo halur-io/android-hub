@@ -467,7 +467,7 @@
 
 <div class="counter-bar">
     <a class="counter-item {% if status_filter == 'new' %}active{% endif %}" href="{{ url_for('ops.orders', status='new', type=type_filter) }}">
-        <span class="counter-label">לטיפול</span>
+        <span class="counter-label">ממתין</span>
         <span class="counter-num">{{ counts.get('new', 0) }}</span>
     </a>
     <a class="counter-item {% if status_filter == 'preparing' %}active{% endif %}" href="{{ url_for('ops.orders', status='preparing', type=type_filter) }}">
@@ -492,7 +492,7 @@
 <div class="orders-list">
     {% for order in orders %}
     {% set s_class = 's-new' if order.status in ('pending','confirmed') else ('s-preparing' if order.status == 'preparing' else ('s-ready' if order.status == 'ready' else ('s-cancelled' if order.status == 'cancelled' else 's-done'))) %}
-    {% set s_label = 'לטיפול' if order.status in ('pending','confirmed') else ('בהכנה' if order.status == 'preparing' else ('מוכן' if order.status == 'ready' else ('בוטל' if order.status == 'cancelled' else 'נמסר'))) %}
+    {% set s_label = 'ממתין' if order.status in ('pending','confirmed') else ('בהכנה' if order.status == 'preparing' else ('מוכן' if order.status == 'ready' else ('בוטל' if order.status == 'cancelled' else 'נמסר'))) %}
     <div class="order-row-wrap" data-order-id="{{ order.id }}">
         <div class="order-row" id="card-{{ order.id }}"
              data-order-id="{{ order.id }}"

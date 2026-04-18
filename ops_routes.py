@@ -1752,6 +1752,13 @@ def create_manual_order():
         order.branch_id = branch.id
         order.branch_name = branch.name_he
     order.order_type = order_type
+    try:
+        from services.display_number import assign_display_number
+        _u = _get_ops_user()
+        assign_display_number(order, opened_by_pin_id=_u.id if _u else None, opened_by_name=_u.name if _u else None)
+    except Exception as _e:
+        import logging as _lg
+        _lg.warning(f"display_number assignment failed (manual order): {_e}")
     order.customer_name = customer_name
     order.customer_phone = customer_phone
     order.delivery_address = delivery_address
@@ -4191,6 +4198,12 @@ def delete_order(order_id):
     released = ReleasedOrderNumber(order_number=order.order_number)
     db.session.add(archived)
     db.session.add(released)
+    try:
+        from services.display_number import release_display_number
+        release_display_number(order)
+    except Exception as _e:
+        import logging as _lg
+        _lg.warning(f"display_number recycle failed (ops delete): {_e}")
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)
@@ -5039,6 +5052,12 @@ def api_session_add_items(session_id):
     order.branch_id = effective_branch
     order.branch_name = branch.name_he if branch else ''
     order.order_type = 'dine_in'
+    try:
+        from services.display_number import assign_display_number
+        assign_display_number(order, opened_by_pin_id=user.id if user else None, opened_by_name=user.name if user else None)
+    except Exception as _e:
+        import logging as _lg
+        _lg.warning(f"display_number assignment failed (dine-in order): {_e}")
     order.customer_name = f'שולחן {sess.table.table_number}' if sess.table else 'ישיבה'
     order.customer_phone = '0000000000'
     order.payment_method = 'cash'

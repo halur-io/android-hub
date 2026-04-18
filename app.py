@@ -214,6 +214,16 @@ def fromjson_filter(value):
     except (json.JSONDecodeError, TypeError):
         return []
 
+# Short display number helper (T/D/TB) with legacy fallback.
+try:
+    from services.display_number import disp_num as _disp_num
+    app.jinja_env.globals['disp_num'] = _disp_num
+    @app.template_filter('disp_num')
+    def disp_num_filter(order):
+        return _disp_num(order)
+except Exception as _e:
+    logging.warning(f"disp_num helper not registered: {_e}")
+
 # Import routes  
 from routes import *
 # Note: Popup API routes are exempted from CSRF using decorators in routes.py

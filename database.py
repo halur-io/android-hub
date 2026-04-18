@@ -68,6 +68,8 @@ def _run_safe_migrations(db):
         ("dine_in_sessions", "split_config", "ALTER TABLE dine_in_sessions ADD COLUMN split_config TEXT"),
         ("food_orders", "payment_url", "ALTER TABLE food_orders ADD COLUMN payment_url VARCHAR(500)"),
         ("food_orders", "payment_callback_token", "ALTER TABLE food_orders ADD COLUMN payment_callback_token VARCHAR(64)"),
+        ("food_orders", "display_number", "ALTER TABLE food_orders ADD COLUMN display_number VARCHAR(20)"),
+        ("food_orders", "operating_day_id", "ALTER TABLE food_orders ADD COLUMN operating_day_id INTEGER"),
     ]
     for table, column, sql in migrations:
         try:

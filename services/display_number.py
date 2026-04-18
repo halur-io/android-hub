@@ -26,20 +26,35 @@ def get_open_day(branch_id):
 
 
 def ensure_open_day(branch_id, opened_by_pin_id=None, opened_by_name=None):
-    """Return the currently-open OperatingDay for branch_id; auto-open if none."""
+    """Return the currently-open OperatingDay for branch_id; auto-open if none.
+
+    Race-hardened: if two requests both observe no open day and try to insert,
+    the partial unique index `uq_one_open_day_per_branch` will reject one with
+    IntegrityError; we catch that, roll back the failed savepoint, and re-fetch
+    the row the winning transaction inserted.
+    """
+    from sqlalchemy.exc import IntegrityError
     od = get_open_day(branch_id)
     if od:
         return od
-    od = OperatingDay(
-        branch_id=branch_id,
-        status='open',
-        opened_at=datetime.utcnow(),
-        opened_by_pin_id=opened_by_pin_id,
-        opened_by_name=opened_by_name or 'auto',
-    )
-    db.session.add(od)
-    db.session.flush()
-    return od
+    try:
+        with db.session.begin_nested():
+            od = OperatingDay(
+                branch_id=branch_id,
+                status='open',
+                opened_at=datetime.utcnow(),
+                opened_by_pin_id=opened_by_pin_id,
+                opened_by_name=opened_by_name or 'auto',
+            )
+            db.session.add(od)
+            db.session.flush()
+        return od
+    except IntegrityError:
+        # Another concurrent request won the open-day race. Re-fetch.
+        od = get_open_day(branch_id)
+        if od:
+            return od
+        raise
 
 
 def assign_display_number(order, opened_by_pin_id=None, opened_by_name=None):

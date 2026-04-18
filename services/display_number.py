@@ -67,11 +67,16 @@ def assign_display_number(order, opened_by_pin_id=None, opened_by_name=None):
     if not prefix:
         return None
     if not order.branch_id:
-        # Display-number assignment requires a branch; refuse to assign rather
-        # than fall through and create a branchless OperatingDay row that
-        # would weaken the partial unique constraint (NULL branches don't
-        # collide in PostgreSQL partial unique indexes).
-        raise ValueError("assign_display_number requires order.branch_id")
+        # Display-number assignment requires a branch — branchless rows would
+        # weaken the partial unique constraint (NULL branches don't collide
+        # in PostgreSQL partial unique indexes). No-op (caller falls back to
+        # legacy order_number) instead of raising, so superadmin/branchless
+        # creation paths don't surface as 500s.
+        import logging as _lg
+        _lg.warning(
+            f"assign_display_number skipped: order has no branch_id (order_id={getattr(order,'id',None)})"
+        )
+        return None
     branch_id = order.branch_id
     day = ensure_open_day(branch_id, opened_by_pin_id, opened_by_name)
     order.operating_day_id = day.id

@@ -151,7 +151,7 @@ class BonBuilder:
 
 def build_checker(b, o):
     b.init()
-    order_num = o['order_number']
+    order_num = o.get('display_number') or o['order_number']
     type_he = 'משלוח' if o['order_type'] == 'delivery' else 'איסוף עצמי'
     customer = o.get('customer_name', '')
     phone = o.get('customer_phone', '')
@@ -235,7 +235,7 @@ def build_checker(b, o):
 
 def build_payment(b, o):
     b.init()
-    order_num = o['order_number']
+    order_num = o.get('display_number') or o['order_number']
     type_he = 'משלוח' if o['order_type'] == 'delivery' else 'איסוף עצמי'
     customer = o.get('customer_name', '')
     phone = o.get('customer_phone', '')
@@ -285,7 +285,7 @@ def build_payment(b, o):
 
 def build_station(b, o, station_name, station_items):
     b.init()
-    order_num = o['order_number']
+    order_num = o.get('display_number') or o['order_number']
     type_he = 'משלוח' if o['order_type'] == 'delivery' else 'איסוף עצמי'
 
     b.align('center')
@@ -576,10 +576,10 @@ def _process_sse_order(order):
     print_job_id = order.get('print_job_id')
     dedup_key = f'sse_{print_job_id}' if print_job_id else f'sse_{order.get("id")}'
     if _is_recently_printed(dedup_key):
-        print(f'  [SSE] Print job for order #{order.get("order_number", "?")} already processed, skipping')
+        print(f"  [SSE] Print job for order #{order.get('display_number') or order.get('order_number') or '?'} already processed, skipping")
         return
 
-    num = order.get('order_number', '?')
+    num = order.get('display_number') or order.get('order_number', '?')
     name = order.get('customer_name', '')
     total = order.get('total_amount', 0)
     otype = order.get('order_type', '')
@@ -633,7 +633,7 @@ def sse_listener():
                                 if event_type == 'connected':
                                     print('[SSE] Stream ready — listening for print jobs')
                                 elif event_type == 'new_print_job':
-                                    print(f'[SSE] Received print job for order #{event.get("order_number", "?")}')
+                                    print(f"[SSE] Received print job for order #{event.get('display_number') or event.get('order_number') or '?'}")
                                     _process_sse_order(event)
                             except json.JSONDecodeError:
                                 pass
@@ -702,7 +702,7 @@ def main():
                     for order in orders:
                         if _is_recently_printed(f'poll_{order["id"]}'):
                             continue
-                        num = order['order_number']
+                        num = order.get('display_number') or order['order_number']
                         name = order['customer_name']
                         total = order.get('total_amount', 0)
                         otype = order.get('order_type', '')

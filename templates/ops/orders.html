@@ -2569,7 +2569,7 @@ _restoreBulkSelection();
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;padding:16px 20px;z-index:100000;display:flex;align-items:center;justify-content:space-between;font-family:inherit;box-shadow:0 4px 20px rgba(0,0,0,0.3);animation:slideDown 0.3s ease;cursor:pointer;';
         banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
             '<i class="fas fa-bell" style="font-size:24px;animation:ring 0.5s ease infinite;"></i>' +
-            '<div><div style="font-size:18px;font-weight:800;">הזמנה חדשה #' + (data.order_number || '') + '</div>' +
+            '<div><div style="font-size:18px;font-weight:800;">הזמנה חדשה #' + (data.display_number || data.order_number || '') + '</div>' +
             '<div style="font-size:14px;opacity:0.9;">' + (data.customer_name || '') + ' | ' + typeHe + ' | ' + sourceHe + '</div></div></div>' +
             '<div style="font-size:22px;font-weight:800;">' + (data.total_amount ? data.total_amount.toFixed(0) : '') + '</div>';
         banner.onclick = function() {

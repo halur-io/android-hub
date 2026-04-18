@@ -3247,6 +3247,7 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
                 'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (fallback.get('port') or 9100),
                 'order_id': order.id,
                 'order_number': order.order_number,
+                'display_number': order.display_number,
                 'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
             })
 
@@ -3261,6 +3262,7 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
                 'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (fallback.get('port') or 9100),
                 'order_id': order.id,
                 'order_number': order.order_number,
+                'display_number': order.display_number,
                 'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
             })
 
@@ -3278,6 +3280,7 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
                     'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (target.get('port') or 9100),
                     'order_id': order.id,
                     'order_number': order.order_number,
+                    'display_number': order.display_number,
                     'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
                 })
 
@@ -3320,6 +3323,7 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
         'type': 'print_order',
         'id': order.id,
         'order_number': order.order_number,
+        'display_number': order.display_number,
         'order_type': order.order_type,
         'branch_id': order.branch_id,
         'status': order.status,
@@ -3350,6 +3354,7 @@ def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons
         'print_job_id': secrets.token_hex(8),
         'id': order.id,
         'order_number': order.order_number,
+        'display_number': order.display_number,
         'order_type': order.order_type,
         'branch_id': order.branch_id,
         'status': order.status,

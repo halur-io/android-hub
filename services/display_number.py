@@ -70,27 +70,21 @@ def assign_display_number(order, opened_by_pin_id=None, opened_by_name=None):
         return order.display_number
 
     # 2) Atomic counter increment under row lock.
+    # Race-safe bootstrap: INSERT ... ON CONFLICT DO NOTHING ensures the row
+    # exists, then re-SELECT FOR UPDATE locks it. This avoids the case where
+    # two concurrent first-orders both insert and one fails the unique
+    # constraint. Postgres-specific (matches the project's database).
+    db.session.execute(text(
+        "INSERT INTO daily_counters (operating_day_id, order_type, next_seq) "
+        "VALUES (:did, :ot, 1) "
+        "ON CONFLICT (operating_day_id, order_type) DO NOTHING"
+    ), {"did": day.id, "ot": order.order_type})
     counter = (
         DailyCounter.query
         .filter_by(operating_day_id=day.id, order_type=order.order_type)
         .with_for_update()
         .first()
     )
-    if counter is None:
-        counter = DailyCounter(
-            operating_day_id=day.id,
-            order_type=order.order_type,
-            next_seq=1,
-        )
-        db.session.add(counter)
-        db.session.flush()
-        # re-lock after insert
-        counter = (
-            DailyCounter.query
-            .filter_by(id=counter.id)
-            .with_for_update()
-            .first()
-        )
 
     seq = counter.next_seq
     counter.next_seq = seq + 1

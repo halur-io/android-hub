@@ -524,7 +524,7 @@
       <div class="kds-card {% if age_min >= 15 %}urgent-crit{% elif age_min >= 8 %}urgent-warn{% endif %}" id="card-{{ order.id }}" data-order-id="{{ order.id }}" data-order-type="{{ order.order_type }}" data-order-status="{{ order.status }}" data-tracking="{{ order.tracking_token or '' }}" data-payment="{{ order.payment_method }}" data-address="{{ (order.delivery_address or '')|replace('"', '') }}" data-city="{{ order.delivery_city or '' }}" data-pickup="{{ order.pickup_time or '' }}" data-total="{{ order.total_amount|int }}">
         <div class="card-header-strip">
           <div class="card-header-left">
-            <div class="order-num">{{ order.order_number }}</div>
+            <div class="order-num">{{ order.display_number or order.order_number }}</div>
             <div class="cust-name">{{ order.customer_name }}</div>
             <div class="cust-phone">
               <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;" onclick="event.stopPropagation()">
@@ -568,11 +568,11 @@
         <div class="card-notes"><i class="fas fa-comment-dots me-1"></i>{{ order.customer_notes }}</div>
         {% endif %}
         <div class="card-actions-strip">
-          <button class="kds-btn confirm" onclick="showConfirmModal({{ order.id }}, '{{ order.order_number }}', '{{ order.order_type }}')">
+          <button class="kds-btn confirm" onclick="showConfirmModal({{ order.id }}, '{{ order.display_number or order.order_number }}', '{{ order.order_type }}')">
             <i class="fas fa-check"></i> אשר הזמנה
           </button>
           <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
-          <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.order_number }}')"><i class="fas fa-times"></i></button>
+          <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-times"></i></button>
         </div>
       </div>
       {% endfor %}
@@ -596,7 +596,7 @@
       <div class="kds-card {% if age_min >= 25 %}urgent-crit{% elif age_min >= 15 %}urgent-warn{% endif %}" id="card-{{ order.id }}" data-order-id="{{ order.id }}" data-order-type="{{ order.order_type }}" data-order-status="{{ order.status }}" data-tracking="{{ order.tracking_token or '' }}" data-payment="{{ order.payment_method }}" data-address="{{ (order.delivery_address or '')|replace('"', '') }}" data-city="{{ order.delivery_city or '' }}" data-pickup="{{ order.pickup_time or '' }}" data-total="{{ order.total_amount|int }}">
         <div class="card-header-strip">
           <div class="card-header-left">
-            <div class="order-num">{{ order.order_number }}</div>
+            <div class="order-num">{{ order.display_number or order.order_number }}</div>
             <div class="cust-name">{{ order.customer_name }}</div>
             <div class="cust-phone">
               <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;" onclick="event.stopPropagation()">
@@ -649,7 +649,7 @@
         {% endif %}
         <div class="card-actions-strip">
           {% if order.status == 'confirmed' %}
-          <button class="kds-btn prepare" onclick="showPrepModal({{ order.id }}, '{{ order.order_number }}')">
+          <button class="kds-btn prepare" onclick="showPrepModal({{ order.id }}, '{{ order.display_number or order.order_number }}')">
             <i class="fas fa-fire"></i> התחל בישול
           </button>
           {% else %}
@@ -658,7 +658,7 @@
           </button>
           {% endif %}
           <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
-          <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.order_number }}')"><i class="fas fa-times"></i></button>
+          <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-times"></i></button>
         </div>
       </div>
       {% endfor %}
@@ -682,7 +682,7 @@
       <div class="kds-card" style="border-color:#065f46;">
         <div class="card-header-strip" style="background:rgba(5,46,22,.4);">
           <div class="card-header-left">
-            <div class="order-num">{{ order.order_number }}</div>
+            <div class="order-num">{{ order.display_number or order.order_number }}</div>
             <div class="cust-name">{{ order.customer_name }}</div>
             <div class="cust-phone">
               <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;" onclick="event.stopPropagation()">
@@ -745,7 +745,7 @@
       <div class="kds-card" style="opacity:.65;border-color:#1e293b;">
         <div class="card-header-strip">
           <div class="card-header-left">
-            <div class="order-num">{{ order.order_number }}{% if (order.source|default('online')) == 'ops' %} <span style="font-size:.65rem;color:#c084fc;font-weight:800;">ידני</span>{% endif %}</div>
+            <div class="order-num">{{ order.display_number or order.order_number }}{% if (order.source|default('online')) == 'ops' %} <span style="font-size:.65rem;color:#c084fc;font-weight:800;">ידני</span>{% endif %}</div>
             <div class="cust-name" style="font-size:.82rem;">{{ order.customer_name }}</div>
           </div>
           <div class="card-header-right">
@@ -787,7 +787,7 @@
   <div class="list-card st-{{ order.status }}">
     <div class="card-header-strip">
       <div class="card-header-left">
-        <div class="order-num">{{ order.order_number }} · {{ order.created_at|il_hour }}</div>
+        <div class="order-num">{{ order.display_number or order.order_number }} · {{ order.created_at|il_hour }}</div>
         <div class="cust-name">{{ order.customer_name }}</div>
         <div class="cust-phone">
           <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;">{{ order.customer_phone }}</a>
@@ -828,9 +828,9 @@
     {% endif %}
     <div class="card-actions-strip">
       {% if order.status == 'pending' %}
-      <button class="kds-btn confirm" onclick="showConfirmModal({{ order.id }}, '{{ order.order_number }}', '{{ order.order_type }}')"><i class="fas fa-check"></i> אשר</button>
+      <button class="kds-btn confirm" onclick="showConfirmModal({{ order.id }}, '{{ order.display_number or order.order_number }}', '{{ order.order_type }}')"><i class="fas fa-check"></i> אשר</button>
       {% elif order.status == 'confirmed' %}
-      <button class="kds-btn prepare" onclick="showPrepModal({{ order.id }}, '{{ order.order_number }}')"><i class="fas fa-fire"></i> לבישול</button>
+      <button class="kds-btn prepare" onclick="showPrepModal({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-fire"></i> לבישול</button>
       {% elif order.status == 'preparing' %}
       <button class="kds-btn ready" onclick="quickStatus({{ order.id }}, 'ready', '1')"><i class="fas fa-bell"></i> מוכן!</button>
       {% elif order.status == 'ready' %}
@@ -840,7 +840,7 @@
       {% endif %}
       <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
       {% if order.status not in ('cancelled','delivered','pickedup') %}
-      <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.order_number }}')"><i class="fas fa-times"></i></button>
+      <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-times"></i></button>
       {% endif %}
     </div>
   </div>

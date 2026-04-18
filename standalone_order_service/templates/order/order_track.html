@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>מעקב הזמנה {{ order.order_number }}</title>
+  <title>מעקב הזמנה {{ order.display_number or order.order_number }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -92,7 +92,7 @@
 <body>
 
 <div class="logo">🍽️ מעקב הזמנה</div>
-<div class="order-num">{{ order.order_number }}</div>
+<div class="order-num">{{ order.display_number or order.order_number }}</div>
 
 <!-- Status progress steps -->
 <div class="status-track">
@@ -172,7 +172,7 @@
 
 <!-- Info chips -->
 <div class="info-chips">
-  <div class="chip"><i class="fas fa-tag"></i><span>{{ order.order_number }}</span></div>
+  <div class="chip"><i class="fas fa-tag"></i><span>{{ order.display_number or order.order_number }}</span></div>
   <div class="chip"><i class="fas {% if order.order_type == 'delivery' %}fa-motorcycle{% else %}fa-bag-shopping{% endif %}"></i>
     <span>{{ 'משלוח' if order.order_type == 'delivery' else 'איסוף עצמי' }}</span>
   </div>

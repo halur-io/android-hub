@@ -898,12 +898,24 @@ def operating_day_status():
 @require_ops_module('home')
 def operating_day_close():
     user = _get_ops_user()
-    if not user or not user.is_ops_superadmin:
+    if not user:
         return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
     data = request.get_json(silent=True) or {}
     pin = (data.get('pin') or '').strip()
-    if not pin or not user.check_pin(pin):
+    # Any active manager PIN may close the day; we re-validate the PIN now to
+    # require fresh authentication for this destructive action.
+    pin_user = None
+    if pin:
+        for candidate in ManagerPIN.query.filter_by(is_active=True).all():
+            try:
+                if candidate.check_pin(pin):
+                    pin_user = candidate
+                    break
+            except Exception:
+                continue
+    if not pin_user:
         return jsonify({'ok': False, 'error': 'קוד PIN שגוי'}), 403
+    user = pin_user
     from services.display_number import close_operating_day, ensure_open_day
     branch_id = _get_effective_branch_id()
     day = close_operating_day(
@@ -2943,7 +2955,7 @@ def _build_checker_bon(p, o):
 
     p.font('double_h')
     p.bold()
-    p.text(f'הזמנה #{o.order_number}  {type_he}')
+    p.text(f'הזמנה #{o.display_number or o.order_number}  {type_he}')
     p.bold(False)
     p.font('normal')
     p.feed(1)
@@ -3021,7 +3033,7 @@ def _build_checker_bon(p, o):
     p.text('לא כולל שרות')
     p.text('Tip not included')
     p.feed(1)
-    p.text(f'הזמנה #{o.order_number}')
+    p.text(f'הזמנה #{o.display_number or o.order_number}')
     p.text(_to_il_hour(datetime.utcnow()))
     p.feed(1)
     p.cut()
@@ -3047,7 +3059,7 @@ def _build_payment_bon(p, o):
 
     p.font('double_h')
     p.bold()
-    p.text(f'חשבון #{o.order_number}  {type_he}')
+    p.text(f'חשבון #{o.display_number or o.order_number}  {type_he}')
     p.bold(False)
     p.font('normal')
 
@@ -3111,7 +3123,7 @@ def _build_payment_bon(p, o):
     p.text('לא כולל שרות')
     p.text('Tip not included')
     p.feed(1)
-    p.text(f'חשבון #{o.order_number}')
+    p.text(f'חשבון #{o.display_number or o.order_number}')
     p.text(_to_il_hour(datetime.utcnow()))
     p.feed(1)
     p.cut()
@@ -3132,7 +3144,7 @@ def _build_station_bon(p, o, station_name, station_items):
     type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי'
     p.font('double_h')
     p.bold()
-    p.text(f'#{o.order_number}  {type_he}')
+    p.text(f'#{o.display_number or o.order_number}  {type_he}')
     p.bold(False)
     p.font('normal')
     p.text(_to_il(o.created_at) if o.created_at else '')
@@ -3171,7 +3183,7 @@ def _build_station_bon(p, o, station_name, station_items):
     p.feed(1)
     p.dashed()
     p.align('center')
-    p.text(f'#{o.order_number} | {station_name} | {_to_il_hour(datetime.utcnow())}')
+    p.text(f'#{o.display_number or o.order_number} | {station_name} | {_to_il_hour(datetime.utcnow())}')
     p.feed(1)
     p.cut()
 

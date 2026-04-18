@@ -23,7 +23,7 @@
         <div class="text-center mb-4">
           <div class="mb-3" style="font-size:3.5rem;">🎉</div>
           <h2 class="fw-bold mb-1">{{ 'ההזמנה התקבלה!' if language == 'he' else 'Order Received!' }}</h2>
-          <p class="text-muted">{{ 'מספר הזמנה:' if language == 'he' else 'Order number:' }} <strong>#{{ order.order_number }}</strong></p>
+          <p class="text-muted">{{ 'מספר הזמנה:' if language == 'he' else 'Order number:' }} <strong>#{{ order.display_number or order.order_number }}</strong></p>
         </div>
 
         <div class="card border-0 shadow mb-4" style="border-radius:16px;">

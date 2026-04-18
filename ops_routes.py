@@ -925,7 +925,6 @@ def operating_day_close():
         candidates = ManagerPIN.query.filter_by(is_active=True).filter(
             db.or_(
                 ManagerPIN.branch_id == branch_id,
-                ManagerPIN.branch_id.is_(None),
                 ManagerPIN.is_ops_superadmin == True,  # noqa: E712
             )
         ).all()

@@ -71,6 +71,106 @@
             animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
         }
 
+        /* ============ Header layout — compact + responsive ============ */
+        .ops-header {
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+        .ops-header-title {
+            display: flex; align-items: center; gap: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            flex-shrink: 1;
+        }
+        .ops-header-right {
+            flex-wrap: nowrap;
+            gap: 8px;
+            min-width: 0;
+            margin-left: auto;
+        }
+        .ops-header-right > * { flex-shrink: 0; }
+        #ops-branch-select {
+            max-width: 110px !important;
+            min-width: 0;
+            text-overflow: ellipsis;
+        }
+
+        /* Connectivity indicator — colored states, single line, no wrap */
+        .ops-conn-indicator {
+            white-space: nowrap;
+            line-height: 1.1;
+            font-weight: 700;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .ops-conn-indicator.is-online {
+            color: #16a34a;
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.35);
+        }
+        .ops-conn-indicator.is-offline {
+            color: #dc2626;
+            background: rgba(239, 68, 68, 0.14);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+        .ops-conn-indicator.is-online .ops-conn-dot.online,
+        .ops-conn-indicator.is-online .ops-conn-dot { background: #16a34a; }
+        .ops-conn-indicator.is-offline .ops-conn-dot { background: #dc2626; }
+
+        /* ===== Tablet (≤ 900px) ===== */
+        @media (max-width: 900px) {
+            .ops-header { padding: 10px 14px; gap: 6px; }
+            .ops-header-title { font-size: 15px; }
+            .ops-header-right { gap: 6px; }
+            #ops-branch-select { max-width: 96px !important; font-size: 0.7rem !important; padding: 4px 6px !important; }
+            #branch-status-btn { padding: 4px 8px !important; font-size: 0.7rem !important; }
+            .ops-conn-indicator { padding: 4px 7px; font-size: 0.68rem; }
+            .ops-header-user { font-size: 12px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .ops-header-btn { padding: 6px 10px; font-size: 13px; }
+        }
+
+        /* ===== Phone (≤ 600px) ===== */
+        @media (max-width: 600px) {
+            .ops-header { padding: 8px 10px; min-height: 50px; gap: 5px; }
+            .ops-header-title { font-size: 14px; }
+            .ops-header-title i { font-size: 14px; }
+            .ops-header-right { gap: 5px; }
+
+            /* Hide the username text — keep only the user icon would be even cleaner,
+               but we just hide the whole user span on phones */
+            .ops-header-user { display: none; }
+
+            #ops-branch-select { max-width: 84px !important; font-size: 0.66rem !important; padding: 3px 5px !important; }
+            #branch-status-btn { padding: 3px 7px !important; font-size: 0.66rem !important; min-height: 28px !important; }
+            #branch-status-btn span:not(#branch-status-dot) { display: none; }   /* dot only on phone */
+            #branch-status-btn { gap: 0 !important; }
+
+            /* Connectivity: show dot only, hide text on small phones */
+            .ops-conn-indicator {
+                padding: 4px 6px;
+                min-height: 26px;
+                font-size: 0;     /* hide text on phone */
+            }
+            .ops-conn-indicator .ops-conn-dot {
+                width: 10px; height: 10px;
+            }
+            .ops-conn-indicator #ops-conn-text { display: none; }
+
+            .ops-header-btn { padding: 6px 9px; font-size: 12px; }
+        }
+
+        /* ===== Tab bar — tighter on phones so more tabs fit on screen ===== */
+        @media (max-width: 600px) {
+            .ops-tab-bar { height: 52px; }
+            .ops-tab { min-width: 56px; padding: 0 6px; font-size: 10px; gap: 2px; }
+            .ops-tab i { font-size: 17px; }
+        }
+        @media (max-width: 380px) {
+            .ops-tab { min-width: 48px; font-size: 9.5px; }
+            .ops-tab i { font-size: 16px; }
+        }
+
         /* PWA install prompt */
         .pwa-install-banner {
             position: fixed;
@@ -648,8 +748,16 @@
 
         function render() {
             var ago = fmtAgo(Date.now() - renderedAt.getTime());
-            text.textContent = (lastOnline ? '' : 'לא מקוון • ') + 'מעודכן ' + ago;
+            var indicator = document.getElementById('ops-conn-indicator');
+            if (lastOnline) {
+                text.textContent = 'מחובר לשרת';
+                if (indicator) indicator.classList.remove('is-offline'), indicator.classList.add('is-online');
+            } else {
+                text.textContent = 'לא מחובר';
+                if (indicator) indicator.classList.remove('is-online'), indicator.classList.add('is-offline');
+            }
             setDot(lastOnline ? 'online' : 'offline');
+            if (indicator) indicator.title = (lastOnline ? 'מחובר • ' : 'לא מקוון • ') + 'נטען ' + ago + ' (לחץ לרענון)';
             if (staleSub && !autoReloadTimer) staleSub.textContent = 'נטען ' + ago;
         }
 

@@ -66,6 +66,12 @@ def assign_display_number(order, opened_by_pin_id=None, opened_by_name=None):
     prefix = _prefix(order.order_type)
     if not prefix:
         return None
+    if not order.branch_id:
+        # Display-number assignment requires a branch; refuse to assign rather
+        # than fall through and create a branchless OperatingDay row that
+        # would weaken the partial unique constraint (NULL branches don't
+        # collide in PostgreSQL partial unique indexes).
+        raise ValueError("assign_display_number requires order.branch_id")
     branch_id = order.branch_id
     day = ensure_open_day(branch_id, opened_by_pin_id, opened_by_name)
     order.operating_day_id = day.id

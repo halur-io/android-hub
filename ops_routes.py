@@ -913,7 +913,6 @@ def operating_day_close():
     )
     if not day:
         return jsonify({'ok': False, 'error': 'אין יום פעיל לסגירה'}), 400
-    new_day = ensure_open_day(branch_id, opened_by_pin_id=user.id, opened_by_name=user.name)
     try:
         db.session.commit()
     except Exception as e:
@@ -933,8 +932,28 @@ def operating_day_close():
             'cash': day.total_cash or 0,
             'closed_at': day.closed_at.isoformat() + 'Z' if day.closed_at else None,
         },
-        'new_day_id': new_day.id,
     })
+
+
+@ops_bp.route('/api/operating-day/open', methods=['POST'])
+@require_ops_module('home')
+def operating_day_open():
+    user = _get_ops_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    from services.display_number import ensure_open_day, get_open_day
+    branch_id = _get_effective_branch_id()
+    if get_open_day(branch_id):
+        return jsonify({'ok': False, 'error': 'יום פעיל כבר קיים'}), 400
+    day = ensure_open_day(branch_id, opened_by_pin_id=user.id, opened_by_name=user.name)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        import logging as _lg
+        _lg.error(f"open day failed: {e}")
+        return jsonify({'ok': False, 'error': 'שגיאה בפתיחת יום'}), 500
+    return jsonify({'ok': True, 'day_id': day.id})
 
 
 @ops_bp.route('/healthcheck')
@@ -1890,9 +1909,11 @@ def create_manual_order():
         pass
     return jsonify({
         'ok': True,
-        'message': f'הזמנה #{order.order_number} נוצרה בהצלחה',
+        'message': f'הזמנה #{order.display_number or order.order_number} נוצרה בהצלחה',
         'order_id': order.id,
-        'order_number': order.order_number,
+        'order_number': order.display_number or order.order_number,
+        'order_number_full': order.order_number,
+        'display_number': order.display_number,
         'total_amount': order.total_amount,
     })
 

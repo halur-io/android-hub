@@ -70,7 +70,7 @@ class OrderNotifier:
             type_he = 'משלוח' if order.order_type == 'delivery' else 'איסוף עצמי'
             msg = (
                 f"שלום {order.customer_name}!\n"
-                f"הזמנתך {disp_num(order)} התקבלה בהצלחה 🎉\n"
+                f"הזמנתך {(order.display_number or order.order_number)} התקבלה בהצלחה 🎉\n"
                 f"סוג: {type_he}\n"
                 f'סה"כ: ₪{order.total_amount:.0f}\n'
             )
@@ -114,7 +114,7 @@ class OrderNotifier:
             price = item.get('price', 0)
             items_text += f"  • {name} x{qty} — ₪{qty * price:.0f}\n"
         msg = (
-            f"🛵 הזמנה חדשה! {disp_num(order)}\n"
+            f"🛵 הזמנה חדשה! {(order.display_number or order.order_number)}\n"
             f"סוג: {type_he}\n"
             f"לקוח: {order.customer_name} | {order.customer_phone}\n"
         )
@@ -158,7 +158,7 @@ class OrderNotifier:
             price = item.get('price', 0)
             items_text += f"  • {name} ×{qty}  ₪{qty * price:.0f}\n"
         msg = (
-            f"🍽️ <b>הזמנה חדשה #{disp_num(order)}</b>\n"
+            f"🍽️ <b>הזמנה חדשה #{(order.display_number or order.order_number)}</b>\n"
             f"━━━━━━━━━━━━━━━\n"
             f"{type_he}\n"
             f"👤 {order.customer_name}  📞 {order.customer_phone}\n"

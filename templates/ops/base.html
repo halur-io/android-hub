@@ -685,6 +685,35 @@
         {% endif %}
         {% endwith %}
         <main class="ops-content">
+            {% if active_tab %}
+            <div id="opDayBanner" data-pin-active="{{ '1' if (current_pin_user is defined and current_pin_user) else '0' }}" style="display:none;background:linear-gradient(90deg,#dc2626,#7c2d12);color:#fff;padding:10px 14px;border-radius:10px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;gap:10px;">
+                <div style="display:flex;align-items:center;gap:8px;font-weight:700;"><i class="fas fa-exclamation-triangle"></i><span>אין יום פעילות פתוח. ההזמנה הבאה תפתח יום חדש אוטומטית.</span></div>
+                <button id="opDayBannerOpen" style="background:#fff;color:#7c2d12;border:none;font-weight:800;padding:6px 12px;border-radius:8px;cursor:pointer;"><i class="fas fa-play"></i> פתח יום עכשיו</button>
+            </div>
+            <script>
+            (function(){
+                var b = document.getElementById('opDayBanner');
+                if(!b) return;
+                function refresh(){
+                    fetch('/ops/api/operating-day/status').then(function(r){return r.json();}).then(function(j){
+                        if(j && j.open === false){
+                            b.style.display = 'flex';
+                        } else {
+                            b.style.display = 'none';
+                        }
+                    }).catch(function(){});
+                }
+                document.getElementById('opDayBannerOpen').addEventListener('click', function(){
+                    fetch('/ops/api/operating-day/open',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+                        if(j.ok){ b.style.display = 'none'; if(window.__opDayLoad) window.__opDayLoad(); }
+                        else if(window.alert){ alert(j.error || 'שגיאה'); }
+                    });
+                });
+                refresh();
+                setInterval(refresh, 60000);
+            })();
+            </script>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>

@@ -85,6 +85,16 @@ def _run_safe_migrations(db):
             logging.warning(f"Migration skipped for {table}.{column}: {e}")
 
     try:
+        db.session.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_one_open_day_per_branch "
+            "ON operating_days (branch_id) WHERE status='open'"
+        ))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"partial unique index for operating_days skipped: {e}")
+
+    try:
         result = db.session.execute(text(
             "SELECT table_name FROM information_schema.tables WHERE table_name='dine_in_payment_splits'"
         ))

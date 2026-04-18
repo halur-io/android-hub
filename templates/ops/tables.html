@@ -1067,6 +1067,10 @@ function payCardAction(action) {
     } else if (action === 'sms') {
         document.getElementById('paySmsRow').style.display = '';
         document.getElementById('paySmsPhone').focus();
+        // Start polling immediately when SMS panel is shown so a customer
+        // who pays before staff finish entering/sending the number is still
+        // detected promptly. Polling is idempotent.
+        payStartPolling();
     } else if (action === 'manual') {
         fetch('/ops/api/sessions/' + paySessionId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
         .then(function(r){return r.json();}).then(function(d){

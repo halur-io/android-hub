@@ -780,7 +780,7 @@
         <div class="order-row" id="card-{{ order.id }}"
              tabindex="0"
              role="button"
-             aria-label="הזמנה {{ order.order_number or loop.index }} — {{ order.customer_name or '' }}"
+             aria-label="הזמנה {{ disp_num(order) or loop.index }} — {{ order.customer_name or '' }}"
              data-order-id="{{ order.id }}"
              data-order-num="{{ order.order_number or loop.index }}"
              data-customer="{{ order.customer_name or '' }}"
@@ -1815,7 +1815,7 @@ function showSmsModal(order) {
         btn.onclick = function() {
             var text = t.content_he;
             text = text.replace('{customer_name}', order.customer_name || '');
-            text = text.replace('{order_number}', order.order_number || String(order.id));
+            text = text.replace('{order_number}', order.display_number || order.order_number_full || order.order_number || String(order.id));
             text = text.replace('{branch_name}', order.branch_name || '');
             text = text.replace('{total_amount}', order.total_amount ? String(Math.round(order.total_amount)) : '0');
             text = text.replace('{order_type}', order.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי');

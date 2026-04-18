@@ -138,7 +138,7 @@
         {% for o in orders_list %}
         <a href="{{ url_for('ops.bon_preview', order_id=o.id) }}" class="bp-order-item {% if selected_order and selected_order.id == o.id %}active{% endif %}" style="text-decoration:none;color:inherit;">
             <div>
-                <div class="bp-order-num">#{{ o.order_number }}</div>
+                <div class="bp-order-num">#{{ disp_num(o) }}</div>
                 <div class="bp-order-info">{{ o.customer_name or '' }} | {{ 'משלוח' if o.order_type == 'delivery' else 'איסוף' }}</div>
             </div>
             <div class="bp-order-info">{{ o.total_amount|round(0)|int if o.total_amount else '' }}</div>
@@ -179,7 +179,7 @@
                 {% endif %}
                 <div class="r-feed"></div>
 
-                <div class="r-center r-big">הזמנה #{{ o.order_number }}  {{ type_he }}</div>
+                <div class="r-center r-big">הזמנה #{{ disp_num(o) }}  {{ type_he }}</div>
                 <div class="r-feed"></div>
 
                 <div class="r-right r-big">{{ o.customer_name or '' }}</div>
@@ -242,7 +242,7 @@
                 <div class="r-center">לא כולל שרות</div>
                 <div class="r-center">Tip not included</div>
                 <div class="r-feed"></div>
-                <div class="r-center">הזמנה #{{ o.order_number }}</div>
+                <div class="r-center">הזמנה #{{ disp_num(o) }}</div>
                 <div class="r-center" style="direction:ltr;">{{ now_il }}</div>
             </div>
         </div>
@@ -263,7 +263,7 @@
                 <div class="r-center">{{ o.created_at|il_time if o.created_at else '' }}</div>
                 <div class="r-feed"></div>
 
-                <div class="r-center r-big">חשבון #{{ o.order_number }}  {{ type_he }}</div>
+                <div class="r-center r-big">חשבון #{{ disp_num(o) }}  {{ type_he }}</div>
 
                 <div class="r-right r-big">{{ o.customer_name or '' }}</div>
                 <div class="r-right">{{ o.customer_phone or '' }}</div>
@@ -314,7 +314,7 @@
                 <div class="r-center">לא כולל שרות</div>
                 <div class="r-center">Tip not included</div>
                 <div class="r-feed"></div>
-                <div class="r-center">חשבון #{{ o.order_number }}</div>
+                <div class="r-center">חשבון #{{ disp_num(o) }}</div>
                 <div class="r-center" style="direction:ltr;">{{ now_il }}</div>
             </div>
         </div>
@@ -326,7 +326,7 @@
                 <div class="r-center r-huge">{{ st.name }}</div>
                 <div class="r-feed"></div>
 
-                <div class="r-center r-big">#{{ o.order_number }}  {{ type_he }}</div>
+                <div class="r-center r-big">#{{ disp_num(o) }}  {{ type_he }}</div>
                 <div class="r-center">{{ o.created_at|il_time if o.created_at else '' }}</div>
                 <div class="r-feed"></div>
 
@@ -347,7 +347,7 @@
                 {% endfor %}
                 <div class="r-feed"></div>
                 <hr class="r-dashed">
-                <div class="r-center">#{{ o.order_number }} | {{ st.name }} | {{ now_il }}</div>
+                <div class="r-center">#{{ disp_num(o) }} | {{ st.name }} | {{ now_il }}</div>
             </div>
         </div>
         {% endfor %}

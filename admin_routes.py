@@ -5878,6 +5878,12 @@ def food_order_delete(order_id):
     released = ReleasedOrderNumber(order_number=order.order_number)
     db.session.add(archived)
     db.session.add(released)
+    try:
+        from services.display_number import release_display_number
+        release_display_number(order)
+    except Exception as _e:
+        import logging as _lg
+        _lg.warning(f"display_number recycle failed (admin delete): {_e}")
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)

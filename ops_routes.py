@@ -886,6 +886,57 @@ def settings():
     )
 
 
+@ops_bp.route('/api/operating-day/status', methods=['GET'])
+@require_ops_module('home')
+def operating_day_status():
+    from services.display_number import open_day_summary
+    branch_id = _get_effective_branch_id()
+    return jsonify({'ok': True, 'branch_id': branch_id, **open_day_summary(branch_id)})
+
+
+@ops_bp.route('/api/operating-day/close', methods=['POST'])
+@require_ops_module('home')
+def operating_day_close():
+    user = _get_ops_user()
+    if not user or not user.is_ops_superadmin:
+        return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
+    data = request.get_json(silent=True) or {}
+    pin = (data.get('pin') or '').strip()
+    if not pin or not user.check_pin(pin):
+        return jsonify({'ok': False, 'error': 'קוד PIN שגוי'}), 403
+    from services.display_number import close_operating_day, ensure_open_day
+    branch_id = _get_effective_branch_id()
+    day = close_operating_day(
+        branch_id,
+        closed_by_pin_id=user.id,
+        closed_by_name=user.name,
+    )
+    if not day:
+        return jsonify({'ok': False, 'error': 'אין יום פעיל לסגירה'}), 400
+    new_day = ensure_open_day(branch_id, opened_by_pin_id=user.id, opened_by_name=user.name)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        import logging as _lg
+        _lg.error(f"close day failed: {e}")
+        return jsonify({'ok': False, 'error': 'שגיאה בסגירת יום'}), 500
+    return jsonify({
+        'ok': True,
+        'closed': {
+            'id': day.id,
+            'pickup': day.pickup_count,
+            'delivery': day.delivery_count,
+            'dine_in': day.dine_in_count,
+            'orders_total': (day.pickup_count or 0) + (day.delivery_count or 0) + (day.dine_in_count or 0),
+            'revenue': day.total_revenue or 0,
+            'cash': day.total_cash or 0,
+            'closed_at': day.closed_at.isoformat() + 'Z' if day.closed_at else None,
+        },
+        'new_day_id': new_day.id,
+    })
+
+
 @ops_bp.route('/healthcheck')
 @require_ops_module('home')
 def healthcheck():
@@ -1439,7 +1490,9 @@ def get_order_detail(order_id):
         'ok': True,
         'order': {
             'id': order.id,
-            'order_number': order.order_number,
+            'order_number': order.display_number or order.order_number,
+            'order_number_full': order.order_number,
+            'display_number': order.display_number,
             'status': order.status,
             'status_label': OPS_STATUS_LABELS.get(order.status, order.status),
             'customer_name': order.customer_name,
@@ -1821,7 +1874,9 @@ def create_manual_order():
         _notify_sse_new_order({
             'type': 'new_order',
             'id': order.id,
-            'order_number': order.order_number,
+            'order_number': order.display_number or order.order_number,
+            'order_number_full': order.order_number,
+            'display_number': order.display_number,
             'order_type': order.order_type,
             'branch_id': order.branch_id,
             'customer_name': order.customer_name or '',
@@ -3448,7 +3503,9 @@ def get_unprinted_orders():
 
         result.append({
             'id': o.id,
-            'order_number': o.order_number,
+            'order_number': o.display_number or o.order_number,
+            'order_number_full': o.order_number,
+            'display_number': o.display_number,
             'order_type': o.order_type,
             'status': o.status,
             'branch_id': o.branch_id,
@@ -3644,7 +3701,9 @@ def print_sync():
 
         result.append({
             'id': o.id,
-            'order_number': o.order_number,
+            'order_number': o.display_number or o.order_number,
+            'order_number_full': o.order_number,
+            'display_number': o.display_number,
             'order_type': o.order_type,
             'status': o.status,
             'branch_id': o.branch_id,

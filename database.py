@@ -95,6 +95,17 @@ def _run_safe_migrations(db):
         logging.warning(f"partial unique index for operating_days skipped: {e}")
 
     try:
+        db.session.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_food_orders_disp_per_day_type "
+            "ON food_orders (operating_day_id, order_type, display_number) "
+            "WHERE display_number IS NOT NULL AND operating_day_id IS NOT NULL"
+        ))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.warning(f"partial unique index for food_orders.display_number skipped: {e}")
+
+    try:
         result = db.session.execute(text(
             "SELECT table_name FROM information_schema.tables WHERE table_name='dine_in_payment_splits'"
         ))

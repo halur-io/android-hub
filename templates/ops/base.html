@@ -19,6 +19,58 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ops.css') }}?v={{ cache_version }}">
     <style>
+        /* ============ Native-feel polish (PWA) ============ */
+        html, body {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            overscroll-behavior: none;
+            touch-action: manipulation;
+        }
+        input, textarea, select, [contenteditable], [contenteditable] * {
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+        }
+        .ops-allow-select, .ops-allow-select * {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        a, button, [role="button"], .ops-tab, .ops-header-btn {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        a:active, button:active, .ops-tab:active {
+            transition: transform 0.06s ease-out, opacity 0.06s ease-out;
+        }
+        .ops-tab:active { transform: scale(0.94); }
+        button:active:not(:disabled) { opacity: 0.75; }
+
+        /* Slim themed top progress bar (replaces browser progress visually) */
+        #ops-nav-progress {
+            position: fixed;
+            top: 0; left: 0;
+            height: 2.5px;
+            width: 0%;
+            background: linear-gradient(90deg, #e94560 0%, #ff7c8a 100%);
+            box-shadow: 0 0 8px rgba(233, 69, 96, 0.6);
+            z-index: 99999;
+            pointer-events: none;
+            opacity: 0;
+            transition: width 0.25s ease-out, opacity 0.2s ease-out;
+            border-radius: 0 2px 2px 0;
+        }
+        #ops-nav-progress.show { opacity: 1; }
+
+        /* Cross-document view transitions (Chrome 126+ / Android Chrome) */
+        @view-transition { navigation: auto; }
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation-duration: 180ms;
+            animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+        }
+
         /* PWA install prompt */
         .pwa-install-banner {
             position: fixed;
@@ -150,6 +202,16 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <div id="ops-nav-progress"></div>
+
+    <script type="speculationrules">
+    {
+      "prerender": [
+        { "where": { "selector_matches": "nav.ops-tab-bar a.ops-tab" }, "eagerness": "moderate" }
+      ]
+    }
+    </script>
+
     <div class="ops-wrapper">
         <header class="ops-header">
             <div class="ops-header-title">

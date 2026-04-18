@@ -886,6 +886,18 @@ def settings():
     )
 
 
+@ops_bp.route('/operating-day')
+@require_ops_module('home')
+def operating_day_page():
+    """Manager-accessible page to view and close/open the operating day.
+
+    Unlike /ops/settings (superadmin-only), this page is reachable by any
+    enrolled+authenticated PIN. Destructive close action remains gated by
+    server-side PIN re-validation in /ops/api/operating-day/close.
+    """
+    return render_template('ops/operating_day.html', active_tab='settings')
+
+
 @ops_bp.route('/api/operating-day/status', methods=['GET'])
 @require_ops_module('home')
 def operating_day_status():

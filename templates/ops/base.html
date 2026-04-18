@@ -467,6 +467,107 @@
         .catch(function() { showToast('שגיאת תקשורת', true); });
     }
     </script>
+
+    <!-- ===== Native-feel: haptics, optimistic tabs, custom progress bar ===== -->
+    <script>
+    (function() {
+        var bar = document.getElementById('ops-nav-progress');
+        var progTimer = null;
+        var progPct = 0;
+
+        function startProgress() {
+            if (!bar) return;
+            cancelProgress();
+            progPct = 8;
+            bar.style.width = progPct + '%';
+            bar.classList.add('show');
+            progTimer = setInterval(function() {
+                if (progPct < 80) {
+                    progPct += (80 - progPct) * 0.12;
+                    bar.style.width = progPct + '%';
+                }
+            }, 180);
+        }
+        function cancelProgress() {
+            if (progTimer) { clearInterval(progTimer); progTimer = null; }
+        }
+        function finishProgress() {
+            if (!bar) return;
+            cancelProgress();
+            bar.style.width = '100%';
+            setTimeout(function() {
+                bar.classList.remove('show');
+                setTimeout(function() { bar.style.width = '0%'; }, 220);
+            }, 120);
+        }
+
+        function buzz(ms) {
+            try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {}
+        }
+
+        // Optimistic tab activation + haptic
+        var tabs = document.querySelectorAll('nav.ops-tab-bar a.ops-tab');
+        tabs.forEach(function(t) {
+            t.addEventListener('pointerdown', function() {
+                buzz(8);
+            }, { passive: true });
+            t.addEventListener('click', function(e) {
+                // Skip if modifier or non-primary click — let browser handle
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                tabs.forEach(function(x) { x.classList.remove('active'); });
+                t.classList.add('active');
+                startProgress();
+            });
+        });
+
+        // Show progress on any in-app navigation link click
+        document.addEventListener('click', function(e) {
+            var a = e.target.closest && e.target.closest('a[href]');
+            if (!a) return;
+            if (a.target === '_blank') return;
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            var href = a.getAttribute('href');
+            if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+            if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0 || href.indexOf('sms:') === 0 || href.indexOf('waze:') === 0) return;
+            // Same-origin only
+            try {
+                var u = new URL(a.href, location.href);
+                if (u.origin !== location.origin) return;
+            } catch(_) { return; }
+            startProgress();
+        }, true);
+
+        // Hide progress when page is shown (incl. bfcache restore + prerender activation)
+        window.addEventListener('pageshow', finishProgress);
+        window.addEventListener('load', finishProgress);
+        document.addEventListener('prerenderingchange', finishProgress);
+
+        // Light haptic on primary buttons (opt-in via .ops-btn-haptic or all buttons in nav)
+        document.addEventListener('pointerdown', function(e) {
+            var b = e.target.closest && e.target.closest('button, [role="button"]');
+            if (!b) return;
+            if (b.disabled) return;
+            // Avoid double-buzz on tab buttons (already handled)
+            if (b.closest('nav.ops-tab-bar')) return;
+            buzz(6);
+        }, { passive: true });
+
+        // Disable iOS/Chrome double-tap-zoom on the wrapper
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            var now = Date.now();
+            if (now - lastTouchEnd < 300) {
+                // Only prevent if target is interactive — don't block input typing
+                var tag = (e.target && e.target.tagName) || '';
+                if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+                    e.preventDefault();
+                }
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+    })();
+    </script>
+
     {% block scripts %}{% endblock %}
 
     <!-- ===== Stale (served-from-cache) banner ===== -->

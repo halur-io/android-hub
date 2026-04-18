@@ -1368,7 +1368,7 @@ def update_order_status(order_id):
                 import logging
                 logging.debug(f'Auto-print queue for order {order.id}: {e}')
 
-    msg = f'הזמנה #{order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}'
+    msg = f'הזמנה #{order.display_number or order.order_number} → {OPS_STATUS_LABELS.get(new_status, new_status)}'
     if auto_sms_sent:
         msg += f' | SMS נשלח ({auto_sms_sent})'
 
@@ -2097,7 +2097,7 @@ def update_manual_order(order_id):
 
     return jsonify({
         'ok': True,
-        'message': f'הזמנה #{order.order_number} עודכנה',
+        'message': f'הזמנה #{order.display_number or order.order_number} עודכנה',
         'order_id': order.id,
         'order_number': order.order_number,
         'total_amount': order.total_amount,
@@ -2150,7 +2150,7 @@ def send_order_payment_sms(order_id):
         if not send_sms:
             return jsonify({'ok': False, 'error': 'שליחת SMS לא מוגדרת'})
         total = order.total_amount or 0
-        msg = f'SUMO - הזמנה {order.order_number}\nסה"כ לתשלום: ₪{total:.2f}\nלתשלום: {order.payment_url}'
+        msg = f'SUMO - הזמנה {order.display_number or order.order_number}\nסה"כ לתשלום: ₪{total:.2f}\nלתשלום: {order.payment_url}'
         success = send_sms(phone, msg)
         if not success:
             return jsonify({'ok': False, 'error': 'שליחת SMS נכשלה'})
@@ -4182,7 +4182,7 @@ def send_receipt(order_id):
     branch_name = order.branch_name or 'SUMO'
     msg = (
         f"קבלה - {branch_name}\n"
-        f"הזמנה: {order.order_number}\n"
+        f"הזמנה: {order.display_number or order.order_number}\n"
         f"תאריך: {_to_il_full(order.created_at) if order.created_at else '-'}\n"
         f"---\n"
         f"{items_text}\n"
@@ -4320,7 +4320,7 @@ def delete_order(order_id):
         logging.error(f"Failed to delete order {order_id}: {e}")
         return jsonify({'ok': False, 'error': 'שגיאה במחיקת ההזמנה'})
 
-    return jsonify({'ok': True, 'message': f'הזמנה #{order.order_number} נמחקה'})
+    return jsonify({'ok': True, 'message': f'הזמנה #{order.display_number or order.order_number} נמחקה'})
 
 
 _sse_subscribers = []

@@ -71,6 +71,177 @@
             animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
         }
 
+        /* ============ New header components ============ */
+        /* Branch dropdown button */
+        .ops-branch-wrap { position: relative; }
+        .ops-branch-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--ops-card, rgba(255,255,255,0.06));
+            color: var(--ops-text, #1a1a2e);
+            border: 1px solid var(--ops-border, rgba(255,255,255,0.1));
+            border-radius: 10px;
+            padding: 6px 10px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            min-height: 34px;
+            white-space: nowrap;
+        }
+        .ops-branch-btn i.fas.fa-store { color: var(--ops-accent, #e94560); font-size: 0.85rem; }
+        .ops-branch-btn .ops-branch-caret { font-size: 0.6rem; opacity: 0.55; }
+        .ops-branch-btn .ops-branch-name {
+            max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ops-branch-static {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.78rem; font-weight: 700; color: var(--ops-text, #1a1a2e);
+            padding: 6px 8px;
+        }
+        .ops-branch-static i { color: var(--ops-accent, #e94560); }
+
+        /* Status pill (פתוח / עמוס / סגור) */
+        .ops-branch-status-wrap { position: relative; }
+        .ops-status-pill {
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+            min-height: 34px;
+            border: 1px solid transparent;
+            transition: transform 0.06s ease-out, filter 0.15s;
+            white-space: nowrap;
+        }
+        .ops-status-pill:active { transform: scale(0.96); }
+        .ops-status-pill.ops-status-open {
+            background: rgba(34, 197, 94, 0.16);
+            color: #16a34a;
+            border-color: rgba(34, 197, 94, 0.45);
+        }
+        .ops-status-pill.ops-status-busy {
+            background: rgba(245, 158, 11, 0.18);
+            color: #d97706;
+            border-color: rgba(245, 158, 11, 0.5);
+        }
+        .ops-status-pill.ops-status-closed {
+            background: rgba(239, 68, 68, 0.16);
+            color: #dc2626;
+            border-color: rgba(239, 68, 68, 0.45);
+        }
+
+        /* Server connection icon */
+        .ops-server-icon {
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            border: 1px solid var(--ops-border, rgba(255,255,255,0.1));
+            background: var(--ops-card, rgba(255,255,255,0.06));
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: var(--ops-text-dim, #6b7a90);
+            transition: color 0.2s, background 0.2s, border-color 0.2s;
+            position: relative;
+        }
+        .ops-server-icon.is-online {
+            color: #16a34a;
+            background: rgba(34, 197, 94, 0.14);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+        .ops-server-icon.is-offline {
+            color: #dc2626;
+            background: rgba(239, 68, 68, 0.14);
+            border-color: rgba(239, 68, 68, 0.45);
+            animation: ops-conn-pulse 1.5s ease-in-out infinite;
+        }
+        .ops-server-icon.is-checking {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.14);
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        /* Avatar circle */
+        .ops-avatar-wrap { position: relative; }
+        .ops-avatar-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #e94560 0%, #b53449 100%);
+            color: #fff;
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-family: 'Heebo', sans-serif;
+            font-weight: 800;
+            font-size: 15px;
+            box-shadow: 0 2px 6px rgba(233, 69, 96, 0.35);
+            transition: transform 0.06s ease-out;
+        }
+        .ops-avatar-btn:active { transform: scale(0.92); }
+        .ops-avatar-btn-lg { width: 44px; height: 44px; font-size: 18px; cursor: default; }
+        .ops-avatar-btn-lg:active { transform: none; }
+        .ops-avatar-initial { line-height: 1; }
+
+        /* Generic popover (used by branch, status, avatar) */
+        .ops-popover {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            z-index: 9999;
+            background: var(--ops-card, #fff);
+            border: 1px solid var(--ops-border, #e0e4ea);
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.22);
+            padding: 6px;
+            min-width: 200px;
+            font-family: 'Heebo', sans-serif;
+        }
+        .ops-popover-avatar { min-width: 240px; }
+        .ops-popover-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 10px 12px;
+            border-bottom: 1px solid var(--ops-border, #e0e4ea);
+            margin-bottom: 4px;
+        }
+        .ops-popover-name {
+            font-size: 14px; font-weight: 700; color: var(--ops-text, #1a1a2e);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ops-popover-sub {
+            font-size: 11px; color: var(--ops-text-dim, #6b7a90); margin-top: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ops-popover-item {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 8px;
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.85rem;
+            color: var(--ops-text, #1a1a2e);
+            text-align: right;
+            text-decoration: none;
+            transition: background 0.12s;
+        }
+        .ops-popover-item:hover { background: rgba(0,0,0,0.04); }
+        .ops-popover-item:active { background: rgba(0,0,0,0.08); }
+        .ops-popover-item-danger { color: #dc2626; font-weight: 700; }
+        .ops-popover-item-danger:hover { background: rgba(239, 68, 68, 0.08); }
+        .ops-popover-item i { width: 18px; text-align: center; }
+        .ops-popover-item span { flex: 1; min-width: 0; }
+        .ops-popover-check { color: #22c55e; }
+        .ops-popover-divider {
+            height: 1px; background: var(--ops-border, #e0e4ea);
+            margin: 4px 0;
+        }
+        .ops-status-dot {
+            width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+        }
+
         /* ============ Header layout — compact + responsive ============ */
         .ops-header {
             gap: 8px;
@@ -319,73 +490,99 @@
                 {% block header_title %}לוח בקרה{% endblock %}
             </div>
             <div class="ops-header-right">
+                {# ===== Branch (rightmost in RTL) ===== #}
                 {% if can_switch_branch %}
-                <select id="ops-branch-select" onchange="switchBranch(this.value)"
-                        style="background:var(--ops-card);color:var(--ops-text);border:1px solid var(--ops-border);
-                               border-radius:8px;padding:4px 8px;font-size:0.75rem;font-family:'Heebo',sans-serif;
-                               max-width:120px;cursor:pointer;">
-                    <option value="" {% if not ops_branch_id %}selected{% endif %}>כל הסניפים</option>
-                    {% for b in all_branches %}
-                    <option value="{{ b.id }}" {% if ops_branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
-                    {% endfor %}
-                </select>
+                <div class="ops-branch-wrap">
+                    <button type="button" class="ops-branch-btn" id="ops-branch-btn" onclick="toggleBranchPopover()" title="החלף סניף">
+                        <i class="fas fa-store"></i>
+                        <span class="ops-branch-name">{% if ops_branch_id %}{{ ops_branch_name or '—' }}{% else %}כל הסניפים{% endif %}</span>
+                        <i class="fas fa-chevron-down ops-branch-caret"></i>
+                    </button>
+                    <div id="ops-branch-popover" class="ops-popover" style="display:none;">
+                        <button type="button" class="ops-popover-item" onclick="switchBranch('')">
+                            <i class="fas fa-globe" style="color:var(--ops-text-dim);"></i>
+                            <span>כל הסניפים</span>
+                            {% if not ops_branch_id %}<i class="fas fa-check ops-popover-check"></i>{% endif %}
+                        </button>
+                        {% for b in all_branches %}
+                        <button type="button" class="ops-popover-item" onclick="switchBranch('{{ b.id }}')">
+                            <i class="fas fa-store" style="color:var(--ops-text-dim);"></i>
+                            <span>{{ b.name_he }}</span>
+                            {% if ops_branch_id == b.id %}<i class="fas fa-check ops-popover-check"></i>{% endif %}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
                 {% elif ops_branch_name %}
-                <span style="font-size:0.7rem;color:var(--ops-muted);margin-left:8px;">
-                    <i class="fas fa-store" style="margin-left:3px;"></i>{{ ops_branch_name }}
+                <span class="ops-branch-static">
+                    <i class="fas fa-store"></i>{{ ops_branch_name }}
                 </span>
                 {% endif %}
+
+                {# ===== Branch ordering status (פתוח / עמוס / סגור) ===== #}
                 {% if ops_branch_id %}
-                <div class="ops-branch-status-wrap" style="position:relative;display:inline-block;margin-left:8px;">
-                    <button type="button" id="branch-status-btn" onclick="toggleStatusPopover()" style="
-                        background:none;border:1px solid var(--ops-border);border-radius:8px;padding:4px 10px;
-                        cursor:pointer;display:flex;align-items:center;gap:5px;font-family:'Heebo',sans-serif;
-                        font-size:0.75rem;color:var(--ops-text);min-height:32px;">
-                        <span id="branch-status-dot" style="
-                            width:10px;height:10px;border-radius:50%;display:inline-block;
-                            background:{% if branch_ordering_status == 'open' %}#22c55e{% elif branch_ordering_status == 'busy' %}#f59e0b{% else %}#ef4444{% endif %};
-                        "></span>
+                <div class="ops-branch-status-wrap">
+                    <button type="button" id="branch-status-btn"
+                            class="ops-status-pill ops-status-{{ branch_ordering_status or 'closed' }}"
+                            onclick="toggleStatusPopover()" title="לחץ לשינוי סטטוס">
                         <span id="branch-status-label">{% if branch_ordering_status == 'open' %}פתוח{% elif branch_ordering_status == 'busy' %}עמוס{% else %}סגור{% endif %}</span>
                     </button>
-                    <div id="branch-status-popover" style="
-                        display:none;position:absolute;top:100%;left:0;margin-top:6px;z-index:9999;
-                        background:var(--ops-card);border:1px solid var(--ops-border);border-radius:10px;
-                        box-shadow:0 8px 24px rgba(0,0,0,.3);padding:6px;min-width:170px;">
-                        <button type="button" onclick="setBranchStatus('open')" class="ops-status-option" style="
-                            display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;
-                            background:none;cursor:pointer;border-radius:8px;font-family:'Heebo',sans-serif;
-                            font-size:0.85rem;color:var(--ops-text);text-align:right;">
-                            <span style="width:12px;height:12px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span>
-                            פתוח
+                    <div id="branch-status-popover" class="ops-popover" style="display:none;">
+                        <button type="button" onclick="setBranchStatus('open')" class="ops-popover-item">
+                            <span class="ops-status-dot" style="background:#22c55e;"></span>
+                            <span>פתוח</span>
                         </button>
-                        <button type="button" onclick="setBranchStatus('busy')" class="ops-status-option" style="
-                            display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;
-                            background:none;cursor:pointer;border-radius:8px;font-family:'Heebo',sans-serif;
-                            font-size:0.85rem;color:var(--ops-text);text-align:right;">
-                            <span style="width:12px;height:12px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>
-                            עמוס (סגור זמנית)
+                        <button type="button" onclick="setBranchStatus('busy')" class="ops-popover-item">
+                            <span class="ops-status-dot" style="background:#f59e0b;"></span>
+                            <span>עמוס (סגור זמנית)</span>
                         </button>
-                        <button type="button" onclick="setBranchStatus('closed')" class="ops-status-option" style="
-                            display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:none;
-                            background:none;cursor:pointer;border-radius:8px;font-family:'Heebo',sans-serif;
-                            font-size:0.85rem;color:var(--ops-text);text-align:right;">
-                            <span style="width:12px;height:12px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>
-                            סגור
+                        <button type="button" onclick="setBranchStatus('closed')" class="ops-popover-item">
+                            <span class="ops-status-dot" style="background:#ef4444;"></span>
+                            <span>סגור</span>
                         </button>
                     </div>
                 </div>
                 {% endif %}
-                <span class="ops-conn-indicator" id="ops-conn-indicator"
-                      title="לחץ לרענון" onclick="opsRefreshNow()">
-                    <span class="ops-conn-dot checking" id="ops-conn-dot"></span>
-                    <span id="ops-conn-text">בודק...</span>
-                </span>
-                <span class="ops-header-user">
-                    <i class="fas fa-user-circle"></i>
-                    {{ session.get('ops_user_name', '') }}
-                </span>
-                <a href="{{ url_for('ops.logout') }}" class="ops-header-btn">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+
+                {# ===== Server connectivity icon ===== #}
+                <button type="button" id="ops-server-icon" class="ops-server-icon"
+                        onclick="opsRefreshNow()" title="בודק חיבור...">
+                    <i class="fas fa-server"></i>
+                </button>
+
+                {# ===== User avatar (leftmost in RTL) ===== #}
+                {% set _user_name = session.get('ops_user_name', '') %}
+                {% set _user_initial = (_user_name[:1] | upper) if _user_name else '?' %}
+                <div class="ops-avatar-wrap">
+                    <button type="button" class="ops-avatar-btn" id="ops-avatar-btn"
+                            onclick="toggleAvatarPopover()" title="{{ _user_name }}">
+                        <span class="ops-avatar-initial">{{ _user_initial }}</span>
+                    </button>
+                    <div id="ops-avatar-popover" class="ops-popover ops-popover-avatar" style="display:none;">
+                        <div class="ops-popover-header">
+                            <div class="ops-avatar-btn ops-avatar-btn-lg"><span class="ops-avatar-initial">{{ _user_initial }}</span></div>
+                            <div style="min-width:0;flex:1;">
+                                <div class="ops-popover-name">{{ _user_name or '—' }}</div>
+                                <div class="ops-popover-sub">{% if ops_branch_name %}{{ ops_branch_name }}{% endif %}</div>
+                            </div>
+                        </div>
+                        {% if 'shifts' in ops_modules %}
+                        <a href="{{ url_for('ops.shifts') }}" class="ops-popover-item">
+                            <i class="fas fa-user-clock" style="color:#22c55e;"></i>
+                            <span>החתמת עובדים (כניסה/יציאה)</span>
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('ops.login') }}" class="ops-popover-item">
+                            <i class="fas fa-user-tag" style="color:#3b82f6;"></i>
+                            <span>החלפת משתמש</span>
+                        </a>
+                        <div class="ops-popover-divider"></div>
+                        <a href="{{ url_for('ops.logout') }}" class="ops-popover-item ops-popover-item-danger">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>התנתק</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -516,14 +713,43 @@
         if (_confirmResolveFn) { var fn = _confirmResolveFn; _confirmResolveFn = null; fn(val); }
     }
 
+    function _closeAllPopovers(except) {
+        ['branch-status-popover','ops-branch-popover','ops-avatar-popover'].forEach(function(id) {
+            if (id === except) return;
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    }
     function toggleStatusPopover() {
         var pop = document.getElementById('branch-status-popover');
-        pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+        if (!pop) return;
+        var open = pop.style.display !== 'none' && pop.style.display !== '';
+        _closeAllPopovers('branch-status-popover');
+        pop.style.display = open ? 'none' : 'block';
+    }
+    function toggleBranchPopover() {
+        var pop = document.getElementById('ops-branch-popover');
+        if (!pop) return;
+        var open = pop.style.display !== 'none' && pop.style.display !== '';
+        _closeAllPopovers('ops-branch-popover');
+        pop.style.display = open ? 'none' : 'block';
+    }
+    function toggleAvatarPopover() {
+        var pop = document.getElementById('ops-avatar-popover');
+        if (!pop) return;
+        var open = pop.style.display !== 'none' && pop.style.display !== '';
+        _closeAllPopovers('ops-avatar-popover');
+        pop.style.display = open ? 'none' : 'block';
     }
     document.addEventListener('click', function(e) {
-        var wrap = document.querySelector('.ops-branch-status-wrap');
-        var pop = document.getElementById('branch-status-popover');
-        if (wrap && pop && !wrap.contains(e.target)) pop.style.display = 'none';
+        // Close any popover when clicking outside its trigger wrap
+        ['ops-branch-status-wrap','ops-branch-wrap','ops-avatar-wrap'].forEach(function(){});
+        var inside = e.target.closest && (
+            e.target.closest('.ops-branch-status-wrap') ||
+            e.target.closest('.ops-branch-wrap') ||
+            e.target.closest('.ops-avatar-wrap')
+        );
+        if (!inside) _closeAllPopovers();
     });
     function setBranchStatus(status) {
         document.getElementById('branch-status-popover').style.display = 'none';
@@ -748,16 +974,14 @@
 
         function render() {
             var ago = fmtAgo(Date.now() - renderedAt.getTime());
-            var indicator = document.getElementById('ops-conn-indicator');
-            if (lastOnline) {
-                text.textContent = 'מחובר לשרת';
-                if (indicator) indicator.classList.remove('is-offline'), indicator.classList.add('is-online');
-            } else {
-                text.textContent = 'לא מחובר';
-                if (indicator) indicator.classList.remove('is-online'), indicator.classList.add('is-offline');
+            var icon = document.getElementById('ops-server-icon');
+            if (icon) {
+                icon.classList.remove('is-online','is-offline','is-checking');
+                icon.classList.add(lastOnline ? 'is-online' : 'is-offline');
+                icon.title = (lastOnline ? 'מחובר לשרת' : 'לא מחובר לשרת') + ' • נטען ' + ago + ' (לחץ לרענון)';
             }
-            setDot(lastOnline ? 'online' : 'offline');
-            if (indicator) indicator.title = (lastOnline ? 'מחובר • ' : 'לא מקוון • ') + 'נטען ' + ago + ' (לחץ לרענון)';
+            if (text) text.textContent = lastOnline ? 'מחובר' : 'לא מחובר';
+            if (dot) setDot(lastOnline ? 'online' : 'offline');
             if (staleSub && !autoReloadTimer) staleSub.textContent = 'נטען ' + ago;
         }
 

@@ -903,6 +903,8 @@ def operating_day_page():
 def operating_day_status():
     from services.display_number import open_day_summary
     branch_id = _get_effective_branch_id()
+    if not branch_id:
+        return jsonify({'ok': False, 'error': 'יש לבחור סניף תחילה'}), 400
     return jsonify({'ok': True, 'branch_id': branch_id, **open_day_summary(branch_id)})
 
 
@@ -917,6 +919,8 @@ def operating_day_close():
     # Any active manager PIN may close the day; we re-validate the PIN now to
     # require fresh authentication for this destructive action.
     branch_id = _get_effective_branch_id()
+    if not branch_id:
+        return jsonify({'ok': False, 'error': 'יש לבחור סניף תחילה'}), 400
     pin_user = None
     if pin:
         # Restrict PIN validation to managers assigned to the effective branch
@@ -976,6 +980,8 @@ def operating_day_open():
         return jsonify({'ok': False, 'error': 'אין הרשאה'}), 403
     from services.display_number import ensure_open_day, get_open_day
     branch_id = _get_effective_branch_id()
+    if not branch_id:
+        return jsonify({'ok': False, 'error': 'יש לבחור סניף תחילה'}), 400
     if get_open_day(branch_id):
         return jsonify({'ok': False, 'error': 'יום פעיל כבר קיים'}), 400
     day = ensure_open_day(branch_id, opened_by_pin_id=user.id, opened_by_name=user.name)

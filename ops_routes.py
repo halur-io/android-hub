@@ -5650,6 +5650,101 @@ def api_session_send_payment_sms(session_id):
         return jsonify({'ok': False, 'error': f'שגיאה בשליחת SMS: {str(e)}'})
 
 
+@ops_bp.route('/api/sessions/<int:session_id>/payment-qr', methods=['POST'])
+@require_ops_module('tables')
+def api_session_payment_qr(session_id):
+    """Generate (or reuse) the HYP payment URL for a session and return it
+    along with a base64 PNG QR code. Mirrors api_order_payment_qr but for
+    dine-in sessions; honours the same checks (active splits, pending void
+    approvals) as api_session_generate_payment."""
+    effective_branch = _get_effective_branch_id()
+    sess = DineInSession.query.get(session_id)
+    if not sess or sess.branch_id != effective_branch:
+        return jsonify({'ok': False, 'error': 'ישיבה לא נמצאה'})
+    active_splits = DineInPaymentSplit.query.filter_by(session_id=sess.id).filter(DineInPaymentSplit.payment_status != 'paid').count()
+    if active_splits > 0:
+        return jsonify({'ok': False, 'error': 'יש חלוקת תשלום פעילה — יש לשלם דרך החלקים'})
+    if sess.pending_void_approvals:
+        try:
+            pending = json.loads(sess.pending_void_approvals)
+            if pending:
+                return jsonify({'ok': False, 'error': 'יש ביטולים הממתינים לאישור מנהל', 'pending_voids': True})
+        except Exception:
+            pass
+    data = request.get_json(silent=True) or {}
+    try:
+        tip = max(0, float(data.get('tip_amount', 0) or 0))
+    except (ValueError, TypeError):
+        tip = 0
+    if tip:
+        sess.tip_amount = tip
+    try:
+        if not sess.payment_url:
+            total = sess.total_amount
+            if total <= 0:
+                return jsonify({'ok': False, 'error': 'סכום לתשלום 0'})
+            charge_amount = total + (sess.tip_amount or 0)
+            first_order = None
+            for o in sess.orders:
+                if o.status != 'cancelled':
+                    first_order = o
+                    break
+            if not first_order:
+                return jsonify({'ok': False, 'error': 'אין הזמנות בישיבה'})
+            from standalone_order_service.hyp_payment import HYPPayment
+            branch = Branch.query.get(effective_branch)
+            settings = _settings()
+            hyp = HYPPayment(settings=settings)
+            if branch:
+                hyp._load_credentials(branch=branch)
+            if not hyp.is_configured:
+                return jsonify({'ok': False, 'error': 'הגדרות HYP חסרות'})
+            table_num = sess.table.table_number if sess.table else '?'
+            order_ref = first_order.order_number
+            import secrets as _secrets
+            cb_token = _secrets.token_urlsafe(32)
+            sess.payment_callback_token = cb_token
+            scheme = 'https' if _is_secure() else 'http'
+            base_url = f"{scheme}://{request.host}"
+            success_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=success&token={cb_token}"
+            fail_url = f"{base_url}/ops/api/sessions/{sess.id}/payment-callback?status=fail&token={cb_token}"
+            payment_url = hyp.create_payment_url(
+                amount=charge_amount,
+                order_id=order_ref,
+                description=f'שולחן {table_num}',
+                success_url=success_url,
+                failure_url=fail_url,
+                customer_name=f'שולחן {table_num}',
+            )
+            sess.payment_url = payment_url
+            sess.status = 'awaiting_payment'
+            db.session.commit()
+
+        import qrcode
+        import io
+        import base64
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=2,
+        )
+        qr.add_data(sess.payment_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        qr_b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return jsonify({
+            'ok': True,
+            'payment_url': sess.payment_url,
+            'qr_png_base64': qr_b64,
+        })
+    except Exception as e:
+        logging.error(f"HYP payment QR error for session {session_id}: {e}")
+        return jsonify({'ok': False, 'error': f'שגיאה ביצירת QR: {str(e)}'})
+
+
 @ops_bp.route('/api/sessions/<int:session_id>/payment-callback')
 def session_payment_callback(session_id):
     sess = DineInSession.query.get(session_id)

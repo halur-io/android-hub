@@ -433,33 +433,96 @@
     <div class="move-table-grid" id="moveTableGrid"></div>
 </div>
 
-<div class="modal-overlay" id="cashCloseOverlayQ" onclick="closeCashCloseQ()" style="z-index:1060; display:none; align-items:flex-end; justify-content:center;">
-    <div style="background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:400px; padding:20px; animation:slideUp .3s ease;" onclick="event.stopPropagation()">
+<div class="modal-overlay" id="payOverlayQ" onclick="closePaymentSheet()" style="z-index:1060; display:none; align-items:flex-end; justify-content:center;">
+    <div style="background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:420px; padding:20px; animation:slideUp .3s ease; max-height:92vh; overflow-y:auto;" onclick="event.stopPropagation()">
         <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
-        <h4 style="font-weight:700;"><i class="fas fa-money-bill-wave me-2" style="color:#4caf50;"></i>תשלום במזומן</h4>
-        <div style="background:#f8f9fa; border-radius:12px; padding:14px; margin-bottom:14px;">
+        <h4 style="font-weight:700;"><i class="fas fa-cash-register me-2" style="color:#f59e0b;"></i>תשלום שולחן</h4>
+        <div style="background:#f8fafc; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:4px;">
+                <span>שולחן</span>
+                <span style="font-weight:700;" id="payTableNum">?</span>
+            </div>
             <div style="display:flex; justify-content:space-between; font-size:.9rem;">
                 <span>סה"כ לתשלום</span>
-                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="qCashTotal">₪0</span>
+                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="payTotal">₪0</span>
             </div>
         </div>
-        <div style="margin-bottom:12px;">
-            <label style="font-size:.8rem; font-weight:600; color:#555;">טיפ (אופציונלי)</label>
-            <input type="number" id="qCashTip" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
-                style="border-radius:10px; font-size:1rem; padding:10px; text-align:center;" oninput="updateQCashChange()">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:6px;">
+            <button type="button" id="payOptCash" onclick="paySelectMethod('cash')"
+                style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:14px 4px;font-size:12px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                <i class="fas fa-money-bill-wave" style="font-size:18px;display:block;margin-bottom:4px;color:#22c55e;"></i>מזומן
+            </button>
+            <button type="button" id="payOptCard"
+                style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:14px 4px;font-size:12px;font-weight:700;cursor:pointer;color:#333;line-height:1.3; touch-action:none;">
+                <i class="fas fa-credit-card" style="font-size:18px;display:block;margin-bottom:4px;color:#0284c7;"></i>אשראי
+            </button>
+            <button type="button" id="payOptLater" onclick="payLater()"
+                style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:14px 4px;font-size:12px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                <i class="fas fa-clock" style="font-size:18px;display:block;margin-bottom:4px;color:#94a3b8;"></i>שלם אח״כ
+            </button>
         </div>
-        <div style="margin-bottom:12px;">
-            <label style="font-size:.8rem; font-weight:600; color:#555;">סכום שהתקבל</label>
-            <input type="number" id="qCashReceived" class="form-control" placeholder="0" min="0" step="1" dir="ltr"
-                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; font-weight:700;" oninput="updateQCashChange()">
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:12px;text-align:center;font-weight:600;">לחיצה ארוכה על "אשראי" לבחירת שיטה</div>
+
+        <div id="payCashSection" style="display:none;">
+            <div style="background:#f8fafc;padding:10px;border-radius:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;font-weight:600;">
+                    <span>סה"כ:</span><span id="payCashTotal" style="font-weight:800;">₪0</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;font-weight:600;">
+                    <span>טיפ (אופציונלי):</span>
+                    <input type="number" id="payCashTip" min="0" step="1" placeholder="0"
+                        style="width:100px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:16px;font-weight:800;text-align:center;" oninput="payCalcChange()">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;font-weight:600;">
+                    <span>סכום שהתקבל:</span>
+                    <input type="number" id="payCashReceived" min="0" step="1" placeholder="0"
+                        style="width:100px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:16px;font-weight:800;text-align:center;" oninput="payCalcChange()">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;">
+                    <span>עודף:</span><span id="payCashChange" style="color:#22c55e;font-weight:900;">₪0</span>
+                </div>
+            </div>
+            <button onclick="payConfirmCash()" style="width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;background:#22c55e;color:#fff;font-weight:800;font-size:14px;cursor:pointer;">
+                <i class="fas fa-check-circle me-1"></i> סגור תשלום מזומן
+            </button>
         </div>
-        <div id="qCashChangeRow" style="display:none; background:#e8f5e9; border-radius:10px; padding:12px; margin-bottom:14px; text-align:center;">
-            <div style="font-size:.8rem; color:#388e3c;">עודף</div>
-            <div style="font-size:1.3rem; font-weight:800; color:#2e7d32;" id="qCashChangeAmount">₪0</div>
+
+        <div id="payCardSection" style="display:none;">
+            <p style="font-size:13px;color:#64748b;margin-bottom:10px;">בחר דרך לגביית תשלום בכרטיס אשראי:</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+                <button type="button" id="paySubQr" onclick="payCardAction('qr')"
+                    style="background:#fff;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                    <i class="fas fa-qrcode" style="font-size:18px;display:block;margin-bottom:3px;color:#0284c7;"></i>קוד QR
+                </button>
+                <button type="button" id="paySubSms" onclick="payCardAction('sms')"
+                    style="background:#fff;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                    <i class="fas fa-sms" style="font-size:18px;display:block;margin-bottom:3px;color:#0284c7;"></i>SMS
+                </button>
+                <button type="button" id="paySubManual" onclick="payCardAction('manual')"
+                    style="background:#fff;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                    <i class="fas fa-keyboard" style="font-size:18px;display:block;margin-bottom:3px;color:#0284c7;"></i>הזנה ידנית
+                </button>
+            </div>
+            <div id="payQrBox" style="display:none;text-align:center;padding:14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;">
+                <img id="payQrImg" alt="QR" style="max-width:220px;width:100%;height:auto;">
+                <p style="font-size:11px;color:#555;margin-top:8px;">הלקוח סורק ומשלם בטלפון. הסטטוס יעודכן אוטומטית.</p>
+                <a id="payQrLink" href="#" target="_blank" style="font-size:11px;color:#0284c7;word-break:break-all;"></a>
+            </div>
+            <div id="paySmsRow" style="display:none;margin-top:10px;">
+                <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:6px;">מספר טלפון</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="tel" id="paySmsPhone" placeholder="05X-XXXXXXX" dir="ltr"
+                        style="flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;text-align:center;">
+                    <button onclick="paySmsSend()" style="background:#0284c7;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;">
+                        <i class="fas fa-paper-plane"></i> שלח
+                    </button>
+                </div>
+            </div>
+            <div id="payManualNote" style="display:none;margin-top:10px;padding:10px;background:#fef3c7;border-radius:10px;font-size:12px;color:#92400e;">
+                <i class="fas fa-external-link-alt"></i> דף HYP נפתח בחלון חדש. הזן פרטי כרטיס — הסטטוס יעודכן אוטומטית בסיום.
+            </div>
         </div>
-        <button onclick="confirmQCashClose()" style="width:100%; background:#4caf50; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
-            <i class="fas fa-check-circle me-2"></i> סגור שולחן
-        </button>
     </div>
 </div>
 
@@ -802,7 +865,7 @@ function showQuickActions(card, evt) {
         addMenuItem(menu, 'fa-receipt', 'הדפס חשבון', function() { quickPrintCheck(sessionId); });
         addMenuItem(menu, 'fa-exchange-alt', 'העבר שולחן', function() { showMoveTable(sessionId); });
         addDivider(menu);
-        addMenuItem(menu, 'fa-money-bill-wave', 'סגור מזומן', function() { quickPayCash(sessionId); });
+        addMenuItem(menu, 'fa-credit-card', 'תשלום', function() { openSessionPayment(sessionId); });
         addMenuItem(menu, 'fa-times-circle', 'בטל ישיבה', function() { quickCancelSession(sessionId); }, true);
     } else {
         addMenuItem(menu, 'fa-plus-circle', 'פתח ישיבה', function() { handleTableClick(tableId, '', 'available'); });
@@ -877,53 +940,215 @@ function quickPrintCheck(sessionId) {
     }).then(function(r) { return r.json(); }).then(function(d) { showToast(d.ok ? d.message : d.error, !d.ok); });
 }
 
-var qCashSessionId = null;
 var qCancelSessionId = null;
 var qSelectedCancelReason = '';
 
-function quickPayCash(sessionId) {
-    qCashSessionId = sessionId;
-    fetch('/ops/api/sessions/' + sessionId).then(function(r) { return r.json(); }).then(function(d) {
-        var total = d.ok ? d.session.total : 0;
-        document.getElementById('qCashTotal').textContent = '₪' + (total % 1 === 0 ? total : total.toFixed(2));
-        document.getElementById('qCashTip').value = '';
-        document.getElementById('qCashReceived').value = '';
-        document.getElementById('qCashChangeRow').style.display = 'none';
-        var ov = document.getElementById('cashCloseOverlayQ');
-        ov.style.display = 'flex';
+// ===== Unified session payment modal =====
+var paySessionId = null;
+var payTotal = 0;
+var payCustomerPhone = '';
+var payPollTimer = null;
+var payLpTimer = null;
+var payLpFired = false;
+var payLpStartX = 0, payLpStartY = 0;
+var payLpBound = false;
+
+function openSessionPayment(sessionId) {
+    paySessionId = sessionId;
+    payTotal = 0;
+    payCustomerPhone = '';
+    document.getElementById('payTotal').textContent = '₪0';
+    document.getElementById('payCashTotal').textContent = '₪0';
+    document.getElementById('payCashTip').value = '';
+    document.getElementById('payCashReceived').value = '';
+    document.getElementById('payCashChange').textContent = '₪0';
+    document.getElementById('paySmsPhone').value = '';
+    document.getElementById('payQrBox').style.display = 'none';
+    document.getElementById('paySmsRow').style.display = 'none';
+    document.getElementById('payManualNote').style.display = 'none';
+    document.getElementById('payCashSection').style.display = 'none';
+    document.getElementById('payCardSection').style.display = 'none';
+    paySetSelected(null);
+    paySetSubSelected(null);
+    fetch('/ops/api/sessions/' + sessionId).then(function(r){return r.json();}).then(function(d){
+        if (!d.ok) { showToast(d.error || 'ישיבה לא נמצאה', true); return; }
+        var s = d.session;
+        payTotal = s.total || 0;
+        payCustomerPhone = '';
+        document.getElementById('payTableNum').textContent = s.table_number || '?';
+        document.getElementById('payTotal').textContent = '₪' + (payTotal % 1 === 0 ? payTotal : payTotal.toFixed(2));
+        document.getElementById('payCashTotal').textContent = '₪' + (payTotal % 1 === 0 ? payTotal : payTotal.toFixed(2));
+        document.getElementById('payOverlayQ').style.display = 'flex';
+        payBindCardLongPress();
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function closePaymentSheet() {
+    document.getElementById('payOverlayQ').style.display = 'none';
+    paySessionId = null;
+    payStopPolling();
+}
+
+function paySetSelected(method) {
+    var cash = document.getElementById('payOptCash');
+    var card = document.getElementById('payOptCard');
+    function clear(b) { b.style.background = '#fff'; b.style.borderColor = '#e2e8f0'; b.style.color = '#333'; }
+    function on(b) { b.style.background = '#e0f2fe'; b.style.borderColor = '#0284c7'; b.style.color = '#0284c7'; }
+    clear(cash); clear(card);
+    if (method === 'cash') on(cash);
+    else if (method === 'card') on(card);
+}
+
+function paySetSubSelected(which) {
+    ['paySubQr','paySubSms','paySubManual'].forEach(function(id){
+        var b = document.getElementById(id);
+        if (!b) return;
+        if (id === which) { b.style.background = '#0284c7'; b.style.color = '#fff'; b.style.borderColor = '#0284c7';
+            (b.querySelector('i')||{}).style && (b.querySelector('i').style.color = '#fff'); }
+        else { b.style.background = '#fff'; b.style.color = '#333'; b.style.borderColor = '#e2e8f0';
+            (b.querySelector('i')||{}).style && (b.querySelector('i').style.color = '#0284c7'); }
     });
 }
-function closeCashCloseQ() { document.getElementById('cashCloseOverlayQ').style.display = 'none'; qCashSessionId = null; }
 
-function updateQCashChange() {
-    var total = parseFloat(document.getElementById('qCashTotal').textContent.replace('₪','').replace(',','')) || 0;
-    var tip = parseFloat(document.getElementById('qCashTip').value) || 0;
-    var received = parseFloat(document.getElementById('qCashReceived').value) || 0;
-    var due = total + tip;
+function paySelectMethod(method) {
+    paySetSelected(method);
+    document.getElementById('payCashSection').style.display = (method === 'cash') ? '' : 'none';
+    document.getElementById('payCardSection').style.display = (method === 'card') ? '' : 'none';
+    if (method !== 'card') payStopPolling();
+}
+
+function payCalcChange() {
+    var tip = parseFloat(document.getElementById('payCashTip').value) || 0;
+    var received = parseFloat(document.getElementById('payCashReceived').value) || 0;
+    var due = payTotal + tip;
     var change = received - due;
-    if (received > 0) {
-        document.getElementById('qCashChangeRow').style.display = 'block';
-        document.getElementById('qCashChangeAmount').textContent = '₪' + Math.max(0, change).toFixed(2);
-        document.getElementById('qCashChangeAmount').style.color = change >= 0 ? '#2e7d32' : '#f44336';
-    } else {
-        document.getElementById('qCashChangeRow').style.display = 'none';
+    var el = document.getElementById('payCashChange');
+    el.textContent = '₪' + Math.max(0, change).toFixed(received % 1 === 0 ? 0 : 2);
+    el.style.color = change >= 0 ? '#22c55e' : '#ef4444';
+}
+
+function payConfirmCash() {
+    if (!paySessionId) return;
+    var tip = parseFloat(document.getElementById('payCashTip').value) || 0;
+    var received = parseFloat(document.getElementById('payCashReceived').value) || 0;
+    var due = payTotal + tip;
+    if (!received || received <= 0) { showToast('נא להזין סכום שהתקבל', true); return; }
+    if (received < due) { showToast('סכום שהתקבל נמוך מהסה"כ', true); return; }
+    fetch('/ops/api/sessions/' + paySessionId + '/pay-cash', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tip_amount: tip, cash_received: received})
+    }).then(function(r){return r.json();}).then(function(d){
+        if (d.ok) { showToast(d.message || 'תשלום הושלם'); closePaymentSheet(); setTimeout(function(){ location.reload(); }, 700); }
+        else showToast(d.error || 'שגיאה', true);
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function payLater() {
+    closePaymentSheet();
+    showToast('הישיבה נשארה פתוחה לתשלום מאוחר יותר');
+}
+
+function payCardAction(action) {
+    if (!paySessionId) return;
+    paySetSubSelected('paySub' + action.charAt(0).toUpperCase() + action.slice(1));
+    document.getElementById('payQrBox').style.display = 'none';
+    document.getElementById('paySmsRow').style.display = 'none';
+    document.getElementById('payManualNote').style.display = 'none';
+    if (action === 'qr') {
+        fetch('/ops/api/sessions/' + paySessionId + '/payment-qr', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+        .then(function(r){return r.json();}).then(function(d){
+            if (!d.ok) { showToast(d.error || 'שגיאה ביצירת QR', true); return; }
+            document.getElementById('payQrImg').src = 'data:image/png;base64,' + d.qr_png_base64;
+            document.getElementById('payQrLink').href = d.payment_url;
+            document.getElementById('payQrLink').textContent = d.payment_url;
+            document.getElementById('payQrBox').style.display = '';
+            payStartPolling();
+        }).catch(function(){ showToast('שגיאת תקשורת', true); });
+    } else if (action === 'sms') {
+        document.getElementById('paySmsRow').style.display = '';
+        document.getElementById('paySmsPhone').focus();
+    } else if (action === 'manual') {
+        fetch('/ops/api/sessions/' + paySessionId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+        .then(function(r){return r.json();}).then(function(d){
+            if (!d.ok) { showToast(d.error || 'שגיאה ביצירת קישור', true); return; }
+            window.open(d.payment_url, '_blank');
+            document.getElementById('payManualNote').style.display = '';
+            payStartPolling();
+        }).catch(function(){ showToast('שגיאת תקשורת', true); });
     }
 }
 
-function confirmQCashClose() {
-    if (!qCashSessionId) return;
-    var tip = parseFloat(document.getElementById('qCashTip').value) || 0;
-    var received = parseFloat(document.getElementById('qCashReceived').value) || 0;
-    var total = parseFloat(document.getElementById('qCashTotal').textContent.replace('₪','').replace(',','')) || 0;
-    if (!received || received <= 0) { showToast('נא להזין סכום שהתקבל', true); return; }
-    if (received < total + tip) { showToast('סכום שהתקבל נמוך מהסה"כ', true); return; }
-    fetch('/ops/api/sessions/' + qCashSessionId + '/pay-cash', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({tip_amount: tip, cash_received: received})
-    }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.ok) { closeCashCloseQ(); showToast(d.message); setTimeout(function() { location.reload(); }, 800); }
-        else showToast(d.error, true);
-    });
+function paySmsSend() {
+    if (!paySessionId) return;
+    var phone = (document.getElementById('paySmsPhone').value || '').trim();
+    if (!phone || phone.replace(/\D/g,'').length < 9) { showToast('נא להזין מספר טלפון תקין', true); return; }
+    // Ensure payment link exists, then send SMS.
+    fetch('/ops/api/sessions/' + paySessionId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+    .then(function(r){return r.json();}).then(function(d){
+        if (!d.ok) { showToast(d.error || 'שגיאה ביצירת קישור', true); return; }
+        fetch('/ops/api/sessions/' + paySessionId + '/send-payment-sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({phone: phone}) })
+        .then(function(r){return r.json();}).then(function(d2){
+            if (d2.ok) { showToast('SMS נשלח ללקוח'); payStartPolling(); }
+            else showToast(d2.error || 'שגיאה בשליחת SMS', true);
+        });
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function payBindCardLongPress() {
+    var btn = document.getElementById('payOptCard');
+    if (!btn || payLpBound) return;
+    payLpBound = true;
+    var onDown = function(e) {
+        payLpFired = false;
+        payLpStartX = e.clientX || 0; payLpStartY = e.clientY || 0;
+        btn.style.transform = 'scale(0.97)'; btn.style.background = '#fef3c7'; btn.style.borderColor = '#f59e0b';
+        payLpTimer = setTimeout(function() {
+            payLpFired = true;
+            btn.style.transform = ''; btn.style.background = '#fff'; btn.style.borderColor = '#e2e8f0';
+            paySelectMethod('card');
+            try { if (navigator.vibrate) navigator.vibrate(15); } catch(e){}
+        }, 600);
+    };
+    var onMove = function(e) {
+        if (!payLpTimer) return;
+        var dx = (e.clientX||0) - payLpStartX, dy = (e.clientY||0) - payLpStartY;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) { onCancel(); }
+    };
+    var onUp = function(e) {
+        btn.style.transform = ''; btn.style.background = '#fff'; btn.style.borderColor = '#e2e8f0';
+        if (payLpTimer) { clearTimeout(payLpTimer); payLpTimer = null; }
+        if (!payLpFired) {
+            paySelectMethod('card');
+            setTimeout(function(){ payCardAction('qr'); }, 50);
+        }
+    };
+    var onCancel = function() {
+        btn.style.transform = ''; btn.style.background = '#fff'; btn.style.borderColor = '#e2e8f0';
+        if (payLpTimer) { clearTimeout(payLpTimer); payLpTimer = null; }
+    };
+    btn.addEventListener('pointerdown', onDown);
+    btn.addEventListener('pointermove', onMove);
+    btn.addEventListener('pointerup', onUp);
+    btn.addEventListener('pointerleave', onCancel);
+    btn.addEventListener('pointercancel', onCancel);
+}
+
+function payStartPolling() {
+    payStopPolling();
+    payPollTimer = setInterval(function(){
+        if (!paySessionId) return;
+        fetch('/ops/api/sessions/' + paySessionId).then(function(r){return r.json();}).then(function(d){
+            if (d.ok && d.session && d.session.status === 'closed') {
+                payStopPolling();
+                showToast('התשלום אושר!');
+                closePaymentSheet();
+                setTimeout(function(){ location.reload(); }, 700);
+            }
+        }).catch(function(){});
+    }, 3000);
+}
+function payStopPolling() {
+    if (payPollTimer) { clearInterval(payPollTimer); payPollTimer = null; }
 }
 
 function quickCancelSession(sessionId) {

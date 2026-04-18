@@ -100,36 +100,36 @@
         }
         .ops-branch-static i { color: var(--ops-accent, #e94560); }
 
-        /* Status pill (פתוח / עמוס / סגור) */
+        /* Status — plain colored text (no pill) */
         .ops-branch-status-wrap { position: relative; }
-        .ops-status-pill {
+        .ops-status-text {
             display: inline-flex; align-items: center; justify-content: center;
-            border-radius: 999px;
-            padding: 6px 14px;
+            background: none; border: none;
+            padding: 6px 8px;
             font-family: 'Heebo', sans-serif;
-            font-size: 0.78rem;
+            font-size: 0.92rem;
             font-weight: 800;
             cursor: pointer;
             min-height: 34px;
-            border: 1px solid transparent;
-            transition: transform 0.06s ease-out, filter 0.15s;
             white-space: nowrap;
+            transition: transform 0.06s ease-out, opacity 0.15s;
         }
-        .ops-status-pill:active { transform: scale(0.96); }
-        .ops-status-pill.ops-status-open {
-            background: rgba(34, 197, 94, 0.16);
-            color: #16a34a;
-            border-color: rgba(34, 197, 94, 0.45);
-        }
-        .ops-status-pill.ops-status-busy {
-            background: rgba(245, 158, 11, 0.18);
-            color: #d97706;
-            border-color: rgba(245, 158, 11, 0.5);
-        }
-        .ops-status-pill.ops-status-closed {
-            background: rgba(239, 68, 68, 0.16);
-            color: #dc2626;
-            border-color: rgba(239, 68, 68, 0.45);
+        .ops-status-text:active { transform: scale(0.94); opacity: 0.7; }
+        .ops-status-text.ops-status-open   { color: #16a34a; }
+        .ops-status-text.ops-status-busy   { color: #d97706; }
+        .ops-status-text.ops-status-closed { color: #dc2626; }
+
+        /* Username text on the LEFT next to avatar */
+        .ops-user-name {
+            font-family: 'Heebo', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--ops-text, #1a1a2e);
+            max-width: 110px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-left: 6px;
         }
 
         /* Server connection icon */
@@ -162,26 +162,57 @@
             border-color: rgba(245, 158, 11, 0.4);
         }
 
-        /* Avatar circle */
+        /* Avatar circle + name (left side) */
         .ops-avatar-wrap { position: relative; }
-        .ops-avatar-btn {
-            width: 36px; height: 36px;
+        .ops-avatar-btn-row {
+            display: inline-flex; align-items: center; gap: 0;
+            background: none; border: none; padding: 2px; cursor: pointer;
+            transition: transform 0.06s ease-out;
+        }
+        .ops-avatar-btn-row:active { transform: scale(0.96); }
+        .ops-avatar-circle {
+            width: 34px; height: 34px;
             border-radius: 50%;
-            border: none;
             background: linear-gradient(135deg, #e94560 0%, #b53449 100%);
             color: #fff;
             display: inline-flex; align-items: center; justify-content: center;
-            cursor: pointer;
             font-family: 'Heebo', sans-serif;
             font-weight: 800;
-            font-size: 15px;
+            font-size: 14px;
             box-shadow: 0 2px 6px rgba(233, 69, 96, 0.35);
-            transition: transform 0.06s ease-out;
+            flex-shrink: 0;
         }
-        .ops-avatar-btn:active { transform: scale(0.92); }
-        .ops-avatar-btn-lg { width: 44px; height: 44px; font-size: 18px; cursor: default; }
-        .ops-avatar-btn-lg:active { transform: none; }
+        .ops-avatar-circle-lg { width: 44px; height: 44px; font-size: 18px; }
         .ops-avatar-initial { line-height: 1; }
+
+        /* Big primary actions in avatar popover */
+        .ops-popover-big {
+            display: flex; align-items: center; gap: 12px;
+            width: 100%;
+            padding: 14px 12px;
+            border: 1px solid var(--ops-border, #e0e4ea);
+            background: var(--ops-bg, #f8f9fc);
+            border-radius: 12px;
+            margin: 6px 0;
+            text-decoration: none;
+            color: var(--ops-text, #1a1a2e);
+            cursor: pointer;
+            transition: background 0.12s, transform 0.06s ease-out;
+        }
+        .ops-popover-big:hover { background: rgba(0,0,0,0.04); }
+        .ops-popover-big:active { transform: scale(0.98); }
+        .ops-popover-big > i {
+            font-size: 22px;
+            width: 30px; text-align: center;
+            flex-shrink: 0;
+        }
+        .ops-popover-big-title {
+            font-size: 15px; font-weight: 700; line-height: 1.2;
+        }
+        .ops-popover-big-sub {
+            font-size: 11px; color: var(--ops-text-dim, #6b7a90);
+            margin-top: 3px;
+        }
 
         /* Generic popover (used by branch, status, avatar) */
         .ops-popover {
@@ -523,7 +554,7 @@
                 {% if ops_branch_id %}
                 <div class="ops-branch-status-wrap">
                     <button type="button" id="branch-status-btn"
-                            class="ops-status-pill ops-status-{{ branch_ordering_status or 'closed' }}"
+                            class="ops-status-text ops-status-{{ branch_ordering_status or 'closed' }}"
                             onclick="toggleStatusPopover()" title="לחץ לשינוי סטטוס">
                         <span id="branch-status-label">{% if branch_ordering_status == 'open' %}פתוח{% elif branch_ordering_status == 'busy' %}עמוס{% else %}סגור{% endif %}</span>
                     </button>
@@ -550,32 +581,39 @@
                     <i class="fas fa-server"></i>
                 </button>
 
-                {# ===== User avatar (leftmost in RTL) ===== #}
+                {# ===== User avatar + name (leftmost in RTL) ===== #}
                 {% set _user_name = session.get('ops_user_name', '') %}
                 {% set _user_initial = (_user_name[:1] | upper) if _user_name else '?' %}
                 <div class="ops-avatar-wrap">
-                    <button type="button" class="ops-avatar-btn" id="ops-avatar-btn"
+                    <button type="button" class="ops-avatar-btn-row" id="ops-avatar-btn"
                             onclick="toggleAvatarPopover()" title="{{ _user_name }}">
-                        <span class="ops-avatar-initial">{{ _user_initial }}</span>
+                        <span class="ops-avatar-circle"><span class="ops-avatar-initial">{{ _user_initial }}</span></span>
+                        <span class="ops-user-name">{{ _user_name or '—' }}</span>
                     </button>
                     <div id="ops-avatar-popover" class="ops-popover ops-popover-avatar" style="display:none;">
                         <div class="ops-popover-header">
-                            <div class="ops-avatar-btn ops-avatar-btn-lg"><span class="ops-avatar-initial">{{ _user_initial }}</span></div>
+                            <div class="ops-avatar-circle ops-avatar-circle-lg"><span class="ops-avatar-initial">{{ _user_initial }}</span></div>
                             <div style="min-width:0;flex:1;">
                                 <div class="ops-popover-name">{{ _user_name or '—' }}</div>
                                 <div class="ops-popover-sub">{% if ops_branch_name %}{{ ops_branch_name }}{% endif %}</div>
                             </div>
                         </div>
+                        <a href="{{ url_for('ops.login') }}" class="ops-popover-big">
+                            <i class="fas fa-user-tag" style="color:#3b82f6;"></i>
+                            <div>
+                                <div class="ops-popover-big-title">מסך כניסה</div>
+                                <div class="ops-popover-big-sub">החלפת משתמש מנהל</div>
+                            </div>
+                        </a>
                         {% if 'shifts' in ops_modules %}
-                        <a href="{{ url_for('ops.shifts') }}" class="ops-popover-item">
+                        <a href="{{ url_for('ops.shifts') }}" class="ops-popover-big">
                             <i class="fas fa-user-clock" style="color:#22c55e;"></i>
-                            <span>החתמת עובדים (כניסה/יציאה)</span>
+                            <div>
+                                <div class="ops-popover-big-title">החתמת עובדים</div>
+                                <div class="ops-popover-big-sub">כניסה / יציאה למשמרת</div>
+                            </div>
                         </a>
                         {% endif %}
-                        <a href="{{ url_for('ops.login') }}" class="ops-popover-item">
-                            <i class="fas fa-user-tag" style="color:#3b82f6;"></i>
-                            <span>החלפת משתמש</span>
-                        </a>
                         <div class="ops-popover-divider"></div>
                         <a href="{{ url_for('ops.logout') }}" class="ops-popover-item ops-popover-item-danger">
                             <i class="fas fa-sign-out-alt"></i>

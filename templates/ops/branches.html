@@ -94,11 +94,11 @@
             {% if h.is_closed %}
             <span style="color: var(--ops-red);">סגור</span>
             {% else %}
-            <div style="display:flex; align-items:center; gap:6px;">
-                <input type="time" value="{{ h.open_time or '' }}" style="background:transparent; border:none; color:var(--ops-text); font-size:14px; direction:ltr;"
+            <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+                <input type="time" value="{{ h.open_time or '' }}" class="ops-hour-time-input"
                        onchange="updateHours({{ h.id }}, 'open_time', this.value)">
-                <span>-</span>
-                <input type="time" value="{{ h.close_time or '' }}" style="background:transparent; border:none; color:var(--ops-text); font-size:14px; direction:ltr;"
+                <span style="color:var(--ops-text-dim);">-</span>
+                <input type="time" value="{{ h.close_time or '' }}" class="ops-hour-time-input"
                        onchange="updateHours({{ h.id }}, 'close_time', this.value)">
             </div>
             {% endif %}

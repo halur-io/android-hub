@@ -678,7 +678,7 @@ html, body {
 
 .ops-hours-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 8px;
     margin-top: 12px;
 }
@@ -693,8 +693,26 @@ html, body {
     font-size: 14px;
 }
 
-.ops-hour-day { font-weight: 600; min-width: 60px; }
+.ops-hour-day { font-weight: 600; min-width: 60px; flex-shrink: 0; white-space: nowrap; }
 .ops-hour-time { color: var(--ops-text-dim); direction: ltr; }
+.ops-hour-time-input {
+    background: transparent;
+    border: 1px solid var(--ops-border, rgba(255,255,255,0.08));
+    border-radius: 6px;
+    color: var(--ops-text);
+    font-size: 13px;
+    direction: ltr;
+    padding: 4px 6px;
+    width: 90px;
+    max-width: 90px;
+    font-family: 'Heebo', sans-serif;
+}
+@media (max-width: 600px) {
+    .ops-hours-grid { grid-template-columns: 1fr; }
+    .ops-hour-row { padding: 8px 10px; }
+    .ops-hour-time-input { width: 82px; max-width: 82px; font-size: 12px; padding: 3px 4px; }
+    .ops-hour-day { min-width: 50px; font-size: 13px; }
+}
 
 .ops-filter-bar {
     display: flex;

@@ -3234,6 +3234,16 @@ def _printer_obj_from_dict(pd):
     )
 
 
+def _job_printer_meta(pd):
+    ip_parts = (pd.get('ip_address') or '').split(':')
+    return {
+        'printer_id': pd.get('id'),
+        'printer_name': pd.get('name') or '',
+        'printer_ip': ip_parts[0],
+        'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (pd.get('port') or 9100),
+    }
+
+
 def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, station_bons):
     import base64
     default_printer, station_map, printers = _get_printer_routing(order.branch_id or 0)
@@ -3245,11 +3255,9 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
         p = _printer_obj_from_dict(fallback)
         if p:
             _build_checker_bon(p, order)
-            ip_parts = (fallback.get('ip_address') or '').split(':')
             jobs.append({
                 'bon_type': 'checker',
-                'printer_ip': ip_parts[0],
-                'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (fallback.get('port') or 9100),
+                **_job_printer_meta(fallback),
                 'order_id': order.id,
                 'order_number': order.order_number,
                 'display_number': order.display_number,
@@ -3260,11 +3268,9 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
         p = _printer_obj_from_dict(fallback)
         if p:
             _build_payment_bon(p, order)
-            ip_parts = (fallback.get('ip_address') or '').split(':')
             jobs.append({
                 'bon_type': 'payment',
-                'printer_ip': ip_parts[0],
-                'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (fallback.get('port') or 9100),
+                **_job_printer_meta(fallback),
                 'order_id': order.id,
                 'order_number': order.order_number,
                 'display_number': order.display_number,
@@ -3277,12 +3283,10 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
             p = _printer_obj_from_dict(target)
             if p:
                 _build_station_bon(p, order, st_name, st_items)
-                ip_parts = (target.get('ip_address') or '').split(':')
                 jobs.append({
                     'bon_type': 'station',
                     'station_name': st_name,
-                    'printer_ip': ip_parts[0],
-                    'printer_port': int(ip_parts[1]) if len(ip_parts) > 1 else (target.get('port') or 9100),
+                    **_job_printer_meta(target),
                     'order_id': order.id,
                     'order_number': order.order_number,
                     'display_number': order.display_number,
@@ -3290,6 +3294,35 @@ def _build_print_jobs(order, items, by_station, checker_copies, payment_copies, 
                 })
 
     return jobs
+
+
+def _build_order_print_jobs(order):
+    items = json.loads(order.items_json) if order.items_json else []
+    by_station = {}
+    for item in items:
+        menu_item_id = item.get('menu_item_id') or item.get('item_id') or item.get('id')
+        st = 'כללי'
+        if menu_item_id:
+            mi = MenuItem.query.get(menu_item_id)
+            if mi:
+                st = mi.print_station or 'כללי'
+                if order.branch_id:
+                    bmi = BranchMenuItem.query.filter_by(branch_id=order.branch_id, menu_item_id=menu_item_id).first()
+                    if bmi and bmi.print_station:
+                        st = bmi.print_station
+                if mi.print_name:
+                    item['print_name'] = mi.print_name
+        by_station.setdefault(st, []).append(item)
+    print_options = {}
+    if order.bon_print_options:
+        try:
+            print_options = json.loads(order.bon_print_options)
+        except Exception:
+            pass
+    p_checker = print_options.get('checker_copies', 2)
+    p_payment = print_options.get('payment_copies', 1)
+    p_station = print_options.get('station_bons', True)
+    return _build_print_jobs(order, items, by_station, p_checker, p_payment, p_station)
 
 
 def _queue_print_for_app(order, checker_copies=2, payment_copies=1, station_bons=True, persist_options=True):
@@ -4033,6 +4066,119 @@ def direct_print_test():
         return jsonify({'ok': True, 'message': 'הדפסת בדיקה נשלחה'})
     else:
         return jsonify({'ok': False, 'error': 'שגיאת חיבור'})
+
+
+@ops_bp.route('/api/orders/<int:order_id>/print-payload', methods=['GET'])
+def get_order_print_payload(order_id):
+    """Server-rendered ESC/POS bytes for an order, ready for the Android relay
+    to send straight to the printer(s). All RTL reversal, codepage selection,
+    and encoding live on the server -- the client never builds bytes."""
+    if not _verify_print_api_key():
+        pin = _get_ops_user()
+        if not pin:
+            return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    order = FoodOrder.query.get(order_id)
+    if not order:
+        return jsonify({'ok': False, 'error': 'order not found'}), 404
+    jobs = _build_order_print_jobs(order)
+    return jsonify({
+        'ok': True,
+        'order': {
+            'id': order.id,
+            'order_number': order.order_number,
+            'display_number': order.display_number,
+            'order_type': order.order_type,
+            'branch_id': order.branch_id,
+        },
+        'jobs': jobs,
+    })
+
+
+def _build_test_print_envelope(branch_id):
+    """Build a small server-rendered test bon for every printer in a branch.
+    Returns a list of jobs in the same shape as order print jobs."""
+    import base64
+    printers = Printer.query.filter_by(branch_id=branch_id, is_active=True).order_by(Printer.display_order).all()
+    if not printers:
+        return []
+    jobs = []
+    now_str = _to_il(datetime.utcnow(), '%d/%m/%Y %H:%M:%S')
+    for pr in printers:
+        pd = pr.to_dict()
+        p = _printer_obj_from_dict(pd)
+        if not p:
+            continue
+        p.init()
+        p.feed(1)
+        p.align('center')
+        p.font('double')
+        p.bold()
+        p.text('SUMO')
+        p.bold(False)
+        p.font('normal')
+        p.text('בדיקת מדפסת')
+        p.dashed()
+        p.align('right')
+        p.text(f'מדפסת: {pr.name}')
+        p.text(f'כתובת: {pr.ip_address}:{pr.port}')
+        st_names = ', '.join(s.station_name for s in pr.stations) or '-'
+        p.text(f'עמדות: {st_names}')
+        p.text(f'תאריך: {now_str}')
+        p.dashed()
+        p.align('center')
+        p.bold()
+        p.text('שלום עולם – בדיקת עברית')
+        p.text('ABC 123 / סלמון רול ספיישל')
+        p.bold(False)
+        p.feed(1)
+        p.text('אם הטקסט נקרא נכון – הקידוד תקין')
+        p.cut()
+        jobs.append({
+            'bon_type': 'test',
+            **_job_printer_meta(pd),
+            'order_id': 0,
+            'order_number': 'TEST',
+            'display_number': 'TEST',
+            'raw_data': base64.b64encode(bytes(p.buf)).decode('ascii'),
+        })
+    return jobs
+
+
+@ops_bp.route('/api/devices/<int:device_db_id>/test-print', methods=['POST'])
+def device_test_print(device_db_id):
+    """Queue a server-rendered test bon for every printer wired to the device's
+    branch. The Android Print Hub will pick the jobs up via SSE/poll and relay
+    them to the printers as raw TCP bytes."""
+    is_api_key_auth = _verify_print_api_key()
+    if not is_api_key_auth:
+        if not _is_admin_session():
+            pin = _get_ops_user()
+            if not pin:
+                return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    from models import PrintDevice
+    device = PrintDevice.query.get(device_db_id)
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not found'}), 404
+    jobs = _build_test_print_envelope(device.branch_id)
+    if not jobs:
+        return jsonify({'ok': False, 'error': 'לא נמצאה מדפסת לסניף'})
+    for pj in jobs:
+        pj['type'] = 'print_order'
+        pj['branch_id'] = device.branch_id
+        _queue_check_print(device.branch_id, pj)
+    return jsonify({
+        'ok': True,
+        'message': f'{len(jobs)} בוני בדיקה נשלחו למדפסת',
+        'jobs': jobs,
+    })
+
+
+def _is_admin_session():
+    try:
+        from flask_login import current_user
+        return getattr(current_user, 'is_authenticated', False)
+    except Exception:
+        return False
 
 
 @ops_bp.route('/history')

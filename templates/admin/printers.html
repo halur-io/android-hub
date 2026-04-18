@@ -379,6 +379,59 @@
                 </div>
             </div>
 
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-tablet-alt me-2"></i>אפליקציות הדפסה (Print Hub)</h6>
+                </div>
+                <div class="card-body">
+                    {% if print_devices %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>סטטוס</th>
+                                    <th>שם המכשיר</th>
+                                    <th>סניף</th>
+                                    <th>פעילות אחרונה</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for d in print_devices %}
+                                <tr>
+                                    <td>
+                                        {% if d.is_online %}
+                                        <span class="badge bg-success"><i class="fas fa-circle me-1"></i>מחובר</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary"><i class="far fa-circle me-1"></i>מנותק</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ d.device_name }}</strong><br><small class="text-muted"><code>{{ d.device_id[:16] }}…</code></small></td>
+                                    <td>{{ d.branch.name_he if d.branch else '-' }}</td>
+                                    <td><small class="text-muted">{{ d.last_heartbeat.strftime('%d/%m %H:%M:%S') if d.last_heartbeat else '—' }}</small></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="testDevicePrint({{ d.id }}, '{{ d.device_name }}')" id="devTestBtn-{{ d.id }}">
+                                            <i class="fas fa-paper-plane me-1"></i>שלח בון בדיקה
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        בון הבדיקה נבנה לחלוטין בשרת (RTL, codepage, encoding) ונשלח כ-bytes גולמיים דרך האפליקציה למדפסות.
+                    </p>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-tablet-alt fa-2x mb-2 d-block opacity-25"></i>
+                        <p class="mb-0">אין מכשירי הדפסה רשומים. התקן את אפליקציית SUMO Print Hub במכשיר Android וסיים רישום.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
             <div class="card mt-4" id="testSummaryCard" style="display: none;">
                 <div class="card-header">
                     <h6 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>סיכום בדיקה</h6>
@@ -453,6 +506,33 @@ function setStatus(id, status) {
         el.className = 'badge bg-secondary';
         el.innerHTML = '<i class="fas fa-question-circle me-1"></i>ממתין';
     }
+}
+
+function testDevicePrint(id, name) {
+    var btn = document.getElementById('devTestBtn-' + id);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>שולח...'; }
+    fetch('/ops/api/devices/' + id + '/test-print', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        },
+        body: '{}'
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            alert('בון בדיקה נשלח ל-' + name + '\n' + (data.message || ''));
+        } else {
+            alert('שגיאה: ' + (data.error || 'לא ידוע'));
+        }
+    })
+    .catch(function(err) {
+        alert('שגיאת רשת: ' + err);
+    })
+    .finally(function() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>שלח בון בדיקה'; }
+    });
 }
 
 function testSinglePrinter(id) {

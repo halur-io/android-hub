@@ -5403,17 +5403,19 @@ def kitchen_config():
 @login_required
 @require_permission('kitchen.manage')
 def printers():
-    from models import Printer, Branch, PrintStation
+    from models import Printer, Branch, PrintStation, PrintDevice
     branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
     all_printers = Printer.query.order_by(Printer.branch_id, Printer.display_order).all()
     printers_by_branch = {}
     for p in all_printers:
         printers_by_branch.setdefault(p.branch_id, []).append(p)
     all_stations = PrintStation.query.order_by(PrintStation.name).all()
+    print_devices = PrintDevice.query.order_by(PrintDevice.branch_id, PrintDevice.device_name).all()
     return render_template('admin/printers.html',
                          branches=branches,
                          printers_by_branch=printers_by_branch,
-                         all_stations=all_stations)
+                         all_stations=all_stations,
+                         print_devices=print_devices)
 
 @admin_bp.route('/printers/add', methods=['GET', 'POST'])
 @login_required

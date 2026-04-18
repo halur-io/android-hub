@@ -6,7 +6,9 @@ import com.sumo.printhub.data.model.DeviceRegisterRequest
 import com.sumo.printhub.data.model.DeviceRegisterResponse
 import com.sumo.printhub.data.model.GenericOk
 import com.sumo.printhub.data.model.HeartbeatResponse
+import com.sumo.printhub.data.model.OrderPrintEnvelope
 import com.sumo.printhub.data.model.PrintStatusRequest
+import com.sumo.printhub.data.model.TestPrintResponse
 import com.sumo.printhub.data.model.UnprintedOrdersResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -147,6 +149,29 @@ class PrintHubApi @Inject constructor(
                 .getOrElse { GenericOk(ok = false, error = it.message) }
         }
     }
+
+    suspend fun fetchPrintPayload(orderId: Int): OrderPrintEnvelope =
+        withContext(Dispatchers.IO) {
+            val req = newRequest("/ops/api/orders/$orderId/print-payload").get().build()
+            http.newCall(req).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) OrderPrintEnvelope(ok = false, error = "HTTP ${resp.code}")
+                else runCatching { json.decodeFromString(OrderPrintEnvelope.serializer(), text) }
+                    .getOrElse { OrderPrintEnvelope(ok = false, error = it.message) }
+            }
+        }
+
+    suspend fun sendTestPrint(deviceDbId: Int): TestPrintResponse =
+        withContext(Dispatchers.IO) {
+            val body = "{}".toRequestBody(JSON_MEDIA)
+            val req = newRequest("/ops/api/devices/$deviceDbId/test-print").post(body).build()
+            http.newCall(req).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) TestPrintResponse(ok = false, error = "HTTP ${resp.code}")
+                else runCatching { json.decodeFromString(TestPrintResponse.serializer(), text) }
+                    .getOrElse { TestPrintResponse(ok = false, error = it.message) }
+            }
+        }
 
     suspend fun logError(errorType: String, message: String, stack: String? = null): GenericOk =
         withContext(Dispatchers.IO) {

@@ -18,10 +18,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +55,8 @@ fun DashboardScreen(vm: DashboardViewModel, onOpenSettings: () -> Unit) {
     val log by vm.printLog.collectAsStateWithLifecycle()
     val printedToday by vm.ordersPrintedToday.collectAsStateWithLifecycle()
     val lastError by vm.lastError.collectAsStateWithLifecycle()
+    val testInProgress by vm.testPrintInProgress.collectAsStateWithLifecycle()
+    val testMessage by vm.testPrintMessage.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -79,6 +85,12 @@ fun DashboardScreen(vm: DashboardViewModel, onOpenSettings: () -> Unit) {
         ) {
             StatusRow(status, cfg?.branchName, printedToday)
             cfg?.let { PrinterSummary(it.defaultPrinter, it.stationMap) }
+            TestPrintRow(
+                inProgress = testInProgress,
+                message = testMessage,
+                onTest = { vm.sendTestPrint() },
+                onDismiss = { vm.clearTestPrintMessage() }
+            )
             lastError?.let {
                 Text(
                     "Last error: $it",
@@ -172,6 +184,67 @@ private fun PrinterSummary(default: PrinterInfo?, stations: Map<String, PrinterI
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TestPrintRow(
+    inProgress: Boolean,
+    message: String?,
+    onTest: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Server-rendered test", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "Asks the server to render a Hebrew test bon and relays it to every printer.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Button(
+                    onClick = onTest,
+                    enabled = !inProgress,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    if (inProgress) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Icon(Icons.Filled.Print, contentDescription = null)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (inProgress) "Sending..." else "Send test print")
+                }
+            }
+            if (!message.isNullOrBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        message,
+                        modifier = Modifier.weight(1f),
+                        color = if (message.startsWith("✓")) Color(0xFF16C79A)
+                                else if (message.startsWith("⚠")) Color(0xFFF4A261)
+                                else MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Dismiss")
+                    }
+                }
             }
         }
     }

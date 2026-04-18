@@ -80,17 +80,17 @@ data class PrintDeviceDto(
 @Serializable
 data class DeviceRegisterResponse(val ok: Boolean = false, val device: PrintDeviceDto? = null, val error: String? = null)
 
+/**
+ * Printer descriptor as returned by the server. Only routing/display fields
+ * are kept on the client — encoding, codepage, RTL handling and bon layout
+ * are all server-rendered, so the client never needs to know about them.
+ */
 @Serializable
 data class PrinterInfo(
     val id: Int,
     val name: String,
     @SerialName("ip_address") val ipAddress: String,
     val port: Int = 9100,
-    val encoding: String = "iso-8859-8",
-    @SerialName("codepage_num") val codepageNum: Int = 32,
-    @SerialName("cut_feed_lines") val cutFeedLines: Int = 6,
-    @SerialName("checker_copies") val checkerCopies: Int = 2,
-    @SerialName("payment_copies") val paymentCopies: Int = 1,
     @SerialName("is_default") val isDefault: Boolean = false,
     val stations: List<String> = emptyList()
 )
@@ -107,8 +107,6 @@ data class DeviceConfig(
     @SerialName("sound_enabled") val soundEnabled: Boolean = true,
     @SerialName("sound_file") val soundFile: String? = null,
     @SerialName("notification_enabled") val notificationEnabled: Boolean = true,
-    val encoding: String = "iso-8859-8",
-    @SerialName("codepage_num") val codepageNum: Int = 32,
     @SerialName("default_printer") val defaultPrinter: PrinterInfo? = null,
     @SerialName("station_map") val stationMap: Map<String, PrinterInfo> = emptyMap(),
     val printers: List<PrinterInfo> = emptyList()
@@ -146,6 +144,52 @@ data class SseEvent(
     @SerialName("new_status") val newStatus: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
+)
+
+/**
+ * A single ready-to-send print job as rendered by the server. `rawData` is
+ * the base64-encoded ESC/POS byte buffer — everything (RTL, codepage,
+ * encoding) is already baked in. The relay just decodes and writes it.
+ */
+@Serializable
+data class PrintJobBytes(
+    @SerialName("bon_type") val bonType: String,
+    @SerialName("station_name") val stationName: String? = null,
+    @SerialName("printer_id") val printerId: Int? = null,
+    @SerialName("printer_name") val printerName: String = "",
+    @SerialName("printer_ip") val printerIp: String,
+    @SerialName("printer_port") val printerPort: Int = 9100,
+    @SerialName("order_id") val orderId: Int = 0,
+    @SerialName("order_number") val orderNumber: String? = null,
+    @SerialName("display_number") val displayNumber: String? = null,
+    @SerialName("raw_data") val rawData: String
+) {
+    val printerLabel: String get() = if (printerName.isNotBlank()) "$printerName@$printerIp" else printerIp
+}
+
+@Serializable
+data class OrderPrintEnvelope(
+    val ok: Boolean = false,
+    val error: String? = null,
+    val order: OrderHeader? = null,
+    val jobs: List<PrintJobBytes> = emptyList()
+)
+
+@Serializable
+data class OrderHeader(
+    val id: Int = 0,
+    @SerialName("order_number") val orderNumber: String? = null,
+    @SerialName("display_number") val displayNumber: String? = null,
+    @SerialName("order_type") val orderType: String? = null,
+    @SerialName("branch_id") val branchId: Int? = null
+)
+
+@Serializable
+data class TestPrintResponse(
+    val ok: Boolean = false,
+    val error: String? = null,
+    val message: String? = null,
+    val jobs: List<PrintJobBytes> = emptyList()
 )
 
 data class PrintAttemptResult(

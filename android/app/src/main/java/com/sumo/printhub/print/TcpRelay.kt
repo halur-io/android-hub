@@ -10,12 +10,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Sends raw ESC/POS bytes to a thermal printer over TCP/IP (port 9100).
+ * Transparent TCP relay for ESC/POS bytes.
+ *
+ * The Android Print Hub does NOT build bons. The server renders every bon
+ * (RTL reversal, codepage selection, encoding, ESC/POS commands) and hands
+ * us the finished byte buffer base64-encoded. This class' only job is to
+ * open a socket to ip:port and write those bytes verbatim.
+ *
  * Wraps every send in a small retry loop because thermal printers commonly
  * stall while finishing a previous job.
  */
 @Singleton
-class TcpPrinter @Inject constructor() {
+class TcpRelay @Inject constructor() {
 
     data class SendResult(val ok: Boolean, val error: String? = null)
 
@@ -42,8 +48,7 @@ class TcpPrinter @Inject constructor() {
                 return@withContext SendResult(ok = true)
             } catch (t: Throwable) {
                 lastError = "${t.javaClass.simpleName}: ${t.message}"
-                Log.w(TAG, "Print attempt ${attempt + 1} to $ip:$port failed: $lastError")
-                // Brief backoff between attempts.
+                Log.w(TAG, "Relay attempt ${attempt + 1} to $ip:$port failed: $lastError")
                 Thread.sleep(400L * (attempt + 1))
             }
         }
@@ -51,6 +56,6 @@ class TcpPrinter @Inject constructor() {
     }
 
     private companion object {
-        const val TAG = "TcpPrinter"
+        const val TAG = "TcpRelay"
     }
 }

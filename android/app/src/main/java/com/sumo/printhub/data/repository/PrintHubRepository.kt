@@ -1,5 +1,6 @@
 package com.sumo.printhub.data.repository
 
+import android.util.Base64
 import android.util.Log
 import com.sumo.printhub.data.api.PrintHubApi
 import com.sumo.printhub.data.api.SseClient
@@ -9,8 +10,9 @@ import com.sumo.printhub.data.local.SecurePrefs
 import com.sumo.printhub.data.model.DeviceConfig
 import com.sumo.printhub.data.model.Order
 import com.sumo.printhub.data.model.PrintAttemptResult
+import com.sumo.printhub.data.model.PrintJobBytes
 import com.sumo.printhub.data.model.PrintStatusRequest
-import com.sumo.printhub.print.PrintOrchestrator
+import com.sumo.printhub.print.TcpRelay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,7 +39,11 @@ private const val DEDUPE_TTL_MS = 120_000L
  *   - Polling fallback when SSE is down
  *   - Config refresh
  *   - Heartbeat
- *   - Order printing pipeline (ack -> build -> print -> report)
+ *   - Order printing pipeline (ack -> fetch server-rendered bytes -> relay -> report)
+ *
+ * NB: This client never builds bons. For each new order it asks the server
+ * for `/ops/api/orders/<id>/print-payload`, which returns base64-encoded
+ * ESC/POS bytes per printer. The relay just writes them to the printer.
  */
 @Singleton
 class PrintHubRepository @Inject constructor(
@@ -45,7 +51,7 @@ class PrintHubRepository @Inject constructor(
     private val sse: SseClient,
     private val prefs: SecurePrefs,
     private val cache: ConfigCache,
-    private val orchestrator: PrintOrchestrator
+    private val relay: TcpRelay
 ) {
 
     enum class ConnectionStatus { Disconnected, Connecting, Online, Polling, Offline }
@@ -122,7 +128,6 @@ class PrintHubRepository @Inject constructor(
     }
 
     private suspend fun configRefreshLoop(scope: CoroutineScope) {
-        // First refresh fast, then every 5 minutes.
         refreshConfigOnce()
         while (scope.isActive) {
             delay(5 * 60_000L)
@@ -138,10 +143,6 @@ class PrintHubRepository @Inject constructor(
         }
     }
 
-    /**
-     * Maintains a single SSE connection. On failure, reports Polling status,
-     * starts the polling loop, and reconnects after the configured delay.
-     */
     private suspend fun sseLoop(scope: CoroutineScope) {
         val branch = prefs.getBranchId()
         if (branch <= 0) return
@@ -156,7 +157,6 @@ class PrintHubRepository @Inject constructor(
                             sawOpen = true
                             _status.value = ConnectionStatus.Online
                             stopPollingLoop()
-                            // Catch any orders we missed while disconnected.
                             scope.launch { drainUnprintedOrders() }
                         }
                         is SseStreamEvent.Message -> {
@@ -164,8 +164,6 @@ class PrintHubRepository @Inject constructor(
                             if (type == "new_order" && evt.event.id != null) {
                                 scope.launch { handleNewOrderById(evt.event.id) }
                             }
-                            // order_status_changed is informational for the dashboard;
-                            // printing only happens for new_order.
                         }
                         is SseStreamEvent.Failure -> {
                             Log.w(TAG, "SSE failure: ${evt.code} ${evt.throwable?.message}")
@@ -182,17 +180,11 @@ class PrintHubRepository @Inject constructor(
                 _lastError.value = t.message
             }
 
-            // Drop into polling fallback while we wait to reconnect.
             _status.value = ConnectionStatus.Polling
             startPollingLoop(scope)
 
             val delayMs = (_config.value?.sseReconnectDelayMs ?: 3000).coerceAtLeast(1000).toLong()
-            if (!sawOpen) {
-                // First attempt failed; back off slightly more.
-                delay(delayMs * 2)
-            } else {
-                delay(delayMs)
-            }
+            if (!sawOpen) delay(delayMs * 2) else delay(delayMs)
         }
     }
 
@@ -223,7 +215,6 @@ class PrintHubRepository @Inject constructor(
     }
 
     private suspend fun handleNewOrderById(id: Int) {
-        // Pull from /unprinted to get the full record.
         val branch = prefs.getBranchId()
         if (branch <= 0) return
         val resp = runCatching { api.fetchUnprinted(branch) }.getOrNull() ?: return
@@ -232,7 +223,6 @@ class PrintHubRepository @Inject constructor(
     }
 
     private suspend fun handleOrder(order: Order) {
-        // Per-id dedupe with TTL so a flapping SSE/poll combo can't double-print.
         val now = System.currentTimeMillis()
         processedMutex.withLock {
             processedIds.entries.removeAll { now - it.value > DEDUPE_TTL_MS }
@@ -242,17 +232,11 @@ class PrintHubRepository @Inject constructor(
 
         _newOrderEvents.tryEmit(order)
 
-        val cfg = _config.value
-        if (cfg == null) {
-            Log.w(TAG, "No config loaded; cannot print order ${order.id}")
-            return
-        }
-
         // Acknowledge first so the dashboard turns blue.
         runCatching { api.ackOrder(order.id) }
 
         printMutex.withLock {
-            val result = orchestrator.print(order, cfg)
+            val result = printOrderViaServerPayload(order.id)
             recordPrintLog(order, result)
             runCatching {
                 api.reportPrintStatus(
@@ -273,6 +257,69 @@ class PrintHubRepository @Inject constructor(
         }
     }
 
+    /**
+     * Fetch the server-rendered payload for an order and relay each job to
+     * its printer. Jobs targeting the same printer are coalesced into a
+     * single TCP send to avoid extra socket churn.
+     */
+    private suspend fun printOrderViaServerPayload(orderId: Int): PrintAttemptResult {
+        val resp = runCatching { api.fetchPrintPayload(orderId) }.getOrNull()
+        if (resp == null || !resp.ok) {
+            return PrintAttemptResult(
+                success = false,
+                printersOk = emptyList(),
+                printersFailed = emptyList(),
+                error = resp?.error ?: "Failed to fetch print payload"
+            )
+        }
+        if (resp.jobs.isEmpty()) {
+            return PrintAttemptResult(
+                success = false,
+                printersOk = emptyList(),
+                printersFailed = emptyList(),
+                error = "No printers configured for this branch"
+            )
+        }
+        return relayJobs(resp.jobs)
+    }
+
+    /** Coalesces jobs by (ip,port) so each printer gets one socket per batch. */
+    private suspend fun relayJobs(jobs: List<PrintJobBytes>): PrintAttemptResult {
+        val printersOk = mutableListOf<String>()
+        val printersFailed = mutableListOf<String>()
+        var firstError: String? = null
+
+        val grouped = LinkedHashMap<Pair<String, Int>, Pair<String, java.io.ByteArrayOutputStream>>()
+        for (job in jobs) {
+            val key = job.printerIp to job.printerPort
+            val acc = grouped.getOrPut(key) { job.printerLabel to java.io.ByteArrayOutputStream() }
+            try {
+                acc.second.write(Base64.decode(job.rawData, Base64.DEFAULT))
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to decode print job for ${job.printerLabel}: ${t.message}")
+                firstError = firstError ?: "Decode error: ${t.message}"
+            }
+        }
+
+        for ((key, value) in grouped) {
+            val (label, buf) = value
+            val (ip, port) = key
+            val res = relay.send(ip, port, buf.toByteArray())
+            if (res.ok) printersOk.add(label)
+            else {
+                printersFailed.add(label)
+                firstError = firstError ?: res.error
+            }
+        }
+
+        return PrintAttemptResult(
+            success = printersFailed.isEmpty() && printersOk.isNotEmpty(),
+            printersOk = printersOk,
+            printersFailed = printersFailed,
+            error = firstError
+        )
+    }
+
     private fun recordPrintLog(order: Order, result: PrintAttemptResult) {
         val entry = PrintLogEntry(
             ts = System.currentTimeMillis(),
@@ -288,11 +335,40 @@ class PrintHubRepository @Inject constructor(
         _printLog.value = updated
     }
 
-    /** Manual reprint from the dashboard (e.g. last failed order). */
+    /** Manual reprint from the dashboard. */
     suspend fun reprintOrder(order: Order): PrintAttemptResult {
-        val cfg = _config.value ?: return PrintAttemptResult(false, emptyList(), emptyList(), "No config")
-        val result = printMutex.withLock { orchestrator.print(order, cfg) }
+        val result = printMutex.withLock { printOrderViaServerPayload(order.id) }
         recordPrintLog(order, result)
+        return result
+    }
+
+    /**
+     * Trigger a server-rendered test print. Asks the server for a small
+     * test envelope and relays it to every printer in the branch. This is
+     * the same path a real order takes, so a successful test confirms the
+     * end-to-end pipeline (server render → relay → printer).
+     */
+    suspend fun sendServerTestPrint(): PrintAttemptResult {
+        val deviceDbId = prefs.getDeviceDbId()
+        if (deviceDbId <= 0) {
+            return PrintAttemptResult(false, emptyList(), emptyList(), "Device not registered")
+        }
+        val resp = runCatching { api.sendTestPrint(deviceDbId) }.getOrNull()
+        if (resp == null || !resp.ok) {
+            return PrintAttemptResult(false, emptyList(), emptyList(), resp?.error ?: "Server rejected test print")
+        }
+        if (resp.jobs.isEmpty()) {
+            return PrintAttemptResult(false, emptyList(), emptyList(), resp.message ?: "No printers configured")
+        }
+        val result = printMutex.withLock { relayJobs(resp.jobs) }
+        // Surface to the print log so the user can see the result.
+        val placeholder = Order(
+            id = 0,
+            orderNumber = "TEST",
+            displayNumber = "TEST",
+            orderType = "test"
+        )
+        recordPrintLog(placeholder, result)
         return result
     }
 }

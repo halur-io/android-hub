@@ -15,10 +15,15 @@ Connects the in-restaurant tablet to the SUMO Flask server and:
    receive new orders in real time.
 2. Falls back to polling `/ops/api/orders/unprinted` whenever the SSE
    connection drops.
-3. Routes each order's bons to the correct thermal printers over raw
-   TCP (port 9100) using ESC/POS bytes, exactly like the legacy Python
-   `print_agent.py` does — Hebrew encoded as ISO-8859-8 with the
-   matching codepage selected.
+3. For each new order, fetches `GET /ops/api/orders/<id>/print-payload`
+   and receives a list of base64-encoded ESC/POS byte buffers, one per
+   printer. The tablet acts as a **transparent TCP relay** — it just
+   decodes the bytes and writes them to the printer's port 9100. All
+   bon layout, RTL handling, codepage selection and Hebrew encoding
+   live on the Flask server (`DirectPrinter` in `ops_routes.py`),
+   which guarantees byte-for-byte parity with the legacy Python
+   `print_agent.py` and removes any chance of the client getting the
+   codepage wrong.
 4. Acknowledges each order, reports the print outcome, and marks the
    order as printed.
 5. Plays an audible alert + vibration + Android notification on every
@@ -61,11 +66,10 @@ android/
             │   ├── local/ConfigCache.kt # last-known-good config cache
             │   └── repository/PrintHubRepository.kt   # SSE/poll/print pipeline
             ├── print/
-            │   ├── EscPos.kt        # raw ESC/POS byte constants
-            │   ├── HebrewPrinter.kt # ISO-8859-8 encoding with safe fallback
-            │   ├── BonBuilder.kt    # checker + payment + station bons
-            │   ├── TcpPrinter.kt    # raw TCP socket sender with retries
-            │   └── PrintOrchestrator.kt  # default printer + station routing
+            │   └── TcpRelay.kt     # transparent TCP relay – decodes
+            │                          base64 ESC/POS bytes from the server
+            │                          and writes them to the printer
+            │                          (no rendering on the client)
             ├── service/
             │   ├── PrintHubService.kt   # foreground service owning SSE + prints
             │   └── BootReceiver.kt      # restarts service on boot
@@ -120,15 +124,21 @@ All defined in `docs/android-app-api-spec.md` and `swagger_spec.py`:
 
 ## ESC/POS output parity
 
-`BonBuilder.kt` produces byte-for-byte equivalent output to the legacy
-`print_agent.py` so kitchens see no visual change after switching from
-the Mac-based agent to the Android tablet:
+There is **no Hebrew/codepage logic on the client**. The Flask server's
+`DirectPrinter` (`ops_routes.py`) renders every bon — RTL reversal,
+codepage selection (`ESC t`), encoding (cp862/iso-8859-8/cp1255), the
+dashed/double-width separators, *** type *** banners and `GS V 0`
+full-cut — and returns the finished byte buffer base64-encoded via
+`/ops/api/orders/<id>/print-payload`. The tablet only relays bytes.
 
-- Same RTL Hebrew layout
-- Same checker/payment/station bon sequences
-- Same dashed/double-width separators and *** type *** banner
-- Same `ESC @ ` init + `ESC t <codepage>` codepage selection
-- Same `GS V 0` full-cut after `cut_feed_lines` newlines
+Practical consequences:
+- Bug-fix once: any improvement to bon layout ships from the server with
+  zero APK release.
+- The "Send test print" button on the dashboard exercises the full
+  pipeline (server render → relay → printer), so a successful test
+  proves the codepage is correct end-to-end.
+- The admin panel's "Print Hub" section (`/admin/printers`) lists every
+  registered tablet and exposes the same test-print action remotely.
 
 ## Battery / reliability notes
 

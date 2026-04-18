@@ -6,8 +6,7 @@ import com.sumo.printhub.data.api.SseClient
 import com.sumo.printhub.data.local.ConfigCache
 import com.sumo.printhub.data.local.SecurePrefs
 import com.sumo.printhub.data.repository.PrintHubRepository
-import com.sumo.printhub.print.PrintOrchestrator
-import com.sumo.printhub.print.TcpPrinter
+import com.sumo.printhub.print.TcpRelay
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,7 +36,7 @@ object AppModule {
         }
         return OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)   // long-polling tolerant
+            .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(log)
@@ -46,14 +45,11 @@ object AppModule {
 
     @Provides @Singleton
     fun provideSseHttp(): OkHttpClient {
-        // Separate client with no read timeout for SSE.
         return OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.MILLISECONDS)
             .pingInterval(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            .build()
-            .newBuilder()
             .build()
     }
 
@@ -74,11 +70,7 @@ object AppModule {
         SseClient(provideSseHttp(), prefs, json)
 
     @Provides @Singleton
-    fun provideTcpPrinter(): TcpPrinter = TcpPrinter()
-
-    @Provides @Singleton
-    fun providePrintOrchestrator(tcp: TcpPrinter): PrintOrchestrator =
-        PrintOrchestrator(tcp)
+    fun provideTcpRelay(): TcpRelay = TcpRelay()
 
     @Provides @Singleton
     fun provideRepository(
@@ -86,7 +78,7 @@ object AppModule {
         sse: SseClient,
         prefs: SecurePrefs,
         cache: ConfigCache,
-        orchestrator: PrintOrchestrator
+        relay: TcpRelay
     ): PrintHubRepository =
-        PrintHubRepository(api, sse, prefs, cache, orchestrator)
+        PrintHubRepository(api, sse, prefs, cache, relay)
 }

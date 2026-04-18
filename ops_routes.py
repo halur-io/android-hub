@@ -904,9 +904,20 @@ def operating_day_close():
     pin = (data.get('pin') or '').strip()
     # Any active manager PIN may close the day; we re-validate the PIN now to
     # require fresh authentication for this destructive action.
+    branch_id = _get_effective_branch_id()
     pin_user = None
     if pin:
-        for candidate in ManagerPIN.query.filter_by(is_active=True).all():
+        # Restrict PIN validation to managers assigned to the effective branch
+        # OR superadmins (cross-branch). This prevents a manager from one
+        # branch closing another branch's day.
+        candidates = ManagerPIN.query.filter_by(is_active=True).filter(
+            db.or_(
+                ManagerPIN.branch_id == branch_id,
+                ManagerPIN.branch_id.is_(None),
+                ManagerPIN.is_ops_superadmin == True,  # noqa: E712
+            )
+        ).all()
+        for candidate in candidates:
             try:
                 if candidate.check_pin(pin):
                     pin_user = candidate
@@ -914,10 +925,9 @@ def operating_day_close():
             except Exception:
                 continue
     if not pin_user:
-        return jsonify({'ok': False, 'error': 'קוד PIN שגוי'}), 403
+        return jsonify({'ok': False, 'error': 'קוד PIN שגוי או אין הרשאה לסניף'}), 403
     user = pin_user
-    from services.display_number import close_operating_day, ensure_open_day
-    branch_id = _get_effective_branch_id()
+    from services.display_number import close_operating_day
     day = close_operating_day(
         branch_id,
         closed_by_pin_id=user.id,
@@ -1836,13 +1846,9 @@ def create_manual_order():
         order.branch_id = branch.id
         order.branch_name = branch.name_he
     order.order_type = order_type
-    try:
-        from services.display_number import assign_display_number
-        _u = _get_ops_user()
-        assign_display_number(order, opened_by_pin_id=_u.id if _u else None, opened_by_name=_u.name if _u else None)
-    except Exception as _e:
-        import logging as _lg
-        _lg.warning(f"display_number assignment failed (manual order): {_e}")
+    from services.display_number import assign_display_number
+    _u = _get_ops_user()
+    assign_display_number(order, opened_by_pin_id=_u.id if _u else None, opened_by_name=_u.name if _u else None)
     order.customer_name = customer_name
     order.customer_phone = customer_phone
     order.delivery_address = delivery_address
@@ -4290,12 +4296,8 @@ def delete_order(order_id):
     released = ReleasedOrderNumber(order_number=order.order_number)
     db.session.add(archived)
     db.session.add(released)
-    try:
-        from services.display_number import release_display_number
-        release_display_number(order)
-    except Exception as _e:
-        import logging as _lg
-        _lg.warning(f"display_number recycle failed (ops delete): {_e}")
+    from services.display_number import release_display_number
+    release_display_number(order)
     for item in order.items:
         db.session.delete(item)
     db.session.delete(order)
@@ -5144,12 +5146,8 @@ def api_session_add_items(session_id):
     order.branch_id = effective_branch
     order.branch_name = branch.name_he if branch else ''
     order.order_type = 'dine_in'
-    try:
-        from services.display_number import assign_display_number
-        assign_display_number(order, opened_by_pin_id=user.id if user else None, opened_by_name=user.name if user else None)
-    except Exception as _e:
-        import logging as _lg
-        _lg.warning(f"display_number assignment failed (dine-in order): {_e}")
+    from services.display_number import assign_display_number
+    assign_display_number(order, opened_by_pin_id=user.id if user else None, opened_by_name=user.name if user else None)
     order.customer_name = f'שולחן {sess.table.table_number}' if sess.table else 'ישיבה'
     order.customer_phone = '0000000000'
     order.payment_method = 'cash'
@@ -5199,7 +5197,9 @@ def api_session_add_items(session_id):
         'ok': True,
         'message': f'{len(valid_cart)} פריטים נוספו',
         'order_id': order.id,
-        'order_number': order.order_number,
+        'order_number': order.display_number or order.order_number,
+        'order_number_full': order.order_number,
+        'display_number': order.display_number,
     })
 
 

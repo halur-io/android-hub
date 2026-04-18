@@ -1062,12 +1062,8 @@ def create_order_blueprint(db, models, notifier=None, hyp_payment=None, get_sett
             order.branch_id = selected_branch.id
             order.branch_name = selected_branch.name_he
         order.order_type = order_type
-        try:
-            from services.display_number import assign_display_number
-            assign_display_number(order, opened_by_name='customer')
-        except Exception as _e:
-            import logging as _lg
-            _lg.warning(f"display_number assignment failed (online order): {_e}")
+        from services.display_number import assign_display_number
+        assign_display_number(order, opened_by_name='customer')
         order.customer_name = customer_name
         order.customer_phone = customer_phone
         order.customer_email = customer_email

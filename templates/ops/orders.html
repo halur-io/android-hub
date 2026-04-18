@@ -782,7 +782,7 @@
              role="button"
              aria-label="הזמנה {{ disp_num(order) or loop.index }} — {{ order.customer_name or '' }}"
              data-order-id="{{ order.id }}"
-             data-order-num="{{ order.order_number or loop.index }}"
+             data-order-num="{{ disp_num(order) or loop.index }}"
              data-customer="{{ order.customer_name or '' }}"
              data-phone="{{ order.customer_phone or '' }}"
              data-status="{{ order.status }}"
@@ -796,7 +796,7 @@
                 <i class="fas fa-ellipsis-v"></i>
             </button>
             <span class="row-select-check" aria-hidden="true"><i class="fas fa-check"></i></span>
-            <div class="row-order-num">{{ loop.index }}</div>
+            <div class="row-order-num">{{ disp_num(order) or loop.index }}</div>
             <div class="row-type-icon {{ 'delivery' if order.order_type == 'delivery' else ('dine-in' if order.order_type == 'dine_in' else 'pickup') }}">
                 <i class="fas fa-{{ 'motorcycle' if order.order_type == 'delivery' else ('utensils' if order.order_type == 'dine_in' else 'shopping-bag') }}"></i>
             </div>

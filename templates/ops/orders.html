@@ -1480,7 +1480,7 @@ function renderDetail(o) {
     }
     var s = o.status;
     if (s === 'pending' || s === 'confirmed') {
-        actionsHtml += '<button class="ops-btn ops-btn-primary ops-btn-sm" style="flex:1;" onclick="openPrepFromDetail('+o.id+',\''+o.order_number+'\')"><i class="fas fa-fire"></i> התחל הכנה</button>';
+        actionsHtml += '<button class="ops-btn ops-btn-primary ops-btn-sm" style="flex:1;" onclick="openPrepFromDetail('+o.id+',\''+(o.display_number||o.order_number)+'\')"><i class="fas fa-fire"></i> התחל הכנה</button>';
         if (o.source === 'ops') {
             var editType = (o.order_type === 'delivery') ? 'delivery' : 'takeaway';
             actionsHtml += '<button class="ops-btn ops-btn-sm" style="background:#e0f2fe;color:#0369a1;border:none;" onclick="editOrder('+o.id+',\''+editType+'\')"><i class="fas fa-edit"></i> ערוך</button>';
@@ -1508,7 +1508,7 @@ function renderDetail(o) {
     else if (o.source === 'dine_in') sourceBadge = ' <span style="font-size:10px;font-weight:700;background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;margin-right:6px;">ישיבה</span>';
     document.getElementById('orderDetail').innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-            '<div id="opsOrderTitle_'+o.id+'" style="font-size:20px;font-weight:800;user-select:none;-webkit-user-select:none;">#'+o.order_number+sourceBadge+'</div>' +
+            '<div id="opsOrderTitle_'+o.id+'" style="font-size:20px;font-weight:800;user-select:none;-webkit-user-select:none;">#'+(o.display_number||o.order_number)+sourceBadge+'</div>' +
             '<div class="row-status '+({'pending':'s-new','confirmed':'s-new','preparing':'s-preparing','ready':'s-ready','delivered':'s-done','pickedup':'s-done','cancelled':'s-cancelled'}[o.status]||'s-done')+'">'+o.status_label+'</div>' +
         '</div>' + etaHtml +
         '<div class="detail-sec">' +
@@ -1521,7 +1521,7 @@ function renderDetail(o) {
         notesHtml + totalsHtml + actionsHtml;
 
     {% if is_ops_superadmin %}
-    _setupDeleteGesture(o.id, o.order_number, o.payment_method);
+    _setupDeleteGesture(o.id, (o.display_number||o.order_number), o.payment_method);
     {% endif %}
 }
 
@@ -1574,7 +1574,7 @@ function openCheckout(orderId) {
     if (!o) { showToast('פרטי הזמנה חסרים', true); return; }
     _coOrderId = orderId;
     _coOrderTotal = o.total_amount || 0;
-    document.getElementById('coOrderNum').textContent = '#' + o.order_number;
+    document.getElementById('coOrderNum').textContent = '#' + (o.display_number||o.order_number);
     document.getElementById('coTotal').textContent = '₪' + _coOrderTotal.toFixed(0);
     document.getElementById('coCashTotal').textContent = '₪' + _coOrderTotal.toFixed(0);
     document.getElementById('coCashReceived').value = '';
@@ -1804,7 +1804,7 @@ function sendSms(id) {
 
 function showSmsModal(order) {
     var phone = order.customer_phone || '';
-    document.getElementById('smsOrderInfo').textContent = '#' + (order.order_number||order.id) + ' — ' + (order.customer_name||'') + ' — ' + phone;
+    document.getElementById('smsOrderInfo').textContent = '#' + (order.display_number||order.order_number||order.id) + ' — ' + (order.customer_name||'') + ' — ' + phone;
     var listEl = document.getElementById('smsTemplateList');
     listEl.innerHTML = '';
     smsTemplates.forEach(function(t) {
@@ -1815,7 +1815,7 @@ function showSmsModal(order) {
         btn.onclick = function() {
             var text = t.content_he;
             text = text.replace('{customer_name}', order.customer_name || '');
-            text = text.replace('{order_number}', order.display_number || order.order_number_full || order.order_number || String(order.id));
+            text = text.replace('{order_number}', order.display_number || order.order_number || String(order.id));
             text = text.replace('{branch_name}', order.branch_name || '');
             text = text.replace('{total_amount}', order.total_amount ? String(Math.round(order.total_amount)) : '0');
             text = text.replace('{order_type}', order.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי');
@@ -1942,7 +1942,7 @@ function buildBonHtml(o, type, station) {
     if (type === 'checker') {
         h += '<div class="pbon-head"><div style="font-size:14pt;font-weight:900;letter-spacing:2px">SUMO</div>';
         h += '<div class="pbon-badge">'+typeHe+'</div>';
-        h += '<div class="pbon-num">#'+o.order_number+'</div>';
+        h += '<div class="pbon-num">#'+(o.display_number||o.order_number)+'</div>';
         h += '<div class="pbon-sub">'+o.created_at+'</div></div>';
         if (o.customer_notes) h += '<div class="pbon-notebox">⚠ '+o.customer_notes+'</div>';
         if (o.delivery_notes) h += '<div class="pbon-notebox">🚗 '+o.delivery_notes+'</div>';
@@ -1958,7 +1958,7 @@ function buildBonHtml(o, type, station) {
     } else if (type === 'payment') {
         h += '<div class="pbon-head"><div style="font-size:14pt;font-weight:900;letter-spacing:2px">SUMO</div>';
         h += '<div class="pbon-badge">בון תשלום</div>';
-        h += '<div class="pbon-num">#'+o.order_number+'</div>';
+        h += '<div class="pbon-num">#'+(o.display_number||o.order_number)+'</div>';
         h += '<div class="pbon-sub">'+typeHe+' | '+o.created_at+'</div></div>';
         h += '<div class="pbon-cust"><div class="pbon-cname">'+o.customer_name+'</div></div>';
         h += '<div class="pbon-items">'+renderItems(o.items, true)+'</div>';
@@ -1974,11 +1974,11 @@ function buildBonHtml(o, type, station) {
     } else if (type === 'station' && station) {
         var sitems = (o.items_by_station && o.items_by_station[station]) || [];
         h += '<div class="pbon-head"><div class="pbon-badge" style="font-size:14pt">'+station+'</div>';
-        h += '<div class="pbon-num">#'+o.order_number+'</div>';
+        h += '<div class="pbon-num">#'+(o.display_number||o.order_number)+'</div>';
         h += '<div class="pbon-sub">'+typeHe+' | '+o.created_at+'</div></div>';
         if (o.customer_notes) h += '<div class="pbon-notebox">⚠ '+o.customer_notes+'</div>';
         h += '<div class="pbon-items">'+renderItems(sitems, false)+'</div>';
-        h += '<div class="pbon-footer">#'+o.order_number+' | '+station+' | '+t+'</div>';
+        h += '<div class="pbon-footer">#'+(o.display_number||o.order_number)+' | '+station+' | '+t+'</div>';
     }
     return h;
 }
@@ -2546,7 +2546,7 @@ _restoreBulkSelection();
         var body = (data.customer_name || '') + '\n' + typeHe;
         if (data.total_amount) body += '\n' + data.total_amount.toFixed(0);
         try {
-            var n = new Notification('הזמנה חדשה #' + (data.order_number || ''), {
+            var n = new Notification('הזמנה חדשה #' + (data.display_number || data.order_number || ''), {
                 body: body,
                 icon: '/static/images/logo.png',
                 tag: 'order-' + data.id,

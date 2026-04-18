@@ -1,5 +1,5 @@
 {% extends "ops/base.html" %}
-{% block header_title %}{% if edit_order %}עריכת הזמנה #{{ edit_order.order_number }}{% else %}הזמנה חדשה — {{ 'משלוח' if order_type == 'delivery' else 'איסוף עצמי' }}{% endif %}{% endblock %}
+{% block header_title %}{% if edit_order %}עריכת הזמנה #{{ edit_order.display_number or edit_order.order_number }}{% else %}הזמנה חדשה — {{ 'משלוח' if order_type == 'delivery' else 'איסוף עצמי' }}{% endif %}{% endblock %}
 {% block title %}הזמנה חדשה{% endblock %}
 
 {% block head %}
@@ -815,7 +815,7 @@ function prefillEditMode() {
         // Jump directly to menu step
         goToMenu();
         updateCart();
-        showToast('עריכת הזמנה #' + (e.order_number || ''));
+        showToast('עריכת הזמנה #' + (e.display_number || e.order_number || ''));
     } catch (err) {
         console.error('prefillEditMode failed', err);
     }
@@ -1335,14 +1335,14 @@ function submitOrder() {
     .then(function(d) {
         if (d.ok) {
             if (IS_EDIT) {
-                showToast('הזמנה #' + d.order_number + ' עודכנה');
+                showToast('הזמנה #' + (d.display_number || d.order_number) + ' עודכנה');
                 setTimeout(function() { location.href = '{{ url_for("ops.orders") }}'; }, 600);
                 return;
             }
             createdOrderId = d.order_id;
-            createdOrderNumber = d.order_number;
+            createdOrderNumber = d.display_number || d.order_number;
             createdOrderTotal = d.total_amount;
-            showPaymentModal(d.order_number, d.total_amount);
+            showPaymentModal(d.display_number || d.order_number, d.total_amount);
             btn.innerHTML = '<i class="fas fa-cash-register"></i> חזור לתשלום';
         } else {
             showToast(d.error || (IS_EDIT ? 'שגיאה בעדכון ההזמנה' : 'שגיאה ביצירת הזמנה'), true);

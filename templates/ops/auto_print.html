@@ -407,7 +407,7 @@ function buildBonHTML(order) {
         html += `<div class="bon-page">
             <div class="bon-header">SUMO</div>
             <div class="bon-type">${typeHe}</div>
-            <div class="bon-order-num">#${order.order_number}</div>
+            <div class="bon-order-num">#${order.display_number || order.order_number}</div>
             <div style="text-align:center; font-size:9pt;">${order.created_at || ''}</div>
             <div class="bon-thick"></div>`;
         if (order.customer_notes) html += `<div class="bon-item">⚠ ${order.customer_notes}</div>`;
@@ -431,7 +431,7 @@ function buildBonHTML(order) {
         html += `<div class="bon-page">
             <div class="bon-header">SUMO</div>
             <div class="bon-type">בון תשלום</div>
-            <div class="bon-order-num">#${order.order_number}</div>
+            <div class="bon-order-num">#${order.display_number || order.order_number}</div>
             <div style="text-align:center; font-size:9pt;">${typeHe} | ${order.created_at || ''}</div>
             <div class="bon-thick"></div>
             <div class="bon-customer">${order.customer_name || ''}</div>
@@ -456,13 +456,13 @@ function buildBonHTML(order) {
         Object.entries(order.items_by_station).forEach(([station, items]) => {
             html += `<div class="bon-page">
                 <div class="bon-header">${station}</div>
-                <div class="bon-order-num">#${order.order_number}</div>
+                <div class="bon-order-num">#${order.display_number || order.order_number}</div>
                 <div style="text-align:center; font-size:9pt;">${typeHe} | ${order.created_at || ''}</div>
                 <div class="bon-thick"></div>`;
             if (order.customer_notes) html += `<div class="bon-item">⚠ ${order.customer_notes}</div>`;
             html += itemsHTML(items);
             html += `<div class="bon-divider"></div>
-                <div class="bon-footer">#${order.order_number} | ${station}</div>
+                <div class="bon-footer">#${order.display_number || order.order_number} | ${station}</div>
             </div>`;
         });
     }
@@ -482,7 +482,7 @@ async function checkAndPrint() {
             let allBonsHTML = '';
             const orderIds = [];
             for (const order of data.orders) {
-                addLog(`🖨 #${order.order_number} | ${order.customer_name} | ₪${Math.round(order.total_amount)}`, 'success');
+                addLog(`🖨 #${order.display_number || order.order_number} | ${order.customer_name} | ₪${Math.round(order.total_amount)}`, 'success');
                 allBonsHTML += buildBonHTML(order);
                 orderIds.push(order.id);
             }

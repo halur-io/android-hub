@@ -1543,8 +1543,7 @@ def get_order_detail(order_id):
         'ok': True,
         'order': {
             'id': order.id,
-            'order_number': order.display_number or order.order_number,
-            'order_number_full': order.order_number,
+            'order_number': order.order_number,
             'display_number': order.display_number,
             'status': order.status,
             'status_label': OPS_STATUS_LABELS.get(order.status, order.status),
@@ -1923,8 +1922,7 @@ def create_manual_order():
         _notify_sse_new_order({
             'type': 'new_order',
             'id': order.id,
-            'order_number': order.display_number or order.order_number,
-            'order_number_full': order.order_number,
+            'order_number': order.order_number,
             'display_number': order.display_number,
             'order_type': order.order_type,
             'branch_id': order.branch_id,
@@ -1941,8 +1939,7 @@ def create_manual_order():
         'ok': True,
         'message': f'הזמנה #{order.display_number or order.order_number} נוצרה בהצלחה',
         'order_id': order.id,
-        'order_number': order.display_number or order.order_number,
-        'order_number_full': order.order_number,
+        'order_number': order.order_number,
         'display_number': order.display_number,
         'total_amount': order.total_amount,
     })
@@ -3554,8 +3551,7 @@ def get_unprinted_orders():
 
         result.append({
             'id': o.id,
-            'order_number': o.display_number or o.order_number,
-            'order_number_full': o.order_number,
+            'order_number': o.order_number,
             'display_number': o.display_number,
             'order_type': o.order_type,
             'status': o.status,
@@ -3752,8 +3748,7 @@ def print_sync():
 
         result.append({
             'id': o.id,
-            'order_number': o.display_number or o.order_number,
-            'order_number_full': o.order_number,
+            'order_number': o.order_number,
             'display_number': o.display_number,
             'order_type': o.order_type,
             'status': o.status,
@@ -5209,8 +5204,7 @@ def api_session_add_items(session_id):
         'ok': True,
         'message': f'{len(valid_cart)} פריטים נוספו',
         'order_id': order.id,
-        'order_number': order.display_number or order.order_number,
-        'order_number_full': order.order_number,
+        'order_number': order.order_number,
         'display_number': order.display_number,
     })
 

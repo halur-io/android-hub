@@ -392,7 +392,8 @@
             if (!globalGroupsLoaded) {
                 fetch('/admin/api/global-option-groups', { headers: { 'X-CSRFToken': csrfToken } })
                     .then(r => r.json())
-                    .then(groups => {
+                    .then(data => {
+                        const groups = data.groups || [];
                         const sel = document.getElementById('bulkGlobalGroupSelect');
                         sel.innerHTML = '<option value="">-- בחר תבנית --</option>';
                         groups.forEach(g => {

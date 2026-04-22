@@ -10383,18 +10383,13 @@ def detach_global_option_group(item_id, global_group_id):
 
 @admin_bp.route('/menu/bulk-attach-global-group', methods=['POST'])
 @login_required
-@csrf.exempt
+@require_permission('menu.edit')
 def bulk_attach_global_group():
     import json
     try:
-        ids_str = request.form.get('ids') or request.get_json(silent=True, force=True) and request.get_json(force=True).get('ids')
-        if not ids_str:
-            data = request.get_json(force=True) or {}
-            ids = data.get('ids', [])
-            global_group_id = data.get('global_group_id')
-        else:
-            ids = json.loads(ids_str) if isinstance(ids_str, str) else ids_str
-            global_group_id = request.form.get('global_group_id')
+        ids_str = request.form.get('ids')
+        global_group_id = request.form.get('global_group_id')
+        ids = json.loads(ids_str) if ids_str else []
         if not ids:
             return jsonify({'ok': False, 'error': 'לא נבחרו מנות'}), 400
         if not global_group_id:

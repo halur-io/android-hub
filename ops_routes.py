@@ -4219,14 +4219,15 @@ def get_device_pending_test_jobs(device_db_id):
             payload = json.loads(r.payload_json)
             jobs.append(payload)
             job_ids.append(r.job_id)
-            r.claimed_at = now
-            r.claimed_by = f'device:{device_db_id}'
         except Exception:
             pass
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+    if rows:
+        for r in rows:
+            db.session.delete(r)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     return jsonify({'ok': True, 'jobs': jobs, 'job_ids': job_ids})
 
 

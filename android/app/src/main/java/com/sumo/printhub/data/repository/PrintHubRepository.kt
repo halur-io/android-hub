@@ -118,6 +118,7 @@ class PrintHubRepository @Inject constructor(
     private var pollJob: Job? = null
     private var heartbeatJob: Job? = null
     private var configJob: Job? = null
+    private var testPollJob: Job? = null
 
     init {
         cache.load()?.let { _config.value = it }
@@ -128,6 +129,7 @@ class PrintHubRepository @Inject constructor(
         scope.launch(Dispatchers.IO) { configRefreshLoop(this) }
         scope.launch(Dispatchers.IO) { heartbeatLoop(this) }
         scope.launch(Dispatchers.IO) { sseLoop(this) }
+        scope.launch(Dispatchers.IO) { testJobPollLoop(this) }
     }
 
     fun stop() {
@@ -135,6 +137,7 @@ class PrintHubRepository @Inject constructor(
         pollJob?.cancel(); pollJob = null
         heartbeatJob?.cancel(); heartbeatJob = null
         configJob?.cancel(); configJob = null
+        testPollJob?.cancel(); testPollJob = null
         _status.value = ConnectionStatus.Disconnected
     }
 
@@ -157,6 +160,22 @@ class PrintHubRepository @Inject constructor(
         while (scope.isActive) {
             delay(5 * 60_000L)
             runCatching { refreshConfigOnce() }
+        }
+    }
+
+    /**
+     * Dedicated loop for polling admin-triggered test print jobs.
+     * Runs independently of the SSE/poll cycle so test prints are delivered
+     * even when SSE is in Online state (and the general poll loop is stopped).
+     * Interval: 5 s (matching typical poll interval).
+     */
+    private suspend fun testJobPollLoop(scope: CoroutineScope) {
+        while (scope.isActive) {
+            delay(5_000L)
+            val deviceDbId = prefs.getDeviceDbId()
+            if (deviceDbId > 0) {
+                runCatching { drainPendingTestJobs(deviceDbId) }
+            }
         }
     }
 
@@ -188,6 +207,11 @@ class PrintHubRepository @Inject constructor(
                             val type = evt.event.type
                             if (type == "new_order" && evt.event.id != null) {
                                 scope.launch { handleNewOrderById(evt.event.id) }
+                            } else if (type == "test_print") {
+                                val deviceDbId = prefs.getDeviceDbId()
+                                if (deviceDbId > 0) {
+                                    scope.launch { drainPendingTestJobs(deviceDbId) }
+                                }
                             }
                         }
                         is SseStreamEvent.Failure -> {

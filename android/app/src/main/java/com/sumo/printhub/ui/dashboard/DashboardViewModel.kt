@@ -20,6 +20,7 @@ class DashboardViewModel @Inject constructor(
     val status = repository.status
     val config = repository.config
     val printLog = repository.printLog
+    val liveOrders = repository.liveOrders
     val ordersPrintedToday = repository.ordersPrintedToday
     val lastError = repository.lastError
 

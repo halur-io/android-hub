@@ -56,6 +56,27 @@ class PrintHubRepository @Inject constructor(
 
     enum class ConnectionStatus { Disconnected, Connecting, Online, Polling, Offline }
 
+    enum class PrintStatus { Incoming, Printing, Printed, Partial, Failed }
+
+    data class LiveOrderEntry(
+        val ts: Long,
+        val order: Order,
+        val printStatus: PrintStatus,
+        val printersOk: List<String> = emptyList(),
+        val printersFailed: List<String> = emptyList(),
+        val error: String? = null
+    ) {
+        val displayNumber: String get() = order.displayNumber ?: order.orderNumber
+        val customerLabel: String get() = order.customerName?.takeIf { it.isNotBlank() } ?: ""
+        val itemCount: Int get() = order.items.size
+        val typeLabel: String get() = when (order.orderType) {
+            "delivery" -> "Delivery"
+            "pickup"   -> "Pickup"
+            "dine_in"  -> "Dine-in"
+            else       -> order.orderType.replaceFirstChar { it.uppercase() }
+        }
+    }
+
     data class PrintLogEntry(
         val ts: Long,
         val orderId: Int,
@@ -78,6 +99,9 @@ class PrintHubRepository @Inject constructor(
 
     private val _printLog = MutableStateFlow<List<PrintLogEntry>>(emptyList())
     val printLog: StateFlow<List<PrintLogEntry>> = _printLog.asStateFlow()
+
+    private val _liveOrders = MutableStateFlow<List<LiveOrderEntry>>(emptyList())
+    val liveOrders: StateFlow<List<LiveOrderEntry>> = _liveOrders.asStateFlow()
 
     private val _ordersPrintedToday = MutableStateFlow(0)
     val ordersPrintedToday: StateFlow<Int> = _ordersPrintedToday.asStateFlow()
@@ -222,6 +246,13 @@ class PrintHubRepository @Inject constructor(
         resp.orders.firstOrNull { it.id == id }?.let { handleOrder(it) }
     }
 
+    private fun upsertLiveOrder(entry: LiveOrderEntry) {
+        val current = _liveOrders.value.toMutableList()
+        val idx = current.indexOfFirst { it.order.id == entry.order.id }
+        if (idx >= 0) current[idx] = entry else current.add(0, entry)
+        _liveOrders.value = current.take(50)
+    }
+
     private suspend fun handleOrder(order: Order) {
         val now = System.currentTimeMillis()
         processedMutex.withLock {
@@ -232,12 +263,36 @@ class PrintHubRepository @Inject constructor(
 
         _newOrderEvents.tryEmit(order)
 
+        // Show as "Incoming" immediately so the operator sees it right away.
+        upsertLiveOrder(LiveOrderEntry(ts = now, order = order, printStatus = PrintStatus.Incoming))
+
         // Acknowledge first so the dashboard turns blue.
         runCatching { api.ackOrder(order.id) }
+
+        // Mark as actively printing.
+        upsertLiveOrder(LiveOrderEntry(ts = now, order = order, printStatus = PrintStatus.Printing))
 
         printMutex.withLock {
             val result = printOrderViaServerPayload(order.id)
             recordPrintLog(order, result)
+
+            // Update live entry with final outcome.
+            val finalStatus = when {
+                result.success -> PrintStatus.Printed
+                result.printersOk.isNotEmpty() -> PrintStatus.Partial
+                else -> PrintStatus.Failed
+            }
+            upsertLiveOrder(
+                LiveOrderEntry(
+                    ts = now,
+                    order = order,
+                    printStatus = finalStatus,
+                    printersOk = result.printersOk,
+                    printersFailed = result.printersFailed,
+                    error = result.error
+                )
+            )
+
             runCatching {
                 api.reportPrintStatus(
                     order.id,

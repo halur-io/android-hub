@@ -291,6 +291,9 @@ def inject_ops_context():
             branch_ordering_status = branch.ordering_status or 'open'
     is_ops_superadmin = user.is_ops_superadmin if user else False
     all_branches = Branch.query.filter_by(is_active=True).all() if is_ops_superadmin else []
+    s = _settings()
+    deals_he = (s.deals_section_label_he if s and getattr(s, 'deals_section_label_he', None) else 'מבצעים')
+    deals_en = (s.deals_section_label_en if s and getattr(s, 'deals_section_label_en', None) else 'Deals')
     return dict(
         ops_modules=modules,
         ops_user=user,
@@ -301,6 +304,8 @@ def inject_ops_context():
         can_switch_branch=is_ops_superadmin,
         all_branches=all_branches,
         page_rendered_at=datetime.utcnow().isoformat() + 'Z',
+        deals_label_he=deals_he,
+        deals_label_en=deals_en,
     )
 
 

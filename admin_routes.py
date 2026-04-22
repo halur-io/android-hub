@@ -92,6 +92,7 @@ ROUTE_PERMISSIONS = {
     'admin.attach_global_option_group': 'menu.edit',
     'admin.detach_global_option_group': 'menu.edit',
     'admin.api_global_option_groups': 'menu.edit',
+    'admin.bulk_attach_global_group': 'menu.edit',
     'admin.api_menu_item_global_links': 'menu.edit',
     # Media/Gallery
     'admin.media': 'settings.view',
@@ -238,7 +239,14 @@ def require_login():
 # Context processor to inject admin language into all admin templates
 @admin_bp.context_processor
 def inject_admin_language():
-    return dict(admin_language=session.get('admin_language', 'he'))
+    s = SiteSettings.query.first()
+    deals_he = (s.deals_section_label_he if s and s.deals_section_label_he else 'מבצעים')
+    deals_en = (s.deals_section_label_en if s and s.deals_section_label_en else 'Deals')
+    return dict(
+        admin_language=session.get('admin_language', 'he'),
+        deals_label_he=deals_he,
+        deals_label_en=deals_en,
+    )
 
 # Site Settings Form
 class SiteSettingsForm(FlaskForm):
@@ -892,7 +900,11 @@ def settings():
         settings.catering_page_cta_title_en = request.form.get('catering_page_cta_title_en')
         settings.catering_page_cta_subtitle_he = request.form.get('catering_page_cta_subtitle_he')
         settings.catering_page_cta_subtitle_en = request.form.get('catering_page_cta_subtitle_en')
-        
+
+        # Deals Section Label
+        settings.deals_section_label_he = request.form.get('deals_section_label_he') or 'מבצעים'
+        settings.deals_section_label_en = request.form.get('deals_section_label_en') or 'Deals'
+
         # Mobile App Settings
         settings.enable_app_download = request.form.get('enable_app_download') == 'on'
         settings.show_app_banner = request.form.get('show_app_banner') == 'on'
@@ -10367,6 +10379,79 @@ def detach_global_option_group(item_id, global_group_id):
     db.session.delete(link)
     db.session.commit()
     return jsonify({'ok': True, 'message': 'Global option group detached'})
+
+
+@admin_bp.route('/menu/bulk-attach-global-group', methods=['POST'])
+@login_required
+@csrf.exempt
+def bulk_attach_global_group():
+    import json
+    try:
+        ids_str = request.form.get('ids') or request.get_json(silent=True, force=True) and request.get_json(force=True).get('ids')
+        if not ids_str:
+            data = request.get_json(force=True) or {}
+            ids = data.get('ids', [])
+            global_group_id = data.get('global_group_id')
+        else:
+            ids = json.loads(ids_str) if isinstance(ids_str, str) else ids_str
+            global_group_id = request.form.get('global_group_id')
+        if not ids:
+            return jsonify({'ok': False, 'error': 'לא נבחרו מנות'}), 400
+        if not global_group_id:
+            return jsonify({'ok': False, 'error': 'לא נבחרה תבנית אפשרויות'}), 400
+        global_group = GlobalOptionGroup.query.get(int(global_group_id))
+        if not global_group:
+            return jsonify({'ok': False, 'error': 'התבנית לא נמצאה'}), 404
+        items = MenuItem.query.filter(MenuItem.id.in_([int(i) for i in ids])).all()
+        attached = 0
+        skipped = 0
+        for item in items:
+            existing_link = GlobalOptionGroupLink.query.filter_by(
+                global_group_id=global_group.id, menu_item_id=item.id
+            ).first()
+            if existing_link:
+                skipped += 1
+                continue
+            max_order = db.session.query(db.func.max(MenuItemOptionGroup.display_order)).filter_by(
+                menu_item_id=item.id
+            ).scalar() or 0
+            og = MenuItemOptionGroup(
+                menu_item_id=item.id,
+                name_he=global_group.name_he,
+                name_en=global_group.name_en,
+                selection_type=global_group.selection_type,
+                is_required=global_group.is_required,
+                min_selections=global_group.min_selections,
+                max_selections=global_group.max_selections,
+                display_order=max_order + 1,
+                is_active=True,
+            )
+            db.session.add(og)
+            db.session.flush()
+            link = GlobalOptionGroupLink(
+                global_group_id=global_group.id,
+                menu_item_id=item.id,
+                linked_option_group_id=og.id,
+            )
+            db.session.add(link)
+            for gc in global_group.choices:
+                c = MenuItemOptionChoice(
+                    option_group_id=og.id,
+                    name_he=gc.name_he,
+                    name_en=gc.name_en,
+                    price_modifier=gc.price_modifier,
+                    is_default=gc.is_default,
+                    is_available=gc.is_available,
+                    display_order=gc.display_order,
+                )
+                db.session.add(c)
+            attached += 1
+        db.session.commit()
+        return jsonify({'ok': True, 'attached': attached, 'skipped': skipped})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk attach global group error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @admin_bp.route('/api/global-option-groups', methods=['GET'])

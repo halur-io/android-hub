@@ -95,6 +95,8 @@ class SiteSettings(db.Model):
     careers_page_hero_subtitle_he = db.Column(db.Text, default='בואו להיות חלק ממשפחת סומו - מקום שבו כישרון פוגש תשוקה')
     careers_page_hero_subtitle_en = db.Column(db.Text, default='Be part of the SUMO family - where talent meets passion')
     careers_page_positions_title_he = db.Column(db.String(200), default='משרות פתוחות')
+    deals_section_label_he = db.Column(db.String(200), default='מבצעים')
+    deals_section_label_en = db.Column(db.String(200), default='Deals')
     careers_page_positions_title_en = db.Column(db.String(200), default='Open Positions')
     careers_page_positions_subtitle_he = db.Column(db.String(500), default='מצאו את המשרה המושלמת עבורכם')
     careers_page_positions_subtitle_en = db.Column(db.String(500), default='Find the perfect position for you')

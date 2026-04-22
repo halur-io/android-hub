@@ -298,6 +298,37 @@
                         </div>
                     </section>
                     
+                    <!-- Deals Section Label -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDealsLabel" aria-expanded="false">
+                                <i class="fas fa-tags"></i>
+                                {{ 'שם סקציית המבצעים' if (admin_language or 'he') == 'he' else 'Deals Section Label' }}
+                            </h3>
+                        </div>
+                        <div id="collapseDealsLabel" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                                <p style="color: #6b7280; margin-bottom: 1.5rem;">שנה את השם המוצג עבור סקציית המבצעים בניווט וכותרות / Change the display name for the deals section in navigation and headings</p>
+                                <div class="form-row-two-col">
+                                    <div>
+                                        <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">שם הסקציה בעברית</label>
+                                            <input type="text" class="form-control-modern" name="deals_section_label_he" value="{{ settings.deals_section_label_he or 'מבצעים' }}" placeholder="לדוגמה: מבצעים, עסקאות, חבילות">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">Section Name in English</label>
+                                            <input type="text" class="form-control-modern" name="deals_section_label_en" value="{{ settings.deals_section_label_en or 'Deals' }}" placeholder="e.g. Deals, Combos, Packages">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- Careers - Homepage Section -->
                     <section class="settings-section accordion-item">
                         <div class="settings-section-header accordion-header">

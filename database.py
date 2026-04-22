@@ -70,6 +70,8 @@ def _run_safe_migrations(db):
         ("food_orders", "payment_callback_token", "ALTER TABLE food_orders ADD COLUMN payment_callback_token VARCHAR(64)"),
         ("food_orders", "display_number", "ALTER TABLE food_orders ADD COLUMN display_number VARCHAR(20)"),
         ("food_orders", "operating_day_id", "ALTER TABLE food_orders ADD COLUMN operating_day_id INTEGER"),
+        ("site_settings", "deals_section_label_he", "ALTER TABLE site_settings ADD COLUMN deals_section_label_he VARCHAR(200) DEFAULT 'מבצעים'"),
+        ("site_settings", "deals_section_label_en", "ALTER TABLE site_settings ADD COLUMN deals_section_label_en VARCHAR(200) DEFAULT 'Deals'"),
     ]
     for table, column, sql in migrations:
         try:

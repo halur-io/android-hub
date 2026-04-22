@@ -79,6 +79,9 @@
                 <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#bulkCategoryModal">
                     <i class="fas fa-folder me-1"></i>העבר קטגוריה
                 </button>
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#bulkGlobalGroupModal">
+                    <i class="fas fa-layer-group me-1"></i>צמד תבנית אפשרויות
+                </button>
             </div>
         </div>
     </div>
@@ -236,6 +239,32 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="bulkGlobalGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-layer-group me-2"></i>צמד תבנית אפשרויות</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">צמד תבנית אפשרויות גלובלית ל-<strong id="globalGroupModalCount">0</strong> מנות שנבחרו:</p>
+                <select class="form-select" id="bulkGlobalGroupSelect">
+                    <option value="">-- טוען תבניות... --</option>
+                </select>
+                <div id="bulkGlobalGroupNote" class="mt-2 text-muted small" style="display:none;">
+                    <i class="fas fa-info-circle me-1"></i>מנות שכבר מחוברות לתבנית זו יידלגו אוטומטית.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-info text-white" id="confirmBulkGlobalGroup">
+                    <i class="fas fa-link me-1"></i>צמד לכולם
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -352,6 +381,69 @@
         fd.append('action', 'set_availability');
         fd.append('is_available', '0');
         bulkAction(fd);
+    });
+
+    // Bulk global option group attach
+    const globalGroupModal = document.getElementById('bulkGlobalGroupModal');
+    if (globalGroupModal) {
+        let globalGroupsLoaded = false;
+        globalGroupModal.addEventListener('show.bs.modal', function() {
+            document.getElementById('globalGroupModalCount').textContent = getSelectedIds().length;
+            if (!globalGroupsLoaded) {
+                fetch('/admin/api/global-option-groups', { headers: { 'X-CSRFToken': csrfToken } })
+                    .then(r => r.json())
+                    .then(groups => {
+                        const sel = document.getElementById('bulkGlobalGroupSelect');
+                        sel.innerHTML = '<option value="">-- בחר תבנית --</option>';
+                        groups.forEach(g => {
+                            const opt = document.createElement('option');
+                            opt.value = g.id;
+                            opt.textContent = g.name_he + (g.name_en ? ` / ${g.name_en}` : '');
+                            sel.appendChild(opt);
+                        });
+                        globalGroupsLoaded = true;
+                        document.getElementById('bulkGlobalGroupNote').style.display = groups.length ? '' : 'none';
+                    })
+                    .catch(() => {
+                        document.getElementById('bulkGlobalGroupSelect').innerHTML = '<option value="">שגיאה בטעינת תבניות</option>';
+                    });
+            } else {
+                document.getElementById('bulkGlobalGroupNote').style.display = '';
+            }
+        });
+    }
+
+    document.getElementById('confirmBulkGlobalGroup').addEventListener('click', function() {
+        const ids = getSelectedIds();
+        const groupId = document.getElementById('bulkGlobalGroupSelect').value;
+        if (!ids.length) { alert('לא נבחרו מנות'); return; }
+        if (!groupId) { alert('בחר תבנית אפשרויות'); return; }
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>מעבד...';
+        const fd = new FormData();
+        fd.append('ids', JSON.stringify(ids));
+        fd.append('global_group_id', groupId);
+        fetch('/admin/menu/bulk-attach-global-group', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: fd
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const msg = `✓ צומד ל-${data.attached} מנות` + (data.skipped ? ` (${data.skipped} כבר מחוברות)` : '');
+                bootstrap.Modal.getInstance(document.getElementById('bulkGlobalGroupModal')).hide();
+                alert(msg);
+            } else {
+                alert(data.error || 'שגיאה בצימוד');
+            }
+        })
+        .catch(() => alert('שגיאת רשת'))
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-link me-1"></i>צמד לכולם';
+        });
     });
 
     document.querySelectorAll('.availability-toggle').forEach(toggle => {

@@ -1,0 +1,1424 @@
+{% extends "ops/base.html" %}
+{% block title %}שולחנות - Ops{% endblock %}
+
+{% block content %}
+<style>
+    .tables-page { display: flex; flex-direction: column; height: calc(100vh - 120px); overflow: hidden; }
+    .tables-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 16px; border-bottom: 1px solid #eee;
+        background: var(--ops-surface, #fff); flex-shrink: 0;
+    }
+    .tables-header h2 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+    .tables-header-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-add-table {
+        background: var(--ops-accent, #e94560); color: #fff; border: none;
+        border-radius: 10px; padding: 8px 16px; font-weight: 600; font-size: .85rem; cursor: pointer;
+    }
+    .view-toggle-btn {
+        background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px;
+        padding: 6px 12px; font-size: .75rem; font-weight: 600; cursor: pointer;
+        transition: all .15s;
+    }
+    .view-toggle-btn.active { background: var(--ops-accent, #e94560); color: #fff; border-color: var(--ops-accent); }
+    .area-tabs {
+        display: flex; overflow-x: auto; gap: 0; flex-shrink: 0;
+        border-bottom: 1px solid #eee; background: #fafafa;
+        -webkit-overflow-scrolling: touch; padding: 0 8px;
+    }
+    .area-tabs::-webkit-scrollbar { display: none; }
+    .area-tab {
+        padding: 10px 18px; white-space: nowrap; font-size: 13px;
+        font-weight: 700; color: #888; cursor: pointer;
+        border-bottom: 3px solid transparent; transition: all .15s;
+        text-align: center; min-width: 60px;
+    }
+    .area-tab.active { color: var(--ops-accent, #e94560); border-bottom-color: var(--ops-accent, #e94560); }
+    .tables-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .tables-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px; padding: 12px 16px;
+    }
+    .table-card {
+        background: var(--ops-surface, #fff); border-radius: 14px;
+        padding: 16px 12px; text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06); cursor: pointer;
+        transition: transform .15s, box-shadow .15s; position: relative;
+        border: 2px solid transparent; min-height: 130px;
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+        touch-action: manipulation;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 6px;
+    }
+    .table-card:active { transform: scale(.96); }
+    .table-card.available { border-color: #e0e0e0; }
+    .table-card.available .table-num { color: #888; }
+    .table-card.open { border-color: #ff9800; background: #fff8e1; }
+    .table-card.open .table-num { color: #e65100; }
+    .table-card.awaiting_payment { border-color: #f44336; background: #fce4ec; }
+    .table-card.awaiting_payment .table-num { color: #c62828; }
+    .table-card.pending_voids { border-color: #7c3aed; background: #f3e8ff; }
+    .table-card.pending_voids .table-num { color: #6d28d9; }
+    .table-num { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+    .table-status {
+        font-size: .7rem; font-weight: 600;
+        padding: 2px 8px; border-radius: 6px; display: inline-block;
+    }
+    .table-card.available .table-status { background: #e8f5e9; color: #2e7d32; }
+    .table-card.open .table-status { background: #fff3e0; color: #e65100; }
+    .table-card.awaiting_payment .table-status { background: #ffebee; color: #c62828; }
+    .table-card.pending_voids .table-status { background: #ede9fe; color: #6d28d9; }
+    .table-meta {
+        font-size: .72rem; color: #999;
+        display: flex; flex-direction: column; gap: 2px;
+    }
+    .table-meta .amount { font-weight: 600; color: #333; font-size: .8rem; }
+    .empty-tables {
+        text-align: center; padding: 60px 20px; color: #aaa;
+    }
+    .empty-tables i { font-size: 3rem; margin-bottom: 12px; display: block; }
+    .modal-sheet {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: #fff; border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,.15); z-index: 1050;
+        max-height: 60vh; padding: 20px;
+        transform: translateY(100%); transition: transform .3s ease;
+        overflow-y: auto;
+    }
+    .modal-sheet.show { transform: translateY(0); }
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.4);
+        z-index: 1040; display: none;
+    }
+    .modal-overlay.show { display: block; }
+    .sheet-handle {
+        width: 40px; height: 4px; background: #ddd;
+        border-radius: 2px; margin: 0 auto 16px;
+    }
+    .area-chip {
+        display: inline-block; padding: 4px 12px; border-radius: 8px;
+        font-size: .75rem; font-weight: 600; cursor: pointer;
+        border: 1px solid #ddd; background: #f8f8f8; color: #555;
+        transition: all .15s;
+    }
+    .area-chip.selected {
+        background: var(--ops-accent, #e94560); color: #fff;
+        border-color: var(--ops-accent, #e94560);
+    }
+    .quick-actions-menu {
+        position: fixed; z-index: 1100;
+        background: #1a1a2e; border-radius: 14px;
+        box-shadow: 0 8px 32px rgba(0,0,0,.3);
+        padding: 6px 0; min-width: 200px;
+        animation: fadeIn .15s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+    .quick-actions-menu .qa-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 16px; color: #eee; font-size: .85rem;
+        font-weight: 600; cursor: pointer; transition: background .15s;
+    }
+    .quick-actions-menu .qa-item:hover,
+    .quick-actions-menu .qa-item:active { background: rgba(255,255,255,.08); }
+    .quick-actions-menu .qa-item i { width: 20px; text-align: center; font-size: .9rem; }
+    .quick-actions-menu .qa-item.danger { color: #f44336; }
+    .quick-actions-menu .qa-divider { height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
+    .qa-backdrop { position: fixed; inset: 0; z-index: 1099; }
+    .recent-sessions { padding: 12px 16px; }
+    .recent-sessions h4 { font-size: .9rem; font-weight: 700; color: #888; margin-bottom: 8px; }
+    .recent-session-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 14px; background: #fff; border-radius: 10px;
+        margin-bottom: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .move-table-sheet {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: #fff; border-radius: 20px 20px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,.15); z-index: 1060;
+        max-height: 50vh; padding: 20px; overflow-y: auto;
+        transform: translateY(100%); transition: transform .3s ease;
+    }
+    .move-table-sheet.show { transform: translateY(0); }
+    .move-table-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px; margin-top: 12px;
+    }
+    .move-table-btn {
+        background: #f5f5f5; border: 2px solid #e0e0e0; border-radius: 12px;
+        padding: 14px 8px; text-align: center; font-weight: 700;
+        font-size: 1.1rem; cursor: pointer; transition: all .15s;
+    }
+    .move-table-btn:active { background: #e0e0e0; }
+    .floor-map-container {
+        flex: 1; overflow: auto; position: relative;
+        display: none; padding: 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .floor-map-container.active { display: block; }
+    .floor-map-viewport {
+        position: relative;
+        margin: 0 auto;
+    }
+    .floor-map {
+        position: relative;
+        background: #fff; border-radius: 12px;
+        border: 1px solid #eee;
+        transform-origin: top left;
+        will-change: transform;
+    }
+    .floor-table {
+        position: absolute; cursor: pointer;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 2px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        transition: transform .15s, box-shadow .15s;
+        -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+        touch-action: manipulation;
+    }
+    .floor-map.mobile-grid {
+        display: grid; gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+        padding: 12px;
+        width: 100% !important;
+        height: auto !important;
+        transform: none !important;
+        min-height: 140px;
+    }
+    .floor-map.mobile-grid .floor-table {
+        position: static !important;
+        left: auto !important; top: auto !important;
+        width: 100% !important; height: 95px !important;
+        padding: 6px;
+    }
+    .floor-map.mobile-grid .floor-table.shape-round { border-radius: 50%; aspect-ratio: 1 / 1; height: auto !important; }
+    .mobile-area-header {
+        grid-column: 1 / -1;
+        font-size: .85rem; font-weight: 700; color: #555;
+        padding: 8px 4px 4px; border-bottom: 1px solid #eee;
+    }
+    .floor-table:active { transform: scale(.96); }
+    .floor-table.shape-rect { border-radius: 10px; }
+    .floor-table.shape-round { border-radius: 50%; }
+    .floor-table.available { border: 2px solid #e0e0e0; background: #f8f8f8; }
+    .floor-table.available .ft-num { color: #888; }
+    .floor-table.open { border: 2px solid #ff9800; background: #fff8e1; }
+    .floor-table.open .ft-num { color: #e65100; }
+    .floor-table.awaiting_payment { border: 2px solid #f44336; background: #fce4ec; }
+    .floor-table.awaiting_payment .ft-num { color: #c62828; }
+    .floor-table.pending_voids { border: 2px solid #7c3aed; background: #f3e8ff; }
+    .floor-table.pending_voids .ft-num { color: #6d28d9; }
+    .ft-num { font-size: 1.3rem; font-weight: 700; line-height: 1; }
+    .ft-status {
+        font-size: .55rem; font-weight: 600;
+        padding: 1px 5px; border-radius: 4px; display: inline-block;
+    }
+    .floor-table.available .ft-status { background: #e8f5e9; color: #2e7d32; }
+    .floor-table.open .ft-status { background: #fff3e0; color: #e65100; }
+    .floor-table.awaiting_payment .ft-status { background: #ffebee; color: #c62828; }
+    .floor-table.pending_voids .ft-status { background: #ede9fe; color: #6d28d9; }
+    .ft-meta { font-size: .6rem; color: #999; text-align: center; }
+    .ft-meta .amount { font-weight: 600; color: #333; }
+
+    /* ===== Add-table modal mobile fixes ===== */
+    .modal-sheet .form-control,
+    .modal-sheet input[type="text"],
+    .modal-sheet input[type="number"],
+    .modal-sheet textarea {
+        width: 100%;
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+    .add-table-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .add-table-row > div { min-width: 0; }
+    @media (max-width: 480px) {
+        .modal-sheet { max-height: 85vh; padding: 16px; }
+        .add-table-row { flex-direction: column; gap: 12px; }
+        .add-table-row > div { flex: 1 1 auto !important; }
+        .modal-sheet h4 { font-size: 1rem; }
+        .modal-sheet p { font-size: .75rem; margin-bottom: 12px; }
+    }
+</style>
+
+<div class="tables-page">
+    <div class="tables-header">
+        <h2><i class="fas fa-utensils me-2"></i>שולחנות</h2>
+        <div class="tables-header-actions">
+            {% if tables %}
+            <button class="view-toggle-btn active" id="btnViewGrid" onclick="switchView('grid')"><i class="fas fa-th"></i></button>
+            {% if has_layout %}
+            <button class="view-toggle-btn" id="btnViewFloor" onclick="switchView('floor')"><i class="fas fa-map"></i></button>
+            {% endif %}
+            {% endif %}
+            <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוספת שולחן</button>
+        </div>
+    </div>
+
+    {% set all_areas = [] %}
+    {% for table in tables %}
+    {% if table.area and table.area not in all_areas %}
+    {% if all_areas.append(table.area) %}{% endif %}
+    {% endif %}
+    {% endfor %}
+
+    {% if all_areas|length > 0 %}
+    <div class="area-tabs" id="areaTabs">
+        <div class="area-tab active" data-area="__all__">הכל</div>
+        {% for area in all_areas %}
+        <div class="area-tab" data-area="{{ area|e }}">{{ area }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="tables-body" id="gridView">
+        {% if tables %}
+        <div class="tables-grid" id="tablesGrid">
+            {% for table in tables %}
+            {% set sess = active_sessions.get(table.id) %}
+            {% set status = sess.status if sess else 'available' %}
+            {% set display_status = 'pending_voids' if (sess and sess.has_pending_voids) else status %}
+            <div class="table-card {{ display_status }}"
+                 data-table-id="{{ table.id }}"
+                 data-area="{{ table.area or '' }}"
+                 data-session-id="{{ sess.id if sess else '' }}"
+                 data-status="{{ status }}"
+                 data-has-pending-voids="{{ 'true' if (sess and sess.has_pending_voids) else 'false' }}">
+                <div class="table-num">{{ table.table_number }}</div>
+                {% if status == 'available' %}
+                    <span class="table-status">פנוי</span>
+                {% elif sess and sess.has_pending_voids %}
+                    <span class="table-status">אישור מנהל</span>
+                    <div class="table-meta">
+                        <span>{{ sess.elapsed_minutes }} דק׳</span>
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                        {% if sess.waiter %}<span>{{ sess.waiter.name }}</span>{% endif %}
+                        <span>{{ sess.item_count|default(0) }} פריטים</span>
+                    </div>
+                {% elif status == 'open' %}
+                    <span class="table-status">תפוס</span>
+                    <div class="table-meta">
+                        <span>{{ sess.elapsed_minutes }} דק׳</span>
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                        {% if sess.waiter %}<span>{{ sess.waiter.name }}</span>{% endif %}
+                        <span>{{ sess.item_count|default(0) }} פריטים</span>
+                    </div>
+                {% elif status == 'awaiting_payment' %}
+                    <span class="table-status">ממתין לתשלום</span>
+                    <div class="table-meta">
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                        <span>{{ sess.item_count|default(0) }} פריטים</span>
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-tables">
+            <i class="fas fa-chair"></i>
+            <h3>אין שולחנות מוגדרים</h3>
+            <p>הוסף שולחנות כדי להתחיל</p>
+            <button class="btn-add-table" onclick="showAddTable()"><i class="fas fa-plus me-1"></i> הוסף שולחן ראשון</button>
+        </div>
+        {% endif %}
+
+        {% if recently_closed %}
+        <div class="recent-sessions">
+            <h4><i class="fas fa-history me-1"></i> ישיבות אחרונות</h4>
+            {% for sess in recently_closed %}
+            <div class="recent-session-row">
+                <div>
+                    <span style="font-weight:700;">שולחן {{ sess.table.table_number if sess.table else '?' }}</span>
+                    <span style="font-size:.75rem; color:#999; margin-right:8px;">
+                        {% if sess.status == 'closed' %}נסגר{% else %}בוטל{% endif %}
+                        {% if sess.closed_at %}{{ sess.closed_at.strftime('%H:%M') }}{% endif %}
+                    </span>
+                    <span style="font-size:.8rem; font-weight:600; color:#333;">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                </div>
+                <button onclick="reopenSession({{ sess.id }})" style="background:#7c3aed; color:#fff; border:none; border-radius:8px; padding:6px 14px; font-size:.75rem; font-weight:600; cursor:pointer;">
+                    <i class="fas fa-redo me-1"></i> פתח מחדש
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if has_layout %}
+    <div class="floor-map-container" id="floorView">
+      <div class="floor-map-viewport" id="floorMapViewport">
+        <div class="floor-map" id="floorMap">
+            {% for table in tables %}
+            {% set sess = active_sessions.get(table.id) %}
+            {% set status = sess.status if sess else 'available' %}
+            {% set display_status = 'pending_voids' if (sess and sess.has_pending_voids) else status %}
+            <div class="floor-table shape-{{ table.shape or 'rect' }} {{ display_status }}"
+                 data-table-id="{{ table.id }}"
+                 data-area="{{ table.area or '' }}"
+                 data-session-id="{{ sess.id if sess else '' }}"
+                 data-status="{{ status }}"
+                 data-has-pending-voids="{{ 'true' if (sess and sess.has_pending_voids) else 'false' }}"
+                 style="left:{{ table.pos_x if table.pos_x is not none else (loop.index0 % 6) * 140 + 30 }}px; top:{{ table.pos_y if table.pos_y is not none else (loop.index0 // 6) * 120 + 30 }}px; width:{{ table.width or 100 }}px; height:{{ table.height or 80 }}px;">
+                <div class="ft-num">{{ table.table_number }}</div>
+                {% if status == 'available' %}
+                    <span class="ft-status">פנוי</span>
+                {% elif sess and sess.has_pending_voids %}
+                    <span class="ft-status">אישור מנהל</span>
+                    <div class="ft-meta">
+                        <span>{{ sess.elapsed_minutes }} דק׳</span>
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                    </div>
+                {% elif status == 'open' %}
+                    <span class="ft-status">תפוס</span>
+                    <div class="ft-meta">
+                        <span>{{ sess.elapsed_minutes }} דק׳</span>
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                    </div>
+                {% elif status == 'awaiting_payment' %}
+                    <span class="ft-status">ממתין</span>
+                    <div class="ft-meta">
+                        <span class="amount">₪{{ "%.0f"|format(sess.total_amount) }}</span>
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal-overlay" id="addTableOverlay" onclick="hideAddTable()"></div>
+<div class="modal-sheet" id="addTableSheet">
+    <div class="sheet-handle"></div>
+    <h4 style="font-weight:700; margin-bottom:4px; font-size:1.1rem;">הוספת שולחן</h4>
+    <p style="color:#888; font-size:.8rem; margin-bottom:16px;">הזן מספר שולחן, מספר מקומות ואזור ישיבה</p>
+    <div class="add-table-row">
+        <div style="flex:2;">
+            <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מספר שולחן</label>
+            <input type="text" id="newTableNumber" class="form-control" placeholder="לדוגמא: 1" style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+        </div>
+        <div style="flex:1;">
+            <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מקומות</label>
+            <input type="number" id="newTableCapacity" class="form-control" placeholder="4" value="4" style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+        </div>
+    </div>
+    <div style="margin-bottom:16px;">
+        <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">אזור ישיבה <span style="color:#e94560;">*</span></label>
+        <input type="text" id="newTableArea" class="form-control" placeholder="לדוגמא: פנים, מרפסת, בר..." style="border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;" required>
+        <div id="existingAreas" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+        <div style="font-size:.7rem;color:#888;margin-top:4px;">חובה לבחור או ליצור אזור לפני הוספת שולחן</div>
+    </div>
+    <button class="btn-add-table" style="width:100%; padding:14px; font-size:.95rem;" onclick="addTable()">
+        <i class="fas fa-plus me-1"></i> הוסף שולחן
+    </button>
+    <div style="margin-top:12px; padding-top:12px; border-top:1px solid #f0f0f0;">
+        <button style="width:100%; background:#f5f5f5; border:none; padding:12px; border-radius:10px; color:#555; font-weight:600; font-size:.85rem; cursor:pointer;" onclick="bulkAddTables()">
+            <i class="fas fa-th me-1"></i> הוסף שולחנות 1-10 בבת אחת
+        </button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="summaryOverlay" onclick="hideSummary()" style="display:none; align-items:flex-end; justify-content:center; z-index:1055;"></div>
+<div class="move-table-sheet" id="summarySheet" style="z-index:1060;">
+    <div class="sheet-handle"></div>
+    <h4 style="font-weight:700; margin-bottom:4px;">סיכום הזמנה</h4>
+    <div id="summaryContent" style="font-size:.85rem;"></div>
+</div>
+
+<div class="modal-overlay" id="moveTableOverlay" onclick="hideMoveTable()" style="z-index:1055;"></div>
+<div class="move-table-sheet" id="moveTableSheet">
+    <div class="sheet-handle"></div>
+    <h4 style="font-weight:700; margin-bottom:4px;">העברת שולחן</h4>
+    <p style="color:#888; font-size:.8rem;">בחר שולחן פנוי להעברה</p>
+    <div class="move-table-grid" id="moveTableGrid"></div>
+</div>
+
+<div class="modal-overlay" id="payOverlayQ" onclick="closePaymentSheet()" style="z-index:1060; display:none; align-items:flex-end; justify-content:center;">
+    <div style="background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:420px; padding:20px; animation:slideUp .3s ease; max-height:92vh; overflow-y:auto;" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 style="font-weight:700;"><i class="fas fa-cash-register me-2" style="color:#f59e0b;"></i>תשלום שולחן</h4>
+        <div style="background:#f8fafc; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:4px;">
+                <span>שולחן</span>
+                <span style="font-weight:700;" id="payTableNum">?</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:.9rem;">
+                <span>סה"כ לתשלום</span>
+                <span style="font-weight:800; font-size:1.1rem; color:var(--ops-accent,#e94560);" id="payTotal">₪0</span>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:6px;">
+            <button type="button" id="payOptCash" onclick="paySelectMethod('cash')"
+                style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:14px 4px;font-size:12px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                <i class="fas fa-money-bill-wave" style="font-size:18px;display:block;margin-bottom:4px;color:#22c55e;"></i>מזומן
+            </button>
+            <button type="button" id="payOptCard"
+                style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:14px 4px;font-size:12px;font-weight:700;cursor:pointer;color:#333;line-height:1.3; touch-action:none;">
+                <i class="fas fa-credit-card" style="font-size:18px;display:block;margin-bottom:4px;color:#0284c7;"></i>אשראי
+            </button>
+            <button type="button" id="payOptLater" onclick="payLater()"
+                style="background:#fff;border:2px solid #e2e8f0;border-radius:12px;padding:14px 4px;font-size:12px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                <i class="fas fa-clock" style="font-size:18px;display:block;margin-bottom:4px;color:#94a3b8;"></i>שלם אח״כ
+            </button>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:12px;text-align:center;font-weight:600;">לחיצה ארוכה על "אשראי" לבחירת שיטה</div>
+
+        <div id="payCashSection" style="display:none;">
+            <div style="background:#f8fafc;padding:10px;border-radius:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;font-weight:600;">
+                    <span>סה"כ:</span><span id="payCashTotal" style="font-weight:800;">₪0</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;font-weight:600;">
+                    <span>טיפ (אופציונלי):</span>
+                    <input type="number" id="payCashTip" min="0" step="1" placeholder="0"
+                        style="width:100px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:16px;font-weight:800;text-align:center;" oninput="payCalcChange()">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;font-weight:600;">
+                    <span>סכום שהתקבל:</span>
+                    <input type="number" id="payCashReceived" min="0" step="1" placeholder="0"
+                        style="width:100px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:16px;font-weight:800;text-align:center;" oninput="payCalcChange()">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;">
+                    <span>עודף:</span><span id="payCashChange" style="color:#22c55e;font-weight:900;">₪0</span>
+                </div>
+            </div>
+            <button onclick="payConfirmCash()" style="width:100%;margin-top:12px;padding:12px;border:none;border-radius:10px;background:#22c55e;color:#fff;font-weight:800;font-size:14px;cursor:pointer;">
+                <i class="fas fa-check-circle me-1"></i> סגור תשלום מזומן
+            </button>
+        </div>
+
+        <div id="payCardSection" style="display:none;">
+            <p style="font-size:13px;color:#64748b;margin-bottom:10px;">בחר דרך לגביית תשלום בכרטיס אשראי:</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+                <button type="button" id="paySubQr" onclick="payCardAction('qr')"
+                    style="background:#fff;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                    <i class="fas fa-qrcode" style="font-size:18px;display:block;margin-bottom:3px;color:#0284c7;"></i>קוד QR
+                </button>
+                <button type="button" id="paySubSms" onclick="payCardAction('sms')"
+                    style="background:#fff;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                    <i class="fas fa-sms" style="font-size:18px;display:block;margin-bottom:3px;color:#0284c7;"></i>SMS
+                </button>
+                <button type="button" id="paySubManual" onclick="payCardAction('manual')"
+                    style="background:#fff;border:2px solid #e2e8f0;border-radius:10px;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;color:#333;line-height:1.3;">
+                    <i class="fas fa-keyboard" style="font-size:18px;display:block;margin-bottom:3px;color:#0284c7;"></i>הזנה ידנית
+                </button>
+            </div>
+            <div id="payQrBox" style="display:none;text-align:center;padding:14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;">
+                <img id="payQrImg" alt="QR" style="max-width:220px;width:100%;height:auto;">
+                <p style="font-size:11px;color:#555;margin-top:8px;">הלקוח סורק ומשלם בטלפון. הסטטוס יעודכן אוטומטית.</p>
+                <a id="payQrLink" href="#" target="_blank" style="font-size:11px;color:#0284c7;word-break:break-all;"></a>
+            </div>
+            <div id="paySmsRow" style="display:none;margin-top:10px;">
+                <label style="font-size:.8rem;font-weight:600;color:#555;display:block;margin-bottom:6px;">מספר טלפון</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="tel" id="paySmsPhone" placeholder="05X-XXXXXXX" dir="ltr"
+                        style="flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;text-align:center;">
+                    <button onclick="paySmsSend()" style="background:#0284c7;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;">
+                        <i class="fas fa-paper-plane"></i> שלח
+                    </button>
+                </div>
+            </div>
+            <div id="payManualNote" style="display:none;margin-top:10px;padding:10px;background:#fef3c7;border-radius:10px;font-size:12px;color:#92400e;">
+                <i class="fas fa-external-link-alt"></i> דף HYP נפתח בחלון חדש. הזן פרטי כרטיס — הסטטוס יעודכן אוטומטית בסיום.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="cancelOverlayQ" onclick="closeCancelQ()" style="z-index:1060; display:none; align-items:flex-end; justify-content:center;">
+    <div style="background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:400px; padding:20px; animation:slideUp .3s ease;" onclick="event.stopPropagation()">
+        <div style="width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px;"></div>
+        <h4 style="font-weight:700;"><i class="fas fa-times-circle me-2" style="color:#f44336;"></i>ביטול ישיבה</h4>
+        <div style="font-size:.8rem; font-weight:600; color:#555; margin-bottom:8px;">סיבת ביטול</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'לקוח עזב')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">לקוח עזב</button>
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'שולחן שגוי')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">שולחן שגוי</button>
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'כפול')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">כפול</button>
+            <button class="q-cancel-reason-btn" onclick="selectQCancelReason(this,'אחר')" style="padding:8px 14px; border-radius:20px; border:2px solid #ddd; background:#fff; font-size:.8rem; font-weight:600; cursor:pointer;">אחר</button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:.8rem; font-weight:600; color:#555;">הערה (אופציונלי)</label>
+            <textarea id="qCancelNote" class="form-control" rows="2" style="border-radius:10px; font-size:.85rem;" placeholder="פרטים נוספים..."></textarea>
+        </div>
+        <div id="qCancelPinSection" style="display:none; margin-bottom:12px;">
+            <div style="background:#fff3e0; border-radius:10px; padding:10px; margin-bottom:10px; font-size:.8rem; color:#e65100;">
+                <i class="fas fa-exclamation-triangle me-1"></i> פריטים נשלחו למטבח — נדרש PIN מנהל
+            </div>
+            <input type="password" id="qCancelManagerPin" class="form-control" placeholder="PIN מנהל" dir="ltr" inputmode="numeric"
+                style="border-radius:10px; font-size:1.1rem; padding:12px; text-align:center; letter-spacing:8px;">
+        </div>
+        <div id="qCancelError" style="color:#f44336; font-size:.8rem; text-align:center; margin-bottom:8px; display:none;"></div>
+        <button onclick="confirmQCancel()" style="width:100%; background:#f44336; color:#fff; border:none; border-radius:10px; padding:14px; font-weight:700; font-size:.95rem; cursor:pointer;">
+            <i class="fas fa-times-circle me-2"></i> בטל ישיבה
+        </button>
+    </div>
+</div>
+
+<style>
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+</style>
+
+<script>
+var currentAreaFilter = '__all__';
+var knownAreas = [];
+var longPressTimer = null;
+var longPressTriggered = false;
+var pointerHandled = false;
+var movingSessionId = null;
+var hasLayout = {% if has_layout %}true{% else %}false{% endif %};
+var savedView = sessionStorage.getItem('ops_table_view');
+var currentView = savedView ? savedView : (hasLayout ? 'floor' : 'grid');
+if (!hasLayout && currentView === 'floor') currentView = 'grid';
+
+function switchView(view) {
+    currentView = view;
+    sessionStorage.setItem('ops_table_view', view);
+    var gridView = document.getElementById('gridView');
+    var floorView = document.getElementById('floorView');
+    var btnGrid = document.getElementById('btnViewGrid');
+    var btnFloor = document.getElementById('btnViewFloor');
+    if (view === 'floor' && floorView) {
+        gridView.style.display = 'none';
+        floorView.classList.add('active');
+        if (btnGrid) btnGrid.classList.remove('active');
+        if (btnFloor) btnFloor.classList.add('active');
+        requestAnimationFrame(fitFloorMap);
+    } else {
+        gridView.style.display = '';
+        if (floorView) floorView.classList.remove('active');
+        if (btnGrid) btnGrid.classList.add('active');
+        if (btnFloor) btnFloor.classList.remove('active');
+    }
+}
+
+function fitFloorMap() {
+    var map = document.getElementById('floorMap');
+    var vp = document.getElementById('floorMapViewport');
+    var cont = document.getElementById('floorView');
+    if (!map || !vp || !cont) return;
+    var tables = map.querySelectorAll('.floor-table');
+    if (!tables.length) return;
+
+    var isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Mobile: ignore designer coordinates; use a responsive grid so each
+        // table renders at a comfortable native size and the whole area is
+        // visible without horizontal scrolling.
+        map.classList.add('mobile-grid');
+        map.style.transform = '';
+        map.style.width = '';
+        map.style.height = '';
+        vp.style.width = '100%';
+        vp.style.height = 'auto';
+        _injectMobileAreaHeaders(map);
+        return;
+    }
+
+    // Desktop / tablet: use designer coordinates with fit-to-screen scaling
+    map.classList.remove('mobile-grid');
+    _removeMobileAreaHeaders(map);
+
+    var maxX = 0, maxY = 0;
+    tables.forEach(function(el) {
+        var x = parseFloat(el.style.left) || 0;
+        var y = parseFloat(el.style.top) || 0;
+        var w = parseFloat(el.style.width) || el.offsetWidth || 100;
+        var h = parseFloat(el.style.height) || el.offsetHeight || 80;
+        if (x + w > maxX) maxX = x + w;
+        if (y + h > maxY) maxY = y + h;
+    });
+    var pad = 20;
+    var contentW = Math.max(maxX + pad, 200);
+    var contentH = Math.max(maxY + pad, 200);
+    map.style.width = contentW + 'px';
+    map.style.height = contentH + 'px';
+
+    var vpW = Math.max((cont.clientWidth || 0) - 16, 1);
+    var vpH = Math.max((cont.clientHeight || 0) - 16, 1);
+    var scale = Math.min(vpW / contentW, vpH / contentH, 1);
+    if (scale < 0.3) scale = 0.3;
+    map.style.transform = 'scale(' + scale + ')';
+    vp.style.width = Math.ceil(contentW * scale) + 'px';
+    vp.style.height = Math.ceil(contentH * scale) + 'px';
+}
+
+function _removeMobileAreaHeaders(map) {
+    map.querySelectorAll('.mobile-area-header').forEach(function(h) { h.remove(); });
+}
+
+function _injectMobileAreaHeaders(map) {
+    _removeMobileAreaHeaders(map);
+    var tables = Array.prototype.slice.call(map.querySelectorAll('.floor-table'));
+    // Group: sort tables by area then put them in order, inserting headers
+    var byArea = {};
+    var areaOrder = [];
+    tables.forEach(function(t) {
+        var a = (t.getAttribute('data-area') || '').trim();
+        if (!a) a = '—';
+        if (!(a in byArea)) { byArea[a] = []; areaOrder.push(a); }
+        byArea[a].push(t);
+    });
+    if (areaOrder.length <= 1) return; // no need for headers
+    // Re-append in area order with header separators
+    areaOrder.forEach(function(a) {
+        var h = document.createElement('div');
+        h.className = 'mobile-area-header';
+        h.textContent = a;
+        map.appendChild(h);
+        byArea[a].forEach(function(t) { map.appendChild(t); });
+    });
+}
+
+window.addEventListener('resize', function() {
+    if (currentView === 'floor') fitFloorMap();
+});
+window.addEventListener('orientationchange', function() {
+    if (currentView === 'floor') setTimeout(fitFloorMap, 150);
+});
+
+if (currentView === 'floor' && document.getElementById('floorView')) {
+    switchView('floor');
+} else if (document.getElementById('floorMap')) {
+    requestAnimationFrame(fitFloorMap);
+}
+
+function initFloorTableHandlers() {
+    var container = document.getElementById('floorView');
+    if (!container) return;
+    container.style.webkitUserSelect = 'none';
+    container.style.userSelect = 'none';
+    container.style.webkitTouchCallout = 'none';
+    var flpCard = null;
+    var startX = 0, startY = 0;
+    container.addEventListener('pointerdown', function(e) {
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        longPressTriggered = false;
+        flpCard = card;
+        startX = e.clientX; startY = e.clientY;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(function() {
+            longPressTriggered = true;
+            showQuickActions(card, {clientX: e.clientX, clientY: e.clientY});
+        }, 600);
+    });
+    container.addEventListener('pointerup', function(e) {
+        clearTimeout(longPressTimer);
+        if (longPressTriggered) {
+            e.preventDefault();
+            e.stopPropagation();
+            longPressTriggered = false;
+            flpCard = null;
+            pointerHandled = true;
+            setTimeout(function() { pointerHandled = false; }, 300);
+            return;
+        }
+        var card = flpCard || e.target.closest('.floor-table');
+        flpCard = null;
+        if (!card) return;
+        pointerHandled = true;
+        setTimeout(function() { pointerHandled = false; }, 300);
+        handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+    });
+    container.addEventListener('pointermove', function(e) {
+        if (!flpCard) return;
+        var dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
+        if (dx > 10 || dy > 10) { clearTimeout(longPressTimer); flpCard = null; }
+    });
+    container.addEventListener('pointercancel', function() { clearTimeout(longPressTimer); flpCard = null; });
+    container.addEventListener('click', function(e) {
+        if (pointerHandled) { e.preventDefault(); e.stopPropagation(); return; }
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+    });
+    container.addEventListener('contextmenu', function(e) {
+        var card = e.target.closest('.floor-table');
+        if (!card) return;
+        e.preventDefault();
+        showQuickActions(card, e);
+    });
+}
+initFloorTableHandlers();
+
+function collectAreas() {
+    var set = {};
+    document.querySelectorAll('[data-area]').forEach(function(el) {
+        var a = el.getAttribute('data-area');
+        if (a) set[a] = true;
+    });
+    knownAreas = Object.keys(set);
+}
+collectAreas();
+
+document.querySelectorAll('.area-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() { filterArea(this.dataset.area); });
+});
+
+var saved = sessionStorage.getItem('ops_area_tab');
+if (saved) { filterArea(saved); }
+
+function filterArea(area) {
+    currentAreaFilter = area;
+    sessionStorage.setItem('ops_area_tab', area);
+    document.querySelectorAll('.area-tab').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.area === area);
+    });
+    document.querySelectorAll('.table-card, .floor-table').forEach(function(card) {
+        var cardArea = card.getAttribute('data-area') || '';
+        if (area === '__all__') {
+            card.style.display = '';
+        } else if (area === '__none__') {
+            card.style.display = cardArea === '' ? '' : 'none';
+        } else {
+            card.style.display = cardArea === area ? '' : 'none';
+        }
+    });
+}
+
+function initTouchHandlers() {
+    var container = document.getElementById('tablesGrid');
+    if (!container) return;
+    container.style.webkitUserSelect = 'none';
+    container.style.userSelect = 'none';
+    container.style.webkitTouchCallout = 'none';
+    var lpCard = null;
+    var startX = 0, startY = 0;
+    container.addEventListener('pointerdown', function(e) {
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        longPressTriggered = false;
+        lpCard = card;
+        startX = e.clientX; startY = e.clientY;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(function() {
+            longPressTriggered = true;
+            showQuickActions(card, {clientX: e.clientX, clientY: e.clientY});
+        }, 600);
+    });
+    container.addEventListener('pointerup', function(e) {
+        clearTimeout(longPressTimer);
+        if (longPressTriggered) {
+            e.preventDefault();
+            e.stopPropagation();
+            longPressTriggered = false;
+            lpCard = null;
+            pointerHandled = true;
+            setTimeout(function() { pointerHandled = false; }, 300);
+            return;
+        }
+        var card = lpCard || e.target.closest('.table-card');
+        lpCard = null;
+        if (!card) return;
+        pointerHandled = true;
+        setTimeout(function() { pointerHandled = false; }, 300);
+        handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+    });
+    container.addEventListener('pointermove', function(e) {
+        if (!lpCard) return;
+        var dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
+        if (dx > 10 || dy > 10) { clearTimeout(longPressTimer); lpCard = null; }
+    });
+    container.addEventListener('pointercancel', function() { clearTimeout(longPressTimer); lpCard = null; });
+    container.addEventListener('click', function(e) {
+        if (pointerHandled) { e.preventDefault(); e.stopPropagation(); return; }
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        handleTableClick(parseInt(card.dataset.tableId), card.dataset.sessionId, card.dataset.status);
+    });
+    container.addEventListener('contextmenu', function(e) {
+        var card = e.target.closest('.table-card');
+        if (!card) return;
+        e.preventDefault();
+        showQuickActions(card, e);
+    });
+}
+initTouchHandlers();
+
+function showQuickActions(card, evt) {
+    hideQuickActions();
+    var tableId = parseInt(card.dataset.tableId);
+    var sessionId = card.dataset.sessionId;
+    var status = card.dataset.status;
+    var numEl = card.querySelector('.table-num') || card.querySelector('.ft-num');
+    var tableNum = numEl ? numEl.textContent : '';
+
+    var backdrop = document.createElement('div');
+    backdrop.className = 'qa-backdrop';
+    backdrop.onclick = hideQuickActions;
+    document.body.appendChild(backdrop);
+
+    var menu = document.createElement('div');
+    menu.className = 'quick-actions-menu';
+    menu.id = 'quickActionsMenu';
+
+    var title = document.createElement('div');
+    title.style.cssText = 'padding:10px 16px 6px; font-size:.75rem; color:#888; font-weight:600;';
+    title.textContent = 'שולחן ' + tableNum;
+    menu.appendChild(title);
+
+    if (status === 'open' || status === 'awaiting_payment') {
+        addMenuItem(menu, 'fa-external-link-alt', 'פתח הזמנה', function() { window.location.href = '/ops/dine-in/' + sessionId; });
+        addMenuItem(menu, 'fa-list-alt', 'סיכום הזמנה', function() { showOrderSummary(sessionId); });
+        addMenuItem(menu, 'fa-receipt', 'הדפס חשבון', function() { quickPrintCheck(sessionId); });
+        addMenuItem(menu, 'fa-exchange-alt', 'העבר שולחן', function() { showMoveTable(sessionId); });
+        addDivider(menu);
+        addMenuItem(menu, 'fa-credit-card', 'תשלום', function() { openSessionPayment(sessionId); });
+        addMenuItem(menu, 'fa-times-circle', 'בטל ישיבה', function() { quickCancelSession(sessionId); }, true);
+    } else {
+        addMenuItem(menu, 'fa-plus-circle', 'פתח ישיבה', function() { handleTableClick(tableId, '', 'available'); });
+    }
+
+    document.body.appendChild(menu);
+
+    var x = evt.clientX || evt.pageX || 100;
+    var y = evt.clientY || evt.pageY || 100;
+    menu.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px';
+}
+
+function addMenuItem(menu, icon, label, action, isDanger) {
+    var item = document.createElement('div');
+    item.className = 'qa-item' + (isDanger ? ' danger' : '');
+    item.innerHTML = '<i class="fas ' + icon + '"></i><span>' + label + '</span>';
+    item.onclick = function() { hideQuickActions(); action(); };
+    menu.appendChild(item);
+}
+
+function addDivider(menu) {
+    var d = document.createElement('div');
+    d.className = 'qa-divider';
+    menu.appendChild(d);
+}
+
+function hideQuickActions() {
+    var m = document.getElementById('quickActionsMenu');
+    if (m) m.remove();
+    var b = document.querySelector('.qa-backdrop');
+    if (b) b.remove();
+}
+
+function showOrderSummary(sessionId) {
+    var content = document.getElementById('summaryContent');
+    content.innerHTML = '<div style="text-align:center; padding:20px; color:#aaa;"><i class="fas fa-spinner fa-spin"></i> טוען...</div>';
+    document.getElementById('summaryOverlay').style.display = 'flex';
+    document.getElementById('summarySheet').classList.add('show');
+    fetch('/ops/api/sessions/' + sessionId).then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.ok) { content.innerHTML = '<p style="color:#f44336;">שגיאה: ' + (d.error || '') + '</p>'; return; }
+        var s = d.session;
+        var h = '<div style="display:flex; justify-content:space-between; margin-bottom:8px;">';
+        h += '<span style="font-weight:600;">שולחן ' + s.table_number + '</span>';
+        h += '<span style="color:#888;">' + s.elapsed_minutes + ' דק׳</span></div>';
+        if (s.waiter) h += '<div style="color:#888; font-size:.75rem; margin-bottom:8px;"><i class="fas fa-user me-1"></i>' + s.waiter + '</div>';
+        h += '<div style="border-top:1px solid #eee; padding-top:8px;">';
+        (s.items || []).forEach(function(item) {
+            var name = item.name_he || item.item_name_he || '';
+            var qty = item.qty || item.quantity || 1;
+            var price = parseFloat(item.price || item.unit_price || 0) * parseInt(qty);
+            h += '<div style="display:flex; justify-content:space-between; padding:3px 0;">';
+            h += '<span>' + qty + 'x ' + name + '</span>';
+            h += '<span style="font-weight:600;">₪' + Math.round(price) + '</span></div>';
+        });
+        h += '</div>';
+        h += '<div style="display:flex; justify-content:space-between; padding:10px 0 0; border-top:1px solid #eee; margin-top:8px; font-weight:700; font-size:1rem;">';
+        h += '<span>סה"כ</span><span style="color:var(--ops-accent,#e94560);">₪' + Math.round(s.total) + '</span></div>';
+        if (s.notes) h += '<div style="margin-top:6px; color:#888; font-size:.75rem;"><i class="fas fa-sticky-note me-1"></i>' + s.notes + '</div>';
+        content.innerHTML = h;
+    });
+}
+
+function hideSummary() {
+    document.getElementById('summaryOverlay').style.display = 'none';
+    document.getElementById('summarySheet').classList.remove('show');
+}
+
+function quickPrintCheck(sessionId) {
+    fetch('/ops/api/sessions/' + sessionId + '/print-check', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+    }).then(function(r) { return r.json(); }).then(function(d) { showToast(d.ok ? d.message : d.error, !d.ok); });
+}
+
+var qCancelSessionId = null;
+var qSelectedCancelReason = '';
+
+// ===== Unified session payment modal =====
+var paySessionId = null;
+var payTotal = 0;
+var payCustomerPhone = '';
+var payPollTimer = null;
+var payLpTimer = null;
+var payLpFired = false;
+var payLpStartX = 0, payLpStartY = 0;
+var payLpBound = false;
+
+function openSessionPayment(sessionId) {
+    paySessionId = sessionId;
+    payTotal = 0;
+    payCustomerPhone = '';
+    document.getElementById('payTotal').textContent = '₪0';
+    document.getElementById('payCashTotal').textContent = '₪0';
+    document.getElementById('payCashTip').value = '';
+    document.getElementById('payCashReceived').value = '';
+    document.getElementById('payCashChange').textContent = '₪0';
+    document.getElementById('paySmsPhone').value = '';
+    document.getElementById('payQrBox').style.display = 'none';
+    document.getElementById('paySmsRow').style.display = 'none';
+    document.getElementById('payManualNote').style.display = 'none';
+    document.getElementById('payCashSection').style.display = 'none';
+    document.getElementById('payCardSection').style.display = 'none';
+    paySetSelected(null);
+    paySetSubSelected(null);
+    fetch('/ops/api/sessions/' + sessionId).then(function(r){return r.json();}).then(function(d){
+        if (!d.ok) { showToast(d.error || 'ישיבה לא נמצאה', true); return; }
+        var s = d.session;
+        payTotal = s.total || 0;
+        payCustomerPhone = '';
+        document.getElementById('payTableNum').textContent = s.table_number || '?';
+        document.getElementById('payTotal').textContent = '₪' + (payTotal % 1 === 0 ? payTotal : payTotal.toFixed(2));
+        document.getElementById('payCashTotal').textContent = '₪' + (payTotal % 1 === 0 ? payTotal : payTotal.toFixed(2));
+        document.getElementById('payOverlayQ').style.display = 'flex';
+        payBindCardLongPress();
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function closePaymentSheet() {
+    document.getElementById('payOverlayQ').style.display = 'none';
+    paySessionId = null;
+    payStopPolling();
+}
+
+function paySetSelected(method) {
+    var cash = document.getElementById('payOptCash');
+    var card = document.getElementById('payOptCard');
+    function clear(b) { b.style.background = '#fff'; b.style.borderColor = '#e2e8f0'; b.style.color = '#333'; }
+    function on(b) { b.style.background = '#e0f2fe'; b.style.borderColor = '#0284c7'; b.style.color = '#0284c7'; }
+    clear(cash); clear(card);
+    if (method === 'cash') on(cash);
+    else if (method === 'card') on(card);
+}
+
+function paySetSubSelected(which) {
+    ['paySubQr','paySubSms','paySubManual'].forEach(function(id){
+        var b = document.getElementById(id);
+        if (!b) return;
+        if (id === which) { b.style.background = '#0284c7'; b.style.color = '#fff'; b.style.borderColor = '#0284c7';
+            (b.querySelector('i')||{}).style && (b.querySelector('i').style.color = '#fff'); }
+        else { b.style.background = '#fff'; b.style.color = '#333'; b.style.borderColor = '#e2e8f0';
+            (b.querySelector('i')||{}).style && (b.querySelector('i').style.color = '#0284c7'); }
+    });
+}
+
+function paySelectMethod(method) {
+    paySetSelected(method);
+    document.getElementById('payCashSection').style.display = (method === 'cash') ? '' : 'none';
+    document.getElementById('payCardSection').style.display = (method === 'card') ? '' : 'none';
+    if (method !== 'card') payStopPolling();
+}
+
+function payCalcChange() {
+    var tip = parseFloat(document.getElementById('payCashTip').value) || 0;
+    var received = parseFloat(document.getElementById('payCashReceived').value) || 0;
+    var due = payTotal + tip;
+    var change = received - due;
+    var el = document.getElementById('payCashChange');
+    el.textContent = '₪' + Math.max(0, change).toFixed(received % 1 === 0 ? 0 : 2);
+    el.style.color = change >= 0 ? '#22c55e' : '#ef4444';
+}
+
+function payConfirmCash() {
+    if (!paySessionId) return;
+    var tip = parseFloat(document.getElementById('payCashTip').value) || 0;
+    var received = parseFloat(document.getElementById('payCashReceived').value) || 0;
+    var due = payTotal + tip;
+    if (!received || received <= 0) { showToast('נא להזין סכום שהתקבל', true); return; }
+    if (received < due) { showToast('סכום שהתקבל נמוך מהסה"כ', true); return; }
+    fetch('/ops/api/sessions/' + paySessionId + '/pay-cash', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tip_amount: tip, cash_received: received})
+    }).then(function(r){return r.json();}).then(function(d){
+        if (d.ok) { showToast(d.message || 'תשלום הושלם'); closePaymentSheet(); setTimeout(function(){ location.reload(); }, 700); }
+        else showToast(d.error || 'שגיאה', true);
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function payLater() {
+    closePaymentSheet();
+    showToast('הישיבה נשארה פתוחה לתשלום מאוחר יותר');
+}
+
+function payCardAction(action) {
+    if (!paySessionId) return;
+    paySetSubSelected('paySub' + action.charAt(0).toUpperCase() + action.slice(1));
+    document.getElementById('payQrBox').style.display = 'none';
+    document.getElementById('paySmsRow').style.display = 'none';
+    document.getElementById('payManualNote').style.display = 'none';
+    if (action === 'qr') {
+        fetch('/ops/api/sessions/' + paySessionId + '/payment-qr', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+        .then(function(r){return r.json();}).then(function(d){
+            if (!d.ok) { showToast(d.error || 'שגיאה ביצירת QR', true); return; }
+            document.getElementById('payQrImg').src = 'data:image/png;base64,' + d.qr_png_base64;
+            document.getElementById('payQrLink').href = d.payment_url;
+            document.getElementById('payQrLink').textContent = d.payment_url;
+            document.getElementById('payQrBox').style.display = '';
+            payStartPolling();
+        }).catch(function(){ showToast('שגיאת תקשורת', true); });
+    } else if (action === 'sms') {
+        document.getElementById('paySmsRow').style.display = '';
+        document.getElementById('paySmsPhone').focus();
+        // Start polling immediately when SMS panel is shown so a customer
+        // who pays before staff finish entering/sending the number is still
+        // detected promptly. Polling is idempotent.
+        payStartPolling();
+    } else if (action === 'manual') {
+        fetch('/ops/api/sessions/' + paySessionId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+        .then(function(r){return r.json();}).then(function(d){
+            if (!d.ok) { showToast(d.error || 'שגיאה ביצירת קישור', true); return; }
+            window.open(d.payment_url, '_blank');
+            document.getElementById('payManualNote').style.display = '';
+            payStartPolling();
+        }).catch(function(){ showToast('שגיאת תקשורת', true); });
+    }
+}
+
+function paySmsSend() {
+    if (!paySessionId) return;
+    var phone = (document.getElementById('paySmsPhone').value || '').trim();
+    if (!phone || phone.replace(/\D/g,'').length < 9) { showToast('נא להזין מספר טלפון תקין', true); return; }
+    // Ensure payment link exists, then send SMS.
+    fetch('/ops/api/sessions/' + paySessionId + '/generate-payment-link', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
+    .then(function(r){return r.json();}).then(function(d){
+        if (!d.ok) { showToast(d.error || 'שגיאה ביצירת קישור', true); return; }
+        fetch('/ops/api/sessions/' + paySessionId + '/send-payment-sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({phone: phone}) })
+        .then(function(r){return r.json();}).then(function(d2){
+            if (d2.ok) { showToast('SMS נשלח ללקוח'); payStartPolling(); }
+            else showToast(d2.error || 'שגיאה בשליחת SMS', true);
+        });
+    }).catch(function(){ showToast('שגיאת תקשורת', true); });
+}
+
+function payBindCardLongPress() {
+    var btn = document.getElementById('payOptCard');
+    if (!btn || payLpBound) return;
+    payLpBound = true;
+    var onDown = function(e) {
+        payLpFired = false;
+        payLpStartX = e.clientX || 0; payLpStartY = e.clientY || 0;
+        btn.style.transform = 'scale(0.97)'; btn.style.background = '#fef3c7'; btn.style.borderColor = '#f59e0b';
+        payLpTimer = setTimeout(function() {
+            payLpFired = true;
+            btn.style.transform = ''; btn.style.background = '#fff'; btn.style.borderColor = '#e2e8f0';
+            paySelectMethod('card');
+            try { if (navigator.vibrate) navigator.vibrate(15); } catch(e){}
+        }, 600);
+    };
+    var onMove = function(e) {
+        if (!payLpTimer) return;
+        var dx = (e.clientX||0) - payLpStartX, dy = (e.clientY||0) - payLpStartY;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) { onCancel(); }
+    };
+    var onUp = function(e) {
+        btn.style.transform = ''; btn.style.background = '#fff'; btn.style.borderColor = '#e2e8f0';
+        if (payLpTimer) { clearTimeout(payLpTimer); payLpTimer = null; }
+        if (!payLpFired) {
+            paySelectMethod('card');
+            setTimeout(function(){ payCardAction('qr'); }, 50);
+        }
+    };
+    var onCancel = function() {
+        btn.style.transform = ''; btn.style.background = '#fff'; btn.style.borderColor = '#e2e8f0';
+        if (payLpTimer) { clearTimeout(payLpTimer); payLpTimer = null; }
+    };
+    btn.addEventListener('pointerdown', onDown);
+    btn.addEventListener('pointermove', onMove);
+    btn.addEventListener('pointerup', onUp);
+    btn.addEventListener('pointerleave', onCancel);
+    btn.addEventListener('pointercancel', onCancel);
+}
+
+function payStartPolling() {
+    payStopPolling();
+    payPollTimer = setInterval(function(){
+        if (!paySessionId) return;
+        fetch('/ops/api/sessions/' + paySessionId).then(function(r){return r.json();}).then(function(d){
+            if (d.ok && d.session && d.session.status === 'closed') {
+                payStopPolling();
+                showToast('התשלום אושר!');
+                closePaymentSheet();
+                setTimeout(function(){ location.reload(); }, 700);
+            }
+        }).catch(function(){});
+    }, 3000);
+}
+function payStopPolling() {
+    if (payPollTimer) { clearInterval(payPollTimer); payPollTimer = null; }
+}
+
+function quickCancelSession(sessionId) {
+    qCancelSessionId = sessionId;
+    qSelectedCancelReason = '';
+    document.getElementById('qCancelNote').value = '';
+    var pinEl = document.getElementById('qCancelManagerPin');
+    if (pinEl) pinEl.value = '';
+    document.getElementById('qCancelPinSection').style.display = 'none';
+    document.getElementById('qCancelError').style.display = 'none';
+    document.querySelectorAll('.q-cancel-reason-btn').forEach(function(b) {
+        b.style.borderColor = '#ddd'; b.style.background = '#fff'; b.style.color = '';
+    });
+    var ov = document.getElementById('cancelOverlayQ');
+    ov.style.display = 'flex';
+}
+function closeCancelQ() { document.getElementById('cancelOverlayQ').style.display = 'none'; qCancelSessionId = null; }
+
+function selectQCancelReason(btn, reason) {
+    qSelectedCancelReason = reason;
+    document.querySelectorAll('.q-cancel-reason-btn').forEach(function(b) {
+        b.style.borderColor = '#ddd'; b.style.background = '#fff'; b.style.color = '';
+    });
+    btn.style.borderColor = '#f44336'; btn.style.background = '#ffebee'; btn.style.color = '#f44336';
+}
+
+function confirmQCancel() {
+    if (!qCancelSessionId) return;
+    if (!qSelectedCancelReason) { showToast('נא לבחור סיבת ביטול', true); return; }
+    var body = {
+        cancel_reason: qSelectedCancelReason,
+        cancel_note: document.getElementById('qCancelNote').value.trim()
+    };
+    var pinEl = document.getElementById('qCancelManagerPin');
+    if (pinEl && pinEl.value) body.manager_pin = pinEl.value;
+    document.getElementById('qCancelError').style.display = 'none';
+    fetch('/ops/api/sessions/' + qCancelSessionId + '/cancel', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) { closeCancelQ(); showToast(d.message); setTimeout(function() { location.reload(); }, 800); }
+        else if (d.pending_voids) {
+            closeCancelQ();
+            showToast(d.error, true);
+        } else if (d.require_pin) {
+            document.getElementById('qCancelPinSection').style.display = 'block';
+            document.getElementById('qCancelError').textContent = d.error;
+            document.getElementById('qCancelError').style.display = 'block';
+        } else {
+            document.getElementById('qCancelError').textContent = d.error;
+            document.getElementById('qCancelError').style.display = 'block';
+        }
+    });
+}
+
+function showMoveTable(sessionId) {
+    movingSessionId = sessionId;
+    var grid = document.getElementById('moveTableGrid');
+    var html = '';
+    document.querySelectorAll('.table-card').forEach(function(card) {
+        if (card.dataset.status === 'available') {
+            html += '<div class="move-table-btn" onclick="doMoveTable(' + card.dataset.tableId + ')">' + card.querySelector('.table-num').textContent + '</div>';
+        }
+    });
+    if (!html) html = '<p style="text-align:center; color:#999; padding:20px;">אין שולחנות פנויים</p>';
+    grid.innerHTML = html;
+    document.getElementById('moveTableOverlay').classList.add('show');
+    document.getElementById('moveTableSheet').classList.add('show');
+}
+
+function hideMoveTable() {
+    document.getElementById('moveTableOverlay').classList.remove('show');
+    document.getElementById('moveTableSheet').classList.remove('show');
+    movingSessionId = null;
+}
+
+function doMoveTable(newTableId) {
+    if (!movingSessionId) return;
+    fetch('/ops/api/sessions/' + movingSessionId + '/move-table', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({new_table_id: newTableId})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) { hideMoveTable(); showToast(d.message); setTimeout(function() { location.reload(); }, 800); }
+        else showToast(d.error, true);
+    });
+}
+
+function showAddTable() {
+    document.getElementById('addTableOverlay').classList.add('show');
+    document.getElementById('addTableSheet').classList.add('show');
+    document.getElementById('newTableNumber').focus();
+    renderAreaChips();
+}
+function hideAddTable() {
+    document.getElementById('addTableOverlay').classList.remove('show');
+    document.getElementById('addTableSheet').classList.remove('show');
+}
+
+function renderAreaChips() {
+    var container = document.getElementById('existingAreas');
+    container.innerHTML = '';
+    if (!knownAreas.length) return;
+    knownAreas.forEach(function(a) {
+        var chip = document.createElement('span');
+        chip.className = 'area-chip';
+        chip.textContent = a;
+        chip.addEventListener('click', function() {
+            document.getElementById('newTableArea').value = a;
+            document.querySelectorAll('.area-chip').forEach(function(c) { c.classList.remove('selected'); });
+            chip.classList.add('selected');
+        });
+        container.appendChild(chip);
+    });
+}
+
+function addTable() {
+    var num = document.getElementById('newTableNumber').value.trim();
+    var cap = parseInt(document.getElementById('newTableCapacity').value) || 4;
+    var area = document.getElementById('newTableArea').value.trim();
+    if (!num) { showToast('נא להזין מספר שולחן', true); return; }
+    if (!area) { showToast('חובה לבחור אזור ישיבה', true); document.getElementById('newTableArea').focus(); return; }
+    fetch('/ops/api/tables/manage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'add', table_number: num, capacity: cap, area: area})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) { showToast('שולחן נוסף'); setTimeout(function() { location.reload(); }, 800); }
+        else showToast(d.error, true);
+    });
+}
+
+function reopenSession(sessionId) {
+    opsConfirm({title: 'פתיחה מחדש', message: 'לפתוח מחדש את הישיבה?', type: 'info', okText: 'פתח מחדש'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/sessions/' + sessionId + '/reopen', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) window.location.href = '/ops/dine-in/' + d.session_id;
+            else showToast(d.error, true);
+        });
+    });
+}
+
+function bulkAddTables() {
+    var area = document.getElementById('newTableArea').value.trim();
+    if (!area) { showToast('חובה לבחור אזור ישיבה', true); document.getElementById('newTableArea').focus(); return; }
+    var promises = [];
+    for (var i = 1; i <= 10; i++) {
+        promises.push(
+            fetch('/ops/api/tables/manage', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'add', table_number: String(i), capacity: 4, area: area})
+            }).then(function(r) { return r.json(); })
+        );
+    }
+    Promise.all(promises).then(function() { location.reload(); });
+}
+
+function handleTableClick(tableId, sessionId, status) {
+    if (status !== 'available') {
+        if (sessionId) {
+            window.location.href = '/ops/dine-in/' + sessionId;
+        } else {
+            showToast('שולחן ללא ישיבה פעילה — רענן את הדף', true);
+        }
+        return;
+    }
+    var card = document.querySelector('.table-card[data-table-id="' + tableId + '"], .floor-table[data-table-id="' + tableId + '"]');
+    if (card && card.dataset.opening === '1') return;
+    if (card) card.dataset.opening = '1';
+    fetch('/ops/api/tables/' + tableId + '/open-session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+        credentials: 'same-origin',
+        body: '{}'
+    }).then(function(r) {
+        return r.text().then(function(txt) {
+            var d;
+            try { d = JSON.parse(txt); } catch (e) {
+                throw new Error('שרת החזיר תגובה לא צפויה (' + r.status + ')');
+            }
+            if (r.status >= 400 && !d.ok) {
+                throw new Error(d.error || ('שגיאת שרת ' + r.status));
+            }
+            return d;
+        });
+    }).then(function(d) {
+        if (d && d.ok && d.session_id) {
+            window.location.href = '/ops/dine-in/' + d.session_id;
+        } else {
+            if (card) delete card.dataset.opening;
+            showToast((d && d.error) || 'לא התקבל מזהה ישיבה — נסה שוב', true);
+        }
+    }).catch(function(err) {
+        if (card) delete card.dataset.opening;
+        console.error('[open-session] failed', err);
+        showToast('שגיאה בפתיחת שולחן: ' + (err && err.message ? err.message : 'נסה שוב'), true);
+    });
+}
+
+setInterval(function() {
+    fetch('/ops/api/tables').then(function(r) { return r.json(); }).then(function(d) {
+        if (!d.ok) return;
+        d.tables.forEach(function(t) {
+            var displayClass = t.has_pending_voids ? 'pending_voids' : (t.status || 'available');
+            var card = document.querySelector('.table-card[data-table-id="' + t.id + '"]');
+            if (card) {
+                card.className = 'table-card ' + displayClass;
+                card.setAttribute('data-session-id', t.session_id || '');
+                card.setAttribute('data-status', t.status || 'available');
+                card.setAttribute('data-has-pending-voids', t.has_pending_voids ? 'true' : 'false');
+                var meta = '';
+                if (t.has_pending_voids) {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">אישור מנהל</span>' +
+                        '<div class="table-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                        '<span class="amount">₪' + Math.round(t.total) + '</span>' +
+                        (t.waiter ? '<span>' + t.waiter + '</span>' : '') +
+                        '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
+                } else if (t.status === 'open') {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">תפוס</span>' +
+                        '<div class="table-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                        '<span class="amount">₪' + Math.round(t.total) + '</span>' +
+                        (t.waiter ? '<span>' + t.waiter + '</span>' : '') +
+                        '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
+                } else if (t.status === 'awaiting_payment') {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">ממתין לתשלום</span>' +
+                        '<div class="table-meta"><span class="amount">₪' + Math.round(t.total) + '</span>' +
+                        '<span>' + (t.item_count || 0) + ' פריטים</span></div>';
+                } else {
+                    meta = '<div class="table-num">' + t.table_number + '</div>' +
+                        '<span class="table-status">פנוי</span>';
+                }
+                card.innerHTML = meta;
+            }
+            var ft = document.querySelector('.floor-table[data-table-id="' + t.id + '"]');
+            if (ft) {
+                var shape = ft.classList.contains('shape-round') ? 'shape-round' : 'shape-rect';
+                ft.className = 'floor-table ' + shape + ' ' + displayClass;
+                ft.setAttribute('data-session-id', t.session_id || '');
+                ft.setAttribute('data-status', t.status || 'available');
+                ft.setAttribute('data-has-pending-voids', t.has_pending_voids ? 'true' : 'false');
+                var fm = '<div class="ft-num">' + t.table_number + '</div>';
+                if (t.has_pending_voids) {
+                    fm += '<span class="ft-status">אישור מנהל</span>' +
+                        '<div class="ft-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                        '<span class="amount">₪' + Math.round(t.total) + '</span></div>';
+                } else if (t.status === 'open') {
+                    fm += '<span class="ft-status">תפוס</span>' +
+                        '<div class="ft-meta"><span>' + t.elapsed_minutes + ' דק׳</span>' +
+                        '<span class="amount">₪' + Math.round(t.total) + '</span></div>';
+                } else if (t.status === 'awaiting_payment') {
+                    fm += '<span class="ft-status">ממתין</span>' +
+                        '<div class="ft-meta"><span class="amount">₪' + Math.round(t.total) + '</span></div>';
+                } else {
+                    fm += '<span class="ft-status">פנוי</span>';
+                }
+                ft.innerHTML = fm;
+            }
+        });
+        if (currentAreaFilter !== '__all__') filterArea(currentAreaFilter);
+    });
+}, 15000);
+</script>
+{% endblock %}

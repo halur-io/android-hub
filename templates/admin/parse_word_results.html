@@ -1,0 +1,260 @@
+{% extends "admin/base.html" %}
+{% block title %}תוצאות יבוא תפריט{% endblock %}
+{% block extra_css %}
+<style>
+.hebrew-content {
+    direction: rtl;
+    text-align: right;
+}
+
+.success-card {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.2);
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-left: 4px solid #007bff;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.category-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    border: 1px solid #dee2e6;
+}
+
+.category-header {
+    background: linear-gradient(135deg, #6f42c1 0%, #007bff 100%);
+    color: white;
+    padding: 15px 20px;
+    font-weight: bold;
+}
+
+.category-content {
+    padding: 15px 20px;
+}
+
+.menu-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.menu-item:last-child {
+    border-bottom: none;
+}
+
+.item-name {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.item-price {
+    background: #28a745;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.item-ingredients {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+    margin-top: 5px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.btn-action {
+    border-radius: 25px;
+    padding: 12px 30px;
+    font-weight: bold;
+    transition: transform 0.2s;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.celebration-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hebrew-content">
+    <!-- Success Header -->
+    <div class="success-card">
+        <div class="celebration-icon">🎉</div>
+        <h1>התפריט יובא בהצלחה!</h1>
+        <p class="mb-0">המערכת עיבדה את התפריט שלך וייבאה את כל הפריטים לבסיס הנתונים</p>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-number">{{ result.items_added }}</div>
+            <div class="stat-label">פריטים נוספו</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ result.categories_added }}</div>
+            <div class="stat-label">קטגוריות נוצרו</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ result.parsed_items }}</div>
+            <div class="stat-label">סה"כ פריטים עובדו</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ result.categories|length }}</div>
+            <div class="stat-label">קטגוריות זוהו</div>
+        </div>
+    </div>
+
+    <!-- Categories Found -->
+    {% if result.categories %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-list me-2"></i>קטגוריות שזוהו</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                {% for category in result.categories %}
+                <span class="badge bg-primary fs-6 py-2 px-3">{{ category }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Success Message Details -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-info-circle me-2"></i>פרטי היבוא</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>זמן עיבוד:</strong> {{ moment().format('DD/MM/YYYY HH:mm') }}</p>
+                    <p><strong>סטטוס:</strong> <span class="badge bg-success">הושלם בהצלחה</span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>סניף:</strong> {{ current_user.username }}</p>
+                    <p><strong>מקור:</strong> Word Document</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="{{ url_for('admin.menu') }}" class="btn btn-primary btn-action">
+            <i class="fas fa-eye me-2"></i>צפה בתפריט
+        </a>
+        <a href="{{ url_for('admin.parse_word_menu') }}" class="btn btn-outline-secondary btn-action">
+            <i class="fas fa-plus me-2"></i>יבא תפריט נוסף
+        </a>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-primary btn-action">
+            <i class="fas fa-home me-2"></i>חזרה לדשבורד
+        </a>
+    </div>
+
+    <!-- Tips for next steps -->
+    <div class="card mt-4" style="border: 2px dashed #28a745;">
+        <div class="card-body text-center">
+            <h6><i class="fas fa-lightbulb me-2"></i>שלבים הבאים</h6>
+            <p class="mb-2">כעת אתה יכול:</p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <span class="badge bg-light text-dark py-2 px-3">✅ עריכת פריטים</span>
+                <span class="badge bg-light text-dark py-2 px-3">🏷️ הוספת תמונות</span>
+                <span class="badge bg-light text-dark py-2 px-3">📱 עדכון מחירים</span>
+                <span class="badge bg-light text-dark py-2 px-3">🎯 סידור קטגוריות</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto refresh menu cache if needed
+if (window.menuCache) {
+    window.menuCache.clear();
+}
+
+// Show celebration animation
+document.addEventListener('DOMContentLoaded', function() {
+    // Add some celebration effects
+    setTimeout(function() {
+        console.log('Menu import completed successfully! 🎉');
+    }, 500);
+});
+</script>
+{% endblock %}

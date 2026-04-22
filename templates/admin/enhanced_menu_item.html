@@ -1,0 +1,1516 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if item.id %}עריכת מנה{% else %}הוספת מנה חדשה{% endif %}{% endblock %}
+
+{% block extra_css %}
+<!-- Cropper.js CSS for image editor -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<style>
+.cropper-container { max-height: 400px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>{% if item.id %}עריכת מנה: {{ item.name_he }}{% else %}הוספת מנה חדשה{% endif %}</h2>
+            
+            <form method="POST" enctype="multipart/form-data" id="menuItemForm" 
+                  action="{% if item.id %}{{ url_for('admin.edit_menu_item', id=item.id) }}{% else %}{{ url_for('admin.edit_menu_item') }}{% endif %}">
+                {{ form.csrf_token }}
+                
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs mb-4" id="menuItemTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                            <i class="fas fa-info-circle me-2"></i>מידע בסיסי
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="dietary-tab" data-bs-toggle="tab" data-bs-target="#dietary" type="button" role="tab">
+                            <i class="fas fa-leaf me-2"></i>תכונות תזונתיות
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#pricing" type="button" role="tab">
+                            <i class="fas fa-tags me-2"></i>תמחור ומבצעים
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="availability-tab" data-bs-toggle="tab" data-bs-target="#availability" type="button" role="tab">
+                            <i class="fas fa-clock me-2"></i>זמינות ותפעול
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="options-tab" data-bs-toggle="tab" data-bs-target="#options" type="button" role="tab">
+                            <i class="fas fa-list-check me-2"></i>אפשרויות ותוספות
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="branches-tab" data-bs-toggle="tab" data-bs-target="#branches" type="button" role="tab">
+                            <i class="fas fa-store me-2"></i>סניפים
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="print-tab" data-bs-toggle="tab" data-bs-target="#print" type="button" role="tab">
+                            <i class="fas fa-print me-2"></i>הגדרות הדפסה
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab">
+                            <i class="fas fa-cogs me-2"></i>הגדרות מתקדמות
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content" id="menuItemTabContent">
+                    <!-- Basic Information Tab -->
+                    <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="category_id" class="form-label">קטגוריה <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="category_id" name="category_id" required>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" {% if item.category_id == category.id %}selected{% endif %}>
+                                            {{ category.name_he }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="name_he" class="form-label">שם המנה (עברית) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name_he" name="name_he" value="{{ item.name_he or '' }}" required>
+                                    <div class="invalid-feedback">
+                                        שדה זה הוא חובה - נא להזין שם למנה בעברית
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="name_en" class="form-label">שם המנה (אנגלית) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="name_en" name="name_en" value="{{ item.name_en or '' }}" required>
+                                    <div class="invalid-feedback">
+                                        שדה זה הוא חובה - נא להזין שם למנה באנגלית
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="short_description_he" class="form-label">תיאור קצר (עברית)</label>
+                                    <input type="text" class="form-control" id="short_description_he" name="short_description_he" value="{{ item.short_description_he or '' }}">
+                                    <small class="form-text text-muted">מוצג בכרטיסי מנה</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="short_description_en" class="form-label">תיאור קצר (אנגלית)</label>
+                                    <input type="text" class="form-control" id="short_description_en" name="short_description_en" value="{{ item.short_description_en or '' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="image" class="form-label fw-bold">תמונת המנה</label>
+                                    
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="refineImage" name="refine_image" checked>
+                                        <label class="form-check-label" for="refineImage">
+                                            <i class="fas fa-magic me-1"></i> עיבוד תמונה (הסרת רקע + רקע כהה מבריק)
+                                        </label>
+                                        <div class="form-text">בטל סימון כדי לשמור את התמונה המקורית ללא עיבוד</div>
+                                    </div>
+                                    <div id="uploadBox" class="upload-area border-2 border-primary rounded p-4 bg-light text-center" style="cursor: pointer; border-style: dashed;" onclick="document.getElementById('image').click();">
+                                        <i class="fas fa-upload fa-4x text-primary mb-3"></i>
+                                        <h5 class="mb-2">לחץ כאן להעלאת תמונה</h5>
+                                        <p class="mb-0 text-muted">PNG, JPG או WebP - גודל מקסימלי 50MB</p>
+                                        <p id="uploadHint" class="mb-0 text-muted small">הרקע יוסר אוטומטית ויוחלף ברקע כהה מבריק</p>
+                                        <input type="file" class="d-none" id="image" name="image" accept="image/jpeg,image/png,image/gif,image/webp" onchange="handleImageSelect(this)">
+                                    </div>
+                                    
+                                    <div id="uploadProgress" class="mt-3" style="display: none;">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="fas fa-spinner fa-spin me-2 text-primary"></i>
+                                            <strong id="progressLabel">מעלה תמונה...</strong>
+                                        </div>
+                                        <div class="progress mb-2" style="height: 28px;">
+                                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; background: linear-gradient(90deg, #4f46e5, #7c3aed);">
+                                                <span id="progressText" class="fw-bold">0%</span>
+                                            </div>
+                                        </div>
+                                        <div id="progressSteps" class="small">
+                                            <div id="step-upload" class="d-flex align-items-center mb-1 text-muted">
+                                                <i class="fas fa-circle fa-xs me-2"></i> העלאת קובץ לשרת
+                                            </div>
+                                            <div id="step-removing" class="d-flex align-items-center mb-1 text-muted">
+                                                <i class="fas fa-circle fa-xs me-2"></i> הסרת רקע (AI)
+                                            </div>
+                                            <div id="step-compositing" class="d-flex align-items-center mb-1 text-muted">
+                                                <i class="fas fa-circle fa-xs me-2"></i> הוספת רקע כהה מבריק
+                                            </div>
+                                            <div id="step-optimizing" class="d-flex align-items-center mb-1 text-muted">
+                                                <i class="fas fa-circle fa-xs me-2"></i> אופטימיזציה ושמירה
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="uploadResult" class="mt-3" style="display: none;">
+                                        <div id="uploadSuccess" class="p-3 border rounded bg-success bg-opacity-10 border-success" style="display: none;">
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <div>
+                                                    <i class="fas fa-check-circle text-success fs-4 me-2"></i>
+                                                    <span class="fw-bold text-success">התמונה עובדה בהצלחה!</span>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="resetUpload()">
+                                                    <i class="fas fa-redo me-1"></i> העלה תמונה אחרת
+                                                </button>
+                                            </div>
+                                            <div id="resultInfo" class="small text-muted mb-2"></div>
+                                            <div class="text-center" style="background: #1a1a1a; border-radius: 8px; padding: 10px;">
+                                                <img id="processedPreview" src="" alt="Processed" class="img-thumbnail border-0" style="max-width: 100%; max-height: 250px; background: transparent;">
+                                            </div>
+                                        </div>
+                                        <div id="uploadError" class="p-3 border rounded bg-danger bg-opacity-10 border-danger" style="display: none;">
+                                            <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                                            <span class="fw-bold">שגיאה בעיבוד:</span>
+                                            <span id="errorMessage"></span>
+                                            <div class="mt-2">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="resetUpload()">
+                                                    <i class="fas fa-redo me-1"></i> נסה שוב
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="currentImageBox" class="mt-3 p-3 border rounded bg-info bg-opacity-10" {% if not item.image_path %}style="display:none"{% endif %}>
+                                        <p class="small fw-bold mb-2"><i class="fas fa-image me-1"></i> תמונה נוכחית:</p>
+                                        <div class="text-center" style="background: #1a1a1a; border-radius: 8px; padding: 10px;">
+                                            <img src="{{ item.image_path or '' }}" alt="Current image" class="img-thumbnail border-0" id="currentImage" style="max-width: 100%; max-height: 200px; background: transparent;">
+                                        </div>
+                                        {% if item.id %}
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openImageEditor()">
+                                                <i class="fas fa-edit me-1"></i> עריכת תמונה
+                                            </button>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="modal fade" id="imageEditorModal" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title"><i class="fas fa-crop-alt me-2"></i>עריכת תמונה</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="text-center mb-3">
+                                                        <div class="btn-group" role="group">
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(-90)" title="סובב שמאלה">
+                                                                <i class="fas fa-undo"></i> סובב שמאלה
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(90)" title="סובב ימינה">
+                                                                <i class="fas fa-redo"></i> סובב ימינה
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="zoomImage(0.1)" title="הגדל">
+                                                                <i class="fas fa-search-plus"></i> הגדל
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="zoomImage(-0.1)" title="הקטן">
+                                                                <i class="fas fa-search-minus"></i> הקטן
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" onclick="resetCropper()" title="אפס">
+                                                                <i class="fas fa-sync"></i> אפס
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div style="max-height: 400px; overflow: hidden;">
+                                                        <img id="cropperImage" src="{{ item.image_path or '' }}" style="max-width: 100%;">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                                    <button type="button" class="btn btn-primary" onclick="saveCroppedImage()">
+                                                        <i class="fas fa-save me-1"></i> שמור שינויים
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <script>
+                                var _itemId = {{ item.id or 0 }};
+                                var _csrfToken = document.querySelector('input[name="csrf_token"]') ? document.querySelector('input[name="csrf_token"]').value : '';
+                                var _processingActive = false;
+
+                                document.getElementById('refineImage').addEventListener('change', function() {
+                                    var hint = document.getElementById('uploadHint');
+                                    if (this.checked) {
+                                        hint.textContent = 'הרקע יוסר אוטומטית ויוחלף ברקע כהה מבריק';
+                                    } else {
+                                        hint.textContent = 'התמונה תישמר כמו שהיא (ללא עיבוד)';
+                                    }
+                                });
+
+                                function setStep(stepId, status) {
+                                    var el = document.getElementById('step-' + stepId);
+                                    if (!el) return;
+                                    el.className = 'd-flex align-items-center mb-1';
+                                    var icon = el.querySelector('i');
+                                    if (status === 'active') {
+                                        el.classList.add('text-primary', 'fw-bold');
+                                        icon.className = 'fas fa-spinner fa-spin fa-xs me-2';
+                                    } else if (status === 'done') {
+                                        el.classList.add('text-success');
+                                        icon.className = 'fas fa-check-circle fa-xs me-2';
+                                    } else {
+                                        el.classList.add('text-muted');
+                                        icon.className = 'fas fa-circle fa-xs me-2';
+                                    }
+                                }
+
+                                function updateProgress(pct, label) {
+                                    document.getElementById('progressBar').style.width = pct + '%';
+                                    document.getElementById('progressText').textContent = pct + '%';
+                                    if (label) document.getElementById('progressLabel').textContent = label;
+                                }
+
+                                function handleImageSelect(input) {
+                                    if (!input.files || !input.files[0]) return;
+                                    var file = input.files[0];
+
+                                    if (!_itemId) {
+                                        document.getElementById('uploadBox').style.display = 'none';
+                                        var info = document.createElement('div');
+                                        info.className = 'alert alert-info mt-2';
+                                        info.innerHTML = '<i class="fas fa-info-circle me-2"></i>תמונה נבחרה: <strong>' + file.name + '</strong>. התמונה תעובד אוטומטית לאחר שמירת המנה.';
+                                        input.parentElement.parentElement.appendChild(info);
+                                        return;
+                                    }
+
+                                    var refine = document.getElementById('refineImage').checked;
+
+                                    _processingActive = true;
+                                    document.getElementById('uploadBox').style.display = 'none';
+                                    document.getElementById('uploadResult').style.display = 'none';
+                                    document.getElementById('uploadProgress').style.display = 'block';
+
+                                    setStep('upload', 'active');
+                                    if (refine) {
+                                        setStep('removing', 'pending');
+                                        setStep('compositing', 'pending');
+                                        setStep('optimizing', 'pending');
+                                    } else {
+                                        setStep('removing', 'done');
+                                        setStep('compositing', 'done');
+                                        setStep('optimizing', 'pending');
+                                    }
+                                    updateProgress(5, 'מעלה תמונה לשרת...');
+
+                                    var formData = new FormData();
+                                    formData.append('image', file);
+                                    formData.append('refine', refine ? '1' : '0');
+
+                                    var stepLabels = {
+                                        'upload': 'מעלה תמונה לשרת...',
+                                        'removing_bg': 'מסיר רקע בעזרת AI...',
+                                        'compositing': 'מוסיף רקע כהה מבריק...',
+                                        'saving': 'אופטימיזציה ושמירה...',
+                                    };
+
+                                    var stepToUi = {
+                                        'upload': 'upload',
+                                        'removing_bg': 'removing',
+                                        'compositing': 'compositing',
+                                        'saving': 'optimizing',
+                                    };
+
+                                    var prevUiStep = null;
+
+                                    function handleStreamEvent(data) {
+                                        if (data.success !== undefined) {
+                                            _processingActive = false;
+                                            document.getElementById('uploadProgress').style.display = 'none';
+                                            document.getElementById('uploadResult').style.display = 'block';
+
+                                            if (data.success) {
+                                                ['upload','removing','compositing','optimizing'].forEach(function(s) { setStep(s, 'done'); });
+                                                updateProgress(100, 'הושלם!');
+                                                document.getElementById('uploadSuccess').style.display = 'block';
+                                                document.getElementById('uploadError').style.display = 'none';
+                                                var ts = '?t=' + Date.now();
+                                                document.getElementById('processedPreview').src = data.image_path + ts;
+                                                var infoText = 'כרטיס: ' + (data.card_size_kb || '?') + 'KB';
+                                                if (data.hero_size_kb) infoText += ' | גדולה: ' + data.hero_size_kb + 'KB';
+                                                if (data.warning) infoText += ' | ' + data.warning;
+                                                document.getElementById('resultInfo').textContent = infoText;
+                                                var curImg = document.getElementById('currentImage');
+                                                if (curImg) curImg.src = data.image_path + ts;
+                                                document.getElementById('currentImageBox').style.display = 'block';
+                                                var cropImg = document.getElementById('cropperImage');
+                                                if (cropImg) cropImg.src = data.image_path + ts;
+                                                document.getElementById('image').value = '';
+                                            } else {
+                                                showUploadError(data.error || 'Unknown error');
+                                            }
+                                            return;
+                                        }
+
+                                        var uiStep = stepToUi[data.step] || data.step;
+                                        var label = stepLabels[data.step] || data.step;
+                                        var pct = data.progress || 0;
+
+                                        if (prevUiStep && prevUiStep !== uiStep) {
+                                            setStep(prevUiStep, 'done');
+                                        }
+                                        setStep(uiStep, 'active');
+                                        prevUiStep = uiStep;
+                                        updateProgress(pct, label);
+                                    }
+
+                                    fetch('/admin/menu/item/' + _itemId + '/upload-image', {
+                                        method: 'POST',
+                                        headers: { 'X-CSRFToken': _csrfToken },
+                                        body: formData
+                                    }).then(function(response) {
+                                        if (!response.ok) {
+                                            throw new Error('Server error (' + response.status + ')');
+                                        }
+                                        var reader = response.body.getReader();
+                                        var decoder = new TextDecoder();
+                                        var buffer = '';
+
+                                        function processChunk() {
+                                            return reader.read().then(function(result) {
+                                                if (result.done) {
+                                                    if (buffer.trim()) {
+                                                        try { handleStreamEvent(JSON.parse(buffer.trim())); } catch(e) {}
+                                                    }
+                                                    return;
+                                                }
+                                                buffer += decoder.decode(result.value, {stream: true});
+                                                var lines = buffer.split('\n');
+                                                buffer = lines.pop();
+                                                lines.forEach(function(line) {
+                                                    if (line.trim()) {
+                                                        try { handleStreamEvent(JSON.parse(line)); } catch(e) {}
+                                                    }
+                                                });
+                                                return processChunk();
+                                            });
+                                        }
+
+                                        return processChunk();
+                                    }).catch(function(err) {
+                                        _processingActive = false;
+                                        document.getElementById('uploadProgress').style.display = 'none';
+                                        document.getElementById('uploadResult').style.display = 'block';
+                                        showUploadError(err.message || 'Network error');
+                                    });
+                                }
+
+                                function showUploadError(msg) {
+                                    document.getElementById('uploadSuccess').style.display = 'none';
+                                    document.getElementById('uploadError').style.display = 'block';
+                                    document.getElementById('errorMessage').textContent = msg;
+                                }
+
+                                function resetUpload() {
+                                    document.getElementById('image').value = '';
+                                    document.getElementById('uploadBox').style.display = 'block';
+                                    document.getElementById('uploadProgress').style.display = 'none';
+                                    document.getElementById('uploadResult').style.display = 'none';
+                                    ['upload','removing','compositing','optimizing'].forEach(function(s) { setStep(s, 'pending'); });
+                                    updateProgress(0, '');
+                                }
+
+                                function clearImage() {
+                                    resetUpload();
+                                }
+                                </script>
+                                
+                                <div class="mb-3">
+                                    <label for="display_order" class="form-label">סדר הצגה</label>
+                                    <input type="number" class="form-control" id="display_order" name="display_order" value="{{ item.display_order or 0 }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="is_available" name="is_available" {% if item.is_available %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_available">
+                                            זמין להזמנה
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description_he" class="form-label">תיאור מפורט (עברית)</label>
+                                    <textarea class="form-control" id="description_he" name="description_he" rows="4">{{ item.description_he or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="description_en" class="form-label">תיאור מפורט (אנגלית)</label>
+                                    <textarea class="form-control" id="description_en" name="description_en" rows="4">{{ item.description_en or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ingredients_he" class="form-label">רכיבים (עברית)</label>
+                                    <textarea class="form-control" id="ingredients_he" name="ingredients_he" rows="3" placeholder="רשום רכיבים מופרדים בפסיקים">{{ item.ingredients_he or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ingredients_en" class="form-label">רכיבים (אנגלית)</label>
+                                    <textarea class="form-control" id="ingredients_en" name="ingredients_en" rows="3" placeholder="List ingredients separated by commas">{{ item.ingredients_en or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dietary Properties Tab -->
+                    <div class="tab-pane fade" id="dietary" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5><i class="fas fa-tags me-2"></i>תכונות תזונתיות</h5>
+                                <p class="text-muted">בחר את התכונות התזונתיות הרלוונטיות למנה זו</p>
+                                
+                                {% if dietary_properties %}
+                                <div class="row">
+                                    {% for property in dietary_properties %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-check property-card p-3 border rounded">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="dietary_property_{{ property.id }}" 
+                                                   name="dietary_properties" 
+                                                   value="{{ property.id }}"
+                                                   {% if property in item.dietary_properties %}checked{% endif %}>
+                                            <label class="form-check-label w-100" for="dietary_property_{{ property.id }}">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-{{ property.icon or 'tag' }} me-2" 
+                                                       style="color: {{ property.color or '#6c757d' }}; font-size: 1.2rem;"></i>
+                                                    <div>
+                                                        <div class="fw-bold">{{ property.name_he }}</div>
+                                                        <small class="text-muted">{{ property.name_en }}</small>
+                                                        {% if property.description_he %}
+                                                        <div><small class="text-secondary">{{ property.description_he }}</small></div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    לא הוגדרו תכונות תזונתיות במערכת. 
+                                    <a href="{{ url_for('admin.dietary_properties') }}" class="alert-link">לחץ כאן להוספת תכונות</a>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mt-4">
+                                    <h6><i class="fas fa-exclamation-triangle me-2"></i>אלרגנים</h6>
+                                    <div class="mb-3">
+                                        {% set allergens_text = '' %}
+                                        {% if item.allergens and item.allergens != '[]' %}
+                                            {% set allergens_list = item.allergens|fromjson %}
+                                            {% set allergens_text = allergens_list|join(', ') %}
+                                        {% endif %}
+                                        <input type="text" class="form-control" id="allergens" name="allergens" 
+                                               value="{{ allergens_text }}" 
+                                               placeholder="רשום אלרגנים מופרדים בפסיקים">
+                                        <small class="form-text text-muted">לדוגמה: אגוזים, חלב, ביצים</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <h6><i class="fas fa-cog me-2"></i>הגדרות נוספות</h6>
+                                
+                                <div class="mb-3">
+                                    <label for="spice_level" class="form-label">רמת חריפות (0-5)</label>
+                                    <select class="form-select" id="spice_level" name="spice_level">
+                                        <option value="0" {% if item.spice_level == 0 %}selected{% endif %}>לא חריף</option>
+                                        <option value="1" {% if item.spice_level == 1 %}selected{% endif %}>קל 🌶️</option>
+                                        <option value="2" {% if item.spice_level == 2 %}selected{% endif %}>בינוני 🌶️🌶️</option>
+                                        <option value="3" {% if item.spice_level == 3 %}selected{% endif %}>חריף 🌶️🌶️🌶️</option>
+                                        <option value="4" {% if item.spice_level == 4 %}selected{% endif %}>מאוד חריף 🌶️🌶️🌶️🌶️</option>
+                                        <option value="5" {% if item.spice_level == 5 %}selected{% endif %}>שורף! 🌶️🌶️🌶️🌶️🌶️</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="mb-3">
+                                            <label for="calories" class="form-label">קלוריות</label>
+                                            <input type="number" class="form-control" id="calories" name="calories" value="{{ item.calories or '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="prep_time_minutes" class="form-label">זמן הכנה (דקות)</label>
+                                            <input type="number" class="form-control" id="prep_time_minutes" name="prep_time_minutes" value="{{ item.prep_time_minutes or '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        תכונות תזונתיות מוצגות כאייקונים במנה. ניתן לנהל את התכונות ב
+                                        <a href="{{ url_for('admin.dietary_properties') }}" target="_blank">דף הניהול</a>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pricing Tab -->
+                    <div class="tab-pane fade" id="pricing" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="base_price" class="form-label">מחיר בסיס (₪) <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" class="form-control" id="base_price" name="base_price" value="{{ item.base_price or item.price or '' }}" required>
+                                    <div class="invalid-feedback">
+                                        שדה זה הוא חובה - נא להזין מחיר למנה
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="discount_percentage" class="form-label">הנחה באחוזים</label>
+                                    <input type="number" step="0.01" max="100" class="form-control" id="discount_percentage" name="discount_percentage" value="{{ item.discount_percentage or 0 }}">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="special_offer_text_he" class="form-label">טקסט מבצע (עברית)</label>
+                                    <input type="text" class="form-control" id="special_offer_text_he" name="special_offer_text_he" value="{{ item.special_offer_text_he or '' }}" placeholder="לדוגמה: מבצע השבוע!">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="special_offer_text_en" class="form-label">טקסט מבצע (אנגלית)</label>
+                                    <input type="text" class="form-control" id="special_offer_text_en" name="special_offer_text_en" value="{{ item.special_offer_text_en or '' }}" placeholder="e.g. Special offer!">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Availability Tab -->
+                    <div class="tab-pane fade" id="availability" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-clock me-2"></i>שעות זמינות</h5>
+                                <div class="mb-3">
+                                    <label for="available_from_time" class="form-label">זמין מהשעה</label>
+                                    <input type="time" class="form-control" id="available_from_time" name="available_from_time" value="{{ item.available_from_time or '' }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="available_to_time" class="form-label">זמין עד השעה</label>
+                                    <input type="time" class="form-control" id="available_to_time" name="available_to_time" value="{{ item.available_to_time or '' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-calendar me-2"></i>ימי זמינות</h5>
+                                <div class="form-text mb-2">בחר באילו ימים המנה זמינה:</div>
+                                {% set days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'] %}
+                                {% for day in days %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="day_{{ loop.index0 }}" name="available_day_{{ loop.index0 }}" 
+                                           {% if item.available_days and item.available_days[loop.index0] == '1' %}checked{% endif %}>
+                                    <label class="form-check-label" for="day_{{ loop.index0 }}">{{ day }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Options & Extras Tab -->
+                    <div class="tab-pane fade" id="options" role="tabpanel">
+                        {% if not item.id %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            שמור את המנה קודם כדי להוסיף אפשרויות ותוספות
+                        </div>
+                        {% else %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="fas fa-list-check me-2"></i>קבוצות אפשרויות</h5>
+                            <div>
+                                <button type="button" class="btn btn-outline-success btn-sm me-1" onclick="showAttachGlobalGroupModal()">
+                                    <i class="fas fa-layer-group me-1"></i>שייך תבנית גלובלית
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="showAddGroupModal()">
+                                    <i class="fas fa-plus me-1"></i>קבוצה חדשה
+                                </button>
+                            </div>
+                        </div>
+                        <div id="globalGroupLinks" class="mb-3" style="display:none;">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="fas fa-layer-group text-success"></i>
+                                <strong class="small text-success">תבניות גלובליות מקושרות:</strong>
+                            </div>
+                            <div id="globalGroupLinksList"></div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <strong>אפשרות (חובה):</strong> בחירה יחידה שהלקוח חייב לבחור (כמו: ני/מבושל)&nbsp;&nbsp;|&nbsp;&nbsp;
+                                <strong>תוספות בתשלום:</strong> תוספות עם מחיר נוסף&nbsp;&nbsp;|&nbsp;&nbsp;
+                                <strong>תוספות חינם:</strong> הגדר כמה תוספות חינם הלקוח יכול לבחור
+                            </small>
+                        </div>
+                        <div id="optionGroupsList">
+                            <div class="text-center text-muted py-4" id="noGroupsMsg">
+                                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                אין אפשרויות עדיין. לחץ "קבוצה חדשה" להוסיף
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Print Settings Tab -->
+                    <div class="tab-pane fade" id="print" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-print me-2"></i>הגדרות הדפסת בון</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="print_station" class="form-label">עמדת הדפסה</label>
+                                            {% if print_stations %}
+                                            <select class="form-select" id="print_station" name="print_station">
+                                                <option value="">-- ללא (מדפסת ברירת מחדל) --</option>
+                                                {% for station in print_stations %}
+                                                {% set printers_for_station = station_printer_map.get(station.name, []) %}
+                                                {% if printers_for_station %}
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} &rarr; {% for p in printers_for_station %}{{ p.name }} ({{ p.ip }}){% if not loop.last %}, {% endif %}{% endfor %}</option>
+                                                {% else %}
+                                                <option value="{{ station.name }}" {% if item.print_station == station.name %}selected{% endif %}>{{ station.display_name or station.name }} (לא משויכת למדפסת)</option>
+                                                {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">לאיזה מדפסת/עמדה הבון של מנה זו יישלח</div>
+                                            {% else %}
+                                            <div class="alert alert-warning py-2 mb-0">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                                אין עמדות הדפסה מוגדרות. <a href="{{ url_for('admin.printers') }}">הגדר עמדות</a> בלשונית "עמדות הדפסה" בדף המדפסות.
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="print_name" class="form-label">שם הדפסה מותאם</label>
+                                            <input type="text" class="form-control" id="print_name" name="print_name"
+                                                   value="{{ item.print_name or '' }}"
+                                                   placeholder="{{ item.name_he or 'שם המנה בעברית' }}" dir="rtl">
+                                            <div class="form-text">שם קצר או שונה שיודפס על הבון. אם ריק, יודפס שם המנה הרגיל.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mt-2 mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>איך זה עובד:</strong> כשמנה זו נכללת בהזמנה, הבון יישלח למדפסת של העמדה שנבחרה.
+                                    אם לא נבחרה עמדה, הבון יישלח למדפסת ברירת המחדל של הסניף.
+                                    השם המותאם מאפשר לקצר או לשנות את שם המנה כפי שיופיע על הבון (לדוגמה: קוד מטבח, שם קצר, או שפה אחרת).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Branches Tab -->
+                    <div class="tab-pane fade" id="branches" role="tabpanel">
+                        {% if not item.id %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            יש לשמור את המנה קודם כדי להגדיר זמינות ותמחור לכל סניף.
+                        </div>
+                        {% elif not branches_data %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            לא נמצאו סניפים פעילים במערכת.
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            כאן ניתן לקבוע עבור כל סניף אם המנה מוצגת ובאיזה מחיר. אם המחיר ריק — ייעשה שימוש במחיר הבסיס.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:30%">סניף</th>
+                                        <th style="width:20%" class="text-center">מוצג בתפריט</th>
+                                        <th style="width:25%">מחיר מותאם</th>
+                                        <th style="width:25%">סדר תצוגה</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for bd in branches_data %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ bd.branch.name_he }}</strong>
+                                            {% if bd.branch.name_en %}<br><small class="text-muted">{{ bd.branch.name_en }}</small>{% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check form-switch d-flex justify-content-center">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="branch_available_{{ bd.branch.id }}"
+                                                       value="1"
+                                                       {% if bd.is_available %}checked{% endif %}>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">₪</span>
+                                                <input type="number" step="0.01" min="0" class="form-control"
+                                                       name="branch_price_{{ bd.branch.id }}"
+                                                       value="{{ bd.custom_price if bd.custom_price is not none else '' }}"
+                                                       placeholder="{{ item.base_price or '—' }}">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="1" min="0" class="form-control form-control-sm"
+                                                   name="branch_order_{{ bd.branch.id }}"
+                                                   value="{{ bd.display_order if bd.display_order else '' }}"
+                                                   placeholder="0">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <input type="hidden" name="branch_ids" value="{{ branches_data|map(attribute='branch')|map(attribute='id')|list|join(',') }}">
+                        {% endif %}
+                    </div>
+
+                    <!-- Advanced Settings Tab -->
+                    <div class="tab-pane fade" id="advanced" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="custom_tags" class="form-label">תגיות מותאמות אישית</label>
+                            <input type="text" class="form-control" id="custom_tags" name="custom_tags" 
+                                   value="{% if item.custom_tags %}{{ item.custom_tags|tojson|safe }}{% endif %}" 
+                                   placeholder="רשום תגיות מופרדות בפסיקים">
+                            <small class="form-text text-muted">לדוגמה: ספיישל, המלצת השף, חדש</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="mt-4 mb-4">
+                    <button type="submit" class="btn btn-success btn-lg" id="saveButton">
+                        <i class="fas fa-save me-2"></i>
+                        {% if item.id %}עדכן מנה{% else %}הוסף מנה{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary btn-lg ms-2">
+                        <i class="fas fa-times me-2"></i>
+                        ביטול
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enable Bootstrap tabs
+document.addEventListener('DOMContentLoaded', function() {
+    var triggerTabList = [].slice.call(document.querySelectorAll('#menuItemTabs button'))
+    triggerTabList.forEach(function (triggerEl) {
+        var tabTrigger = new bootstrap.Tab(triggerEl)
+        
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault()
+            tabTrigger.show()
+        })
+    })
+    
+    // Debug form submission
+    const form = document.getElementById('menuItemForm');
+    const saveButton = document.getElementById('saveButton');
+    
+    if (saveButton) {
+        saveButton.addEventListener('click', function(e) {
+            console.log('Save button clicked!');
+            console.log('Form element:', form);
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            
+            // Test if form is valid
+            if (!form.checkValidity()) {
+                console.error('Form is not valid!');
+                
+                // Find which fields are invalid
+                const invalidFields = form.querySelectorAll(':invalid');
+                console.error('Invalid fields:', Array.from(invalidFields).map(field => ({
+                    name: field.name,
+                    id: field.id,
+                    value: field.value,
+                    validationMessage: field.validationMessage
+                })));
+                
+                // Show validation messages
+                form.reportValidity();
+                
+                // Also show a user-friendly alert
+                const fieldNames = {
+                    'category_id': 'קטגוריה',
+                    'name_he': 'שם המנה בעברית',
+                    'name_en': 'שם המנה באנגלית',
+                    'base_price': 'מחיר בסיס'
+                };
+                
+                const missingFields = Array.from(invalidFields).map(field => fieldNames[field.name] || field.name);
+                
+                // Create a Bootstrap toast notification
+                const toastHTML = `
+                    <div class="toast align-items-center text-white bg-danger border-0 position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 9999;">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <strong>יש למלא את השדות הבאים:</strong><br>
+                                ${missingFields.map(field => `• ${field}`).join('<br>')}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove any existing toasts
+                document.querySelectorAll('.toast').forEach(t => t.remove());
+                
+                // Add and show the toast
+                document.body.insertAdjacentHTML('beforeend', toastHTML);
+                const toast = new bootstrap.Toast(document.querySelector('.toast'));
+                toast.show();
+                
+                // Auto-remove after hiding
+                setTimeout(() => {
+                    document.querySelectorAll('.toast').forEach(t => t.remove());
+                }, 5000);
+                
+                return;
+            }
+            
+            console.log('Form is valid, should submit...');
+            
+            // Show saving notification
+            const savingToastHTML = `
+                <div class="toast align-items-center text-white bg-info border-0 position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 9999;">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            שומר את המנה...
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', savingToastHTML);
+            const savingToast = new bootstrap.Toast(document.querySelector('.toast'));
+            savingToast.show();
+        });
+    }
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submitting...');
+            console.log('Form action:', form.action);
+            console.log('Form method:', form.method);
+            
+            // Get all dietary properties checkboxes
+            const dietaryCheckboxes = form.querySelectorAll('input[name="dietary_properties"]:checked');
+            console.log('Dietary properties selected:', Array.from(dietaryCheckboxes).map(cb => cb.value));
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Cropper.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<script>
+let cropper = null;
+let originalImageSrc = null;
+const itemId = {{ item.id if item.id else 'null' }};
+
+function openImageEditor() {
+    const modal = new bootstrap.Modal(document.getElementById('imageEditorModal'));
+    modal.show();
+    
+    // Initialize Cropper.js after modal is shown
+    document.getElementById('imageEditorModal').addEventListener('shown.bs.modal', function() {
+        initCropper();
+    }, { once: true });
+}
+
+function initCropper() {
+    const image = document.getElementById('cropperImage');
+    
+    // Destroy existing cropper if any
+    if (cropper) {
+        cropper.destroy();
+    }
+    
+    // Store original image source for true reset
+    originalImageSrc = image.src.split('?')[0];
+    image.src = originalImageSrc + '?t=' + Date.now();
+    
+    cropper = new Cropper(image, {
+        viewMode: 1,
+        dragMode: 'crop',
+        aspectRatio: NaN,
+        autoCropArea: 0.8,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: true,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: true,
+        responsive: true,
+        background: true,
+        modal: true
+    });
+}
+
+function rotateImage(degrees) {
+    if (cropper) {
+        cropper.rotate(degrees);
+    }
+}
+
+function zoomImage(ratio) {
+    if (cropper) {
+        cropper.zoom(ratio);
+    }
+}
+
+function resetCropper() {
+    // Fully reinitialize cropper to reset to original image
+    if (cropper) {
+        cropper.destroy();
+        cropper = null;
+    }
+    initCropper();
+}
+
+function saveCroppedImage() {
+    if (!cropper || !itemId) {
+        alert('שגיאה: לא ניתן לשמור את התמונה');
+        return;
+    }
+    
+    // Get cropped canvas
+    const canvas = cropper.getCroppedCanvas({
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+    });
+    
+    // Get original image format from src
+    const cropperImage = document.getElementById('cropperImage');
+    const imageSrc = cropperImage.src.split('?')[0].toLowerCase();
+    const isPng = imageSrc.endsWith('.png');
+    
+    // Convert to base64 (preserve PNG format if original was PNG)
+    const mimeType = isPng ? 'image/png' : 'image/jpeg';
+    const imageData = canvas.toDataURL(mimeType, isPng ? 1.0 : 0.85);
+    
+    // Show saving indicator
+    const saveBtn = document.querySelector('#imageEditorModal .btn-primary');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> שומר...';
+    saveBtn.disabled = true;
+    
+    // Get CSRF token from the form
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    // Send to server
+    fetch(`/admin/menu/item/${itemId}/edit-image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            action: 'save_cropped',
+            imageData: imageData,
+            format: isPng ? 'png' : 'jpeg'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the current image display
+            const currentImg = document.getElementById('currentImage');
+            if (currentImg) {
+                currentImg.src = data.newImageUrl;
+            }
+            
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('imageEditorModal')).hide();
+            
+            // Show success message
+            alert('התמונה נשמרה בהצלחה!');
+        } else {
+            alert('שגיאה בשמירת התמונה: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving image:', error);
+        alert('שגיאה בשמירת התמונה');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+// Clean up cropper when modal is hidden
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('imageEditorModal');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function() {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+    }
+    if (itemId) { loadOptionGroups(); loadGlobalGroupLinks(); }
+});
+
+const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+function optFetch(url, method, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken } };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(url, opts).then(r => r.json());
+}
+
+function loadOptionGroups() {
+    if (!itemId) return;
+    optFetch(`/admin/api/menu-item/${itemId}/option-groups`, 'GET')
+        .then(data => {
+            if (!data.ok) return;
+            renderGroups(data.groups);
+        });
+}
+
+function renderGroups(groups) {
+    const container = document.getElementById('optionGroupsList');
+    const noMsg = document.getElementById('noGroupsMsg');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!groups.length) {
+        container.innerHTML = '<div class="text-center text-muted py-4" id="noGroupsMsg"><i class="fas fa-inbox fa-2x mb-2 d-block"></i>אין אפשרויות עדיין. לחץ "קבוצה חדשה" להוסיף</div>';
+        return;
+    }
+    groups.forEach(g => {
+        let typeBadge = '';
+        let typeDesc = '';
+        if (g.selection_type === 'single' && g.is_required) {
+            typeBadge = '<span class="badge bg-danger ms-2">חובה</span>';
+            typeDesc = 'בחירה יחידה (חובה)';
+        } else if (g.selection_type === 'multiple') {
+            const hasPaid = g.choices.some(c => c.price_modifier > 0);
+            const allFree = g.choices.every(c => c.price_modifier === 0);
+            if (allFree && g.max_selections > 0) {
+                typeBadge = '<span class="badge bg-success ms-2">חינם</span>';
+                typeDesc = `עד ${g.max_selections} בחירות חינם`;
+            } else {
+                typeBadge = '<span class="badge bg-info ms-2">תוספות</span>';
+                typeDesc = g.max_selections > 0 ? `עד ${g.max_selections} בחירות` : 'ללא הגבלה';
+            }
+        } else {
+            typeBadge = '<span class="badge bg-secondary ms-2">בחירה</span>';
+            typeDesc = g.is_required ? 'בחירה יחידה (חובה)' : 'בחירה יחידה (אופציונלי)';
+        }
+
+        let choicesHtml = '';
+        g.choices.forEach(c => {
+            const priceStr = c.price_modifier > 0 ? `<span class="text-success fw-bold">+₪${c.price_modifier}</span>` : (c.price_modifier < 0 ? `<span class="text-danger">-₪${Math.abs(c.price_modifier)}</span>` : '<span class="text-muted">חינם</span>');
+            const availBadge = c.is_available ? '' : '<span class="badge bg-warning text-dark ms-1">לא זמין</span>';
+            const defBadge = c.is_default ? '<span class="badge bg-primary ms-1">ברירת מחדל</span>' : '';
+            choicesHtml += `
+                <div class="d-flex align-items-center justify-content-between py-1 px-2 border-bottom" style="font-size: 0.9rem;">
+                    <div>
+                        <span>${c.name_he}</span>
+                        <small class="text-muted ms-1">(${c.name_en})</small>
+                        ${defBadge}${availBadge}
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        ${priceStr}
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="editChoice(${g.id}, ${c.id}); return false;"><i class="fas fa-edit me-2"></i>ערוך</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleChoiceAvail(${g.id}, ${c.id}, ${c.is_available ? 'false' : 'true'}); return false;"><i class="fas fa-${c.is_available ? 'eye-slash' : 'eye'} me-2"></i>${c.is_available ? 'השבת' : 'הפעל'}</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteChoice(${g.id}, ${c.id}); return false;"><i class="fas fa-trash me-2"></i>מחק</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>`;
+        });
+
+        const activeClass = g.is_active ? '' : 'opacity-50';
+        container.innerHTML += `
+            <div class="card mb-3 ${activeClass}" id="group-${g.id}">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <div>
+                        <strong>${g.name_he}</strong>
+                        <small class="text-muted ms-1">(${g.name_en})</small>
+                        ${typeBadge}
+                        <small class="text-muted ms-2">${typeDesc}</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showAddChoiceModal(${g.id})">
+                            <i class="fas fa-plus me-1"></i>הוסף בחירה
+                        </button>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="editGroup(${g.id}); return false;"><i class="fas fa-edit me-2"></i>ערוך קבוצה</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleGroup(${g.id}, ${g.is_active ? 'false' : 'true'}); return false;"><i class="fas fa-${g.is_active ? 'eye-slash' : 'eye'} me-2"></i>${g.is_active ? 'השבת' : 'הפעל'}</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteGroup(${g.id}); return false;"><i class="fas fa-trash me-2"></i>מחק קבוצה</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    ${choicesHtml || '<div class="text-center text-muted py-3"><small>אין בחירות עדיין</small></div>'}
+                </div>
+            </div>`;
+    });
+}
+
+let _editingGroupId = null;
+let _editingChoiceGroupId = null;
+let _editingChoiceId = null;
+
+function showAddGroupModal() {
+    _editingGroupId = null;
+    document.getElementById('groupModalTitle').textContent = 'קבוצה חדשה';
+    document.getElementById('gNameHe').value = '';
+    document.getElementById('gNameEn').value = '';
+    document.getElementById('gType').value = 'required_single';
+    document.getElementById('gMaxSelections').value = '0';
+    updateGroupTypeUI();
+    new bootstrap.Modal(document.getElementById('groupModal')).show();
+}
+
+function editGroup(gid) {
+    _editingGroupId = gid;
+    optFetch(`/admin/api/menu-item/${itemId}/option-groups`, 'GET').then(data => {
+        const g = data.groups.find(x => x.id === gid);
+        if (!g) return;
+        document.getElementById('groupModalTitle').textContent = 'ערוך קבוצה';
+        document.getElementById('gNameHe').value = g.name_he;
+        document.getElementById('gNameEn').value = g.name_en;
+        let gType = 'paid_extras';
+        if (g.selection_type === 'single' && g.is_required) gType = 'required_single';
+        else if (g.selection_type === 'single' && !g.is_required) gType = 'optional_single';
+        else if (g.selection_type === 'multiple') {
+            const allFree = g.choices.every(c => c.price_modifier === 0);
+            gType = (allFree && g.max_selections > 0) ? 'free_extras' : 'paid_extras';
+        }
+        document.getElementById('gType').value = gType;
+        document.getElementById('gMaxSelections').value = g.max_selections || 0;
+        updateGroupTypeUI();
+        new bootstrap.Modal(document.getElementById('groupModal')).show();
+    });
+}
+
+function updateGroupTypeUI() {
+    const t = document.getElementById('gType').value;
+    const maxRow = document.getElementById('gMaxRow');
+    if (t === 'free_extras' || t === 'paid_extras') {
+        maxRow.style.display = '';
+    } else {
+        maxRow.style.display = 'none';
+    }
+}
+
+function saveGroup() {
+    const nameHe = document.getElementById('gNameHe').value.trim();
+    const nameEn = document.getElementById('gNameEn').value.trim();
+    const gType = document.getElementById('gType').value;
+    const maxSel = parseInt(document.getElementById('gMaxSelections').value) || 0;
+    if (!nameHe) { alert('שם בעברית הוא שדה חובה'); return; }
+
+    let selectionType = 'single', isRequired = false, minSel = 0, maxSelFinal = 0;
+    if (gType === 'required_single') { selectionType = 'single'; isRequired = true; }
+    else if (gType === 'optional_single') { selectionType = 'single'; isRequired = false; }
+    else if (gType === 'free_extras') { selectionType = 'multiple'; isRequired = false; maxSelFinal = maxSel; }
+    else if (gType === 'paid_extras') { selectionType = 'multiple'; isRequired = false; maxSelFinal = maxSel; }
+
+    const body = { name_he: nameHe, name_en: nameEn || nameHe, selection_type: selectionType, is_required: isRequired, min_selections: minSel, max_selections: maxSelFinal };
+
+    if (_editingGroupId) {
+        optFetch(`/admin/api/option-group/${_editingGroupId}`, 'PUT', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+            loadOptionGroups();
+        });
+    } else {
+        optFetch(`/admin/api/menu-item/${itemId}/option-groups`, 'POST', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('groupModal')).hide();
+            loadOptionGroups();
+        });
+    }
+}
+
+function deleteGroup(gid) {
+    if (!confirm('למחוק את הקבוצה וכל הבחירות שלה?')) return;
+    optFetch(`/admin/api/option-group/${gid}`, 'DELETE').then(() => loadOptionGroups());
+}
+
+function toggleGroup(gid, active) {
+    optFetch(`/admin/api/option-group/${gid}`, 'PUT', { is_active: active === 'true' || active === true }).then(() => loadOptionGroups());
+}
+
+function showAddChoiceModal(gid) {
+    _editingChoiceGroupId = gid;
+    _editingChoiceId = null;
+    document.getElementById('choiceModalTitle').textContent = 'הוסף בחירה';
+    document.getElementById('cNameHe').value = '';
+    document.getElementById('cNameEn').value = '';
+    document.getElementById('cPrice').value = '0';
+    document.getElementById('cDefault').checked = false;
+    document.getElementById('cAvailable').checked = true;
+    new bootstrap.Modal(document.getElementById('choiceModal')).show();
+}
+
+function editChoice(gid, cid) {
+    _editingChoiceGroupId = gid;
+    _editingChoiceId = cid;
+    optFetch(`/admin/api/option-group/${gid}`, 'GET').then(data => {
+        const c = data.group.choices.find(x => x.id === cid);
+        if (!c) return;
+        document.getElementById('choiceModalTitle').textContent = 'ערוך בחירה';
+        document.getElementById('cNameHe').value = c.name_he;
+        document.getElementById('cNameEn').value = c.name_en;
+        document.getElementById('cPrice').value = c.price_modifier;
+        document.getElementById('cDefault').checked = c.is_default;
+        document.getElementById('cAvailable').checked = c.is_available;
+        new bootstrap.Modal(document.getElementById('choiceModal')).show();
+    });
+}
+
+function saveChoice() {
+    const nameHe = document.getElementById('cNameHe').value.trim();
+    const nameEn = document.getElementById('cNameEn').value.trim();
+    const price = parseFloat(document.getElementById('cPrice').value) || 0;
+    const isDef = document.getElementById('cDefault').checked;
+    const isAvail = document.getElementById('cAvailable').checked;
+    if (!nameHe) { alert('שם בעברית הוא שדה חובה'); return; }
+
+    const body = { name_he: nameHe, name_en: nameEn || nameHe, price_modifier: price, is_default: isDef, is_available: isAvail };
+
+    if (_editingChoiceId) {
+        optFetch(`/admin/api/option-choice/${_editingChoiceId}`, 'PUT', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('choiceModal')).hide();
+            loadOptionGroups();
+        });
+    } else {
+        optFetch(`/admin/api/option-group/${_editingChoiceGroupId}/choices`, 'POST', body).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('choiceModal')).hide();
+            loadOptionGroups();
+        });
+    }
+}
+
+function deleteChoice(gid, cid) {
+    if (!confirm('למחוק בחירה זו?')) return;
+    optFetch(`/admin/api/option-choice/${cid}`, 'DELETE').then(() => loadOptionGroups());
+}
+
+function toggleChoiceAvail(gid, cid, avail) {
+    optFetch(`/admin/api/option-choice/${cid}`, 'PUT', { is_available: avail === 'true' || avail === true }).then(() => loadOptionGroups());
+}
+
+function loadGlobalGroupLinks() {
+    if (!itemId) return;
+    fetch(`/admin/api/menu-item/${itemId}/global-group-links`, {headers: {'X-CSRFToken': csrfToken}})
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) return;
+            var container = document.getElementById('globalGroupLinksList');
+            var wrapper = document.getElementById('globalGroupLinks');
+            if (!data.links.length) { wrapper.style.display = 'none'; return; }
+            wrapper.style.display = '';
+            container.innerHTML = '';
+            data.links.forEach(function(link) {
+                var badge = document.createElement('span');
+                badge.className = 'badge bg-success bg-opacity-10 text-success border border-success me-1 mb-1 p-2';
+                badge.innerHTML = '<i class="fas fa-layer-group me-1"></i>' + link.name_he + ' (' + link.choices_count + ' אפשרויות) ' +
+                    '<button type="button" class="btn-close btn-close-sm ms-1" style="font-size:.5rem;" onclick="detachGlobalGroup(' + link.global_group_id + ')"></button>';
+                container.appendChild(badge);
+            });
+        });
+}
+
+function showAttachGlobalGroupModal() {
+    fetch('/admin/api/global-option-groups', {headers: {'X-CSRFToken': csrfToken}})
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok || !data.groups.length) { alert('אין תבניות אפשרויות גלובליות. צור תבנית חדשה בדף תבניות האפשרויות.'); return; }
+            var sel = document.getElementById('attachGlobalGroupSelect');
+            sel.innerHTML = '';
+            data.groups.forEach(function(g) {
+                var opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name_he + ' (' + g.choices_count + ' אפשרויות, ' + g.selection_type + ')';
+                sel.appendChild(opt);
+            });
+            new bootstrap.Modal(document.getElementById('attachGlobalGroupModal')).show();
+        });
+}
+
+function attachGlobalGroup() {
+    var sel = document.getElementById('attachGlobalGroupSelect');
+    var gid = sel.value;
+    if (!gid) return;
+    optFetch(`/admin/api/menu-item/${itemId}/attach-global-group`, 'POST', {global_group_id: parseInt(gid)})
+        .then(data => {
+            bootstrap.Modal.getInstance(document.getElementById('attachGlobalGroupModal')).hide();
+            if (data.ok) {
+                loadOptionGroups();
+                loadGlobalGroupLinks();
+            } else {
+                alert(data.error || 'שגיאה');
+            }
+        });
+}
+
+function detachGlobalGroup(globalGroupId) {
+    if (!confirm('להסיר את התבנית הגלובלית מהמנה? קבוצת האפשרויות המקושרת תימחק.')) return;
+    optFetch(`/admin/api/menu-item/${itemId}/detach-global-group/${globalGroupId}`, 'POST', {})
+        .then(data => {
+            if (data.ok) {
+                loadOptionGroups();
+                loadGlobalGroupLinks();
+            } else {
+                alert(data.error || 'שגיאה');
+            }
+        });
+}
+</script>
+
+<!-- Group Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="groupModalTitle">קבוצה חדשה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">שם בעברית <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="gNameHe" placeholder="לדוגמה: סגנון הכנה">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">שם באנגלית</label>
+                    <input type="text" class="form-control" id="gNameEn" placeholder="e.g. Cooking style">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">סוג</label>
+                    <select class="form-select" id="gType" onchange="updateGroupTypeUI()">
+                        <option value="required_single">אפשרות חובה (בחירה יחידה) — לדוג׳ ני/מבושל</option>
+                        <option value="optional_single">אפשרות אופציונלית (בחירה יחידה)</option>
+                        <option value="paid_extras">תוספות בתשלום (בחירה מרובה)</option>
+                        <option value="free_extras">תוספות חינם (בחירה מרובה עם הגבלה)</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="gMaxRow">
+                    <label class="form-label">מקסימום בחירות</label>
+                    <input type="number" class="form-control" id="gMaxSelections" value="0" min="0">
+                    <small class="form-text text-muted">0 = ללא הגבלה. לתוספות חינם, הגדר כמה פריטים הלקוח יכול לבחור</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="saveGroup()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Choice Modal -->
+<div class="modal fade" id="choiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="choiceModalTitle">הוסף בחירה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">שם בעברית <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="cNameHe" placeholder="לדוגמה: סויה">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">שם באנגלית</label>
+                    <input type="text" class="form-control" id="cNameEn" placeholder="e.g. Soy sauce">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">מחיר נוסף (₪)</label>
+                    <input type="number" step="0.5" class="form-control" id="cPrice" value="0">
+                    <small class="form-text text-muted">0 = חינם. הזן מחיר חיובי לתוספת בתשלום</small>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="cDefault">
+                    <label class="form-check-label" for="cDefault">ברירת מחדל (מסומן מראש)</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="cAvailable" checked>
+                    <label class="form-check-label" for="cAvailable">זמין להזמנה</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="saveChoice()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="attachGlobalGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-layer-group me-2"></i>שייך תבנית אפשרויות גלובלית</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">בחר תבנית אפשרויות גלובלית לשייך למנה. השינויים בתבנית יתעדכנו אוטומטית.</p>
+                <select class="form-select" id="attachGlobalGroupSelect"></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-success" onclick="attachGlobalGroup()">
+                    <i class="fas fa-link me-1"></i>שייך
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

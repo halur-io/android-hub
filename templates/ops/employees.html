@@ -1,0 +1,326 @@
+{% extends "ops/base.html" %}
+{% block title %}עובדים{% endblock %}
+{% block header_title %}עובדים{% endblock %}
+
+{% block content %}
+<div style="padding:16px;max-width:800px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--ops-muted);">
+            <i class="fas fa-users" style="margin-left:4px;"></i>
+            ניהול עובדים ({{ pins|length }})
+        </div>
+        <button onclick="openEmpModal()"
+                style="background:var(--ops-accent);border:none;color:#fff;border-radius:10px;padding:8px 16px;
+                       font-size:0.8rem;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">
+            <i class="fas fa-plus" style="margin-left:4px;"></i>עובד חדש
+        </button>
+    </div>
+
+    {% if pins %}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for pin in pins %}
+        <div id="emp-card-{{ pin.id }}" class="emp-card"
+             data-id="{{ pin.id }}"
+             data-name="{{ pin.name }}"
+             data-description="{{ pin.description or '' }}"
+             data-branch-id="{{ pin.branch_id or '' }}"
+             data-superadmin="{{ '1' if pin.is_ops_superadmin else '0' }}"
+             data-permissions="{{ (pin.ops_permissions or [])|join(',') }}"
+             data-active="{{ '1' if pin.is_active else '0' }}"
+             style="background:var(--ops-card);border-radius:12px;padding:14px 16px;
+                    border:1px solid {% if pin.is_active %}var(--ops-border){% else %}rgba(239,68,68,0.3){% endif %};
+                    {% if not pin.is_active %}opacity:0.6;{% endif %}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.9rem;font-weight:700;color:var(--ops-text);display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-user-circle" style="color:var(--ops-accent);"></i>
+                        {{ pin.name }}
+                        {% if not pin.is_active %}
+                        <span style="background:rgba(239,68,68,0.15);color:#ef4444;padding:2px 8px;border-radius:6px;font-size:0.65rem;font-weight:700;">
+                            מושבת
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if pin.description %}
+                    <div style="font-size:0.72rem;color:var(--ops-muted);margin-top:2px;">{{ pin.description }}</div>
+                    {% endif %}
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                        {% if pin.branch %}
+                        <span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:0.68rem;font-weight:700;">
+                            <i class="fas fa-store" style="margin-left:3px;"></i>{{ pin.branch.name_he }}
+                        </span>
+                        {% else %}
+                        <span style="background:rgba(107,114,128,0.15);color:#9ca3af;padding:2px 8px;border-radius:6px;font-size:0.68rem;font-weight:700;">
+                            כל הסניפים
+                        </span>
+                        {% endif %}
+                        {% if pin.is_ops_superadmin %}
+                        <span style="background:rgba(245,158,11,0.15);color:#f59e0b;padding:2px 8px;border-radius:6px;font-size:0.68rem;font-weight:700;">
+                            <i class="fas fa-star" style="margin-left:3px;"></i>סופר אדמין
+                        </span>
+                        {% else %}
+                            {% set module_labels = {'home':'בית','orders':'הזמנות','tables':'ישיבה','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
+                            {% for perm in (pin.ops_permissions or []) %}
+                            <span style="background:rgba(99,102,241,0.15);color:#818cf8;padding:2px 8px;border-radius:6px;font-size:0.68rem;font-weight:700;">
+                                {{ module_labels.get(perm, perm) }}
+                            </span>
+                            {% endfor %}
+                            {% if not (pin.ops_permissions or []) %}
+                            <span style="color:var(--ops-muted);font-size:0.68rem;">ללא הרשאות</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if pin.last_used_at %}
+                    <div style="font-size:0.62rem;color:var(--ops-muted);margin-top:4px;">
+                        שימוש אחרון: {{ pin.last_used_at|il_time }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div style="display:flex;gap:6px;margin-right:8px;">
+                    <button class="emp-edit-btn" data-id="{{ pin.id }}"
+                            style="background:var(--ops-bg);border:1px solid var(--ops-border);color:var(--ops-accent);
+                                   border-radius:8px;padding:6px 10px;font-size:0.7rem;cursor:pointer;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="emp-toggle-btn" data-id="{{ pin.id }}"
+                            style="background:var(--ops-bg);border:1px solid var(--ops-border);
+                                   color:{% if pin.is_active %}#f59e0b{% else %}#10b981{% endif %};
+                                   border-radius:8px;padding:6px 10px;font-size:0.7rem;cursor:pointer;">
+                        <i class="fas fa-{% if pin.is_active %}user-slash{% else %}user-check{% endif %}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px 20px;color:var(--ops-muted);">
+        <i class="fas fa-users" style="font-size:2rem;margin-bottom:12px;opacity:0.3;display:block;"></i>
+        <div style="font-size:0.85rem;">אין עובדים רשומים</div>
+        <div style="font-size:0.75rem;margin-top:4px;">לחצו "עובד חדש" כדי להתחיל</div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="emp-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+                            background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+    <div style="background:var(--ops-bg);border-radius:20px;padding:20px;width:92%;max-width:440px;
+                box-shadow:0 20px 60px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
+        <div style="text-align:center;margin-bottom:16px;">
+            <div style="font-size:1rem;font-weight:800;color:var(--ops-text);" id="em-title">עובד חדש</div>
+        </div>
+        <input type="hidden" id="em-id" value="">
+
+        <div style="margin-bottom:10px;">
+            <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">שם עובד *</label>
+            <input type="text" id="em-name" autocomplete="off"
+                   style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                          background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                          box-sizing:border-box;">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <div>
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">
+                    קוד PIN *
+                    <span id="em-pin-hint" style="display:none;font-weight:400;color:#818cf8;">(השאירו ריק לשמור הקיים)</span>
+                </label>
+                <input type="password" id="em-pin" autocomplete="new-password" inputmode="numeric" pattern="\d{4,}" maxlength="8"
+                       style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                              background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                              box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">סניף</label>
+                <select id="em-branch"
+                        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                               background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                               box-sizing:border-box;appearance:auto;">
+                    <option value="">כל הסניפים</option>
+                    {% for b in branches %}
+                    <option value="{{ b.id }}">{{ b.name_he }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;display:block;margin-bottom:3px;">תיאור (אופציונלי)</label>
+            <input type="text" id="em-description"
+                   style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--ops-border);
+                          background:var(--ops-card);color:var(--ops-text);font-size:0.85rem;font-family:'Heebo',sans-serif;
+                          box-sizing:border-box;">
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <label style="font-size:0.72rem;color:var(--ops-muted);font-weight:600;">הרשאות</label>
+                {% if is_ops_superadmin %}
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.72rem;color:#f59e0b;font-weight:700;">
+                    <input type="checkbox" id="em-superadmin" onchange="toggleSuperadmin()">
+                    <i class="fas fa-star"></i> סופר אדמין
+                </label>
+                {% endif %}
+            </div>
+            <div id="em-permissions" style="display:flex;flex-wrap:wrap;gap:6px;">
+                {% set module_labels = {'home':'בית','orders':'הזמנות','tables':'ישיבה','menu':'תפריט','stock':'מלאי','deals':'מבצעים','branches':'סניפים','shifts':'נוכחות','delivery':'משלוחים','employees':'עובדים'} %}
+                {% for mod in all_modules %}
+                <label style="display:flex;align-items:center;gap:4px;background:var(--ops-card);border:1px solid var(--ops-border);
+                              border-radius:8px;padding:5px 10px;font-size:0.72rem;color:var(--ops-text);cursor:pointer;font-weight:600;">
+                    <input type="checkbox" class="em-perm-cb" value="{{ mod }}">
+                    {{ module_labels.get(mod, mod) }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="em-error" style="display:none;background:#450a0a;border:1px solid #ef4444;color:#fca5a5;
+                                  border-radius:10px;padding:8px 12px;font-size:0.8rem;margin-bottom:12px;
+                                  text-align:center;"></div>
+
+        <div style="display:flex;gap:8px;">
+            <button onclick="closeEmpModal()" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--ops-border);
+                                                       background:var(--ops-card);color:var(--ops-muted);font-size:0.85rem;
+                                                       font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">
+                ביטול
+            </button>
+            <button id="em-save-btn" onclick="saveEmployee()"
+                    style="flex:1;padding:12px;border-radius:12px;border:none;
+                           background:var(--ops-accent);color:#fff;font-size:0.85rem;
+                           font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">
+                שמירה
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEmpModal(id, name, description, branchId, superadmin, permissions) {
+    document.getElementById('em-id').value = id || '';
+    document.getElementById('em-name').value = name || '';
+    document.getElementById('em-pin').value = '';
+    document.getElementById('em-description').value = description || '';
+    document.getElementById('em-branch').value = branchId || '';
+    var saEl = document.getElementById('em-superadmin');
+    if (saEl) saEl.checked = !!superadmin;
+    document.getElementById('em-title').textContent = id ? 'עריכת עובד' : 'עובד חדש';
+    document.getElementById('em-pin-hint').style.display = id ? 'inline' : 'none';
+    document.getElementById('em-error').style.display = 'none';
+
+    var permArr = (permissions || '').split(',').filter(Boolean);
+    var cbs = document.querySelectorAll('.em-perm-cb');
+    cbs.forEach(function(cb) {
+        cb.checked = permArr.indexOf(cb.value) !== -1;
+    });
+    toggleSuperadmin();
+    document.getElementById('emp-modal').style.display = 'flex';
+}
+
+function closeEmpModal() {
+    document.getElementById('emp-modal').style.display = 'none';
+}
+
+document.getElementById('emp-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEmpModal();
+});
+
+function toggleSuperadmin() {
+    var saEl = document.getElementById('em-superadmin');
+    if (!saEl) return;
+    var sa = saEl.checked;
+    document.getElementById('em-permissions').style.opacity = sa ? '0.4' : '1';
+    document.getElementById('em-permissions').style.pointerEvents = sa ? 'none' : 'auto';
+}
+
+function saveEmployee() {
+    var name = document.getElementById('em-name').value.trim();
+    if (!name) {
+        document.getElementById('em-error').textContent = 'יש להזין שם עובד';
+        document.getElementById('em-error').style.display = 'block';
+        return;
+    }
+    var btn = document.getElementById('em-save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    var idVal = document.getElementById('em-id').value;
+    var saEl = document.getElementById('em-superadmin');
+    var isSuperadmin = saEl ? saEl.checked : false;
+    var permissions = [];
+    if (!isSuperadmin) {
+        document.querySelectorAll('.em-perm-cb:checked').forEach(function(cb) {
+            permissions.push(cb.value);
+        });
+    }
+
+    var data = {
+        id: idVal ? parseInt(idVal) : null,
+        name: name,
+        pin: document.getElementById('em-pin').value,
+        description: document.getElementById('em-description').value.trim(),
+        branch_id: document.getElementById('em-branch').value || null,
+        is_ops_superadmin: isSuperadmin,
+        ops_permissions: permissions,
+    };
+
+    fetch('{{ url_for("ops.employees_save") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(data)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            closeEmpModal();
+            location.reload();
+        } else {
+            document.getElementById('em-error').textContent = d.error || 'שגיאה';
+            document.getElementById('em-error').style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = 'שמירה';
+        }
+    })
+    .catch(function() {
+        document.getElementById('em-error').textContent = 'שגיאת תקשורת';
+        document.getElementById('em-error').style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = 'שמירה';
+    });
+}
+
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.emp-edit-btn');
+    if (btn) {
+        var card = btn.closest('.emp-card');
+        if (card) {
+            openEmpModal(
+                parseInt(card.getAttribute('data-id')),
+                card.getAttribute('data-name'),
+                card.getAttribute('data-description'),
+                card.getAttribute('data-branch-id'),
+                card.getAttribute('data-superadmin') === '1',
+                card.getAttribute('data-permissions')
+            );
+        }
+        return;
+    }
+    btn = e.target.closest('.emp-toggle-btn');
+    if (btn) {
+        var id = parseInt(btn.getAttribute('data-id'));
+        var card = btn.closest('.emp-card');
+        var isActive = card.getAttribute('data-active') === '1';
+        var action = isActive ? 'להשבית' : 'להפעיל';
+        var name = card.getAttribute('data-name');
+        opsConfirm({title: action, message: action + ' את ' + name + '?', type: 'warning', okText: action}).then(function(ok) {
+            if (!ok) return;
+            opsPost('{{ url_for("ops.employees_toggle") }}', {id: id}, function() {
+                location.reload();
+            });
+        });
+        return;
+    }
+});
+</script>
+{% endblock %}

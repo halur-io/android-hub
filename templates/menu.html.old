@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}תפריט - מסעדת סומו{% endblock %}
+
+{% block content %}
+<!-- Menu Hero -->
+<section class="page-hero bg-primary text-white">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-lg-8 mx-auto">
+                <h1 class="display-4 mb-3">התפריט שלנו</h1>
+                <p class="lead">גלו את מגוון הטעמים האסייאתיים האותנטיים שאנחנו מציעים</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Menu Categories -->
+<section class="menu-section py-5">
+    <div class="container">
+        {% if categories %}
+        <!-- Navigation Pills -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <ul class="nav nav-pills justify-content-center menu-nav" id="menuTabs" role="tablist">
+                    {% for category in categories %}
+                    {% if category.id in items_by_category %}
+                    <li class="nav-item">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                id="cat-{{ category.id }}-tab" 
+                                data-bs-toggle="pill" 
+                                data-bs-target="#cat-{{ category.id }}" 
+                                type="button" 
+                                role="tab">
+                            {{ category.name_he }}
+                        </button>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Menu Content -->
+        <div class="tab-content" id="menuTabContent">
+            {% for category in categories %}
+            {% if category.id in items_by_category %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                 id="cat-{{ category.id }}" 
+                 role="tabpanel">
+                <div class="cuisine-header text-center mb-5">
+                    <h2 class="cuisine-title">{{ category.name_he }}</h2>
+                    {% if category.description_he %}
+                    <p class="cuisine-description">{{ category.description_he }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="row">
+                    {% for item in items_by_category[category.id] %}
+                    {% if loop.index0 % 2 == 0 and loop.index0 > 0 %}
+                    </div><div class="row">
+                    {% endif %}
+                    
+                    <div class="col-lg-6">
+                        <div class="menu-item">
+                            <div class="item-header">
+                                <h5 class="item-name">
+                                    {{ item.name_he }}
+                                    <!-- Dietary Icons -->
+                                    {% if item.dietary_properties %}
+                                    <span class="dietary-icons ms-2">
+                                        {% for prop in item.dietary_properties %}
+                                        {% if prop.is_active %}
+                                        {% set icon_name = prop.icon if prop.icon and prop.icon.startswith('fa-') else 'fa-' + (prop.icon or 'circle') %}
+                                        <i class="fas {{ icon_name }}" 
+                                           style="color: {{ prop.color or '#666' }}; font-size: 0.9rem;" 
+                                           title="{{ prop.name_he }}"></i>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    {% endif %}
+                                </h5>
+                                {% if item.base_price or item.price %}
+                                <span class="item-price">₪{{ "%.2f"|format(item.base_price or item.price or 0)|replace('.00', '') }}</span>
+                                {% endif %}
+                            </div>
+                            {% if item.description_he %}
+                            <p class="item-description">{{ item.description_he }}</p>
+                            {% endif %}
+                            {% if item.image_url %}
+                            <div class="item-image" style="background-image: url('{{ item.image_url }}')"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle me-2"></i>
+            אין פריטים זמינים כרגע. בקרו שוב מאוחר יותר.
+        </div>
+        {% endif %}
+
+        <!-- Menu CTA -->
+        <div class="text-center mt-5 pt-5">
+            <h3 class="mb-4">מוכנים להזמין?</h3>
+            <div class="cta-buttons">
+                <a href="/#reservation" class="btn btn-primary btn-lg me-3">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    הזמנת שולחן
+                </a>
+                <a href="tel:{{ branch.phone if branch and branch.phone else '03-1234567' }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-phone me-2"></i>
+                    הזמנה טלפונית
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.dietary-icons {
+    display: inline-block;
+}
+
+.dietary-icons i {
+    margin: 0 2px;
+}
+
+.menu-item {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.item-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1B2951;
+    margin: 0;
+}
+
+.item-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #C75450;
+    white-space: nowrap;
+}
+
+.item-description {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.item-image {
+    width: 100%;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+}
+
+.cuisine-header {
+    margin-bottom: 40px;
+}
+
+.cuisine-title {
+    font-size: 2rem;
+    color: #1B2951;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.cuisine-description {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.menu-nav .nav-link {
+    color: #1B2951;
+    font-weight: 600;
+    padding: 10px 20px;
+    margin: 0 5px;
+    border-radius: 25px;
+    transition: all 0.3s;
+}
+
+.menu-nav .nav-link:hover {
+    background: #f8f9fa;
+    color: #C75450;
+}
+
+.menu-nav .nav-link.active {
+    background: #C75450;
+    color: white;
+}
+
+.page-hero {
+    padding: 60px 0;
+    background: linear-gradient(135deg, #1B2951 0%, #2c3e65 100%);
+}
+
+.cta-buttons .btn {
+    border-radius: 25px;
+    padding: 12px 30px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

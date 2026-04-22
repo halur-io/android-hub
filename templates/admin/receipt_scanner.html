@@ -1,0 +1,485 @@
+{% extends "admin/base.html" %}
+
+{% block title %}סריקת קבלות - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Mobile-first design */
+    .scanner-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    /* Upload section */
+    .upload-zone {
+        border: 3px dashed #dee2e6;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        background: #f8f9fa;
+        transition: all 0.3s;
+        cursor: pointer;
+        margin-bottom: 30px;
+    }
+    .upload-zone:hover {
+        border-color: #1a3a6e;
+        background: #e9ecef;
+    }
+    .upload-zone.drag-over {
+        border-color: #dc3545;
+        background: #fff3cd;
+    }
+    
+    /* Hidden file input */
+    #receipt-file {
+        display: none;
+    }
+    
+    /* Upload buttons */
+    .upload-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+    .upload-btn {
+        padding: 15px 30px;
+        border: 2px solid #1a3a6e;
+        background: white;
+        color: #1a3a6e;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .upload-btn:hover {
+        background: #1a3a6e;
+        color: white;
+    }
+    .upload-btn i {
+        font-size: 20px;
+    }
+    
+    /* Preview section */
+    .preview-section {
+        display: none;
+        margin-top: 30px;
+    }
+    .preview-section.show {
+        display: block;
+    }
+    .receipt-preview {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        margin-bottom: 20px;
+    }
+    .receipt-preview img {
+        width: 100%;
+        max-height: 500px;
+        object-fit: contain;
+        background: #f8f9fa;
+    }
+    .preview-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Processing overlay */
+    .processing-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .processing-overlay.show {
+        display: flex;
+    }
+    .processing-content {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        text-align: center;
+        max-width: 400px;
+    }
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #1a3a6e;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Branch selector */
+    .branch-selector {
+        margin-bottom: 30px;
+    }
+    .branch-selector label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #1a3a6e;
+    }
+    .branch-selector select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+        .scanner-container {
+            padding: 15px;
+        }
+        .upload-zone {
+            padding: 30px 15px;
+        }
+        .upload-btn {
+            padding: 12px 20px;
+            font-size: 14px;
+        }
+        .processing-content {
+            padding: 30px 20px;
+            margin: 20px;
+        }
+    }
+    
+    /* Instructions */
+    .instructions {
+        background: #e7f3ff;
+        border-right: 4px solid #1a3a6e;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    .instructions h4 {
+        color: #1a3a6e;
+        margin-bottom: 15px;
+    }
+    .instructions ul {
+        margin: 0;
+        padding-right: 20px;
+    }
+    .instructions li {
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="scanner-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-receipt"></i> סריקת קבלות</h2>
+        <a href="{{ url_for('admin.stock_management') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right"></i> חזרה למלאי
+        </a>
+    </div>
+    
+    <!-- Instructions -->
+    <div class="instructions">
+        <h4><i class="fas fa-info-circle"></i> איך זה עובד?</h4>
+        <ul>
+            <li>צלם תמונה של הקבלה או בחר תמונה קיימת</li>
+            <li>הבינה המלאכותית תזהה אוטומטית מוצרים, כמויות ומחירים</li>
+            <li>תוכל לבדוק ולערוך את הנתונים לפני האישור</li>
+            <li>אחרי האישור, המלאי יתעדכן אוטומטית</li>
+        </ul>
+    </div>
+    
+    <!-- Branch selector -->
+    <div class="branch-selector">
+        <label for="branch-select">
+            <i class="fas fa-store-alt"></i> בחר סניף
+        </label>
+        <select id="branch-select" class="form-control" required>
+            <option value="">-- בחר סניף --</option>
+            {% for branch in branches %}
+            <option value="{{ branch.id }}">{{ branch.name_he }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <!-- Upload zone -->
+    <div class="upload-zone" id="upload-zone">
+        <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #1a3a6e; margin-bottom: 15px;"></i>
+        <h4>העלה תמונת קבלה</h4>
+        <p class="text-muted">גרור תמונה לכאן או לחץ על אחד הכפתורים למטה</p>
+        
+        <input type="file" 
+               id="receipt-file" 
+               accept="image/*"
+               capture="environment">
+        
+        <div class="upload-buttons">
+            <button type="button" class="upload-btn" id="camera-btn">
+                <i class="fas fa-camera"></i>
+                צלם תמונה
+            </button>
+            <button type="button" class="upload-btn" id="gallery-btn">
+                <i class="fas fa-images"></i>
+                בחר מהגלריה
+            </button>
+        </div>
+    </div>
+    
+    <!-- Preview section -->
+    <div class="preview-section" id="preview-section">
+        <h4 class="mb-3">תצוגה מקדימה</h4>
+        <div class="receipt-preview">
+            <img id="preview-image" src="" alt="Receipt preview">
+        </div>
+        <div class="preview-actions">
+            <button type="button" class="btn btn-danger" id="cancel-btn">
+                <i class="fas fa-times"></i> ביטול
+            </button>
+            <button type="button" class="btn btn-primary btn-lg" id="process-btn">
+                <i class="fas fa-magic"></i> עבד את הקבלה
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Processing overlay -->
+<div class="processing-overlay" id="processing-overlay">
+    <div class="processing-content">
+        <div class="spinner"></div>
+        <h4>מעבד את הקבלה...</h4>
+        <p class="text-muted">הבינה המלאכותית קוראת את הקבלה ומזהה מוצרים</p>
+        <small>זה יכול לקחת כמה שניות</small>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('receipt-file');
+    const cameraBtn = document.getElementById('camera-btn');
+    const galleryBtn = document.getElementById('gallery-btn');
+    const previewSection = document.getElementById('preview-section');
+    const previewImage = document.getElementById('preview-image');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const processBtn = document.getElementById('process-btn');
+    const processingOverlay = document.getElementById('processing-overlay');
+    const branchSelect = document.getElementById('branch-select');
+    
+    let selectedFile = null;
+    
+    // Camera button - capture from camera
+    cameraBtn.addEventListener('click', function() {
+        fileInput.setAttribute('capture', 'environment');
+        fileInput.click();
+    });
+    
+    // Gallery button - choose from gallery
+    galleryBtn.addEventListener('click', function() {
+        fileInput.removeAttribute('capture');
+        fileInput.click();
+    });
+    
+    // Drag and drop
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadZone.classList.add('drag-over');
+    });
+    
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('drag-over');
+    });
+    
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+            handleFileSelect(files[0]);
+        }
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+    
+    // Handle file selection
+    function handleFileSelect(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('נא לבחור קובץ תמונה בלבד');
+            return;
+        }
+        
+        selectedFile = file;
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImage.src = e.target.result;
+            previewSection.classList.add('show');
+            uploadZone.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // Cancel button
+    cancelBtn.addEventListener('click', function() {
+        selectedFile = null;
+        fileInput.value = '';
+        previewSection.classList.remove('show');
+        uploadZone.style.display = 'block';
+    });
+    
+    // Process button
+    processBtn.addEventListener('click', function() {
+        if (!selectedFile) {
+            alert('לא נבחרה תמונה');
+            return;
+        }
+        
+        const branchId = branchSelect.value;
+        if (!branchId) {
+            alert('נא לבחור סניף');
+            branchSelect.focus();
+            return;
+        }
+        
+        // Show processing overlay
+        processingOverlay.classList.add('show');
+        
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('receipt_image', selectedFile);
+        formData.append('branch_id', branchId);
+        
+        // Send to server
+        fetch('{{ url_for("admin.process_receipt_upload") }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            processingOverlay.classList.remove('show');
+            
+            if (data.success) {
+                // Redirect to review page
+                window.location.href = data.redirect_url;
+            } else {
+                // Show detailed error modal
+                showErrorModal(data);
+            }
+        })
+        .catch(error => {
+            processingOverlay.classList.remove('show');
+            console.error('Error:', error);
+            showErrorModal({
+                error: 'שגיאה בחיבור לשרת',
+                error_id: 'NETWORK-ERROR',
+                error_type: 'NetworkError',
+                technical_error: error.message
+            });
+        });
+    });
+    
+    // Error modal function
+    function showErrorModal(data) {
+        const errorId = data.error_id || 'UNKNOWN';
+        const errorType = data.error_type || 'Unknown';
+        const errorMsg = data.error || 'שגיאה לא ידועה';
+        const techError = data.technical_error || 'No technical details available';
+        
+        const modalHTML = `
+            <div class="modal fade" id="errorModal" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                שגיאה בעיבוד הקבלה
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger mb-3">
+                                ${errorMsg}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <strong>Error ID:</strong> ${errorId}<br>
+                                    <strong>Type:</strong> ${errorType}
+                                </small>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <a href="#techDetails" data-toggle="collapse" class="text-decoration-none">
+                                        <i class="fas fa-chevron-down"></i>
+                                        פרטים טכניים (למפתחים)
+                                    </a>
+                                </div>
+                                <div id="techDetails" class="collapse">
+                                    <div class="card-body">
+                                        <code class="text-dark d-block" style="white-space: pre-wrap; font-size: 12px;">
+${techError}
+                                        </code>
+                                        <hr>
+                                        <small class="text-muted">
+                                            צור קשר עם התמיכה עם Error ID: ${errorId}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">סגור</button>
+                            <button type="button" class="btn btn-primary" onclick="location.reload()">נסה שוב</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('errorModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Append and show modal
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        $('#errorModal').modal('show');
+    }
+});
+</script>
+{% endblock %}

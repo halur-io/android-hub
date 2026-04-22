@@ -1,0 +1,196 @@
+{% extends "ops/base.html" %}
+{% block header_title %}בדיקת מערכת{% endblock %}
+{% block title %}בדיקת מערכת - לוח בקרה{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 16px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <div style="font-size: 16px; font-weight: 700;">
+            <i class="fas fa-heartbeat" style="color: var(--ops-accent);"></i> בדיקת חיבוריות
+        </div>
+        <button id="hc-refresh-btn" class="ops-btn ops-btn-sm" onclick="runHealthCheck()" style="min-width: 90px;">
+            <i class="fas fa-sync-alt"></i> בדוק שוב
+        </button>
+    </div>
+
+    <div id="hc-summary" class="ops-card" style="display:none; margin-bottom: 14px; padding: 14px 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="hc-summary-icon" style="font-size: 1.6rem;"></div>
+            <div>
+                <div id="hc-summary-text" style="font-weight: 700; font-size: .95rem;"></div>
+                <div id="hc-summary-detail" style="font-size: .78rem; color: #9ca3af; margin-top: 2px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hc-loading" style="text-align:center; padding: 50px 0; color: #9ca3af;">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <div style="margin-top: 12px; font-size: .9rem;">בודק חיבוריות...</div>
+    </div>
+
+    <div id="hc-results" style="display:none;"></div>
+
+    <div id="hc-error" class="ops-card" style="display:none; padding: 20px; text-align: center; color: #ef4444;">
+        <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom: 8px;"></i>
+        <div style="font-weight: 600;">שגיאה בביצוע הבדיקה</div>
+        <div id="hc-error-detail" style="font-size: .8rem; color: #9ca3af; margin-top: 4px;"></div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <a href="{{ url_for('ops.settings') }}" class="ops-btn ops-btn-outline" style="width: 100%; justify-content: center;">
+        <i class="fas fa-arrow-right"></i> חזרה להגדרות
+    </a>
+</div>
+
+<style>
+.hc-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; background: var(--ops-card); border-radius: 12px;
+    margin-bottom: 8px; transition: all .2s;
+}
+.hc-status-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+}
+.hc-status-dot.ok { background: #22c55e; color: #22c55e; }
+.hc-status-dot.warn { background: #f59e0b; color: #f59e0b; }
+.hc-status-dot.error { background: #ef4444; color: #ef4444; }
+.hc-status-dot.unconfigured { background: #6b7280; color: #6b7280; box-shadow: none; }
+.hc-status-dot.checking {
+    background: #60a5fa; color: #60a5fa;
+    animation: hcPulse 1.2s infinite;
+}
+@keyframes hcPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.7); }
+}
+.hc-info { flex: 1; min-width: 0; }
+.hc-name { font-weight: 700; font-size: .9rem; color: #fff; }
+.hc-detail { font-size: .75rem; color: #9ca3af; margin-top: 2px; }
+.hc-meta { flex-shrink: 0; text-align: left; }
+.hc-ms { font-size: .75rem; color: #6b7280; font-variant-numeric: tabular-nums; }
+.hc-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+}
+.hc-badge.ok { background: rgba(34,197,94,.15); color: #22c55e; }
+.hc-badge.warn { background: rgba(245,158,11,.15); color: #f59e0b; }
+.hc-badge.error { background: rgba(239,68,68,.15); color: #ef4444; }
+.hc-badge.unconfigured { background: rgba(107,114,128,.15); color: #6b7280; }
+</style>
+
+<script>
+var _hcLabels = {
+    ok: 'תקין',
+    warn: 'אזהרה',
+    error: 'שגיאה',
+    unconfigured: 'לא מוגדר'
+};
+
+function runHealthCheck() {
+    var btn = document.getElementById('hc-refresh-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> בודק...';
+    document.getElementById('hc-loading').style.display = '';
+    document.getElementById('hc-results').style.display = 'none';
+    document.getElementById('hc-error').style.display = 'none';
+    document.getElementById('hc-summary').style.display = 'none';
+
+    fetch('{{ url_for("ops.api_healthcheck") }}')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> בדוק שוב';
+            document.getElementById('hc-loading').style.display = 'none';
+            if (!data.ok) {
+                document.getElementById('hc-error').style.display = '';
+                document.getElementById('hc-error-detail').textContent = data.error || '';
+                return;
+            }
+            renderHealthChecks(data.checks);
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> בדוק שוב';
+            document.getElementById('hc-loading').style.display = 'none';
+            document.getElementById('hc-error').style.display = '';
+            document.getElementById('hc-error-detail').textContent = err.message || 'Network error';
+        });
+}
+
+function renderHealthChecks(checks) {
+    var container = document.getElementById('hc-results');
+    container.innerHTML = '';
+    container.style.display = '';
+
+    var okCount = 0, warnCount = 0, errCount = 0;
+    checks.forEach(function(c) {
+        if (c.status === 'ok') okCount++;
+        else if (c.status === 'warn') warnCount++;
+        else if (c.status === 'error') errCount++;
+    });
+
+    var summaryEl = document.getElementById('hc-summary');
+    var summaryIcon = document.getElementById('hc-summary-icon');
+    var summaryText = document.getElementById('hc-summary-text');
+    var summaryDetail = document.getElementById('hc-summary-detail');
+    summaryEl.style.display = '';
+    if (errCount > 0) {
+        summaryIcon.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i>';
+        summaryText.textContent = errCount + ' שירותים עם שגיאה';
+        summaryText.style.color = '#ef4444';
+    } else if (warnCount > 0) {
+        summaryIcon.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i>';
+        summaryText.textContent = 'כל השירותים פעילים (' + warnCount + ' אזהרות)';
+        summaryText.style.color = '#f59e0b';
+    } else {
+        summaryIcon.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;"></i>';
+        summaryText.textContent = 'כל המערכות תקינות';
+        summaryText.style.color = '#22c55e';
+    }
+    summaryDetail.textContent = checks.length + ' שירותים נבדקו';
+
+    checks.forEach(function(c) {
+        var div = document.createElement('div');
+        div.className = 'hc-item';
+
+        var dot = document.createElement('div');
+        dot.className = 'hc-status-dot ' + c.status;
+
+        var info = document.createElement('div');
+        info.className = 'hc-info';
+        var nameEl = document.createElement('div');
+        nameEl.className = 'hc-name';
+        nameEl.textContent = c.name;
+        info.appendChild(nameEl);
+        if (c.detail) {
+            var detailEl = document.createElement('div');
+            detailEl.className = 'hc-detail';
+            detailEl.textContent = c.detail;
+            info.appendChild(detailEl);
+        }
+
+        var meta = document.createElement('div');
+        meta.className = 'hc-meta';
+        var badge = document.createElement('span');
+        badge.className = 'hc-badge ' + c.status;
+        badge.textContent = _hcLabels[c.status] || c.status;
+        meta.appendChild(badge);
+        if (c.ms > 0) {
+            var msEl = document.createElement('div');
+            msEl.className = 'hc-ms';
+            msEl.textContent = c.ms + 'ms';
+            meta.appendChild(msEl);
+        }
+
+        div.appendChild(dot);
+        div.appendChild(info);
+        div.appendChild(meta);
+        container.appendChild(div);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', runHealthCheck);
+</script>
+{% endblock %}

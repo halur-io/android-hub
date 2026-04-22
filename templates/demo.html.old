@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUMO - Live Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .info-box h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-box p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .hero-section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .hero-title {
+            font-size: 2.5rem;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        
+        .hero-description {
+            font-size: 1.2rem;
+            color: #4a5568;
+            line-height: 1.8;
+            margin-bottom: 2rem;
+        }
+        
+        .about-section {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .about-title {
+            font-size: 2rem;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .about-content {
+            font-size: 1.1rem;
+            color: #4a5568;
+            line-height: 1.8;
+        }
+        
+        .social-links {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .social-links h3 {
+            font-size: 1.5rem;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+        
+        .social-links a {
+            display: inline-block;
+            margin: 0 1rem;
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            transition: transform 0.3s;
+        }
+        
+        .social-links a:hover {
+            transform: translateY(-3px);
+        }
+        
+        .admin-link {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            background: #10b981;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            transition: transform 0.3s;
+        }
+        
+        .admin-link:hover {
+            transform: scale(1.05);
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .refresh-info {
+            background: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 הדגמה חיה - ניהול תוכן דינמי</h1>
+            <p style="font-size: 1.3rem;">כל השינויים בפאנל הניהול משתקפים מיידית כאן!</p>
+        </div>
+        
+        <div class="refresh-info">
+            📡 הדף מתרענן אוטומטית כל 5 שניות | לחץ על "פאנל ניהול" למטה לעריכת התוכן
+        </div>
+        
+        <div class="info-box">
+            <h2>איך זה עובד?</h2>
+            <p>1. פתח את פאנל הניהול (הכפתור הירוק למטה)</p>
+            <p>2. לחץ על "הגדרות אתר" בתפריט הצד</p>
+            <p>3. שנה את הטקסטים ולחץ "שמור"</p>
+            <p>4. חזור לכאן וראה את השינויים מיידית!</p>
+        </div>
+        
+        <div id="content">
+            <div class="loading">טוען נתונים...</div>
+        </div>
+        
+        <a href="/admin/settings" class="admin-link" target="_blank">
+            🔧 פאנל ניהול
+        </a>
+    </div>
+    
+    <script>
+        async function loadContent() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="hero-section">
+                        <h2 class="hero-title">${data.hero_title_he || 'ברוכים הבאים'}</h2>
+                        <p class="hero-subtitle">${data.hero_subtitle_he || 'כותרת משנה'}</p>
+                        <p class="hero-description">${data.hero_description_he || 'תיאור האתר'}</p>
+                    </div>
+                    
+                    <div class="about-section">
+                        <h2 class="about-title">${data.about_title_he || 'אודות'}</h2>
+                        <p class="about-content">${data.about_content_he || 'תוכן אודות'}</p>
+                    </div>
+                    
+                    <div class="social-links">
+                        <h3>רשתות חברתיות</h3>
+                        ${data.facebook_url ? `<a href="${data.facebook_url}" target="_blank">פייסבוק</a>` : ''}
+                        ${data.instagram_url ? `<a href="${data.instagram_url}" target="_blank">אינסטגרם</a>` : ''}
+                        ${data.whatsapp_number ? `<a href="https://wa.me/${data.whatsapp_number}" target="_blank">וואטסאפ</a>` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading content:', error);
+                document.getElementById('content').innerHTML = '<div class="loading">שגיאה בטעינת התוכן</div>';
+            }
+        }
+        
+        // Load content on page load
+        loadContent();
+        
+        // Refresh content every 5 seconds
+        setInterval(loadContent, 5000);
+    </script>
+</body>
+</html>

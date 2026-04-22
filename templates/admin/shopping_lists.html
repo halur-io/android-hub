@@ -1,0 +1,147 @@
+{% extends "admin/base.html" %}
+
+{% block title %}רשימות קניות - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-shopping-cart me-2 text-primary"></i>רשימות קניות
+            </h1>
+            <p class="text-muted mb-0">ניהול רשימות קניות אוטומטיות לפי ספקים</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="generateShoppingList()">
+                <i class="fas fa-plus me-2"></i>יצר רשימה חדשה
+            </button>
+        </div>
+    </div>
+
+    <!-- Branch Selector -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-store me-2"></i>בחר סניף</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <select class="form-select" id="branchSelector" onchange="changeBranch()">
+                        <option value="">כל הסניפים</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shopping Lists -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>רשימות קניות פעילות</h5>
+        </div>
+        <div class="card-body">
+            {% if shopping_lists %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>תאריך יצירה</th>
+                            <th>סניף</th>
+                            <th>ספק</th>
+                            <th>פריטים</th>
+                            <th>סטטוס</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for shopping_list in shopping_lists %}
+                        <tr>
+                            <td>{{ shopping_list.created_at|il_time }}</td>
+                            <td>
+                                {% if shopping_list.branch %}
+                                <span class="badge bg-info">{{ shopping_list.branch.name_he }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if shopping_list.supplier %}
+                                {{ shopping_list.supplier.name }}
+                                {% else %}
+                                כלל ספקים
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ shopping_list.items|length }} פריטים</span>
+                            </td>
+                            <td>
+                                {% if shopping_list.status == 'pending' %}
+                                <span class="badge bg-warning">ממתין</span>
+                                {% elif shopping_list.status == 'sent' %}
+                                <span class="badge bg-info">נשלח</span>
+                                {% elif shopping_list.status == 'completed' %}
+                                <span class="badge bg-success">הושלם</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="viewShoppingList({{ shopping_list.id }})">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="printShoppingList({{ shopping_list.id }})">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteShoppingList({{ shopping_list.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">אין רשימות קניות</h5>
+                <p class="text-muted">לחץ על "יצר רשימה חדשה" כדי להתחיל</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function changeBranch() {
+    const branchId = document.getElementById('branchSelector').value;
+    const url = branchId ? 
+        `{{ url_for('admin.shopping_lists') }}?branch_id=${branchId}` : 
+        `{{ url_for('admin.shopping_lists') }}`;
+    window.location.href = url;
+}
+
+function generateShoppingList() {
+    // This would open a modal or redirect to generation page
+    alert('יצירת רשימת קניות - בפיתוח');
+}
+
+function viewShoppingList(id) {
+    alert(`צפייה ברשימת קניות ${id} - בפיתוח`);
+}
+
+function printShoppingList(id) {
+    alert(`הדפסת רשימת קניות ${id} - בפיתוח`);
+}
+
+function deleteShoppingList(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק רשימת קניות זו?')) {
+        alert(`מחיקת רשימת קניות ${id} - בפיתוח`);
+    }
+}
+</script>
+{% endblock %}

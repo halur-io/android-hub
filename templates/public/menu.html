@@ -1,0 +1,603 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'תפריט' if language == 'he' else 'Menu' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block description %}{{ 'גלה את המגוון הרחב של המנות הטעימות שלנו' if language == 'he' else 'Discover our wide selection of delicious dishes' }}{% endblock %}
+
+{% block content %}
+<div style="height: 80px;"></div>
+
+<!-- Hero Section -->
+<section class="menu-hero">
+    <div class="container">
+        <div class="text-center py-5">
+            <h1 class="display-3 mb-3" style="font-family: 'Noto Serif JP', serif; font-weight: 700;">
+                {{ 'תפריט סומו' if language == 'he' else 'Our Menu' }}
+            </h1>
+        </div>
+    </div>
+</section>
+
+<!-- Menu Content -->
+<section class="menu-section pb-5">
+    <div class="container">
+        {% if menu_images %}
+        <!-- Display Uploaded Menu Images -->
+        <div class="menu-images-gallery">
+            {% for image in menu_images %}
+            <div class="menu-image-card">
+                <img src="{{ url_for('static', filename=image.file_path) }}" 
+                     alt="{{ image.caption_he if language == 'he' else image.caption_en or 'Menu Image' }}" 
+                     class="menu-image-display"
+                     onclick="openImageModal(this.src)">
+                {% if image.caption_he or image.caption_en %}
+                <p class="menu-image-caption">{{ image.caption_he if language == 'he' else image.caption_en }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Category Tabs Navigation -->
+        <ul class="nav nav-pills menu-category-tabs mb-4" id="menuTabs" role="tablist" style="flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin;">
+            {% for category in categories %}
+            <li class="nav-item" role="presentation" style="flex-shrink: 0;">
+                <button class="nav-link {% if loop.first %}active{% endif %}" 
+                        id="tab-{{ category.id }}" 
+                        data-bs-toggle="pill" 
+                        data-bs-target="#category-{{ category.id }}" 
+                        type="button" 
+                        role="tab"
+                        style="white-space: nowrap;">
+                    {% if category.icon %}
+                    <i class="fas {{ category.icon if category.icon.startswith('fa-') else 'fa-' + category.icon }}" style="color: {{ category.color or '#d4af37' }}"></i>
+                    {% endif %}
+                    {{ category.name_he if language == 'he' else category.name_en }}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        
+        <!-- Tab Content -->
+        <div class="tab-content" id="menuTabContent">
+            {% for category in categories %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                 id="category-{{ category.id }}" 
+                 role="tabpanel">
+                
+                <!-- Category Header (inside tab) -->
+                <div class="category-header text-center mb-4">
+                    {% if category.description_he or category.description_en %}
+                    <p class="category-desc text-muted">{{ category.description_he if language == 'he' else category.description_en }}</p>
+                    {% endif %}
+                    <div class="category-divider mx-auto"></div>
+                </div>
+                
+                <!-- Menu Items -->
+                <div class="{% if show_images %}menu-items-grid{% else %}menu-items-list{% endif %}">
+                    {% for item in category.items %}
+                    <div class="menu-item-elegant {% if show_images %}with-image{% else %}no-image{% endif %}"
+                         data-dish-id="{{ item.id }}"
+                         data-dish-name="{{ item.name_he }}"
+                         data-dish-name-en="{{ item.name_en }}"
+                         data-dish-category="{{ category.name_he }}"
+                         data-dish-price="{{ item.base_price }}"
+                         onclick="trackDishView(this)">
+                        {% if show_images and item.image_path %}
+                        <div class="item-image-wrapper" onclick="openImageModal('{{ item.image_path }}')">
+                            <img src="{{ item.image_path }}" 
+                                 alt="{{ item.name_he if language == 'he' else item.name_en }}" 
+                                 class="item-image"
+                                 loading="lazy">
+                        </div>
+                        {% endif %}
+                        
+                        <div class="item-content">
+                            <div class="item-header">
+                                <h3 class="item-name">{{ item.name_he if language == 'he' else item.name_en }}</h3>
+                                <span class="item-price">₪{{ item.base_price|int if item.base_price == item.base_price|int else "%.2f"|format(item.base_price) }}</span>
+                            </div>
+                            
+                            {% if item.ingredients_he or item.ingredients_en %}
+                            <p class="item-ingredients">{{ item.ingredients_he if language == 'he' else item.ingredients_en }}</p>
+                            {% elif item.description_he or item.description_en %}
+                            <p class="item-description">{{ item.description_he if language == 'he' else item.description_en }}</p>
+                            {% endif %}
+                            
+                            {% if show_dietary_icons and item.dietary_properties %}
+                            <div class="dietary-badges mt-2">
+                                {% for prop in item.dietary_properties %}
+                                <span class="dietary-badge" style="color: {{ prop.color }}" title="{{ prop.name_he if language == 'he' else prop.name_en }}">
+                                    <i class="fas {{ prop.icon if prop.icon.startswith('fa-') else 'fa-' + prop.icon }}"></i>
+                                    <small>{{ prop.name_he if language == 'he' else prop.name_en }}</small>
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Category Footer Text -->
+                {% if category.footer_text_he or category.footer_text_en %}
+                <div class="category-footer-text mt-4 p-3 bg-light rounded text-center">
+                    <p class="mb-0 text-muted">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {{ category.footer_text_he if language == 'he' else category.footer_text_en }}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Image Lightbox Modal -->
+<div id="imageModal" class="image-lightbox" onclick="closeImageModal()">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+        <button class="lightbox-close" onclick="closeImageModal()">&times;</button>
+        <img id="modalImage" alt="Menu Item">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.menu-hero {
+    background: linear-gradient(135deg, #f5f7fa 0%, #fff 100%);
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.menu-category-tabs {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    display: flex;
+    gap: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.menu-category-tabs::-webkit-scrollbar {
+    height: 6px;
+}
+
+.menu-category-tabs::-webkit-scrollbar-track {
+    background: #e9ecef;
+    border-radius: 10px;
+}
+
+.menu-category-tabs::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 10px;
+}
+
+.menu-category-tabs::-webkit-scrollbar-thumb:hover {
+    background: #c49933;
+}
+
+.menu-category-tabs .nav-item {
+    flex-shrink: 0;
+}
+
+.menu-category-tabs .nav-link {
+    color: #333;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.menu-category-tabs .nav-link i {
+    margin-right: 0.5rem;
+}
+
+.menu-category-tabs .nav-link:hover {
+    background: rgba(212, 175, 55, 0.1);
+    transform: translateY(-2px);
+}
+
+.menu-category-tabs .nav-link.active {
+    background: linear-gradient(135deg, #d4af37 0%, #c49933 100%);
+    color: white;
+    border-color: #d4af37;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.menu-category-tabs .nav-link.active i {
+    color: white !important;
+}
+
+.category-divider {
+    width: 100px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #d4af37, transparent);
+    margin-top: 1rem;
+}
+
+.item-ingredients {
+    color: #777;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+    font-style: italic;
+}
+
+.menu-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.menu-items-list {
+    max-width: 900px;
+    margin: 2rem auto;
+}
+
+.menu-item-elegant {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.menu-item-elegant:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.menu-item-elegant.with-image {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-item-elegant.no-image {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #d4af37;
+}
+
+.item-image-wrapper {
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    position: relative;
+}
+
+.item-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.menu-item-elegant:hover .item-image {
+    transform: scale(1.05);
+}
+
+.item-content {
+    padding: 1.5rem;
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.item-name {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+}
+
+.item-price {
+    font-weight: 700;
+    color: #d4af37;
+    font-size: 1.3rem;
+    white-space: nowrap;
+}
+
+.item-description {
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.dietary-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.dietary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(212, 175, 55, 0.1);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.dietary-badge:hover {
+    background: rgba(212, 175, 55, 0.2);
+    transform: translateY(-1px);
+}
+
+.btn-add-to-order {
+    width: 100%;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #d4af37 0%, #c49933 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-add-to-order:hover {
+    background: linear-gradient(135deg, #c49933 0%, #b38929 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+/* Menu Images Gallery */
+.menu-images-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.menu-image-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.menu-image-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.menu-image-display {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.menu-image-card:hover .menu-image-display {
+    transform: scale(1.02);
+}
+
+.menu-image-caption {
+    padding: 1rem;
+    text-align: center;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    background: #f8f9fa;
+}
+
+/* Image Modal */
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95);
+    cursor: pointer;
+}
+
+.image-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    animation: zoomIn 0.3s;
+}
+
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal-close:hover {
+    color: #d4af37;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+    from { transform: scale(0.8); }
+    to { transform: scale(1); }
+}
+
+@media (max-width: 768px) {
+    .menu-items-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .item-name {
+        font-size: 1.2rem;
+    }
+    
+    .item-price {
+        font-size: 1.1rem;
+    }
+    
+    .menu-images-gallery {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .modal-close {
+        right: 20px;
+        font-size: 30px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addToCart(itemId, itemName, price) {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItem = cart.find(item => item.id === itemId);
+    
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+        cart.push({
+            id: itemId,
+            name: itemName,
+            price: price,
+            quantity: 1
+        });
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartCount();
+    
+    showNotification('{{ "נוסף להזמנה!" if language == "he" else "Added to cart!" }}');
+}
+
+function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'cart-notification';
+    notification.textContent = message;
+    notification.style.cssText = 'position: fixed; top: 90px; right: 20px; background: #d4af37; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; animation: slideIn 0.3s ease;';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 2000);
+}
+
+function openImageModal(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    modal.classList.add('active');
+    modalImg.src = imageSrc;
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.remove('active');
+}
+
+// Close on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeImageModal();
+    }
+});
+
+// Track dish views/clicks for Google Tag Manager
+function trackDishView(element) {
+    if (typeof dataLayer !== 'undefined') {
+        dataLayer.push({
+            'event': 'dish_view',
+            'dish_id': element.dataset.dishId,
+            'dish_name': element.dataset.dishName,
+            'dish_name_en': element.dataset.dishNameEn,
+            'dish_category': element.dataset.dishCategory,
+            'dish_price': parseFloat(element.dataset.dishPrice) || 0
+        });
+    }
+}
+
+// Track category tab changes
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryTabs = document.querySelectorAll('.menu-category-tabs .nav-link');
+    categoryTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            if (typeof dataLayer !== 'undefined') {
+                dataLayer.push({
+                    'event': 'menu_category_view',
+                    'category_name': this.textContent.trim()
+                });
+            }
+        });
+    });
+    
+    // Track add to cart events
+    const addToCartButtons = document.querySelectorAll('.btn-add-to-order');
+    addToCartButtons.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menuItem = this.closest('.menu-item-elegant');
+            if (menuItem && typeof dataLayer !== 'undefined') {
+                dataLayer.push({
+                    'event': 'add_to_cart',
+                    'dish_id': menuItem.dataset.dishId,
+                    'dish_name': menuItem.dataset.dishName,
+                    'dish_category': menuItem.dataset.dishCategory,
+                    'dish_price': parseFloat(menuItem.dataset.dishPrice) || 0
+                });
+            }
+        });
+    });
+});
+</script>
+
+<style>
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+</style>
+{% endblock %}

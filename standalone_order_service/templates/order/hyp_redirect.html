@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תשלום מאובטח</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .payment-header {
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(10px);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .payment-header .back-btn {
+            background: none; border: none; color: rgba(255,255,255,0.7);
+            font-size: 1rem; cursor: pointer; display: flex; align-items: center; gap: 6px;
+            font-family: inherit; padding: 8px 12px; border-radius: 8px;
+            transition: background .2s;
+        }
+        .payment-header .back-btn:hover { background: rgba(255,255,255,0.1); }
+        .payment-title {
+            display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem;
+        }
+        .payment-title i { color: #22c55e; font-size: 0.9rem; }
+        .order-badge {
+            background: rgba(99,102,241,0.2); color: #a5b4fc;
+            padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500;
+        }
+        .payment-frame-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: calc(100vh - 65px);
+        }
+        .loading-state {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 40px; gap: 16px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+        .loading-state.hidden { display: none; }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #9b59b6;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: rgba(255,255,255,0.7); font-size: 0.95rem; }
+        #payment-iframe {
+            width: 100%;
+            max-width: 600px;
+            flex: 1;
+            border: none;
+            background: #fff;
+            border-radius: 16px 16px 0 0;
+            margin-top: 8px;
+            opacity: 0;
+            transition: opacity .4s ease;
+        }
+        #payment-iframe.loaded { opacity: 1; }
+        @media (max-width: 600px) {
+            #payment-iframe { border-radius: 0; margin-top: 0; max-width: 100%; }
+        }
+        .trust-bar {
+            background: rgba(255,255,255,0.04);
+            padding: 10px 20px;
+            display: flex; align-items: center; justify-content: center; gap: 20px;
+            font-size: 0.75rem; color: rgba(255,255,255,0.4);
+        }
+        .trust-bar i { color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+    <div class="payment-header">
+        <button class="back-btn" onclick="history.back()">
+            <i class="fas fa-arrow-right"></i>
+            חזרה
+        </button>
+        <div class="payment-title">
+            <i class="fas fa-lock"></i>
+            תשלום מאובטח
+        </div>
+        <span class="order-badge">{{ order.display_number or order.order_number }}</span>
+    </div>
+
+    <div class="payment-frame-container">
+        <div class="loading-state" id="loading-state">
+            <div class="spinner"></div>
+            <div class="loading-text">טוען דף תשלום מאובטח...</div>
+        </div>
+        <iframe id="payment-iframe"
+                src="{{ payment_url }}"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                title="תשלום מאובטח"
+                allow="payment">
+        </iframe>
+    </div>
+
+    <div class="trust-bar">
+        <span><i class="fas fa-shield-halved"></i> SSL מוצפן</span>
+        <span><i class="fas fa-credit-card"></i> Yaad Pay</span>
+        <span><i class="fas fa-lock"></i> PCI DSS</span>
+    </div>
+
+    <script>
+        var iframe = document.getElementById('payment-iframe');
+        var loading = document.getElementById('loading-state');
+        iframe.addEventListener('load', function() {
+            loading.classList.add('hidden');
+            iframe.classList.add('loaded');
+        });
+        setTimeout(function() {
+            loading.classList.add('hidden');
+            iframe.classList.add('loaded');
+        }, 5000);
+    </script>
+</body>
+</html>

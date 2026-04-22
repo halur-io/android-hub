@@ -1,0 +1,65 @@
+modules = ["python-3.11", "nodejs-20", "python3", "postgresql-16"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["ffmpeg", "freetype", "glibcLocales", "imagemagick", "lcms2", "libev", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "oneDNN", "openjpeg", "openssl", "pkg-config", "postgresql", "rapidfuzz-cpp", "re2", "taskflow", "tcl", "tesseract", "tk", "xsimd", "zlib", "gh"]
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "--worker-class", "gevent", "--workers", "3", "main:app"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload --timeout 120 --worker-class gevent --workers 3 main:app"
+waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 23636
+externalPort = 3001
+
+[[ports]]
+localPort = 23637
+externalPort = 3000
+
+[[ports]]
+localPort = 23638
+externalPort = 3002
+
+[agent]
+integrations = ["python_database:1.0.0", "python_openai:1.0.0", "sendgrid:1.0.0", "google-mail:1.0.0", "github:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+PRINT_AGENT_KEY = "sumo-print-2024-secure"
+SMS4FREE_KEY = "y9zFhnGbl"
+SMS4FREE_USER = "0526647778"
+SMS4FREE_PASS = "28571995"
+SMS4FREE_SENDER = "SUMO"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 60000

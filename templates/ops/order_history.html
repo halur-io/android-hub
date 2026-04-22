@@ -1,0 +1,695 @@
+{% extends "ops/base.html" %}
+
+{% block title %}היסטוריית הזמנות{% endblock %}
+
+{% block head %}
+<style>
+/* Light, clean iOS-style history screen */
+.hist-page-bg {
+    position: fixed;
+    inset: 0;
+    background: #f4f5f7;
+    z-index: -1;
+}
+.hist-container {
+    padding: 14px 14px 110px;
+    background: #f4f5f7;
+    min-height: 100vh;
+    color: #1f2937;
+}
+.hist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+.hist-header h2 {
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: #111827;
+    margin: 0;
+}
+.hist-header .result-count {
+    font-size: .78rem;
+    color: #6b7280;
+    font-weight: 600;
+    background: #fff;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+}
+.search-panel {
+    background: #fff;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+}
+.search-main {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.search-main input {
+    flex: 1;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #111827;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: .92rem;
+    min-width: 0;
+}
+.search-main input::placeholder { color: #9ca3af; }
+.search-main input:focus {
+    outline: none;
+    border-color: #4f46e5;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+}
+.search-main .search-go {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.search-main .search-go:active { background: #4338ca; }
+.filter-toggle {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #4b5563;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition: all .15s;
+}
+.filter-toggle:active { background: #f3f4f6; }
+.filter-toggle.open { border-color: #4f46e5; color: #4f46e5; background: #eef2ff; }
+.filter-drawer {
+    display: none;
+    margin-top: 10px;
+}
+.filter-drawer.open { display: block; }
+.filter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.filter-grid label {
+    color: #6b7280;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin-bottom: 4px;
+    display: block;
+}
+.filter-grid input,
+.filter-grid select {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #111827;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: .88rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+.filter-grid input:focus,
+.filter-grid select:focus {
+    outline: none;
+    border-color: #4f46e5;
+    background: #fff;
+}
+.status-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.status-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    background: #f9fafb;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    transition: all .15s;
+}
+.status-pill:hover { border-color: #c7d2fe; color: #4f46e5; }
+.status-pill.active { border-color: transparent; color: #fff; }
+.sp-all.active { background: #4f46e5; }
+.sp-pending.active { background: #f59e0b; color: #fff; }
+.sp-confirmed.active { background: #0891b2; }
+.sp-preparing.active { background: #6366f1; }
+.sp-ready.active { background: #16a34a; }
+.sp-delivered.active { background: #6b7280; }
+.sp-cancelled.active { background: #ef4444; }
+
+/* Order cards - clean white, soft shadow */
+.ocard {
+    background: #fff;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    transition: box-shadow .15s, border-color .15s;
+}
+.ocard:active {
+    border-color: #c7d2fe;
+    box-shadow: 0 4px 10px rgba(16,24,40,.08);
+}
+.ocard-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 14px 10px;
+    cursor: pointer;
+}
+.ocard-left { flex: 1; min-width: 0; }
+.ocard-num {
+    font-weight: 800;
+    color: #111827;
+    font-size: 1rem;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.ocard-customer {
+    color: #4b5563;
+    font-size: .82rem;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ocard-right {
+    text-align: left;
+    flex-shrink: 0;
+}
+.ocard-amount {
+    font-weight: 800;
+    color: #16a34a;
+    font-size: 1.05rem;
+}
+.ocard-date {
+    color: #9ca3af;
+    font-size: .72rem;
+    margin-top: 2px;
+}
+.ocard-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 0 14px 12px;
+}
+.otag {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .2px;
+}
+.otag-pending { background: #fef3c7; color: #b45309; }
+.otag-confirmed { background: #cffafe; color: #0e7490; }
+.otag-preparing { background: #e0e7ff; color: #4338ca; }
+.otag-ready { background: #dcfce7; color: #15803d; }
+.otag-delivered, .otag-pickedup { background: #f3f4f6; color: #4b5563; }
+.otag-cancelled { background: #fee2e2; color: #b91c1c; }
+.otag-new { background: #e0e7ff; color: #4338ca; }
+.otag-delivery { background: #dbeafe; color: #1d4ed8; }
+.otag-pickup { background: #f3e8ff; color: #7e22ce; }
+.otag-cash { background: #d1fae5; color: #047857; }
+.otag-card { background: #dbeafe; color: #1d4ed8; }
+.otag-branch { background: #f1f5f9; color: #475569; }
+
+.ocard-detail {
+    display: none;
+    background: #fafbfc;
+    border-top: 1px solid #e5e7eb;
+    padding: 12px 14px;
+}
+.ocard-detail.open { display: block; }
+.detail-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    color: #374151;
+    font-size: .85rem;
+}
+.detail-line + .detail-line { border-top: 1px solid #f1f5f9; }
+.detail-total {
+    font-weight: 800;
+    color: #16a34a;
+    border-top: 1px solid #e5e7eb !important;
+    padding-top: 10px;
+    margin-top: 4px;
+    font-size: .95rem;
+}
+.detail-address {
+    color: #6b7280;
+    font-size: .8rem;
+    margin-top: 8px;
+}
+.detail-notes {
+    color: #b45309;
+    font-size: .8rem;
+    margin-top: 4px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+.ocard-actions {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px 14px;
+    background: #fafbfc;
+}
+.act-btn {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 700;
+    font-size: .82rem;
+    cursor: pointer;
+    text-align: center;
+    transition: opacity .15s, transform .05s;
+}
+.act-btn:active { opacity: .85; transform: scale(.98); }
+.act-reorder { background: #4f46e5; color: #fff; }
+.act-receipt { background: #059669; color: #fff; }
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9ca3af;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+}
+.empty-state i {
+    font-size: 3rem;
+    color: #d1d5db;
+    margin-bottom: 14px;
+}
+.empty-state h3 {
+    color: #4b5563;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.empty-state p { font-size: .85rem; color: #6b7280; }
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.modal-backdrop.show { display: flex; }
+.modal-sheet {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    color: #111827;
+    box-shadow: 0 20px 40px rgba(0,0,0,.25);
+}
+
+@media (max-width: 480px) {
+    .hist-container { padding: 12px 12px 100px; }
+    .hist-header h2 { font-size: 1.1rem; }
+    .filter-grid { grid-template-columns: 1fr; }
+    .ocard-amount { font-size: 1rem; }
+    .status-pill { padding: 5px 10px; font-size: .72rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hist-container">
+    <div class="hist-header">
+        <h2><i class="fas fa-clock-rotate-left me-2" style="color:#6366f1;"></i>היסטוריה</h2>
+        {% if orders %}
+        <span class="result-count">{{ orders|length }} הזמנות</span>
+        {% endif %}
+    </div>
+
+    <form method="get" action="{{ url_for('ops.order_history') }}">
+        <div class="search-panel">
+            <div class="search-main">
+                <input type="text" name="q" placeholder="חפש שם, טלפון, מספר הזמנה..." value="{{ q }}">
+                <button type="submit" class="search-go"><i class="fas fa-search"></i></button>
+            </div>
+
+            <div class="status-pills">
+                <a href="{{ url_for('ops.order_history', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-all {% if not status_filter %}active{% endif %}">הכל</a>
+                <a href="{{ url_for('ops.order_history', status='pending', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-pending {% if status_filter == 'pending' %}active{% endif %}">ממתינה</a>
+                <a href="{{ url_for('ops.order_history', status='confirmed', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-confirmed {% if status_filter == 'confirmed' %}active{% endif %}">אושרה</a>
+                <a href="{{ url_for('ops.order_history', status='preparing', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-preparing {% if status_filter == 'preparing' %}active{% endif %}">בהכנה</a>
+                <a href="{{ url_for('ops.order_history', status='ready', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-ready {% if status_filter == 'ready' %}active{% endif %}">מוכנה</a>
+                <a href="{{ url_for('ops.order_history', status='delivered', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-delivered {% if status_filter == 'delivered' %}active{% endif %}">נמסרה</a>
+                <a href="{{ url_for('ops.order_history', status='pickedup', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-delivered {% if status_filter == 'pickedup' %}active{% endif %}">נאספה</a>
+                <a href="{{ url_for('ops.order_history', status='cancelled', q=q, date_from=date_from, date_to=date_to, type=type_filter, branch_id=branch_filter) }}" class="status-pill sp-cancelled {% if status_filter == 'cancelled' %}active{% endif %}">בוטלה</a>
+            </div>
+
+            <button type="button" class="filter-toggle" id="filterToggle" onclick="toggleFilters()">
+                <i class="fas fa-sliders-h me-1"></i>מסננים מתקדמים
+            </button>
+            <div class="filter-drawer" id="filterDrawer">
+                <div class="filter-grid">
+                    <div>
+                        <label>מתאריך</label>
+                        <input type="date" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div>
+                        <label>עד תאריך</label>
+                        <input type="date" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div>
+                        <label>סוג</label>
+                        <select name="type">
+                            <option value="">הכל</option>
+                            <option value="delivery" {% if type_filter == 'delivery' %}selected{% endif %}>משלוח</option>
+                            <option value="pickup" {% if type_filter == 'pickup' %}selected{% endif %}>איסוף</option>
+                        </select>
+                    </div>
+                    {% if is_superadmin and branches|length > 1 %}
+                    <div>
+                        <label>סניף</label>
+                        <select name="branch_id">
+                            <option value="">כל הסניפים</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                </div>
+                <button type="submit" class="search-go" style="width:100%;border-radius:10px;padding:10px;"><i class="fas fa-search me-1"></i>חפש עם מסננים</button>
+            </div>
+            {% if status_filter %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            {% endif %}
+        </div>
+    </form>
+
+    {% if orders %}
+    {% for order in orders %}
+    <div class="ocard" id="card-{{ order.id }}">
+        <div class="ocard-top" onclick="toggleDetail({{ order.id }})">
+            <div class="ocard-left">
+                <div class="ocard-num" id="histOrderTitle_{{ order.id }}">{{ disp_num(order) }}</div>
+                <div class="ocard-customer">{{ order.customer_name }} &bull; {{ order.customer_phone }}</div>
+            </div>
+            <div class="ocard-right">
+                <div class="ocard-amount">₪{{ '%.0f' % (order.total_amount or 0) }}</div>
+                <div class="ocard-date">{{ order.created_at|il_time('%d/%m/%y %H:%M') }}</div>
+            </div>
+        </div>
+        <div class="ocard-tags">
+            {% set status_map = {'pending':'ממתינה','confirmed':'אושרה','preparing':'בהכנה','ready':'מוכנה','delivered':'נמסרה','pickedup':'נאספה','cancelled':'בוטלה','new':'חדשה'} %}
+            <span class="otag otag-{{ order.status }}">{{ status_map.get(order.status, order.status) }}</span>
+            <span class="otag otag-{{ order.order_type }}">{{ 'משלוח' if order.order_type == 'delivery' else 'איסוף' }}</span>
+            {% if order.payment_method in ('cash', none, '') %}
+                <span class="otag otag-cash">מזומן</span>
+            {% else %}
+                <span class="otag otag-card">כרטיס</span>
+            {% endif %}
+            {% if order.branch_name %}
+                <span class="otag otag-branch">{{ order.branch_name }}</span>
+            {% endif %}
+            {% if order.source == 'ops' %}
+                <span class="otag" style="background:rgba(124,58,237,.15);color:#a78bfa;">ידני</span>
+            {% elif order.source == 'dine_in' %}
+                <span class="otag" style="background:rgba(124,58,237,.15);color:#7c3aed;">ישיבה</span>
+            {% endif %}
+        </div>
+
+        <div class="ocard-detail" id="detail-{{ order.id }}">
+            {% set items = order.get_items() %}
+            {% for it in items %}
+            <div class="detail-line">
+                <span>{{ it.get('name_he', it.get('item_name_he', '?')) }} x{{ it.get('qty', it.get('quantity', 1)) }}</span>
+                <span>₪{{ '%.0f' % (it.get('price', it.get('unit_price', 0)) * it.get('qty', it.get('quantity', 1))) }}</span>
+            </div>
+            {% endfor %}
+            {% if order.delivery_fee and order.delivery_fee > 0 %}
+            <div class="detail-line" style="color:#475569;">
+                <span>דמי משלוח</span>
+                <span>₪{{ '%.0f' % order.delivery_fee }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-line detail-total">
+                <span>סה"כ</span>
+                <span>₪{{ '%.0f' % (order.total_amount or 0) }}</span>
+            </div>
+            {% if order.delivery_address %}
+            <div class="detail-address">
+                <i class="fas fa-map-marker-alt me-1"></i>{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}
+            </div>
+            {% endif %}
+            {% if order.customer_notes %}
+            <div class="detail-notes">
+                <i class="fas fa-comment me-1"></i>{{ order.customer_notes }}
+            </div>
+            {% endif %}
+            {% if order.dine_in_session %}
+                {% if order.dine_in_session.tip_amount and order.dine_in_session.tip_amount > 0 %}
+                <div class="detail-line" style="color:#4caf50;">
+                    <span><i class="fas fa-hand-holding-usd me-1"></i>טיפ</span>
+                    <span>₪{{ '%.0f' % order.dine_in_session.tip_amount }}</span>
+                </div>
+                {% endif %}
+                {% if order.dine_in_session.cancel_reason %}
+                <div style="margin-top:6px; padding:6px 10px; background:#ffebee; border-radius:8px; font-size:.78rem; color:#c62828;">
+                    <i class="fas fa-times-circle me-1"></i>ביטול: {{ order.dine_in_session.cancel_reason }}
+                    {% if order.dine_in_session.cancel_note %} — {{ order.dine_in_session.cancel_note }}{% endif %}
+                </div>
+                {% endif %}
+                {% if order.dine_in_session.payment_splits|length > 0 %}
+                <div style="margin-top:6px; padding:6px 10px; background:#e3f2fd; border-radius:8px; font-size:.78rem; color:#1565c0;">
+                    <i class="fas fa-divide me-1"></i>חשבון מפוצל — {{ order.dine_in_session.payment_splits|length }} חלקים
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="ocard-actions">
+            <button class="act-btn act-reorder" onclick="reorder({{ order.id }})">
+                <i class="fas fa-redo me-1"></i>הזמנה חוזרת
+            </button>
+            {% if order.payment_method in ('cash', none, '') %}
+            <button class="act-btn act-receipt" id="histReceiptBtn_{{ order.id }}" onclick="sendReceipt({{ order.id }})">
+                <i class="fas fa-receipt me-1"></i>קבלה
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-inbox d-block"></i>
+        <h3>אין הזמנות</h3>
+        <p>נסה לשנות את מסנני החיפוש</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal-backdrop" id="deleteConfirmModal" onclick="if(event.target===this)closeDeleteModal()" style="z-index:10001;">
+    <div class="modal-sheet" style="max-width:400px;text-align:center;padding:24px 20px;">
+        <div style="font-size:48px;margin-bottom:12px;">&#9888;&#65039;</div>
+        <div style="font-size:18px;font-weight:800;color:#ef4444;margin-bottom:8px;">מחיקת הזמנה</div>
+        <div id="deleteConfirmOrderNum" style="font-size:15px;color:#94a3b8;margin-bottom:16px;"></div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">ההזמנה תימחק לצמיתות ותועבר לארכיון.<br>פעולה זו אינה ניתנת לביטול.</div>
+        <div style="margin-bottom:20px;">
+            <input type="text" id="deleteReasonInput" placeholder="סיבת מחיקה (אופציונלי)" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:14px;text-align:right;direction:rtl;">
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="confirmDeleteOrder()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#ef4444;color:#fff;font-weight:700;font-size:15px;cursor:pointer;">מחק הזמנה</button>
+            <button onclick="closeDeleteModal()" style="flex:1;padding:12px;border-radius:10px;border:none;background:#334155;color:#e2e8f0;font-weight:700;font-size:15px;cursor:pointer;">ביטול</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleDetail(id) {
+    var el = document.getElementById('detail-' + id);
+    if (el) el.classList.toggle('open');
+}
+
+function toggleFilters() {
+    var d = document.getElementById('filterDrawer');
+    var t = document.getElementById('filterToggle');
+    d.classList.toggle('open');
+    t.classList.toggle('open');
+}
+
+{% if date_from or date_to or type_filter %}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('filterDrawer').classList.add('open');
+    document.getElementById('filterToggle').classList.add('open');
+});
+{% endif %}
+
+function reorder(orderId) {
+    opsConfirm({title: 'הזמנה חוזרת', message: 'לפתוח הזמנה חוזרת עם אותם פריטים?', type: 'info', okText: 'כן'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/orders/' + orderId + '/reorder', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.ok && d.redirect) {
+                    window.location.href = d.redirect;
+                } else if (d.ok) {
+                    showToast(d.message || 'הזמנה חוזרת מוכנה');
+                    setTimeout(function() { window.location.reload(); }, 800);
+                } else {
+                    showToast(d.error || 'שגיאה', true);
+                }
+            })
+            .catch(function() { showToast('שגיאת רשת', true); });
+    });
+}
+
+function sendReceipt(orderId) {
+    opsConfirm({title: 'שליחת קבלה', message: 'לשלוח קבלה SMS ללקוח?', type: 'info', okText: 'שלח'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/orders/' + orderId + '/send-receipt', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                showToast(d.ok ? d.message : (d.error || 'שגיאה'), !d.ok);
+            })
+            .catch(function() { showToast('שגיאת רשת', true); });
+    });
+}
+
+var _pendingDeleteId = null;
+var _pendingDeleteNum = '';
+
+function showDeleteModal(id, orderNum) {
+    _pendingDeleteId = id;
+    _pendingDeleteNum = orderNum;
+    document.getElementById('deleteConfirmOrderNum').textContent = 'הזמנה #' + orderNum;
+    document.getElementById('deleteReasonInput').value = '';
+    document.getElementById('deleteConfirmModal').classList.add('show');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteConfirmModal').classList.remove('show');
+    _pendingDeleteId = null;
+    _pendingDeleteNum = '';
+}
+
+function confirmDeleteOrder() {
+    if (!_pendingDeleteId) return;
+    var reason = document.getElementById('deleteReasonInput').value.trim();
+    deleteOrder(_pendingDeleteId, _pendingDeleteNum, reason);
+    closeDeleteModal();
+}
+
+function deleteOrder(orderId, orderNum, reason) {
+    if (reason === undefined) {
+        showDeleteModal(orderId, orderNum);
+        return;
+    }
+    fetch('/ops/api/orders/' + orderId + '/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ reason: reason })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            var card = document.getElementById('card-' + orderId);
+            if (card) {
+                card.style.transition = 'opacity .3s, transform .3s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(.95)';
+                setTimeout(function() { card.remove(); }, 300);
+            }
+        } else {
+            showToast(d.error || 'שגיאה', true);
+        }
+    })
+    .catch(function() { showToast('שגיאת רשת', true); });
+}
+
+{% if is_superadmin %}
+(function() {
+    var cashOrders = [
+        {% for order in orders %}
+        {% if order.payment_method in ('cash', none, '') %}
+        { id: {{ order.id }}, orderNumber: {{ order.order_number|tojson }} },
+        {% endif %}
+        {% endfor %}
+    ];
+    cashOrders.forEach(function(order) {
+        var titleEl = document.getElementById('histOrderTitle_' + order.id);
+        var receiptBtn = document.getElementById('histReceiptBtn_' + order.id);
+        if (!titleEl || !receiptBtn) return;
+
+        var tapCount = 0, tapTimer = null, armed = false, armTimer = null, lpTimer = null;
+
+        titleEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            tapCount++;
+            if (tapTimer) clearTimeout(tapTimer);
+            tapTimer = setTimeout(function() { tapCount = 0; }, 3000);
+            if (tapCount >= 5) {
+                armed = true;
+                tapCount = 0;
+                if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+                armTimer = setTimeout(function() { armed = false; }, 8000);
+            }
+        });
+
+        function onDown(e) {
+            if (!armed) return;
+            e.preventDefault(); e.stopPropagation();
+            lpTimer = setTimeout(function() {
+                armed = false;
+                showDeleteModal(order.id, order.orderNumber);
+            }, 800);
+        }
+        function onUp(e) {
+            if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+            if (armed) { e.preventDefault(); e.stopPropagation(); }
+        }
+
+        receiptBtn.addEventListener('mousedown', onDown);
+        receiptBtn.addEventListener('mouseup', onUp);
+        receiptBtn.addEventListener('mouseleave', onUp);
+        receiptBtn.addEventListener('touchstart', onDown, {passive: false});
+        receiptBtn.addEventListener('touchend', onUp);
+        receiptBtn.addEventListener('touchcancel', onUp);
+        receiptBtn.addEventListener('click', function(e) {
+            if (armed) { e.preventDefault(); e.stopPropagation(); return false; }
+        }, true);
+    });
+})();
+{% endif %}
+</script>
+{% endblock %}

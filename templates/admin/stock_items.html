@@ -1,0 +1,173 @@
+{% extends "admin/base.html" %}
+
+{% block title %}פריטי מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-cube me-2 text-primary"></i>פריטי מלאי
+            </h1>
+            <p class="text-muted mb-0">ניהול פריטים במערכת המלאי</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="addNewItem()">
+                <i class="fas fa-plus me-2"></i>הוסף פריט חדש
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>סינון וחיפוש</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">קטגוריה</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">כל הקטגוריות</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">ספק</label>
+                    <select class="form-select" id="supplierFilter">
+                        <option value="">כל הספקים</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">סוג פריט</label>
+                    <select class="form-select" id="typeFilter">
+                        <option value="">כל הסוגים</option>
+                        <option value="ingredient">מרכיב</option>
+                        <option value="finished_product">מוצר מוגמר</option>
+                        <option value="supply">אביזר</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">חיפוש</label>
+                    <input type="text" class="form-control" id="searchFilter" placeholder="חפש פריט...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>רשימת פריטים ({{ items|length }} פריטים)</h5>
+        </div>
+        <div class="card-body">
+            {% if items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>שם הפריט</th>
+                            <th>SKU</th>
+                            <th>קטגוריה</th>
+                            <th>יחידת מדידה</th>
+                            <th>מינימום</th>
+                            <th>מקסימום</th>
+                            <th>עלות</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong>{{ item.name_he }}</strong>
+                                    {% if item.name_en %}
+                                    <br><small class="text-muted">{{ item.name_en }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td><code>{{ item.sku }}</code></td>
+                            <td>
+                                {% if item.category %}
+                                <span class="badge" style="background-color: {{ item.category.color }}">
+                                    <i class="fa {{ item.category.icon }} me-1"></i>
+                                    {{ item.category.name_he }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.unit_he }}</td>
+                            <td>{{ item.minimum_stock }} {{ item.unit_he }}</td>
+                            <td>{{ item.maximum_stock }} {{ item.unit_he }}</td>
+                            <td>₪{{ "%.2f"|format(item.cost_per_unit) }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="editItem({{ item.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="viewItemStock({{ item.id }})">
+                                        <i class="fas fa-chart-bar"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteItem({{ item.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-cube fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">אין פריטי מלאי</h5>
+                <p class="text-muted">לחץ על "הוסף פריט חדש" כדי להתחיל</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function addNewItem() {
+    alert('הוספת פריט חדש - בפיתוח');
+}
+
+function editItem(id) {
+    alert(`עריכת פריט ${id} - בפיתוח`);
+}
+
+function viewItemStock(id) {
+    alert(`צפייה במלאי פריט ${id} - בפיתוח`);
+}
+
+function deleteItem(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק פריט זה?')) {
+        alert(`מחיקת פריט ${id} - בפיתוח`);
+    }
+}
+
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const filters = ['categoryFilter', 'supplierFilter', 'typeFilter', 'searchFilter'];
+    
+    filters.forEach(filterId => {
+        document.getElementById(filterId).addEventListener('change', applyFilters);
+    });
+    
+    document.getElementById('searchFilter').addEventListener('input', applyFilters);
+});
+
+function applyFilters() {
+    // Filter implementation would go here
+    console.log('Filters applied');
+}
+</script>
+{% endblock %}

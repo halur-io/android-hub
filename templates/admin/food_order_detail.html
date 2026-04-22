@@ -1,0 +1,365 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'הזמנה' if (admin_language or 'he') == 'he' else 'Order' }} #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('admin.food_orders_list') }}" class="btn btn-sm btn-outline-secondary mb-2">
+                <i class="fas fa-arrow-right me-1"></i>{{ 'חזרה להזמנות' if (admin_language or 'he') == 'he' else 'Back to Orders' }}
+            </a>
+            <h2 id="orderTitle"><i class="fas fa-receipt me-2"></i>{{ 'הזמנה' if (admin_language or 'he') == 'he' else 'Order' }} #{{ order.order_number }}</h2>
+        </div>
+        {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'pickedup': 'secondary', 'cancelled': 'danger'} %}
+        {% set status_labels_he = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'pickedup': 'נאספה', 'cancelled': 'בוטלה'} %}
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }} fs-6 px-3 py-2">
+                {{ status_labels_he.get(order.status, order.status) if (admin_language or 'he') == 'he' else order.status }}
+            </span>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% if order.payment_method in ('cash', none, '') %}
+                    <li>
+                        <form id="receiptForm" action="{{ url_for('admin.food_order_send_receipt', order_id=order.id) }}" method="post" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" id="receiptBtn" class="dropdown-item"><i class="fas fa-receipt me-2 text-success"></i>{{ 'שלח קבלה SMS' if (admin_language or 'he') == 'he' else 'Send SMS Receipt' }}</button>
+                        </form>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-user me-2"></i>{{ 'פרטי לקוח' if (admin_language or 'he') == 'he' else 'Customer Details' }}</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr><td class="fw-bold" style="width:130px">{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</td><td>{{ order.customer_name }}</td></tr>
+                        <tr><td class="fw-bold">{{ 'טלפון' if (admin_language or 'he') == 'he' else 'Phone' }}</td><td><a href="tel:{{ order.customer_phone }}">{{ order.customer_phone }}</a></td></tr>
+                        {% if order.customer_email %}
+                        <tr><td class="fw-bold">{{ 'אימייל' if (admin_language or 'he') == 'he' else 'Email' }}</td><td>{{ order.customer_email }}</td></tr>
+                        {% endif %}
+                        <tr><td class="fw-bold">{{ 'סוג' if (admin_language or 'he') == 'he' else 'Type' }}</td><td>
+                            {% if order.order_type == 'delivery' %}
+                                <span class="badge bg-info">{{ 'משלוח' if (admin_language or 'he') == 'he' else 'Delivery' }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ 'איסוף' if (admin_language or 'he') == 'he' else 'Pickup' }}</span>
+                            {% endif %}
+                            {% if order.source == 'ops' %}
+                                <span class="badge" style="background:#7c3aed;">{{ 'ידני' if (admin_language or 'he') == 'he' else 'Manual' }}</span>
+                            {% elif order.source == 'dine_in' %}
+                                <span class="badge" style="background:#9333ea;">{{ 'ישיבה' if (admin_language or 'he') == 'he' else 'Dine-In' }}</span>
+                            {% endif %}
+                        </td></tr>
+                        {% if order.order_type == 'delivery' and order.delivery_address %}
+                        <tr><td class="fw-bold">{{ 'כתובת' if (admin_language or 'he') == 'he' else 'Address' }}</td><td>{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</td></tr>
+                        {% endif %}
+                        {% if order.pickup_time %}
+                        <tr><td class="fw-bold">{{ 'זמן איסוף' if (admin_language or 'he') == 'he' else 'Pickup Time' }}</td><td>{{ order.pickup_time }}</td></tr>
+                        {% endif %}
+                        {% if order.customer_notes %}
+                        <tr><td class="fw-bold">{{ 'הערות' if (admin_language or 'he') == 'he' else 'Notes' }}</td><td>{{ order.customer_notes }}</td></tr>
+                        {% endif %}
+                        <tr><td class="fw-bold">{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</td><td>{{ order.created_at|il_time }}</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>{{ 'פריטים' if (admin_language or 'he') == 'he' else 'Items' }}</h5></div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>{{ 'פריט' if (admin_language or 'he') == 'he' else 'Item' }}</th>
+                                <th>{{ 'כמות' if (admin_language or 'he') == 'he' else 'Qty' }}</th>
+                                <th>{{ 'מחיר' if (admin_language or 'he') == 'he' else 'Price' }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.get('name_he', item.get('name', item.get('item_name_he', '-'))) }}</td>
+                                <td>{{ item.get('qty', item.get('quantity', 1)) }}</td>
+                                <td>₪{{ '%.0f' % (item.get('price', item.get('unit_price', 0)) * item.get('qty', item.get('quantity', 1))) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            {% if order.delivery_fee and order.delivery_fee > 0 %}
+                            <tr><td colspan="2" class="text-end fw-bold">{{ 'דמי משלוח' if (admin_language or 'he') == 'he' else 'Delivery Fee' }}</td><td>₪{{ '%.0f' % order.delivery_fee }}</td></tr>
+                            {% endif %}
+                            {% if order.coupon_discount and order.coupon_discount > 0 %}
+                            <tr class="text-success"><td colspan="2" class="text-end fw-bold">{{ 'הנחת קופון' if (admin_language or 'he') == 'he' else 'Coupon Discount' }} ({{ order.coupon_code }})</td><td>-₪{{ '%.0f' % order.coupon_discount }}</td></tr>
+                            {% endif %}
+                            <tr class="table-active"><td colspan="2" class="text-end fw-bold fs-5">{{ 'סה"כ' if (admin_language or 'he') == 'he' else 'Total' }}</td><td class="fw-bold fs-5">₪{{ '%.0f' % (order.total_amount or 0) }}</td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>{{ 'תשלום' if (admin_language or 'he') == 'he' else 'Payment' }}</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr><td class="fw-bold" style="width:130px">{{ 'אמצעי' if (admin_language or 'he') == 'he' else 'Method' }}</td><td>{{ 'כרטיס' if order.payment_method == 'card' else 'מזומן' if (admin_language or 'he') == 'he' else order.payment_method }}</td></tr>
+                        <tr><td class="fw-bold">{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</td><td>
+                            {% if order.payment_status == 'paid' %}
+                                <span class="badge bg-success">{{ 'שולם' if (admin_language or 'he') == 'he' else 'Paid' }}</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ 'ממתין' if (admin_language or 'he') == 'he' else 'Pending' }}</span>
+                            {% endif %}
+                        </td></tr>
+                        {% if order.dine_in_session and order.dine_in_session.tip_amount and order.dine_in_session.tip_amount > 0 %}
+                        <tr><td class="fw-bold">{{ 'טיפ' if (admin_language or 'he') == 'he' else 'Tip' }}</td><td><span class="badge bg-success">₪{{ '%.0f' % order.dine_in_session.tip_amount }}</span></td></tr>
+                        {% endif %}
+                        {% if order.dine_in_session and order.dine_in_session.cash_received %}
+                        <tr><td class="fw-bold">{{ 'סכום שהתקבל' if (admin_language or 'he') == 'he' else 'Cash Received' }}</td><td>₪{{ '%.0f' % order.dine_in_session.cash_received }}</td></tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% if order.dine_in_session and order.dine_in_session.cancel_reason %}
+            <div class="card mt-3">
+                <div class="card-header bg-danger bg-opacity-10"><h5 class="mb-0 text-danger"><i class="fas fa-times-circle me-2"></i>{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancellation' }}</h5></div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr><td class="fw-bold" style="width:130px">{{ 'סיבה' if (admin_language or 'he') == 'he' else 'Reason' }}</td><td>{{ order.dine_in_session.cancel_reason }}</td></tr>
+                        {% if order.dine_in_session.cancel_note %}
+                        <tr><td class="fw-bold">{{ 'הערה' if (admin_language or 'he') == 'he' else 'Note' }}</td><td>{{ order.dine_in_session.cancel_note }}</td></tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            {% if order.dine_in_session and order.dine_in_session.payment_splits|length > 0 %}
+            <div class="card mt-3">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-divide me-2"></i>{{ 'חלוקת חשבון' if (admin_language or 'he') == 'he' else 'Split Payment' }}</h5></div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead><tr><th>{{ 'משלם' if (admin_language or 'he') == 'he' else 'Payer' }}</th><th>{{ 'סכום' if (admin_language or 'he') == 'he' else 'Amount' }}</th><th>{{ 'אמצעי' if (admin_language or 'he') == 'he' else 'Method' }}</th><th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th></tr></thead>
+                        <tbody>
+                        {% for split in order.dine_in_session.payment_splits %}
+                        <tr>
+                            <td>{{ split.payer_label or ('משלם ' ~ (split.portion_index + 1)) }}</td>
+                            <td>₪{{ '%.0f' % split.amount }}{% if split.tip_amount and split.tip_amount > 0 %} <small class="text-success">(+₪{{ '%.0f' % split.tip_amount }} טיפ)</small>{% endif %}</td>
+                            <td>{{ 'מזומן' if split.payment_method == 'cash' else split.payment_method or '-' }}</td>
+                            <td><span class="badge bg-{{ 'success' if split.payment_status == 'paid' else 'warning' }}">{{ 'שולם' if split.payment_status == 'paid' else 'ממתין' }}</span></td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-history me-2"></i>{{ 'לוג פעילות' if (admin_language or 'he') == 'he' else 'Activity Log' }}</h5></div>
+                <div class="card-body p-0">
+                    {% if activity_logs %}
+                    <div class="list-group list-group-flush">
+                        {% set action_labels = {'order_created': 'הזמנה נוצרה', 'status_change': 'שינוי סטטוס', 'cancelled': 'הזמנה בוטלה'} %}
+                        {% set action_icons = {'order_created': 'fas fa-plus-circle text-success', 'status_change': 'fas fa-exchange-alt text-primary', 'cancelled': 'fas fa-times-circle text-danger'} %}
+                        {% for log in activity_logs %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <i class="{{ action_icons.get(log.action, 'fas fa-circle') }} me-2"></i>
+                                    <strong>{{ action_labels.get(log.action, log.action) if (admin_language or 'he') == 'he' else log.action }}</strong>
+                                    {% if log.old_value and log.new_value %}
+                                        <span class="text-muted mx-1">
+                                            {% set sl = {'pending': 'ממתין', 'confirmed': 'אושר', 'preparing': 'בהכנה', 'ready': 'מוכן', 'delivered': 'נמסר', 'pickedup': 'נאסף', 'cancelled': 'בוטל'} %}
+                                            {{ sl.get(log.old_value, log.old_value) }} → {{ sl.get(log.new_value, log.new_value) }}
+                                        </span>
+                                    {% endif %}
+                                    {% if log.staff_name %}
+                                        <span class="badge bg-light text-dark ms-1">{{ log.staff_name }}</span>
+                                    {% endif %}
+                                    {% if log.note %}
+                                        <div class="text-muted small mt-1">{{ log.note }}</div>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">{{ log.created_at|il_time_short if log.created_at else '' }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>{{ 'אין פעילות עדיין' if (admin_language or 'he') == 'he' else 'No activity yet' }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-sms me-2"></i>{{ 'לוג SMS' if (admin_language or 'he') == 'he' else 'SMS Log' }}</h5></div>
+                <div class="card-body p-0">
+                    {% if sms_logs %}
+                    <div class="list-group list-group-flush">
+                        {% set type_labels = {'customer_confirmation': 'אישור ללקוח', 'admin_notification': 'התראה למנהל', 'custom_kds': 'הודעה ידנית'} %}
+                        {% for sms in sms_logs %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div style="max-width: 80%;">
+                                    {% if sms.status == 'sent' %}
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-exclamation-circle text-danger me-1"></i>
+                                    {% endif %}
+                                    <strong>{{ type_labels.get(sms.message_type, sms.message_type) if (admin_language or 'he') == 'he' else sms.message_type }}</strong>
+                                    <span class="text-muted ms-1">→ {{ sms.recipient_phone }}</span>
+                                    {% if sms.staff_name %}
+                                        <span class="badge bg-light text-dark ms-1">{{ sms.staff_name }}</span>
+                                    {% endif %}
+                                    <div class="text-muted small mt-1" style="white-space: pre-wrap; max-height: 60px; overflow: hidden;">{{ sms.message_text[:150] }}{% if sms.message_text|length > 150 %}...{% endif %}</div>
+                                    {% if sms.error_message %}
+                                        <div class="text-danger small mt-1"><i class="fas fa-exclamation-triangle me-1"></i>{{ sms.error_message[:100] }}</div>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">{{ sms.created_at|il_time_short if sms.created_at else '' }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>{{ 'אין הודעות SMS' if (admin_language or 'he') == 'he' else 'No SMS messages' }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if order.admin_notes %}
+            <div class="card mt-3">
+                <div class="card-header"><h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>{{ 'הערות מנהל' if (admin_language or 'he') == 'he' else 'Admin Notes' }}</h5></div>
+                <div class="card-body">
+                    <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ order.admin_notes }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if order.payment_method in ('cash', none, '') and current_user.is_superadmin %}
+<div id="deleteOrderModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:30px;max-width:450px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+        <h4 class="text-danger mb-3"><i class="fas fa-exclamation-triangle me-2"></i>{{ 'מחיקת הזמנה' if (admin_language or 'he') == 'he' else 'Delete Order' }}</h4>
+        <p class="text-muted">{{ 'ההזמנה תימחק לצמיתות ממסד הנתונים. פעולה זו אינה ניתנת לביטול.' if (admin_language or 'he') == 'he' else 'The order will be permanently deleted from the database. This action cannot be undone.' }}</p>
+        <form action="{{ url_for('admin.food_order_delete', order_id=order.id) }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label">{{ 'סיבת מחיקה (אופציונלי)' if (admin_language or 'he') == 'he' else 'Deletion reason (optional)' }}</label>
+                <input type="text" name="reason" class="form-control" placeholder="{{ 'למשל: הזמנת בדיקה' if (admin_language or 'he') == 'he' else 'e.g. Test order' }}">
+            </div>
+            <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('deleteOrderModal').style.display='none'">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt me-1"></i>{{ 'מחק' if (admin_language or 'he') == 'he' else 'Delete' }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function(){
+    var tapCount = 0;
+    var tapTimer = null;
+    var armed = false;
+    var armTimer = null;
+    var longPressTimer = null;
+    var LONG_PRESS_MS = 800;
+
+    var title = document.getElementById('orderTitle');
+    var receiptBtn = document.getElementById('receiptBtn');
+    var receiptForm = document.getElementById('receiptForm');
+
+    if (!title || !receiptBtn || !receiptForm) return;
+
+    function resetAll() {
+        tapCount = 0;
+        armed = false;
+        if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+        if (armTimer) { clearTimeout(armTimer); armTimer = null; }
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+
+    title.style.cursor = 'default';
+    title.style.userSelect = 'none';
+    title.style.webkitUserSelect = 'none';
+
+    title.addEventListener('click', function(e) {
+        e.preventDefault();
+        tapCount++;
+        if (tapTimer) clearTimeout(tapTimer);
+        tapTimer = setTimeout(function() { tapCount = 0; }, 3000);
+
+        if (tapCount >= 5) {
+            armed = true;
+            tapCount = 0;
+            if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+            armTimer = setTimeout(function() { armed = false; }, 8000);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (armed && !title.contains(e.target) && !receiptBtn.contains(e.target) && e.target.id !== 'deleteOrderModal' && !e.target.closest('#deleteOrderModal')) {
+            resetAll();
+        }
+    });
+
+    function onDown(e) {
+        if (!armed) return;
+        e.preventDefault();
+        e.stopPropagation();
+        longPressTimer = setTimeout(function() {
+            resetAll();
+            document.getElementById('deleteOrderModal').style.display = 'flex';
+        }, LONG_PRESS_MS);
+    }
+
+    function onUp(e) {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        if (armed) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    receiptBtn.addEventListener('mousedown', onDown);
+    receiptBtn.addEventListener('mouseup', onUp);
+    receiptBtn.addEventListener('mouseleave', onUp);
+    receiptBtn.addEventListener('touchstart', onDown, {passive: false});
+    receiptBtn.addEventListener('touchend', onUp);
+    receiptBtn.addEventListener('touchcancel', onUp);
+
+    receiptBtn.addEventListener('click', function(e) {
+        if (armed) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

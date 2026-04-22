@@ -1,0 +1,223 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if category.id %}עריכת קטגוריה{% else %}הוספת קטגוריה חדשה{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <h2>{% if category.id %}עריכת קטגוריה: {{ category.name_he }}{% else %}הוספת קטגוריה חדשה{% endif %}</h2>
+            
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="name_he" class="form-label">שם הקטגוריה (עברית)</label>
+                            <input type="text" class="form-control" id="name_he" name="name_he" value="{{ category.name_he or '' }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="name_en" class="form-label">שם הקטגוריה (אנגלית)</label>
+                            <input type="text" class="form-control" id="name_en" name="name_en" value="{{ category.name_en or '' }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description_he" class="form-label">תיאור (עברית)</label>
+                            <textarea class="form-control" id="description_he" name="description_he" rows="3">{{ category.description_he or '' }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description_en" class="form-label">תיאור (אנגלית)</label>
+                            <textarea class="form-control" id="description_en" name="description_en" rows="3">{{ category.description_en or '' }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="footer_text_he" class="form-label">טקסט בתחתית הקטגוריה (עברית)</label>
+                            <textarea class="form-control" id="footer_text_he" name="footer_text_he" rows="2" placeholder="טקסט אופציונלי שיוצג בתחתית הסקציה">{{ category.footer_text_he or '' }}</textarea>
+                            <small class="form-text text-muted">טקסט זה יוצג בתחתית הקטגוריה (למשל: הערות, מידע נוסף)</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="footer_text_en" class="form-label">טקסט בתחתית הקטגוריה (אנגלית)</label>
+                            <textarea class="form-control" id="footer_text_en" name="footer_text_en" rows="2" placeholder="Optional footer text">{{ category.footer_text_en or '' }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="icon" class="form-label">אייקון (FontAwesome)</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i id="icon-preview" class="fas fa-{{ category.icon or 'utensils' }}"></i></span>
+                                <input type="text" class="form-control" id="icon" name="icon" value="{{ category.icon or '' }}" placeholder="לדוגמה: utensils, fish, pepper-hot">
+                            </div>
+                            <small class="form-text text-muted">בחר אייקון מ-FontAwesome (בלי fa-)</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="color" class="form-label">צבע הקטגוריה</label>
+                            <div class="input-group">
+                                <span class="input-group-text" id="color-preview" style="background-color: {{ category.color or '#C75450' }}; width: 40px;"></span>
+                                <input type="color" class="form-control form-control-color" id="color" name="color" value="{{ category.color or '#C75450' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="display_order" class="form-label">סדר הצגה</label>
+                            <input type="number" class="form-control" id="display_order" name="display_order" value="{{ category.display_order or 0 }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">הגדרות תצוגה</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if category.is_active or not category.id %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <i class="fas fa-eye text-success"></i> קטגוריה פעילה
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="show_in_menu" name="show_in_menu" {% if category.show_in_menu or not category.id %}checked{% endif %}>
+                                <label class="form-check-label" for="show_in_menu">
+                                    <i class="fas fa-book-open text-primary"></i> הצג בעמוד התפריט
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="show_in_order" name="show_in_order" {% if category.show_in_order or not category.id %}checked{% endif %}>
+                                <label class="form-check-label" for="show_in_order">
+                                    <i class="fas fa-shopping-cart text-info"></i> הצג בעמוד הזמנה
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="featured" name="featured" {% if category.featured %}checked{% endif %}>
+                                <label class="form-check-label" for="featured">
+                                    <i class="fas fa-star text-warning"></i> קטגוריה מומלצת
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="image" class="form-label">תמונת רקע לקטגוריה</label>
+                            {% if category.image_path %}
+                            <div class="mb-2">
+                                <img src="{{ url_for('static', filename=category.image_path) }}" alt="Category Image" class="img-thumbnail" style="max-width: 200px;">
+                            </div>
+                            {% endif %}
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                            <small class="form-text text-muted">תמונה אופציונלית לתצוגה מיוחדת של הקטגוריה</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Icon Selector -->
+                <div class="mb-4">
+                    <h5>בחירת אייקון מהיר</h5>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% set icons = ['utensils', 'fish', 'pepper-hot', 'coffee', 'wine-glass', 'ice-cream', 'burger', 'pizza-slice', 'drumstick-bite', 'carrot', 'apple-alt', 'cheese', 'bread-slice', 'hotdog', 'cookie', 'cake-candles'] %}
+                                {% for icon in icons %}
+                                <button type="button" class="btn btn-outline-secondary icon-selector" data-icon="{{ icon }}">
+                                    <i class="fas fa-{{ icon }}"></i>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview -->
+                <div class="mb-4">
+                    <h5>תצוגה מקדימה</h5>
+                    <div class="card" style="max-width: 200px;">
+                        <div class="card-body text-center" id="category-preview">
+                            <div class="mb-2">
+                                <i id="preview-icon" class="fas fa-{{ category.icon or 'utensils' }}" style="font-size: 2rem; color: {{ category.color or '#C75450' }};"></i>
+                            </div>
+                            <h6 id="preview-name">{{ category.name_he or 'שם הקטגוריה' }}</h6>
+                            <small class="text-muted" id="preview-desc">{{ category.description_he or 'תיאור הקטגוריה' }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-save me-2"></i>
+                        {% if category.id %}עדכן קטגוריה{% else %}הוסף קטגוריה{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary btn-lg ms-2">
+                        <i class="fas fa-times me-2"></i>
+                        ביטול
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const iconInput = document.getElementById('icon');
+    const colorInput = document.getElementById('color');
+    const nameInput = document.getElementById('name_he');
+    const descInput = document.getElementById('description_he');
+    
+    const iconPreview = document.getElementById('icon-preview');
+    const colorPreview = document.getElementById('color-preview');
+    const previewIcon = document.getElementById('preview-icon');
+    const previewName = document.getElementById('preview-name');
+    const previewDesc = document.getElementById('preview-desc');
+    
+    function updatePreview() {
+        const icon = iconInput.value || 'utensils';
+        const color = colorInput.value || '#C75450';
+        const name = nameInput.value || 'שם הקטגוריה';
+        const desc = descInput.value || 'תיאור הקטגוריה';
+        
+        iconPreview.className = `fas fa-${icon}`;
+        colorPreview.style.backgroundColor = color;
+        previewIcon.className = `fas fa-${icon}`;
+        previewIcon.style.color = color;
+        previewName.textContent = name;
+        previewDesc.textContent = desc;
+    }
+    
+    iconInput.addEventListener('input', updatePreview);
+    colorInput.addEventListener('input', updatePreview);
+    nameInput.addEventListener('input', updatePreview);
+    descInput.addEventListener('input', updatePreview);
+    
+    // Icon selector buttons
+    document.querySelectorAll('.icon-selector').forEach(button => {
+        button.addEventListener('click', function() {
+            const icon = this.dataset.icon;
+            iconInput.value = icon;
+            updatePreview();
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.icon-selector').forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+        });
+    });
+    
+    // Set initial active icon
+    const currentIcon = iconInput.value;
+    if (currentIcon) {
+        document.querySelector(`[data-icon="${currentIcon}"]`)?.classList.add('active');
+    }
+});
+</script>
+
+<style>
+.icon-selector.active {
+    background-color: var(--sumo-coral);
+    color: white;
+    border-color: var(--sumo-coral);
+}
+
+#category-preview {
+    border: 2px dashed #dee2e6;
+}
+</style>
+{% endblock %}

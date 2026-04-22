@@ -1,0 +1,155 @@
+{% extends "admin/base.html" %}
+
+{% block title %}רמות מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-chart-bar me-2 text-primary"></i>רמות מלאי
+            </h1>
+            <p class="text-muted mb-0">מעקב כמויות המלאי בסניפים</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="updateStock()">
+                <i class="fas fa-plus me-2"></i>עדכן מלאי
+            </button>
+        </div>
+    </div>
+
+    <!-- Branch Selector -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-store me-2"></i>בחר סניף</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <select class="form-select" id="branchSelector" onchange="changeBranch()">
+                        <option value="">בחר סניף...</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_branch_id and levels %}
+    <!-- Stock Levels Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>רמות מלאי - {{ branches|selectattr('id', 'equalto', current_branch_id)|first|attr('name_he') }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>פריט</th>
+                            <th>כמות נוכחית</th>
+                            <th>כמות שמורה</th>
+                            <th>כמות זמינה</th>
+                            <th>מינימום</th>
+                            <th>מקסימום</th>
+                            <th>סטטוס</th>
+                            <th>עדכון אחרון</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for level in levels %}
+                        <tr class="{% if level.available_quantity <= level.item.minimum_stock %}table-warning{% elif level.available_quantity <= 0 %}table-danger{% endif %}">
+                            <td>
+                                <div>
+                                    <strong>{{ level.item.name_he }}</strong>
+                                    <br><small class="text-muted">{{ level.item.sku }}</small>
+                                </div>
+                            </td>
+                            <td>{{ level.current_quantity }} {{ level.item.unit_he }}</td>
+                            <td>{{ level.reserved_quantity }} {{ level.item.unit_he }}</td>
+                            <td>
+                                <span class="fw-bold">{{ level.available_quantity }} {{ level.item.unit_he }}</span>
+                            </td>
+                            <td>{{ level.item.minimum_stock }} {{ level.item.unit_he }}</td>
+                            <td>{{ level.item.maximum_stock }} {{ level.item.unit_he }}</td>
+                            <td>
+                                {% if level.available_quantity <= 0 %}
+                                <span class="badge bg-danger">אזל</span>
+                                {% elif level.available_quantity <= level.item.minimum_stock %}
+                                <span class="badge bg-warning">מלאי נמוך</span>
+                                {% else %}
+                                <span class="badge bg-success">תקין</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if level.last_updated %}
+                                {{ level.last_updated|il_time }}
+                                {% else %}
+                                לא עודכן
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="adjustStock({{ level.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="viewHistory({{ level.item.id }})">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% elif current_branch_id %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">אין נתוני מלאי לסניף זה</h5>
+            <p class="text-muted">הוסף פריטי מלאי כדי לראות את הרמות</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-store fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">אנא בחר סניף</h5>
+            <p class="text-muted">בחר סניף מהרשימה למעלה כדי לצפות ברמות המלאי</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function changeBranch() {
+    const branchId = document.getElementById('branchSelector').value;
+    if (branchId) {
+        window.location.href = `{{ url_for('admin.stock_levels') }}?branch_id=${branchId}`;
+    } else {
+        window.location.href = `{{ url_for('admin.stock_levels') }}`;
+    }
+}
+
+function updateStock() {
+    alert('עדכון מלאי - בפיתוח');
+}
+
+function adjustStock(levelId) {
+    alert(`התאמת מלאי ${levelId} - בפיתוח`);
+}
+
+function viewHistory(itemId) {
+    alert(`היסטוריית פריט ${itemId} - בפיתוח`);
+}
+</script>
+{% endblock %}

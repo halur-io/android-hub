@@ -1,0 +1,332 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מנויי ניוזלטר - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .newsletter-container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .newsletter-header {
+        background: linear-gradient(135deg, #1a3a6e 0%, #2a4f8e 100%);
+        border-radius: 20px;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(26, 58, 110, 0.3);
+    }
+
+    .newsletter-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a3a6e;
+        margin: 0.5rem 0;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .subscribers-table-container {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .table-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a3a6e;
+    }
+
+    .export-btn {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .export-btn:hover {
+        background: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+    }
+
+    .subscribers-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .subscribers-table thead {
+        background: #f8f9fa;
+    }
+
+    .subscribers-table th {
+        padding: 1rem;
+        text-align: right;
+        font-weight: 600;
+        color: #4b5563;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .subscribers-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .subscribers-table tr:hover {
+        background: #f9fafb;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .delete-btn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .delete-btn:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6b7280;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .newsletter-container {
+            padding: 1rem;
+        }
+
+        .newsletter-title {
+            font-size: 1.75rem;
+        }
+
+        .table-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .subscribers-table {
+            font-size: 0.875rem;
+        }
+
+        .subscribers-table th,
+        .subscribers-table td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="newsletter-container">
+    <!-- Header -->
+    <div class="newsletter-header">
+        <h1 class="newsletter-title">
+            <i class="fas fa-envelope"></i> ניהול מנויי ניוזלטר
+        </h1>
+        <p>נהל את רשימת המנויים לניוזלטר ויצא נתונים</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <i class="fas fa-users" style="font-size: 2rem; color: #1a3a6e;"></i>
+            <div class="stat-number">{{ total_count }}</div>
+            <div class="stat-label">סה"כ מנויים</div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-check-circle" style="font-size: 2rem; color: #10b981;"></i>
+            <div class="stat-number">{{ active_count }}</div>
+            <div class="stat-label">מנויים פעילים</div>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-user-times" style="font-size: 2rem; color: #ef4444;"></i>
+            <div class="stat-number">{{ total_count - active_count }}</div>
+            <div class="stat-label">מנויים לא פעילים</div>
+        </div>
+    </div>
+
+    <!-- Subscribers Table -->
+    <div class="subscribers-table-container">
+        <div class="table-header">
+            <h2 class="table-title">רשימת מנויים</h2>
+            <button onclick="exportEmails()" class="export-btn">
+                <i class="fas fa-download me-2"></i> יצא אימיילים
+            </button>
+        </div>
+
+        {% if subscribers %}
+        <div style="overflow-x: auto;">
+            <table class="subscribers-table">
+                <thead>
+                    <tr>
+                        <th>אימייל</th>
+                        <th>שם</th>
+                        <th>מקור</th>
+                        <th>תאריך הרשמה</th>
+                        <th>סטטוס</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subscriber in subscribers %}
+                    <tr id="subscriber-{{ subscriber.id }}">
+                        <td>{{ subscriber.email }}</td>
+                        <td>{{ subscriber.name or '-' }}</td>
+                        <td>{{ subscriber.source }}</td>
+                        <td>{{ subscriber.subscribed_at|il_time }}</td>
+                        <td>
+                            {% if subscriber.is_active %}
+                            <span class="status-badge status-active">פעיל</span>
+                            {% else %}
+                            <span class="status-badge status-inactive">לא פעיל</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button onclick="deleteSubscriber({{ subscriber.id }})" class="delete-btn">
+                                <i class="fas fa-trash"></i> מחק
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>אין מנויים עדיין</h3>
+            <p>מנויים חדשים יופיעו כאן כאשר ירשמו לניוזלטר</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function exportEmails() {
+    fetch('{{ url_for("admin.newsletter_export") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const emails = data.emails.join('\n');
+                const blob = new Blob([emails], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'newsletter_subscribers.txt';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                alert(`יוצאו ${data.count} כתובות אימייל בהצלחה!`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('שגיאה בייצוא הנתונים');
+        });
+}
+
+function deleteSubscriber(id) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק מנוי זה?')) {
+        return;
+    }
+
+    fetch(`{{ url_for("admin.delete_newsletter_subscriber", subscriber_id=0) }}`.replace('0', id), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`subscriber-${id}`).remove();
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה במחיקת המנוי');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('שגיאה במחיקת המנוי');
+    });
+}
+</script>
+{% endblock %}

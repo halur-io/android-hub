@@ -1,0 +1,718 @@
+{% extends "admin/base.html" %}
+{% set he = (admin_language or 'he') == 'he' %}
+{% block title %}{{ 'מעקב שעות עובדים' if he else 'Worker Time Logs' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tl-header {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border-radius: 16px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        color: #fff;
+    }
+    .tl-header h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .tl-header .subtitle {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.82rem;
+        margin-top: 4px;
+    }
+    .tl-header .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .tl-header .btn-export {
+        background: #10b981;
+        border: none;
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    .tl-header .btn-export:hover {
+        background: #059669;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+    .tl-header .btn-auto-close {
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 18px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    .tl-header .btn-auto-close:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    .tl-stat-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    .tl-stat-card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 18px 20px;
+        border: 1px solid #e2e8f0;
+        transition: box-shadow 0.2s;
+    }
+    .tl-stat-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .tl-stat-card .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+    }
+    .tl-stat-card .stat-value {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1;
+    }
+    .tl-stat-card .stat-label {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .tl-live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #ecfdf5;
+        color: #059669;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .tl-live-badge .pulse {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: pulse-anim 2s ease-in-out infinite;
+    }
+    @keyframes pulse-anim {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.3); }
+    }
+    .tl-section {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .tl-section-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .tl-section-header h5 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tl-section-header .section-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+    .tl-filter-bar {
+        padding: 16px 20px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    .tl-filter-bar .filter-group {
+        flex: 1;
+        min-width: 140px;
+    }
+    .tl-filter-bar label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        display: block;
+    }
+    .tl-filter-bar .form-select,
+    .tl-filter-bar .form-control {
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        font-size: 0.85rem;
+        padding: 8px 12px;
+        background: #f8fafc;
+        transition: all 0.2s;
+    }
+    .tl-filter-bar .form-select:focus,
+    .tl-filter-bar .form-control:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        background: #fff;
+    }
+    .tl-filter-bar .btn-filter {
+        background: #6366f1;
+        border: none;
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .tl-filter-bar .btn-filter:hover {
+        background: #4f46e5;
+        transform: translateY(-1px);
+    }
+    .tl-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .tl-table thead th {
+        background: #f8fafc;
+        padding: 10px 16px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .tl-table tbody td {
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .tl-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .tl-table tbody tr:hover {
+        background: #f8fafc;
+    }
+    .tl-worker-name {
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .tl-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .tl-badge-regular { background: #f0f4ff; color: #4f46e5; }
+    .tl-badge-ot125 { background: #fffbeb; color: #d97706; }
+    .tl-badge-ot150 { background: #fef2f2; color: #dc2626; }
+    .tl-badge-weighted { background: #1e293b; color: #fff; }
+    .tl-badge-total { background: #eff6ff; color: #2563eb; }
+    .tl-badge-active { background: #ecfdf5; color: #059669; }
+    .tl-badge-source { background: #f1f5f9; color: #64748b; }
+    .tl-badge-shifts { background: #f5f3ff; color: #7c3aed; }
+    .tl-tabs {
+        display: flex;
+        gap: 4px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        padding: 3px;
+    }
+    .tl-tab {
+        padding: 6px 16px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .tl-tab:hover {
+        color: #334155;
+    }
+    .tl-tab.active {
+        background: #fff;
+        color: #1e293b;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .tl-tab-content {
+        display: none;
+    }
+    .tl-tab-content.active {
+        display: block;
+    }
+    .tl-open-shift-row {
+        background: #f0fdf4 !important;
+    }
+    .btn-clock-out {
+        background: #fff;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        border-radius: 8px;
+        padding: 4px 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .btn-clock-out:hover {
+        background: #fef2f2;
+        border-color: #dc2626;
+    }
+    .tl-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #94a3b8;
+    }
+    .tl-empty i {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+        opacity: 0.3;
+        display: block;
+    }
+    .tl-regulation-note {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.78rem;
+        color: #1e40af;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .tl-regulation-note i {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+        .tl-header {
+            padding: 16px 18px;
+        }
+        .tl-header h2 {
+            font-size: 1.2rem;
+        }
+        .tl-stat-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .tl-filter-bar {
+            flex-direction: column;
+        }
+        .tl-filter-bar .filter-group {
+            min-width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 1200px;">
+
+    <div class="tl-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h2><i class="fas fa-user-clock me-2"></i>{{ 'מעקב שעות עובדים' if he else 'Worker Time Logs' }}</h2>
+                <div class="subtitle">{{ 'חישוב שעות לפי חוק העבודה הישראלי - רגיל / 125% / 150%' if he else 'Hours calculated per Israeli labor law - Regular / 125% / 150%' }}</div>
+            </div>
+            <div class="actions">
+                <a href="{{ url_for('admin.time_logs_export', worker_id=filter_worker_id or '', branch_id=filter_branch_id or '', date_from=filter_date_from or '', date_to=filter_date_to or '') }}" class="btn-export">
+                    <i class="fas fa-file-excel"></i>{{ 'ייצוא לאקסל' if he else 'Export Excel' }}
+                </a>
+                <form method="post" action="{{ url_for('admin.time_log_auto_close') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-auto-close">
+                        <i class="fas fa-stopwatch"></i>{{ 'סגור ישנות' if he else 'Auto-close' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% set total_shifts = logs|length %}
+    {% set active_count = open_shifts|length if open_shifts else 0 %}
+    {% set total_workers = worker_totals|length if worker_totals else 0 %}
+    <div class="tl-stat-cards">
+        <div class="tl-stat-card">
+            <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-value">{{ total_shifts }}</div>
+            <div class="stat-label">{{ 'משמרות' if he else 'Shifts' }}</div>
+        </div>
+        <div class="tl-stat-card">
+            <div class="stat-icon" style="background:#ecfdf5;color:#059669;">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="stat-value">
+                {{ active_count }}
+                {% if active_count > 0 %}<span class="tl-live-badge" style="font-size:0.6rem;margin-right:6px;"><span class="pulse"></span>{{ 'חי' if he else 'Live' }}</span>{% endif %}
+            </div>
+            <div class="stat-label">{{ 'פעילים עכשיו' if he else 'Active Now' }}</div>
+        </div>
+        <div class="tl-stat-card">
+            <div class="stat-icon" style="background:#f5f3ff;color:#7c3aed;">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-value">{{ total_workers }}</div>
+            <div class="stat-label">{{ 'עובדים' if he else 'Workers' }}</div>
+        </div>
+        <div class="tl-stat-card">
+            <div class="stat-icon" style="background:#fffbeb;color:#d97706;">
+                <i class="fas fa-balance-scale"></i>
+            </div>
+            <div class="stat-value" style="font-size:1.1rem;">IL</div>
+            <div class="stat-label">{{ 'תקן ישראלי' if he else 'Israeli Standard' }}</div>
+        </div>
+    </div>
+
+    {% if open_shifts %}
+    <div class="tl-section" style="border-color: #bbf7d0;">
+        <div class="tl-section-header" style="background: #f0fdf4;">
+            <h5>
+                <span class="section-icon" style="background:#dcfce7;color:#16a34a;">
+                    <i class="fas fa-user-clock"></i>
+                </span>
+                {{ 'עובדים פעילים כרגע' if he else 'Currently Clocked In' }}
+                <span class="tl-badge tl-badge-active">{{ open_shifts|length }}</span>
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="tl-table">
+                <thead>
+                    <tr>
+                        <th>{{ 'עובד' if he else 'Worker' }}</th>
+                        <th>{{ 'סניף' if he else 'Branch' }}</th>
+                        <th>{{ 'מקור' if he else 'Source' }}</th>
+                        <th>{{ 'כניסה' if he else 'Clock In' }}</th>
+                        <th>{{ 'משך' if he else 'Duration' }}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tl in open_shifts %}
+                    <tr class="tl-open-shift-row">
+                        <td>
+                            <span class="tl-worker-name"><i class="fas fa-circle text-success me-2" style="font-size:0.45rem;vertical-align:middle;"></i>{{ tl.worker.name if tl.worker else '#' ~ tl.worker_id }}</span>
+                        </td>
+                        <td>{{ tl.branch.name_he if tl.branch else '-' }}</td>
+                        <td><span class="tl-badge tl-badge-source">{{ tl.source or 'kds' }}</span></td>
+                        <td>{{ tl.clock_in|il_time_short }}</td>
+                        <td><span class="tl-badge tl-badge-active">{{ tl.duration_display }}</span></td>
+                        <td>
+                            <form method="post" action="{{ url_for('admin.time_log_clock_out', log_id=tl.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn-clock-out">
+                                    <i class="fas fa-sign-out-alt"></i>{{ 'סגור' if he else 'Out' }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="tl-section">
+        <form method="get">
+            <div class="tl-filter-bar">
+                <div class="filter-group">
+                    <label>{{ 'עובד' if he else 'Worker' }}</label>
+                    <select name="worker_id" class="form-select">
+                        <option value="">{{ 'הכל' if he else 'All' }}</option>
+                        {% for w in workers %}
+                        <option value="{{ w.id }}" {% if filter_worker_id == w.id %}selected{% endif %}>{{ w.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>{{ 'סניף' if he else 'Branch' }}</label>
+                    <select name="branch_id" class="form-select">
+                        <option value="">{{ 'הכל' if he else 'All' }}</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}" {% if filter_branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>{{ 'מתאריך' if he else 'From' }}</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ filter_date_from }}">
+                </div>
+                <div class="filter-group">
+                    <label>{{ 'עד תאריך' if he else 'To' }}</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ filter_date_to }}">
+                </div>
+                <div style="min-width:100px;">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn-filter w-100">
+                        <i class="fas fa-search me-1"></i>{{ 'סנן' if he else 'Filter' }}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if worker_totals or daily_totals or weekly_totals %}
+    <div class="tl-section">
+        <div class="tl-section-header">
+            <h5>
+                <span class="section-icon" style="background:#eff6ff;color:#2563eb;">
+                    <i class="fas fa-chart-bar"></i>
+                </span>
+                {{ 'סיכומים' if he else 'Summaries' }}
+            </h5>
+            <div class="tl-tabs" id="summary-tabs">
+                {% if worker_totals %}
+                <button class="tl-tab active" data-tab="summary-overall">{{ 'כולל' if he else 'Overall' }}</button>
+                {% endif %}
+                {% if daily_totals %}
+                <button class="tl-tab" data-tab="summary-daily">{{ 'יומי' if he else 'Daily' }}</button>
+                {% endif %}
+                {% if weekly_totals %}
+                <button class="tl-tab" data-tab="summary-weekly">{{ 'שבועי' if he else 'Weekly' }}</button>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if worker_totals %}
+        <div class="tl-tab-content active" id="summary-overall">
+            <div class="tl-regulation-note" style="margin:16px 20px 0 20px;">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    {{ 'חישוב לפי חוק שעות עבודה ומנוחה: יום רגיל = 8:35 שעות, יום שישי = 7:00 שעות. שעה 9-10 = 125%, מעבר = 150%. שעות משוקללות = שעות בפועל × תעריף.' if he else 'Per Israeli Hours of Work and Rest Law: Normal day = 8:35h, Friday = 7:00h. Hours 9-10 = 125%, beyond = 150%. Weighted = actual hours × rate.' }}
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="tl-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'משמרות' if he else 'Shifts' }}</th>
+                            <th>{{ 'סה"כ שעות' if he else 'Total Hours' }}</th>
+                            <th>{{ 'רגיל' if he else 'Regular' }}</th>
+                            <th>125%</th>
+                            <th>150%</th>
+                            <th>{{ 'משוקלל' if he else 'Weighted' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wid, wt in worker_totals.items() %}
+                        <tr>
+                            <td><span class="tl-worker-name">{{ wt.name }}</span></td>
+                            <td><span class="tl-badge tl-badge-shifts">{{ wt.shifts }}</span></td>
+                            <td><span class="tl-badge tl-badge-total">{{ wt.display }}</span></td>
+                            <td><span class="tl-badge tl-badge-regular">{{ wt.regular_display }}</span></td>
+                            <td>{% if wt.ot_125 > 0 %}<span class="tl-badge tl-badge-ot125">{{ wt.ot_125_display }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</td>
+                            <td>{% if wt.ot_150 > 0 %}<span class="tl-badge tl-badge-ot150">{{ wt.ot_150_display }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</td>
+                            <td><span class="tl-badge tl-badge-weighted">{{ wt.weighted_display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if daily_totals %}
+        <div class="tl-tab-content" id="summary-daily">
+            <div class="table-responsive">
+                <table class="tl-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'תאריך' if he else 'Date' }}</th>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'משמרות' if he else 'Shifts' }}</th>
+                            <th>{{ 'שעות' if he else 'Hours' }}</th>
+                            <th>{{ 'רגיל' if he else 'Regular' }}</th>
+                            <th>125%</th>
+                            <th>150%</th>
+                            <th>{{ 'משוקלל' if he else 'Weighted' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dt in daily_totals %}
+                        <tr>
+                            <td style="font-weight:600;">{{ dt.date }}</td>
+                            <td><span class="tl-worker-name">{{ dt.name }}</span></td>
+                            <td><span class="tl-badge tl-badge-shifts">{{ dt.shifts }}</span></td>
+                            <td><span class="tl-badge tl-badge-total">{{ dt.display }}</span></td>
+                            <td><span class="tl-badge tl-badge-regular">{{ dt.regular_display }}</span></td>
+                            <td>{% if dt.ot_125 > 0 %}<span class="tl-badge tl-badge-ot125">{{ dt.ot_125_display }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</td>
+                            <td>{% if dt.ot_150 > 0 %}<span class="tl-badge tl-badge-ot150">{{ dt.ot_150_display }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}</td>
+                            <td><span class="tl-badge tl-badge-weighted">{{ dt.weighted_display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if weekly_totals %}
+        <div class="tl-tab-content" id="summary-weekly">
+            <div class="table-responsive">
+                <table class="tl-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'שבוע' if he else 'Week' }}</th>
+                            <th>{{ 'עובד' if he else 'Worker' }}</th>
+                            <th>{{ 'משמרות' if he else 'Shifts' }}</th>
+                            <th>{{ 'שעות' if he else 'Hours' }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wt in weekly_totals %}
+                        <tr>
+                            <td style="font-weight:600;">{{ wt.week_label }}</td>
+                            <td><span class="tl-worker-name">{{ wt.name }}</span></td>
+                            <td><span class="tl-badge tl-badge-shifts">{{ wt.shifts }}</span></td>
+                            <td><span class="tl-badge tl-badge-ot125">{{ wt.display }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="tl-section">
+        <div class="tl-section-header">
+            <h5>
+                <span class="section-icon" style="background:#f1f5f9;color:#475569;">
+                    <i class="fas fa-list"></i>
+                </span>
+                {{ 'יומן משמרות' if he else 'Shift Log' }}
+            </h5>
+            <span class="tl-badge tl-badge-source">{{ logs|length }} {{ 'רשומות' if he else 'records' }}</span>
+        </div>
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="tl-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ 'עובד' if he else 'Worker' }}</th>
+                        <th>{{ 'סניף' if he else 'Branch' }}</th>
+                        <th>{{ 'מקור' if he else 'Source' }}</th>
+                        <th>{{ 'כניסה' if he else 'Clock In' }}</th>
+                        <th>{{ 'יציאה' if he else 'Clock Out' }}</th>
+                        <th>{{ 'משך' if he else 'Duration' }}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr {% if log.is_open %}class="tl-open-shift-row"{% endif %}>
+                        <td style="color:#94a3b8;font-size:0.8rem;">{{ log.id }}</td>
+                        <td><span class="tl-worker-name">{% if log.is_open %}<i class="fas fa-circle text-success me-1" style="font-size:0.4rem;vertical-align:middle;"></i>{% endif %}{{ log.worker.name if log.worker else '#' ~ log.worker_id }}</span></td>
+                        <td>{{ log.branch.name_he if log.branch else '-' }}</td>
+                        <td><span class="tl-badge tl-badge-source">{{ log.source or 'kds' }}</span></td>
+                        <td>{{ log.clock_in|il_time }}</td>
+                        <td>
+                            {% if log.clock_out %}
+                                {{ log.clock_out|il_time }}
+                            {% else %}
+                                <span class="tl-badge tl-badge-active">{{ 'פעיל' if he else 'Active' }}</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="tl-badge tl-badge-total">{{ log.duration_display }}</span></td>
+                        <td>
+                            {% if log.is_open %}
+                            <form method="post" action="{{ url_for('admin.time_log_clock_out', log_id=log.id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn-clock-out">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="tl-empty">
+            <i class="fas fa-clock"></i>
+            <div style="font-size:0.95rem;font-weight:600;margin-bottom:4px;">{{ 'אין רשומות' if he else 'No records found' }}</div>
+            <div style="font-size:0.82rem;">{{ 'שנו את הסינון או בחרו טווח תאריכים אחר' if he else 'Adjust filters or select a different date range' }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var tabs = document.querySelectorAll('.tl-tab');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            var targetId = tab.getAttribute('data-tab');
+            document.querySelectorAll('.tl-tab-content').forEach(function(c) {
+                c.classList.remove('active');
+            });
+            var target = document.getElementById(targetId);
+            if (target) target.classList.add('active');
+        });
+    });
+})();
+</script>
+{% endblock %}

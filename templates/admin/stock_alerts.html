@@ -1,0 +1,245 @@
+{% extends "admin/base.html" %}
+
+{% block title %}התראות מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-bell me-2 text-primary"></i>התראות מלאי
+            </h1>
+            <p class="text-muted mb-0">ניהול התראות מלאי נמוך ופגי תוקף</p>
+        </div>
+        <div>
+            <button class="btn btn-secondary" onclick="markAllRead()">
+                <i class="fas fa-check-double me-2"></i>סמן הכל כנקרא
+            </button>
+        </div>
+    </div>
+
+    <!-- Alert Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ alert_stats.critical if alert_stats else 0 }}</h4>
+                            <small>התראות קריטיות</small>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ alert_stats.medium if alert_stats else 0 }}</h4>
+                            <small>התראות בינוניות</small>
+                        </div>
+                        <i class="fas fa-exclamation fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ alert_stats.low if alert_stats else 0 }}</h4>
+                            <small>התראות נמוכות</small>
+                        </div>
+                        <i class="fas fa-info fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ alert_stats.resolved if alert_stats else 0 }}</h4>
+                            <small>התראות פתורות</small>
+                        </div>
+                        <i class="fas fa-check fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>סינון התראות</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <select class="form-select" id="branchFilter">
+                        <option value="">כל הסניפים</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="typeFilter">
+                        <option value="">כל הסוגים</option>
+                        <option value="low_stock">מלאי נמוך</option>
+                        <option value="out_of_stock">אזל המלאי</option>
+                        <option value="expiring_soon">פגי תוקף בקרוב</option>
+                        <option value="expired">פג תוקף</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="severityFilter">
+                        <option value="">כל הרמות</option>
+                        <option value="high">גבוהה</option>
+                        <option value="medium">בינונית</option>
+                        <option value="low">נמוכה</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">כל הסטטוסים</option>
+                        <option value="unread">לא נקרא</option>
+                        <option value="read">נקרא</option>
+                        <option value="resolved">פתור</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>התראות פעילות</h5>
+        </div>
+        <div class="card-body">
+            {% if alerts %}
+            <div class="list-group list-group-flush">
+                {% for alert in alerts %}
+                <div class="list-group-item {% if not alert.is_read %}list-group-item-warning{% endif %}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">
+                            {% if alert.alert_type == 'low_stock' %}
+                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            {% elif alert.alert_type == 'out_of_stock' %}
+                            <i class="fas fa-times-circle text-danger me-2"></i>
+                            {% elif alert.alert_type == 'expiring_soon' %}
+                            <i class="fas fa-clock text-info me-2"></i>
+                            {% elif alert.alert_type == 'expired' %}
+                            <i class="fas fa-skull text-danger me-2"></i>
+                            {% endif %}
+                            {{ alert.message_he }}
+                        </h6>
+                        <small>{{ alert.created_at|il_time }}</small>
+                    </div>
+                    <p class="mb-1">
+                        {% if alert.item %}
+                        <strong>פריט:</strong> {{ alert.item.name_he }} ({{ alert.item.sku }})
+                        {% endif %}
+                        {% if alert.branch %}
+                        | <strong>סניף:</strong> {{ alert.branch.name_he }}
+                        {% endif %}
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-{% if alert.severity == 'high' %}danger{% elif alert.severity == 'medium' %}warning{% else %}info{% endif %}">
+                                {{ alert.severity }}
+                            </span>
+                            {% if alert.is_resolved %}
+                            <span class="badge bg-success">פתור</span>
+                            {% elif not alert.is_read %}
+                            <span class="badge bg-primary">חדש</span>
+                            {% endif %}
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            {% if not alert.is_read %}
+                            <button class="btn btn-outline-primary" onclick="markAsRead({{ alert.id }})">
+                                <i class="fas fa-eye"></i> סמן כנקרא
+                            </button>
+                            {% endif %}
+                            {% if not alert.is_resolved %}
+                            <button class="btn btn-outline-success" onclick="resolveAlert({{ alert.id }})">
+                                <i class="fas fa-check"></i> פתור
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-outline-danger" onclick="deleteAlert({{ alert.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">אין התראות</h5>
+                <p class="text-muted">כל ההתראות טופלו או שאין התראות חדשות</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function markAllRead() {
+    if (confirm('האם לסמן את כל ההתראות כנקראו?')) {
+        alert('סימון כל ההתראות כנקראו - בפיתוח');
+    }
+}
+
+function markAsRead(alertId) {
+    alert(`סימון התראה ${alertId} כנקראה - בפיתוח`);
+}
+
+function resolveAlert(alertId) {
+    if (confirm('האם לסמן התראה זו כפתורה?')) {
+        alert(`פתרון התראה ${alertId} - בפיתוח`);
+    }
+}
+
+function deleteAlert(alertId) {
+    if (confirm('האם למחוק התראה זו?')) {
+        alert(`מחיקת התראה ${alertId} - בפיתוח`);
+    }
+}
+
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const filters = ['branchFilter', 'typeFilter', 'severityFilter', 'statusFilter'];
+    
+    filters.forEach(filterId => {
+        document.getElementById(filterId).addEventListener('change', applyFilters);
+    });
+});
+
+function applyFilters() {
+    const branchId = document.getElementById('branchFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const severity = document.getElementById('severityFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    
+    let url = `{{ url_for('admin.stock_alerts') }}?`;
+    if (branchId) url += `branch_id=${branchId}&`;
+    if (type) url += `type=${type}&`;
+    if (severity) url += `severity=${severity}&`;
+    if (status) url += `status=${status}&`;
+    
+    window.location.href = url;
+}
+</script>
+{% endblock %}

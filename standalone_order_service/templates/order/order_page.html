@@ -1,0 +1,3215 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ 'הזמנה' if language == 'he' else 'Order Online' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-grid {
+  display: flex; direction: rtl; gap: 12px; overflow: hidden;
+  padding-bottom: 6px; margin: 0 -3px; padding-left: 3px; padding-right: 3px;
+}
+.skeleton-card {
+  flex-shrink: 0; width: 140px; border-radius: 14px; overflow: hidden;
+  background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.09);
+}
+.skeleton-img {
+  width: 100%; padding-top: 88%; position: relative;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+.skeleton-info { padding: 8px 9px 10px; }
+.skeleton-line {
+  height: 10px; border-radius: 5px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  margin-bottom: 6px;
+}
+.skeleton-line.w75 { width: 75%; }
+.skeleton-line.w50 { width: 50%; }
+.skeleton-line.w30 { width: 30%; height: 14px; margin-top: 8px; }
+.skeleton-tab {
+  flex-shrink: 0; height: 34px; width: 72px; border-radius: 17px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+.skeleton-section-title {
+  height: 16px; width: 100px; border-radius: 8px; margin-bottom: 10px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  margin-right: 2px;
+}
+#menu-skeleton { transition: opacity .3s ease; }
+#menu-skeleton.hidden { opacity: 0; pointer-events: none; position: absolute; }
+#menu-sections { opacity: 0; }
+#menu-sections.revealed { opacity: 1; transition: opacity .3s ease; }
+.cat-tabs-wrap { opacity: 0; }
+.cat-tabs-wrap.revealed { opacity: 1; transition: opacity .3s ease; }
+.dish-img {
+  opacity: 0; transition: opacity .35s ease;
+}
+.dish-img.loaded { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="height: 72px;"></div>
+
+{% if ordering_disabled %}
+<section class="section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 text-center py-5">
+        <i class="fas fa-store-slash fa-4x mb-4" style="color:#4338ca;"></i>
+        <h2 class="mb-3">{{ 'הזמנות ומשלוחים' if language == 'he' else 'Orders & Delivery' }}</h2>
+        <p class="text-muted mb-4">{{ ordering_status_message or 'מערכת ההזמנות אינה פעילה כרגע. אנא צרו קשר טלפוני.' }}</p>
+        {% if settings and settings.contact_phone %}
+        <a href="tel:{{ settings.contact_phone }}" class="btn btn-primary btn-lg">
+          <i class="fas fa-phone me-2"></i>{{ settings.contact_phone }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% elif need_onboarding is defined and need_onboarding and not ordering_disabled %}
+
+<div id="onboarding-overlay">
+  <div class="ob-bg"></div>
+  <div class="ob-container">
+    <div class="ob-card">
+      <div class="ob-progress">
+        <div class="ob-progress-bar" id="ob-progress-bar" style="width:25%"></div>
+      </div>
+
+      <div class="ob-step" id="ob-step-1">
+        <div class="ob-icon-circle"><i class="fas fa-store"></i></div>
+        <h2 class="ob-title">{{ 'מאיפה מזמינים?' if language == 'he' else 'Choose Branch' }}</h2>
+        <p class="ob-subtitle">{{ 'בחרו את הסניף הקרוב אליכם' if language == 'he' else 'Pick the branch closest to you' }}</p>
+        <div class="ob-branches">
+          {% for branch in branches %}
+          <button type="button" class="ob-branch-card{% if (branch.ordering_status or 'open') != 'open' %} ob-branch-unavailable{% endif %}" onclick="{% if (branch.ordering_status or 'open') == 'open' %}obSelectBranch({{ branch.id }}, this){% endif %}" data-branch-id="{{ branch.id }}" {% if (branch.ordering_status or 'open') != 'open' %}disabled style="opacity:0.6;cursor:not-allowed;"{% endif %}>
+            <div class="ob-branch-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div class="ob-branch-info">
+              <div class="ob-branch-name">
+                {{ branch.name_he if language == 'he' else branch.name_en }}
+                {% if (branch.ordering_status or 'open') == 'open' %}
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:4px;vertical-align:middle;"></span>
+                {% elif (branch.ordering_status or 'open') == 'busy' %}
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px;vertical-align:middle;"></span>
+                {% else %}
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px;vertical-align:middle;"></span>
+                {% endif %}
+              </div>
+              {% if (branch.ordering_status or 'open') == 'busy' %}
+              <div class="ob-branch-addr" style="color:#f59e0b;">{{ 'עמוס כרגע' if language == 'he' else 'Currently busy' }}</div>
+              {% elif (branch.ordering_status or 'open') == 'closed' %}
+              <div class="ob-branch-addr" style="color:#ef4444;">{{ 'סגור כרגע' if language == 'he' else 'Currently closed' }}</div>
+              {% elif branch.address_he or branch.address_en %}
+              <div class="ob-branch-addr">{{ branch.address_he if language == 'he' else branch.address_en }}</div>
+              {% endif %}
+            </div>
+            <div class="ob-branch-check"><i class="fas fa-check"></i></div>
+          </button>
+          {% endfor %}
+          {% if branches|length == 1 %}
+          <script>document.addEventListener('DOMContentLoaded', function(){ obSelectBranch({{ branches[0].id }}, document.querySelector('.ob-branch-card')); obNext(); });</script>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="ob-step" id="ob-step-2" style="display:none;">
+        <div class="ob-icon-circle"><i class="fas fa-truck"></i></div>
+        <h2 class="ob-title">{{ 'איך תרצו לקבל?' if language == 'he' else 'How would you like it?' }}</h2>
+        <p class="ob-subtitle">{{ 'בחרו משלוח או איסוף עצמי' if language == 'he' else 'Choose delivery or pickup' }}</p>
+        <div class="ob-type-options">
+          {% if enable_delivery is not defined or enable_delivery %}
+          <button type="button" class="ob-type-card" onclick="obSelectType('delivery', this)">
+            <div class="ob-type-icon"><i class="fas fa-motorcycle"></i></div>
+            <div class="ob-type-label">{{ 'משלוח' if language == 'he' else 'Delivery' }}</div>
+            <div class="ob-type-desc">{{ 'נביא אליכם עד הדלת' if language == 'he' else 'We deliver to your door' }}</div>
+          </button>
+          {% endif %}
+          {% if enable_pickup is not defined or enable_pickup %}
+          <button type="button" class="ob-type-card" onclick="obSelectType('takeaway', this)">
+            <div class="ob-type-icon"><i class="fas fa-shopping-bag"></i></div>
+            <div class="ob-type-label">{{ 'איסוף עצמי' if language == 'he' else 'Pickup' }}</div>
+            <div class="ob-type-desc">{{ 'אספו מהסניף' if language == 'he' else 'Pick up from the branch' }}</div>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="ob-step" id="ob-step-3" style="display:none;">
+        <div class="ob-icon-circle"><i class="fas fa-user"></i></div>
+        <h2 class="ob-title">{{ 'הפרטים שלך' if language == 'he' else 'Your Details' }}</h2>
+        <p class="ob-subtitle">{{ 'מלאו את הפרטים כדי להמשיך' if language == 'he' else 'Fill in your details to continue' }}</p>
+        <div class="ob-form">
+          <div class="ob-form-row">
+            <div class="ob-field">
+              <label>{{ 'שם פרטי' if language == 'he' else 'First Name' }} *</label>
+              <input type="text" id="ob-first-name" autocomplete="given-name" required>
+            </div>
+            <div class="ob-field">
+              <label>{{ 'שם משפחה' if language == 'he' else 'Last Name' }} *</label>
+              <input type="text" id="ob-last-name" autocomplete="family-name" required>
+            </div>
+          </div>
+          <div class="ob-field">
+            <label>{{ 'טלפון' if language == 'he' else 'Phone' }} *</label>
+            <input type="tel" id="ob-phone" autocomplete="tel" dir="ltr" required>
+          </div>
+          <div class="ob-field">
+            <label>{{ 'אימייל' if language == 'he' else 'Email' }} *</label>
+            <input type="email" id="ob-email" autocomplete="email" dir="ltr" required>
+          </div>
+          <div id="ob-form-error" class="ob-error" style="display:none;"></div>
+          <button type="button" class="ob-btn-primary" onclick="obSendOtp()">
+            <span id="ob-send-otp-text">{{ 'שלח קוד אימות' if language == 'he' else 'Send Verification Code' }}</span>
+            <i class="fas fa-arrow-left ms-2" id="ob-send-otp-arrow"></i>
+            <i class="fas fa-spinner fa-spin ms-2" id="ob-send-otp-spin" style="display:none;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="ob-step" id="ob-step-4" style="display:none;">
+        <div class="ob-icon-circle ob-icon-green"><i class="fas fa-shield-alt"></i></div>
+        <h2 class="ob-title">{{ 'אימות טלפון' if language == 'he' else 'Phone Verification' }}</h2>
+        <p class="ob-subtitle" id="ob-otp-subtitle">{{ 'הזינו את הקוד שנשלח ל-' if language == 'he' else 'Enter the code sent to ' }}<strong id="ob-otp-phone-display"></strong></p>
+        <div class="ob-otp-wrap">
+          <div class="ob-otp-inputs" dir="ltr">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="0" inputmode="numeric" autocomplete="one-time-code">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="1" inputmode="numeric">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="2" inputmode="numeric">
+            <input type="text" maxlength="1" class="ob-otp-digit" data-idx="3" inputmode="numeric">
+          </div>
+          <div id="ob-otp-error" class="ob-error" style="display:none;"></div>
+          <button type="button" class="ob-btn-primary" id="ob-verify-btn" onclick="obVerifyOtp()">
+            <span id="ob-verify-text">{{ 'אמת והמשך' if language == 'he' else 'Verify & Continue' }}</span>
+            <i class="fas fa-spinner fa-spin ms-2" id="ob-verify-spin" style="display:none;"></i>
+          </button>
+          <button type="button" class="ob-btn-link" id="ob-resend-btn" onclick="obResendOtp()" style="display:none;">
+            <i class="fas fa-redo me-1"></i>{{ 'שלח קוד חדש' if language == 'he' else 'Resend Code' }}
+          </button>
+          <div class="ob-timer" id="ob-timer"></div>
+        </div>
+      </div>
+
+      <div class="ob-back-row" id="ob-back-row" style="display:none;">
+        <button type="button" class="ob-btn-back" onclick="obBack()">
+          <i class="fas fa-arrow-right me-1"></i>{{ 'חזרה' if language == 'he' else 'Back' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#onboarding-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+.ob-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
+}
+.ob-container {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 440px; padding: 16px;
+}
+.ob-card {
+  background: #fff; border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  overflow: hidden; animation: obSlideUp .4s ease-out;
+}
+@keyframes obSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+.ob-progress { height: 4px; background: #e5e7eb; }
+.ob-progress-bar { height: 100%; background: linear-gradient(90deg, #4338ca, #6366f1); border-radius: 4px; transition: width .4s ease; }
+.ob-step { padding: 32px 28px 24px; text-align: center; animation: obFadeIn .3s ease; }
+@keyframes obFadeIn { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+.ob-icon-circle {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px;
+  background: linear-gradient(135deg, #ede9fe, #c7d2fe);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #4338ca;
+}
+.ob-icon-green { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #16a34a; }
+.ob-title { font-size: 1.35rem; font-weight: 800; color: #1e1b4b; margin-bottom: 4px; }
+.ob-subtitle { font-size: .88rem; color: #6b7280; margin-bottom: 24px; }
+.ob-branches { display: flex; flex-direction: column; gap: 10px; }
+.ob-branch-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 14px;
+  background: #fff; cursor: pointer; transition: all .2s;
+  text-align: right; width: 100%; font-family: inherit; color: inherit;
+}
+.ob-branch-card:hover { border-color: #a5b4fc; background: #f5f3ff; }
+.ob-branch-card.selected { border-color: #4338ca; background: #ede9fe; }
+.ob-branch-icon {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: #ede9fe; color: #4338ca;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+}
+.ob-branch-card.selected .ob-branch-icon { background: #4338ca; color: #fff; }
+.ob-branch-info { flex: 1; min-width: 0; }
+.ob-branch-name { font-weight: 700; font-size: .95rem; color: #1e1b4b; }
+.ob-branch-addr { font-size: .78rem; color: #6b7280; margin-top: 2px; }
+.ob-branch-check {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; color: transparent; transition: all .2s; flex-shrink: 0;
+}
+.ob-branch-card.selected .ob-branch-check { background: #4338ca; border-color: #4338ca; color: #fff; }
+.ob-type-options { display: flex; gap: 12px; justify-content: center; }
+.ob-type-card {
+  flex: 1; max-width: 180px; padding: 24px 16px; border: 2px solid #e5e7eb;
+  border-radius: 16px; background: #fff; cursor: pointer; transition: all .25s;
+  text-align: center; font-family: inherit; color: inherit;
+}
+.ob-type-card:hover { border-color: #a5b4fc; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(67,56,202,.1); }
+.ob-type-card.selected { border-color: #4338ca; background: #ede9fe; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(67,56,202,.15); }
+.ob-type-icon {
+  width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 12px;
+  background: #f3f4f6; display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #6b7280; transition: all .2s;
+}
+.ob-type-card.selected .ob-type-icon { background: #4338ca; color: #fff; }
+.ob-type-label { font-weight: 700; font-size: 1rem; color: #1e1b4b; margin-bottom: 4px; }
+.ob-type-desc { font-size: .75rem; color: #9ca3af; }
+.ob-form { text-align: right; }
+.ob-form-row { display: flex; gap: 10px; }
+.ob-form-row .ob-field { flex: 1; }
+.ob-field { margin-bottom: 14px; }
+.ob-field label { display: block; font-size: .8rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+.ob-field input {
+  width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 10px;
+  font-size: .92rem; font-family: inherit; transition: border-color .2s;
+  background: #f9fafb; outline: none;
+}
+.ob-field input:focus { border-color: #4338ca; background: #fff; box-shadow: 0 0 0 3px rgba(67,56,202,.08); }
+.ob-field input.ob-input-error { border-color: #ef4444; background: #fef2f2; }
+.ob-btn-primary {
+  width: 100%; padding: 13px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, #4338ca, #6366f1); color: #fff;
+  font-size: .95rem; font-weight: 700; cursor: pointer;
+  transition: all .2s; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.ob-btn-primary:hover { box-shadow: 0 6px 20px rgba(67,56,202,.3); transform: translateY(-1px); }
+.ob-btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+.ob-btn-link {
+  background: none; border: none; color: #4338ca; font-size: .85rem;
+  font-weight: 600; cursor: pointer; margin-top: 12px; font-family: inherit;
+}
+.ob-btn-link:hover { text-decoration: underline; }
+.ob-error {
+  background: #fef2f2; color: #dc2626; padding: 8px 12px; border-radius: 8px;
+  font-size: .82rem; margin-bottom: 12px; text-align: center; font-weight: 600;
+}
+.ob-otp-wrap { display: flex; flex-direction: column; align-items: center; }
+.ob-otp-inputs { display: flex; gap: 12px; margin-bottom: 20px; }
+.ob-otp-digit {
+  width: 56px; height: 62px; text-align: center; font-size: 1.6rem; font-weight: 700;
+  border: 2px solid #d1d5db; border-radius: 14px; background: #f9fafb;
+  outline: none; font-family: inherit; transition: all .2s; color: #1e1b4b;
+}
+.ob-otp-digit:focus { border-color: #4338ca; background: #fff; box-shadow: 0 0 0 3px rgba(67,56,202,.1); }
+.ob-otp-digit.filled { border-color: #4338ca; background: #ede9fe; }
+.ob-timer { font-size: .8rem; color: #9ca3af; margin-top: 8px; }
+.ob-back-row { padding: 0 28px 20px; text-align: right; }
+.ob-btn-back {
+  background: none; border: none; color: #6b7280; font-size: .85rem;
+  font-weight: 600; cursor: pointer; font-family: inherit; padding: 4px 0;
+}
+.ob-btn-back:hover { color: #4338ca; }
+@media (max-width: 480px) {
+  .ob-container { padding: 8px; }
+  .ob-step { padding: 24px 20px 18px; }
+  .ob-otp-digit { width: 48px; height: 54px; font-size: 1.4rem; }
+  .ob-type-options { gap: 8px; }
+  .ob-type-card { padding: 18px 10px; }
+}
+</style>
+
+<script>
+(function(){
+  var obData = { branchId: null, orderType: null, firstName: '', lastName: '', phone: '', email: '' };
+  var obStep = 1;
+  var otpTimer = null;
+  var MULTI_BRANCH = {{ 'true' if multi_branch else 'false' }};
+
+  window.obSelectBranch = function(id, el) {
+    obData.branchId = id;
+    document.querySelectorAll('.ob-branch-card').forEach(function(c){ c.classList.remove('selected'); });
+    el.classList.add('selected');
+    setTimeout(function(){ obNext(); }, 300);
+  };
+
+  window.obSelectType = function(type, el) {
+    obData.orderType = type;
+    document.querySelectorAll('.ob-type-card').forEach(function(c){ c.classList.remove('selected'); });
+    el.classList.add('selected');
+    setTimeout(function(){ obNext(); }, 300);
+  };
+
+  function showStep(n) {
+    for (var i = 1; i <= 4; i++) {
+      document.getElementById('ob-step-' + i).style.display = i === n ? '' : 'none';
+    }
+    document.getElementById('ob-progress-bar').style.width = (n * 25) + '%';
+    document.getElementById('ob-back-row').style.display = n > 1 ? '' : 'none';
+    obStep = n;
+  }
+
+  window.obNext = function() {
+    if (obStep === 1 && !obData.branchId) return;
+    if (obStep === 2 && !obData.orderType) return;
+    if (obStep < 4) showStep(obStep + 1);
+  };
+
+  window.obBack = function() {
+    if (obStep === 2 && !MULTI_BRANCH) return;
+    if (obStep > 1) showStep(obStep - 1);
+  };
+
+  window.obSendOtp = function() {
+    var fn = document.getElementById('ob-first-name').value.trim();
+    var ln = document.getElementById('ob-last-name').value.trim();
+    var ph = document.getElementById('ob-phone').value.trim();
+    var em = document.getElementById('ob-email').value.trim();
+    document.querySelectorAll('.ob-field input').forEach(function(i){ i.classList.remove('ob-input-error'); });
+    var errEl = document.getElementById('ob-form-error');
+    errEl.style.display = 'none';
+    var missing = [];
+    if (!fn) { document.getElementById('ob-first-name').classList.add('ob-input-error'); missing.push('first'); }
+    if (!ln) { document.getElementById('ob-last-name').classList.add('ob-input-error'); missing.push('last'); }
+    if (!ph) { document.getElementById('ob-phone').classList.add('ob-input-error'); missing.push('phone'); }
+    if (!em) { document.getElementById('ob-email').classList.add('ob-input-error'); missing.push('email'); }
+    if (missing.length) {
+      errEl.textContent = '{{ "נא למלא את כל השדות" if language == "he" else "Please fill all fields" }}';
+      errEl.style.display = '';
+      return;
+    }
+    var phoneDigits = ph.replace(/\D/g, '');
+    if (phoneDigits.length < 9 || phoneDigits.length > 15) {
+      document.getElementById('ob-phone').classList.add('ob-input-error');
+      errEl.textContent = '{{ "מספר טלפון לא תקין" if language == "he" else "Invalid phone number" }}';
+      errEl.style.display = '';
+      return;
+    }
+    obData.firstName = fn;
+    obData.lastName = ln;
+    obData.phone = ph;
+    obData.email = em;
+    document.getElementById('ob-send-otp-arrow').style.display = 'none';
+    document.getElementById('ob-send-otp-spin').style.display = '';
+    document.getElementById('ob-send-otp-text').textContent = '{{ "שולח..." if language == "he" else "Sending..." }}';
+    fetch('{{ url_for("order_page.send_otp") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: ph })
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      document.getElementById('ob-send-otp-spin').style.display = 'none';
+      document.getElementById('ob-send-otp-arrow').style.display = '';
+      document.getElementById('ob-send-otp-text').textContent = '{{ "שלח קוד אימות" if language == "he" else "Send Verification Code" }}';
+      if (d.ok) {
+        document.getElementById('ob-otp-phone-display').textContent = ph;
+        showStep(4);
+        startOtpTimer();
+        setTimeout(function(){ document.querySelector('.ob-otp-digit[data-idx="0"]').focus(); }, 200);
+      } else {
+        errEl.textContent = d.error || '{{ "שגיאה בשליחת קוד" if language == "he" else "Error sending code" }}';
+        errEl.style.display = '';
+      }
+    }).catch(function(){
+      document.getElementById('ob-send-otp-spin').style.display = 'none';
+      document.getElementById('ob-send-otp-arrow').style.display = '';
+      document.getElementById('ob-send-otp-text').textContent = '{{ "שלח קוד אימות" if language == "he" else "Send Verification Code" }}';
+      errEl.textContent = '{{ "שגיאת תקשורת" if language == "he" else "Network error" }}';
+      errEl.style.display = '';
+    });
+  };
+
+  function startOtpTimer() {
+    var seconds = 60;
+    var timerEl = document.getElementById('ob-timer');
+    var resendBtn = document.getElementById('ob-resend-btn');
+    resendBtn.style.display = 'none';
+    timerEl.textContent = '{{ "ניתן לשלוח שוב בעוד" if language == "he" else "Resend available in" }} ' + seconds + 's';
+    if (otpTimer) clearInterval(otpTimer);
+    otpTimer = setInterval(function(){
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(otpTimer);
+        timerEl.textContent = '';
+        resendBtn.style.display = '';
+      } else {
+        timerEl.textContent = '{{ "ניתן לשלוח שוב בעוד" if language == "he" else "Resend available in" }} ' + seconds + 's';
+      }
+    }, 1000);
+  }
+
+  window.obResendOtp = function() {
+    fetch('{{ url_for("order_page.send_otp") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: obData.phone })
+    }).then(function(r){ return r.json(); }).then(function(d) {
+      if (d.ok) startOtpTimer();
+    });
+  };
+
+  window.obVerifyOtp = function() {
+    var digits = document.querySelectorAll('.ob-otp-digit');
+    var code = '';
+    digits.forEach(function(d){ code += d.value; });
+    var errEl = document.getElementById('ob-otp-error');
+    errEl.style.display = 'none';
+    if (code.length !== 4) {
+      errEl.textContent = '{{ "נא להזין 4 ספרות" if language == "he" else "Enter 4 digits" }}';
+      errEl.style.display = '';
+      return;
+    }
+    document.getElementById('ob-verify-text').textContent = '{{ "מאמת..." if language == "he" else "Verifying..." }}';
+    document.getElementById('ob-verify-spin').style.display = '';
+    document.getElementById('ob-verify-btn').disabled = true;
+    fetch('{{ url_for("order_page.verify_otp") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); }).then(function(res) {
+      if (res.ok && res.data.ok) {
+        return fetch('{{ url_for("order_page.complete_onboarding") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            branch_id: obData.branchId,
+            order_type: obData.orderType,
+            first_name: obData.firstName,
+            last_name: obData.lastName,
+            phone: obData.phone,
+            email: obData.email
+          })
+        }).then(function(r2){ return r2.json(); }).then(function(d2) {
+          if (d2.ok) {
+            window.location.reload();
+          } else {
+            errEl.textContent = d2.error || '{{ "שגיאה" if language == "he" else "Error" }}';
+            errEl.style.display = '';
+            document.getElementById('ob-verify-text').textContent = '{{ "אמת והמשך" if language == "he" else "Verify & Continue" }}';
+            document.getElementById('ob-verify-spin').style.display = 'none';
+            document.getElementById('ob-verify-btn').disabled = false;
+          }
+        });
+      } else {
+        errEl.textContent = res.data.error || '{{ "קוד שגוי" if language == "he" else "Wrong code" }}';
+        errEl.style.display = '';
+        document.getElementById('ob-verify-text').textContent = '{{ "אמת והמשך" if language == "he" else "Verify & Continue" }}';
+        document.getElementById('ob-verify-spin').style.display = 'none';
+        document.getElementById('ob-verify-btn').disabled = false;
+        digits.forEach(function(d){ d.value = ''; d.classList.remove('filled'); });
+        digits[0].focus();
+      }
+    }).catch(function() {
+      errEl.textContent = '{{ "שגיאת תקשורת" if language == "he" else "Network error" }}';
+      errEl.style.display = '';
+      document.getElementById('ob-verify-text').textContent = '{{ "אמת והמשך" if language == "he" else "Verify & Continue" }}';
+      document.getElementById('ob-verify-spin').style.display = 'none';
+      document.getElementById('ob-verify-btn').disabled = false;
+    });
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var digits = document.querySelectorAll('.ob-otp-digit');
+    digits.forEach(function(inp, idx) {
+      inp.addEventListener('input', function(){
+        var v = this.value.replace(/\D/g, '');
+        this.value = v ? v[0] : '';
+        this.classList.toggle('filled', !!this.value);
+        if (v && idx < 3) digits[idx + 1].focus();
+        if (idx === 3 && v) setTimeout(function(){ obVerifyOtp(); }, 150);
+      });
+      inp.addEventListener('keydown', function(e){
+        if (e.key === 'Backspace' && !this.value && idx > 0) {
+          digits[idx - 1].focus();
+          digits[idx - 1].value = '';
+          digits[idx - 1].classList.remove('filled');
+        }
+      });
+      inp.addEventListener('paste', function(e){
+        e.preventDefault();
+        var pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
+        for (var i = 0; i < pasted.length && i < 4; i++) {
+          digits[i].value = pasted[i];
+          digits[i].classList.add('filled');
+        }
+        if (pasted.length >= 4) setTimeout(function(){ obVerifyOtp(); }, 150);
+        else if (pasted.length > 0) digits[Math.min(pasted.length, 3)].focus();
+      });
+    });
+  });
+})();
+</script>
+
+{% elif need_branch_selection is defined and need_branch_selection %}
+
+<section class="section py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <i class="fas fa-map-marker-alt fa-3x mb-3" style="color:#4338ca;"></i>
+        <h2 class="mb-2" style="font-weight:800;">{{ 'בחר סניף' if language == 'he' else 'Select Branch' }}</h2>
+        <p class="text-muted mb-4">{{ 'מאיפה תרצה להזמין?' if language == 'he' else 'Where would you like to order from?' }}</p>
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+          {% for branch in branches %}
+          {% set bs = branch.ordering_status or 'open' %}
+          <form method="POST" action="{{ url_for('order_page.select_branch') }}" style="min-width:200px;max-width:280px;flex:1;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="branch_id" value="{{ branch.id }}">
+            <button type="submit" style="all:unset;display:block;width:100%;{% if bs != 'open' %}opacity:0.55;cursor:not-allowed;{% else %}cursor:pointer;{% endif %}" {% if bs != 'open' %}disabled{% endif %}>
+              <div style="background:#fff;border:2px solid {% if bs == 'open' %}#e2e8f0{% elif bs == 'busy' %}#f59e0b{% else %}#ef4444{% endif %};border-radius:16px;padding:28px 20px;
+                          text-align:center;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.06);"
+                   {% if bs == 'open' %}onmouseover="this.style.borderColor='#4338ca';this.style.boxShadow='0 4px 16px rgba(67,56,202,.15)'"
+                   onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)'"{% endif %}>
+                <i class="fas fa-store fa-2x mb-3" style="color:{% if bs == 'open' %}#4338ca{% elif bs == 'busy' %}#f59e0b{% else %}#ef4444{% endif %};"></i>
+                <h4 style="font-weight:700;margin:0;color:#1e293b;">
+                  {{ branch.name }}
+                  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{% if bs == 'open' %}#22c55e{% elif bs == 'busy' %}#f59e0b{% else %}#ef4444{% endif %};vertical-align:middle;margin-right:4px;"></span>
+                </h4>
+                {% if bs == 'busy' %}
+                <p class="mt-2 mb-0" style="font-size:.9rem;color:#f59e0b;font-weight:600;">{{ 'עמוס כרגע' if language == 'he' else 'Currently busy' }}</p>
+                {% elif bs == 'closed' %}
+                <p class="mt-2 mb-0" style="font-size:.9rem;color:#ef4444;font-weight:600;">{{ 'סגור כרגע' if language == 'he' else 'Currently closed' }}</p>
+                {% elif branch.address %}
+                <p class="text-muted mt-2 mb-0" style="font-size:.9rem;">{{ branch.address }}</p>
+                {% endif %}
+              </div>
+            </button>
+          </form>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% else %}
+
+{% set _ordering_blocked = ordering_paused or ordering_outside_hours %}
+
+{% if _ordering_blocked %}
+<div id="ordering-blocked-banner" style="
+  position:sticky;top:72px;z-index:200;
+  background:{% if ordering_paused %}#f59e0b{% else %}#6366f1{% endif %};
+  color:#fff;text-align:center;padding:12px 20px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  font-weight:700;font-size:.95rem;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+  <i class="fas {% if ordering_paused %}fa-pause-circle{% else %}fa-clock{% endif %}" style="font-size:1.1rem;"></i>
+  {{ ordering_status_message }}
+  {% if settings and settings.contact_phone %}
+  <a href="tel:{{ settings.contact_phone }}" style="color:#fff;opacity:.85;margin-right:8px;font-size:.85rem;text-decoration:underline;">
+    <i class="fas fa-phone me-1"></i>{{ settings.contact_phone }}
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ───────────────────────── ORDER HERO BANNER ──────────────────────── -->
+<div class="order-hero-banner">
+  <div class="order-hero-shape order-hero-shape-1"></div>
+  <div class="order-hero-shape order-hero-shape-2"></div>
+  <div class="order-hero-shape order-hero-shape-3"></div>
+  <div class="order-hero-overlay"></div>
+  <div class="container-fluid px-3 position-relative" style="max-width:1100px;z-index:2;">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('order_page.clear_branch') }}" class="order-hero-home"
+           title="{{ 'חזרה לדף הבית' if language == 'he' else 'Back to Home' }}">
+          <i class="fas fa-arrow-right"></i>
+        </a>
+        <div>
+          <h1 class="mb-0 fw-black" style="font-size:1.4rem;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.4);">
+            <i class="fas fa-utensils me-2" style="font-size:1rem;opacity:.85;"></i>
+            {{ 'הזמנה אונליין' if language == 'he' else 'Order Online' }}
+          </h1>
+          {% if not _ordering_blocked %}
+          <div class="order-hero-status">
+            <span class="order-hero-dot"></span>
+            {{ 'פתוח להזמנות' if language == 'he' else 'Open for orders' }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        {% if multi_branch is defined and multi_branch and selected_branch %}
+        <a href="{{ url_for('order_page.clear_branch') }}" class="branch-label-badge branch-switchable"
+           onclick="return confirm('{{ 'שים לב — החלפת סניף תרוקן את העגלה. להמשיך?' if language == 'he' else 'Note — switching branch will empty your cart. Continue?' }}');">
+          <i class="fas fa-store me-1"></i>
+          <span>{{ selected_branch.name_he if language == 'he' else selected_branch.name_en }}</span>
+          <i class="fas fa-exchange-alt ms-1" style="font-size:.7rem;opacity:.7;"></i>
+        </a>
+        {% endif %}
+        {% set _session_order_type = session.get('order_type', 'delivery') %}
+        <span class="branch-label-badge">
+          {% if _session_order_type == 'takeaway' %}
+          <i class="fas fa-shopping-bag me-1"></i>{{ 'איסוף עצמי' if language == 'he' else 'Pickup' }}
+          {% else %}
+          <i class="fas fa-motorcycle me-1"></i>{{ 'משלוח' if language == 'he' else 'Delivery' }}
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────────── MENU ───────────────────────────── -->
+<section class="section pb-5">
+  <div class="container-fluid px-3" style="max-width:1100px;">
+
+    <div class="row g-4">
+
+      <!-- ── LEFT: Menu items ── -->
+      <div class="col-lg-8">
+
+
+        {% if categories or deals %}
+        <div id="menu-skeleton">
+          <div style="display:flex;gap:8px;margin-bottom:16px;padding-bottom:10px;">
+            <div class="skeleton-tab"></div>
+            <div class="skeleton-tab" style="width:88px;"></div>
+            <div class="skeleton-tab" style="width:64px;"></div>
+            <div class="skeleton-tab" style="width:80px;"></div>
+          </div>
+          <div class="skeleton-section-title"></div>
+          <div class="skeleton-grid">
+            {% for _ in range(6) %}
+            <div class="skeleton-card">
+              <div class="skeleton-img"></div>
+              <div class="skeleton-info">
+                <div class="skeleton-line w75"></div>
+                <div class="skeleton-line w50"></div>
+                <div class="skeleton-line w30"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="skeleton-section-title" style="margin-top:24px;width:120px;"></div>
+          <div class="skeleton-grid">
+            {% for _ in range(6) %}
+            <div class="skeleton-card">
+              <div class="skeleton-img"></div>
+              <div class="skeleton-info">
+                <div class="skeleton-line w75"></div>
+                <div class="skeleton-line w50"></div>
+                <div class="skeleton-line w30"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Category tabs -->
+        <div class="cat-tabs-wrap">
+          {% if deals %}
+          <button class="cat-tab-btn active"
+                  data-target="cat-deals"
+                  onclick="scrollToSection('cat-deals',this)">
+            <i class="fas fa-fire" style="margin-inline-end:4px;font-size:.75rem;color:#ef4444;"></i>{{ 'מבצעים' if language == 'he' else 'Deals' }}
+          </button>
+          {% endif %}
+          {% for cat in categories %}
+          <button class="cat-tab-btn {% if not deals and loop.first %}active{% endif %}"
+                  data-target="cat-{{ cat.id }}"
+                  onclick="scrollToSection('cat-{{ cat.id }}',this)">
+            {{ cat.name_he if language == 'he' else cat.name_en }}
+          </button>
+          {% endfor %}
+        </div>
+
+        <!-- Category sections (all visible, scroll-linked) -->
+        <div id="menu-sections">
+          {% if deals %}
+          <div class="cat-section" id="cat-deals">
+            <div class="cat-section-title"><i class="fas fa-fire" style="color:#ef4444;margin-inline-end:6px;font-size:.9rem;"></i>{{ 'מבצעים' if language == 'he' else 'Deals' }}</div>
+            <div class="items-grid">
+              {% for deal in deals %}
+              <div class="dish-card deal-dish-card" onclick="handleDealClick(this)"
+                   data-deal-id="{{ deal.id }}"
+                   data-deal-name-he="{{ deal.name_he | e }}"
+                   data-deal-name-en="{{ deal.name_en | e }}"
+                   data-deal-price="{{ deal.deal_price }}"
+                   data-deal-type="{{ deal.deal_type or 'fixed' }}"
+                   data-deal-pick-count="{{ deal.pick_count or 0 }}"
+                   data-deal-items='{{ deal.included_items | tojson }}'>
+                <div class="dish-img-wrap">
+                  {% if deal.image_path %}
+                  <img src="{{ deal.image_path }}" alt="{{ deal.name_he }}" class="dish-img" loading="lazy">
+                  {% else %}
+                  <div class="deal-img-placeholder"><i class="fas fa-tags"></i></div>
+                  {% endif %}
+                </div>
+                <div class="dish-info">
+                  <div class="dish-name">{{ deal.name_he if language == 'he' else (deal.name_en or deal.name_he) }}</div>
+                  {% if deal.description_he or deal.description_en %}
+                  <div class="dish-desc">{{ (deal.description_he if language == 'he' else (deal.description_en or deal.description_he)) | truncate(55) }}</div>
+                  {% endif %}
+                  <div class="dish-price" style="color:#16a34a;">₪{{ deal.deal_price | int }}{% if deal.original_price %} <span style="text-decoration:line-through;color:#9ca3af;font-size:.75rem;font-weight:400;">₪{{ deal.original_price | int }}</span>{% endif %}</div>
+                </div>
+                <div class="combo-badge"><i class="fas fa-fire"></i> DEAL</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% for cat in categories %}
+          <div class="cat-section" id="cat-{{ cat.id }}">
+            <div class="cat-section-title">{{ cat.name_he if language == 'he' else cat.name_en }}</div>
+            <div class="items-grid">
+              {% for item in cat._order_items %}
+              {% set sorted_prices = item.price_options | sort(attribute='display_order') | list %}
+              {% set has_variants = sorted_prices | length > 0 %}
+              <div class="dish-card{% if not item._order_available %} dish-unavailable{% endif %}"
+                   {% if item._order_available %}onclick="openItemModal(this)"{% endif %}
+                   data-item-id="{{ item.id }}"
+                   data-name-he="{{ item.name_he | e }}"
+                   data-name-en="{{ item.name_en | e }}"
+                   data-price="{{ item._branch_price if item._branch_price is defined else item.base_price }}"
+                   data-description-he="{{ (item.description_he or '') | e }}"
+                   data-description-en="{{ (item.description_en or '') | e }}"
+                   data-ingredients-he="{{ (item.ingredients_he or '') | e }}"
+                   data-ingredients-en="{{ (item.ingredients_en or '') | e }}"
+                   data-image="{{ url_for('order_page.menu_image', item_id=item.id) if item.image_data else (item.image_path or '') }}"
+                   data-image-hero="{{ item.image_hero_path or '' }}"
+                   data-available="{{ '1' if item._order_available else '0' }}"
+                   data-is-combo="{{ '1' if item.is_combo else '0' }}"
+                   data-category="{{ (cat.name_he if language == 'he' else cat.name_en) | e }}">
+                <div class="dish-img-wrap">
+                  <img src="{{ url_for('order_page.menu_image', item_id=item.id) if item.image_data else (item.image_path or url_for('order_page.static', filename='dish-placeholder.png')) }}" alt="{{ item.name_he }}" class="dish-img" loading="lazy"
+                    onerror="if(this.src!=='{{ url_for('order_page.static', filename='dish-placeholder.png') }}'){if(this.dataset.tried){this.src='{{ url_for('order_page.static', filename='dish-placeholder.png') }}'}else{this.dataset.tried='1';this.src='{{ url_for('order_page.menu_image', item_id=item.id) }}'}}"
+                  >
+                  {% if not item._order_available %}
+                  <div class="dish-unavailable-overlay">
+                    <span class="unavailable-badge">{{ item._unavailable_reason or 'לא זמין' }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="dish-info">
+                  <div class="dish-name">{{ item.name_he if language == 'he' else item.name_en }}</div>
+                  {% if item.description_he or item.description_en %}
+                  <div class="dish-desc">{{ (item.description_he if language == 'he' else item.description_en) | truncate(55) }}</div>
+                  {% endif %}
+                  <div class="dish-price">₪{{ (item._branch_price if item._branch_price is defined else item.base_price) | int }}</div>
+                </div>
+                <div class="dish-qty-badge" id="dish-qty-{{ item.id }}" style="display:none;"></div>
+                {% if item.is_combo %}
+                <div class="combo-badge"><i class="fas fa-fire"></i> DEAL</div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-utensils fa-3x mb-3"></i>
+          <p>{{ 'אין פריטים זמינים כרגע.' if language == 'he' else 'No items available.' }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ── RIGHT: Desktop cart ── -->
+      <div class="col-lg-4 d-none d-lg-block">
+        <div class="sticky-top" style="top:88px;">
+          <div class="cart-panel">
+            <div class="cart-panel-head">
+              <i class="fas fa-shopping-cart me-2"></i>
+              {{ 'הסל שלך' if language == 'he' else 'Your Cart' }}
+              <span class="cart-badge ms-auto" id="cart-count-desk">0</span>
+            </div>
+            <div class="cart-panel-body" id="desk-cart-body">
+              <div id="desk-empty" class="text-center py-4 text-muted">
+                <i class="fas fa-shopping-basket fa-2x mb-2 d-block" style="color:#d1d5db;"></i>
+                <p class="mb-0 small">{{ 'הוסיפו פריטים מהתפריט' if language == 'he' else 'Add items from the menu' }}</p>
+              </div>
+              <div id="desk-items"></div>
+              <div id="desk-totals" style="display:none;" class="border-top pt-3 mt-2">
+                <div class="d-flex justify-content-between fw-bold mb-1" style="font-size:1rem;">
+                  <span>{{ 'סכום ביניים' if language == 'he' else 'Subtotal' }}</span>
+                  <span style="color:#4338ca;">₪<span id="desk-sub">0</span></span>
+                </div>
+                <div id="desk-fee-row" style="display:none;">
+                  <span id="desk-fee">0</span><span id="desk-total" style="display:none;">0</span>
+                </div>
+                <p class="text-muted mb-0 mt-1" style="font-size:.72rem;">
+                  {{ 'דמי משלוח יחושבו בשלב הבא' if language == 'he' else 'Delivery fee calculated at checkout' }}
+                </p>
+              </div>
+            </div>
+            <div id="desk-cta" style="display:none;" class="p-3 border-top">
+              <button class="checkout-cta-btn w-100" onclick="goToCheckout()">
+                <i class="fas fa-arrow-left me-2"></i>
+                {{ 'לתשלום' if language == 'he' else 'Checkout' }}
+                <span class="ms-2">₪<span id="desk-btn-total">0</span></span>
+              </button>
+              <p class="text-center text-muted mt-2 mb-0" style="font-size:.72rem;">
+                <i class="fas fa-lock me-1"></i>{{ 'תשלום מאובטח' if language == 'he' else 'Secure checkout' }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── FLOATING CART BUTTON (MOBILE) ─────────── -->
+{% if _ordering_blocked %}
+<div id="cart-fab" style="display:none;" onclick="alert('{{ ordering_status_message | e }}')">
+  <i class="fas fa-pause-circle"></i>
+  <span id="cart-fab-count">0</span>
+  <div id="cart-fab-total">₪<span id="sticky-total">0</span></div>
+</div>
+{% else %}
+<div id="cart-fab" style="display:none;" onclick="goToCheckout()">
+  <i class="fas fa-shopping-cart"></i>
+  <span id="cart-fab-count">0</span>
+  <div id="cart-fab-total">₪<span id="sticky-total">0</span></div>
+</div>
+{% endif %}
+
+<!-- Hidden form: submits cart to session then redirects to checkout page -->
+<form id="checkout-form" method="POST" action="{{ url_for('order_page.order_start_checkout') }}" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else '' }}">
+  <input type="hidden" name="cart_json" id="hidden-cart-json">
+  <input type="hidden" name="order_type" id="hidden-order-type" value="{{ session.get('order_type', 'delivery') }}">
+  <input type="hidden" name="utm_source" id="hidden-utm-source">
+  <input type="hidden" name="utm_medium" id="hidden-utm-medium">
+  <input type="hidden" name="utm_campaign" id="hidden-utm-campaign">
+  <input type="hidden" name="referrer" id="hidden-referrer">
+  {% if selected_branch is defined and selected_branch %}
+  <input type="hidden" name="branch_id" value="{{ selected_branch.id }}">
+  {% endif %}
+</form>
+
+{% endif %}
+
+<!-- ─── Item detail bottom sheet ─── -->
+<div id="item-overlay" onclick="closeItemModal()"></div>
+<div id="item-sheet" role="dialog" aria-modal="true">
+  <button id="item-sheet-close" onclick="closeItemModal()" aria-label="סגור">
+    <i class="fas fa-times"></i>
+  </button>
+  <div id="item-sheet-scroll">
+    <div id="item-sheet-hero" onclick="openImageViewer(document.getElementById('item-sheet-img').src)">
+      <img id="item-sheet-img" src="" alt="">
+      <div id="hero-expand-icon"><i class="fas fa-search-plus"></i></div>
+    </div>
+    <div id="item-sheet-body">
+      <div class="item-sheet-top">
+        <div class="item-sheet-meta">
+          <div id="item-sheet-name"></div>
+          <div id="item-sheet-desc"></div>
+          <div id="item-sheet-ingredients" style="display:none;font-size:.78rem;color:#9ca3af;margin-top:4px;line-height:1.4;"></div>
+        </div>
+        <div id="item-sheet-qty-ctrl">
+          <button class="sheet-qty-btn" onclick="modalChangeQty(1)">+</button>
+          <span id="item-sheet-qty">1</span>
+          <button class="sheet-qty-btn" onclick="modalChangeQty(-1)">−</button>
+        </div>
+      </div>
+      <div id="item-sheet-options"></div>
+    </div>
+  </div>
+  <div id="item-sheet-footer">
+    <button id="item-sheet-add" onclick="addFromModal()">
+      <span>{{ 'הוסף לסל' if language == 'he' else 'Add to cart' }}</span>
+      <i class="fas fa-arrow-left"></i>
+      <span id="item-sheet-total">₪0</span>
+    </button>
+  </div>
+</div>
+
+<!-- Full-screen image viewer -->
+<div id="img-viewer">
+  <div id="img-viewer-bg"></div>
+  <button id="img-viewer-close"><i class="fas fa-times"></i></button>
+  <div id="img-viewer-wrap">
+    <img id="img-viewer-src" src="" alt="" draggable="false">
+  </div>
+  <div id="img-viewer-hint">{{ 'צביטה לזום · החלק למטה לסגירה' if language == 'he' else 'Pinch to zoom · Swipe down to close' }}</div>
+</div>
+
+<!-- Floating bubble animation template -->
+<div id="bubble-template" class="add-bubble" style="display:none;">+1</div>
+
+<!-- ─── Deal Picker Overlay ─── -->
+<div id="deal-picker-overlay" style="display:none;" onclick="closeDealPicker()"></div>
+<div id="deal-picker-sheet" style="display:none;">
+  <div class="deal-picker-header">
+    <button class="deal-picker-close" onclick="closeDealPicker()"><i class="fas fa-times"></i></button>
+    <div class="deal-picker-header-info">
+      <div class="deal-picker-title" id="deal-picker-title"></div>
+      <div class="deal-picker-subtitle" id="deal-picker-subtitle"></div>
+    </div>
+  </div>
+  <div class="deal-picker-progress-wrap">
+    <div class="deal-picker-progress-bar">
+      <div class="deal-picker-progress-fill" id="deal-picker-progress-fill"></div>
+    </div>
+    <div class="deal-picker-counter" id="deal-picker-counter">0/0</div>
+  </div>
+  <div class="deal-picker-body" id="deal-picker-body">
+    <div class="deal-picker-loading">
+      <i class="fas fa-spinner fa-spin fa-2x"></i>
+    </div>
+  </div>
+  <div class="deal-picker-footer">
+    <div class="deal-picker-footer-price" id="deal-picker-footer-price"></div>
+    <button class="deal-picker-confirm" id="deal-picker-confirm" disabled onclick="confirmDealPicks()">
+      <span>{{ 'אשר בחירה' if language == 'he' else 'Confirm Selection' }}</span>
+      <i class="fas fa-check ms-2"></i>
+    </button>
+  </div>
+  <div id="deal-item-detail" class="deal-item-detail" style="display:none;">
+    <div class="deal-detail-backdrop" onclick="closeDealItemDetail()"></div>
+    <div class="deal-detail-card">
+      <button class="deal-detail-close" onclick="closeDealItemDetail()"><i class="fas fa-times"></i></button>
+      <div class="deal-detail-img-wrap" id="deal-detail-img-wrap"></div>
+      <div class="deal-detail-body">
+        <div class="deal-detail-name" id="deal-detail-name"></div>
+        <div class="deal-detail-price" id="deal-detail-price"></div>
+        <div class="deal-detail-desc" id="deal-detail-desc"></div>
+        <div class="deal-detail-ingredients-label" id="deal-detail-ing-label" style="display:none;">{{ 'מרכיבים' if language == 'he' else 'Ingredients' }}</div>
+        <div class="deal-detail-ingredients" id="deal-detail-ingredients"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ─── Hide site's bottom nav on order page — checkout bar replaces it ─── */
+.mobile-bottom-nav { display: none !important; }
+
+/* ─── Core palette ─── */
+:root {
+  --c-primary: #4338ca;
+  --c-primary-light: #e0e7ff;
+  --c-green: #16a34a;
+  --c-green-light: #dcfce7;
+  --c-bg: #f8f7ff;
+}
+
+/* ─── Prevent iOS text size adjustment ─── */
+* { -webkit-tap-highlight-color: transparent; }
+input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+
+/* ─── Hero banner ─── */
+.order-hero-banner {
+  background: url('{{ url_for('order_page.static', filename='order-hero-bg.png') }}') center/cover no-repeat;
+  padding: 24px 0;
+  margin-bottom: 0;
+  position: relative;
+  overflow: hidden;
+}
+.order-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(15,12,50,.82) 0%, rgba(30,27,75,.7) 50%, rgba(67,56,202,.55) 100%);
+  z-index: 1;
+}
+.order-hero-shape {
+  position: absolute; border-radius: 50%; z-index: 1;
+  pointer-events: none;
+}
+.order-hero-shape-1 {
+  width: 180px; height: 180px; top: -60px; right: -30px;
+  background: radial-gradient(circle, rgba(139,92,246,.25) 0%, transparent 70%);
+  border: 2px solid rgba(139,92,246,.12);
+}
+.order-hero-shape-2 {
+  width: 120px; height: 120px; bottom: -40px; left: 10%;
+  background: radial-gradient(circle, rgba(99,102,241,.2) 0%, transparent 70%);
+  border: 2px solid rgba(99,102,241,.1);
+}
+.order-hero-shape-3 {
+  width: 60px; height: 60px; top: 10px; left: 35%;
+  background: radial-gradient(circle, rgba(250,204,21,.15) 0%, transparent 70%);
+  border: 1px solid rgba(250,204,21,.08);
+  animation: heroShapeFloat 6s ease-in-out infinite;
+}
+@keyframes heroShapeFloat {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.order-hero-home {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.12); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none; flex-shrink: 0;
+  transition: background .2s; backdrop-filter: blur(6px);
+  font-size: .95rem; border: 1px solid rgba(255,255,255,.15);
+}
+.order-hero-home:hover { background: rgba(255,255,255,.22); color: #fff; }
+.order-hero-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .78rem; color: rgba(255,255,255,.85); margin-top: 3px;
+  font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+.order-hero-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #22c55e; display: inline-block;
+  box-shadow: 0 0 6px rgba(34,197,94,.6);
+  animation: heroDotPulse 2s ease-in-out infinite;
+}
+@keyframes heroDotPulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+/* ─── Order type toggle ─── */
+.otype-btn {
+  display: inline-flex; align-items: center;
+  min-height: 44px; padding: 0 18px; border-radius: 22px;
+  border: 1.5px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.1); color: #fff;
+  font-weight: 700; font-size: .88rem; cursor: pointer;
+  transition: all .2s; touch-action: manipulation;
+  backdrop-filter: blur(8px);
+  text-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.otype-btn.active {
+  background: #fff; color: var(--c-primary); border-color: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  text-shadow: none;
+}
+.branch-label-badge {
+  display: inline-flex; align-items: center;
+  min-height: 44px; padding: 0 14px; border-radius: 22px;
+  border: 1.5px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.1); color: #fff;
+  font-weight: 600; font-size: .82rem;
+  backdrop-filter: blur(8px);
+}
+a.branch-switchable {
+  text-decoration: none; color: #fff; cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+a.branch-switchable:hover {
+  background: rgba(255,255,255,.25);
+  border-color: rgba(255,255,255,.6);
+  color: #fff;
+}
+
+/* ─── Info banner ─── */
+.info-banner {
+  background: var(--c-primary); color: #fff;
+  padding: 12px 16px; border-radius: 14px;
+  font-size: .87rem; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+}
+
+/* ─── Deal cards in category grid ─── */
+.deal-dish-card {
+  border: 2px solid #f59e0b;
+}
+.deal-img-placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #f59e0b; font-size: 1.5rem;
+}
+
+/* ─── Category scroll tabs ─── */
+.cat-tabs-wrap {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 16px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cat-tabs-wrap::-webkit-scrollbar { display: none; }
+.cat-tab-btn {
+  flex-shrink: 0; min-height: 34px; padding: 0 16px; border-radius: 17px;
+  border: 2px solid var(--c-primary-light); background: white; color: var(--c-primary);
+  font-weight: 700; font-size: .82rem; cursor: pointer; white-space: nowrap;
+  transition: all .18s; touch-action: manipulation;
+}
+.cat-tab-btn.active { background: var(--c-primary); color: white; border-color: var(--c-primary); }
+
+/* ─── Category section ─── */
+.cat-section { margin-bottom: 28px; }
+.cat-section-title {
+  font-size: 1rem; font-weight: 800; color: #1e1b4b;
+  text-align: right; margin-bottom: 10px; padding-right: 2px;
+}
+
+/* ─── Horizontal carousel per category ─── */
+.items-grid {
+  display: flex;
+  direction: rtl;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+  margin: 0 -3px;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+.items-grid::-webkit-scrollbar { display: none; }
+
+/* ─── Dish card ─── */
+.dish-card {
+  background: white; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 1px 5px rgba(0,0,0,.09); cursor: pointer;
+  position: relative; display: flex; flex-direction: column;
+  transition: transform .14s, box-shadow .14s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+  width: 140px;
+  scroll-snap-align: start;
+}
+.dish-card:active { transform: scale(.96); box-shadow: 0 3px 12px rgba(0,0,0,.16); }
+.dish-card.dish-unavailable {
+  opacity: .45; cursor: default; pointer-events: none;
+}
+.dish-unavailable-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 2;
+}
+.unavailable-badge {
+  background: rgba(0,0,0,.75); color: #fff; padding: 4px 10px;
+  border-radius: 6px; font-size: .68rem; font-weight: 700;
+  text-align: center; line-height: 1.3; max-width: 90%;
+}
+
+.dish-img-wrap {
+  width: 100%; position: relative; overflow: hidden; background: #eee;
+  padding-top: 88%;
+}
+.dish-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.dish-info {
+  padding: 8px 9px 10px; flex: 1; display: flex; flex-direction: column;
+  gap: 3px; text-align: right;
+}
+.dish-name {
+  font-size: .8rem; font-weight: 700; color: #1e1b4b; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.dish-desc {
+  font-size: .71rem; color: #6b7280; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.dish-price {
+  font-size: .92rem; font-weight: 800; color: var(--c-primary);
+  margin-top: auto; padding-top: 5px;
+}
+.dish-qty-badge {
+  position: absolute; top: 7px; left: 7px;
+  background: var(--c-primary); color: white;
+  border-radius: 12px; font-size: .72rem; font-weight: 700;
+  padding: 2px 8px; line-height: 1.6; box-shadow: 0 2px 6px rgba(67,56,202,.35);
+}
+.combo-badge {
+  position: absolute; top: 7px; right: 7px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c); color: white;
+  border-radius: 8px; font-size: .65rem; font-weight: 800;
+  padding: 3px 9px; line-height: 1.5; letter-spacing: .3px;
+  box-shadow: 0 2px 6px rgba(220,38,38,.4);
+  text-transform: uppercase;
+}
+.combo-qty-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.combo-qty-row:last-child { border-bottom: none; }
+.combo-qty-info { flex: 1; min-width: 0; }
+.combo-qty-name { font-size: .82rem; font-weight: 600; }
+.combo-qty-price { font-size: .72rem; color: #a78bfa; margin-top: 1px; }
+.combo-qty-ctrl {
+  display: flex; align-items: center; gap: 0; background: rgba(255,255,255,.06);
+  border-radius: 10px; overflow: hidden; flex-shrink: 0;
+}
+.combo-qty-btn {
+  width: 34px; height: 34px; border: none; background: none; color: #a78bfa;
+  font-size: 1rem; font-weight: 800; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; transition: background .15s;
+}
+.combo-qty-btn:hover { background: rgba(255,255,255,.08); }
+.combo-qty-btn:active { background: rgba(255,255,255,.14); }
+.combo-qty-val {
+  min-width: 28px; text-align: center; font-size: .85rem; font-weight: 800;
+  color: white; user-select: none;
+}
+.combo-slot-counter {
+  font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+  margin-right: auto; margin-left: 8px;
+}
+.combo-slot-counter.ok { background: rgba(16,185,129,.15); color: #34d399; }
+.combo-slot-counter.warn { background: rgba(245,158,11,.15); color: #fbbf24; }
+
+/* ─── Item detail bottom sheet ─── */
+#item-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.58); z-index: 1000;
+}
+#item-overlay.active { display: block; }
+#item-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 1001;
+  max-height: 92vh; background: white;
+  border-radius: 22px 22px 0 0;
+  display: flex; flex-direction: column;
+  transform: translateY(110%); transition: transform .32s cubic-bezier(.32,1,.32,1);
+  visibility: hidden; pointer-events: none;
+}
+#item-sheet.open { transform: translateY(0); visibility: visible; pointer-events: auto; }
+#item-sheet-close {
+  position: absolute; top: 10px; left: 12px; z-index: 10;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(0,0,0,.48); color: white; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .88rem; cursor: pointer; touch-action: manipulation;
+}
+#item-sheet-scroll {
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto; min-height: 0;
+}
+#item-sheet-hero {
+  width: 100%; height: 250px; background: #eee;
+  overflow: hidden; position: relative; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#item-sheet-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+#hero-expand-icon {
+  position: absolute; bottom: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,.5); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; pointer-events: none;
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+#img-viewer {
+  position: fixed; inset: 0; z-index: 100000;
+  display: none; align-items: center; justify-content: center;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+#img-viewer.open { display: flex; }
+#img-viewer-bg {
+  position: absolute; inset: 0; background: rgba(0,0,0,.95);
+  transition: opacity .25s;
+}
+#img-viewer-wrap {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  overflow: hidden; touch-action: none;
+}
+#img-viewer-src {
+  max-width: 94vw; max-height: 88vh; object-fit: contain;
+  transform-origin: center center; will-change: transform;
+  pointer-events: none;
+}
+#img-viewer-close {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px;
+  width: 40px; height: 40px; border-radius: 50%; z-index: 2;
+  border: none; background: rgba(255,255,255,.15); color: #fff;
+  font-size: 1.2rem; cursor: pointer; backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(4px);
+}
+#img-viewer-hint {
+  position: absolute; bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%); z-index: 2;
+  color: rgba(255,255,255,.5); font-size: .75rem;
+  transition: opacity .4s; pointer-events: none;
+  white-space: nowrap;
+}
+#img-viewer-hint.hidden { opacity: 0; }
+#item-sheet-body {
+  padding: 18px 18px 10px;
+}
+.item-sheet-top { display: flex; align-items: flex-start; gap: 12px; direction: rtl; }
+.item-sheet-meta { flex: 1; }
+#item-sheet-name {
+  font-size: 1.12rem; font-weight: 800; color: #1e1b4b;
+  line-height: 1.3; margin-bottom: 6px;
+}
+#item-sheet-desc { font-size: .85rem; color: #6b7280; line-height: 1.5; }
+#item-sheet-qty-ctrl {
+  display: flex; align-items: center; background: #f3f4f6;
+  border-radius: 24px; overflow: hidden; flex-shrink: 0;
+}
+.sheet-qty-btn {
+  width: 38px; height: 38px; border: none; background: transparent;
+  font-size: 1.15rem; font-weight: 700; color: var(--c-primary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+}
+.sheet-qty-btn:active { background: var(--c-primary-light); }
+#item-sheet-qty {
+  min-width: 30px; text-align: center;
+  font-size: 1rem; font-weight: 700; color: #1e1b4b;
+}
+#item-sheet-footer {
+  flex-shrink: 0;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+#item-sheet-add {
+  width: 100%; min-height: 52px; border: none; border-radius: 14px;
+  background: var(--c-primary); color: white;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: background .15s; touch-action: manipulation;
+}
+#item-sheet-add:active { background: #3730a3; }
+@media (min-width: 768px) {
+  #item-sheet { max-width: 500px; left: 50%; right: auto; transform: translateX(-50%) translateY(110%); }
+  #item-sheet.open { transform: translateX(-50%) translateY(0); visibility: visible; pointer-events: auto; }
+  #item-sheet-hero { height: 340px; }
+  .dish-card { width: 165px; }
+}
+
+/* ─── Desktop cart panel ─── */
+.cart-panel { background: #fff; border-radius: 18px; box-shadow: 0 4px 20px rgba(0,0,0,.1); overflow: hidden; }
+.cart-panel-head {
+  background: var(--c-primary); color: #fff;
+  padding: 16px 18px; font-weight: 700; font-size: .95rem;
+  display: flex; align-items: center;
+}
+.cart-badge {
+  background: #fff; color: var(--c-primary);
+  border-radius: 20px; padding: 2px 10px;
+  font-size: .82rem; font-weight: 700;
+}
+.cart-panel-body { padding: 14px; }
+.cart-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: .85rem;
+}
+.cart-row:last-child { border-bottom: none; }
+.qty-btn {
+  width: 36px; height: 36px; border: none; border-radius: 50%;
+  background: #e5e7eb; cursor: pointer; font-size: .9rem;
+  transition: all .15s; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+}
+.qty-btn:active { background: var(--c-primary); color: #fff; }
+
+/* ─── Desktop checkout CTA ─── */
+.checkout-cta-btn {
+  background: var(--c-green); color: #fff; border: none;
+  border-radius: 14px; padding: 14px 20px; font-weight: 700;
+  font-size: .95rem; cursor: pointer; transition: all .2s;
+  box-shadow: 0 4px 14px rgba(22,163,74,.4); touch-action: manipulation;
+}
+.checkout-cta-btn:active { background: #15803d; transform: translateY(-1px); }
+
+/* ─── Floating cart FAB (mobile) ─── */
+#cart-fab {
+  position: fixed; bottom: 24px; left: 20px; z-index: 1050;
+  width: 62px; height: 62px; border-radius: 50%;
+  background: var(--c-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(124,58,237,.5);
+  cursor: pointer; touch-action: manipulation;
+  font-size: 1.3rem;
+  transition: transform .2s, box-shadow .2s;
+}
+#cart-fab:active { transform: scale(.92); }
+#cart-fab-count {
+  position: absolute; top: -4px; right: -4px;
+  background: #ef4444; color: #fff;
+  min-width: 22px; height: 22px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 800; padding: 0 5px;
+  border: 2px solid #fff;
+}
+#cart-fab-total {
+  position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+  background: #1e1b4b; color: #fff;
+  font-size: .65rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+@media(min-width: 992px) { #cart-fab { display: none !important; } }
+
+/* ─── Page scroll fix ─── */
+body { touch-action: pan-y; }
+
+/* ─── Utility ─── */
+.flex-1 { flex: 1; }
+.opt-label { font-size: .75rem; color: #9ca3af; font-weight: 400; }
+
+/* ─── CTA buttons ─── */
+.next-btn {
+  width: 100%; background: var(--c-primary); color: #fff; border: none;
+  border-radius: 16px; padding: 16px; font-weight: 800; font-size: 1rem; cursor: pointer;
+  min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  box-shadow: 0 4px 16px rgba(67,56,202,.35); touch-action: manipulation;
+}
+.next-btn:active { background: #3730a3; transform: scale(.98); }
+.submit-btn {
+  width: 100%; background: var(--c-green); color: #fff; border: none;
+  border-radius: 16px; padding: 16px; font-weight: 800; font-size: 1rem; cursor: pointer;
+  min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  box-shadow: 0 4px 16px rgba(22,163,74,.4); touch-action: manipulation;
+}
+.submit-btn:active { background: #15803d; transform: scale(.98); }
+.submit-btn:disabled { background: #9ca3af; box-shadow: none; transform: none; cursor: not-allowed; }
+
+/* ─── Floating add bubble ─── */
+.add-bubble {
+  position: fixed; background: var(--c-green); color: #fff;
+  border-radius: 50%; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .85rem; pointer-events: none; z-index: 9999;
+  box-shadow: 0 2px 8px rgba(22,163,74,.5);
+}
+@keyframes countBounce { 0%{transform:scale(1)}40%{transform:scale(1.5)}70%{transform:scale(.9)}100%{transform:scale(1)} }
+.cart-count-bounce { animation: countBounce .4s ease; }
+
+/* ─── Body padding: account for sticky bar + extra space for last item row ─── */
+@media(max-width: 991px) { body { padding-bottom: 120px; } }
+
+/* ─── No horizontal scroll ─── */
+html { overflow-x: clip; }
+body { overflow-x: hidden; overflow-y: auto; }
+
+/* ─── Option groups in item sheet ─── */
+#item-sheet-options { margin-top: 14px; }
+.opt-group {
+  margin-bottom: 14px; background: #f9fafb; border-radius: 12px; padding: 12px 14px;
+}
+.opt-group-head {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px; direction: rtl;
+}
+.opt-group-name {
+  font-size: .88rem; font-weight: 700; color: #1e1b4b;
+}
+.opt-required-badge {
+  font-size: .65rem; font-weight: 700; color: #dc2626; background: #fef2f2;
+  padding: 2px 8px; border-radius: 10px; flex-shrink: 0;
+}
+.opt-choice-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0; cursor: pointer; direction: rtl;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  min-height: 44px;
+}
+.opt-choice-row:last-child { border-bottom: none; }
+.opt-choice-input {
+  width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--c-primary);
+  cursor: pointer;
+}
+.opt-choice-label {
+  flex: 1; font-size: .85rem; font-weight: 500; color: #374151; cursor: pointer;
+}
+.opt-choice-price {
+  font-size: .78rem; font-weight: 700; color: var(--c-primary); flex-shrink: 0; direction: ltr;
+}
+.ingredient-row.ingredient-excluded .ingredient-label {
+  text-decoration: line-through; color: #9ca3af;
+}
+.ingredient-row.ingredient-excluded::after {
+  content: 'ללא'; font-size: .7rem; color: #ef4444; font-weight: 600; flex-shrink: 0;
+}
+
+/* ─── Deal Picker Overlay ─── */
+#deal-picker-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9998;
+  backdrop-filter: blur(4px);
+}
+#deal-picker-sheet {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #f8f8fb; display: flex; flex-direction: column;
+  animation: dealPickerSlideUp .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes dealPickerSlideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.deal-picker-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 20px 14px; flex-shrink: 0;
+  background: #fff; border-bottom: 1px solid #eee;
+}
+.deal-picker-close {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: #f3f4f6; color: #374151; font-size: 1rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .15s;
+}
+.deal-picker-close:active { background: #e5e7eb; }
+.deal-picker-header-info { flex: 1; min-width: 0; }
+.deal-picker-title {
+  font-weight: 800; font-size: 1.15rem; color: #1e1b4b;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.deal-picker-subtitle {
+  font-size: .8rem; color: #6b7280; margin-top: 2px;
+}
+.deal-picker-progress-wrap {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; background: #fff; flex-shrink: 0;
+}
+.deal-picker-progress-bar {
+  flex: 1; height: 6px; background: #e5e7eb; border-radius: 3px;
+  overflow: hidden;
+}
+.deal-picker-progress-fill {
+  height: 100%; width: 0%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--c-primary), #818cf8);
+  transition: width .35s cubic-bezier(.22,1,.36,1);
+}
+.deal-picker-counter {
+  font-weight: 800; font-size: .85rem; color: var(--c-primary);
+  flex-shrink: 0; min-width: 36px; text-align: center;
+}
+.deal-picker-body {
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.deal-picker-loading {
+  text-align: center; padding: 60px 0; color: #9ca3af;
+}
+.deal-pick-item {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border-radius: 16px; padding: 10px 12px;
+  border: 2px solid transparent; cursor: pointer;
+  transition: all .2s; user-select: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  min-height: 72px;
+}
+.deal-pick-item:active { transform: scale(.985); }
+.deal-pick-item.pick-maxed {
+  opacity: .45; pointer-events: none;
+}
+.deal-pick-item.selected {
+  border-color: var(--c-primary);
+  background: #f0eeff;
+  box-shadow: 0 0 0 1px rgba(67,56,202,.15), 0 2px 8px rgba(67,56,202,.1);
+}
+.deal-pick-thumb {
+  width: 56px; height: 56px; border-radius: 12px; overflow: hidden;
+  flex-shrink: 0; background: #f3f4f6; position: relative;
+}
+.deal-pick-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.deal-pick-thumb-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: #d1d5db; font-size: 1.2rem; background: #f3f4f6;
+}
+.deal-pick-info {
+  flex: 1; min-width: 0;
+}
+.deal-pick-name {
+  font-weight: 700; font-size: .9rem; color: #1e1b4b;
+  line-height: 1.3; margin-bottom: 2px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.deal-pick-desc {
+  font-size: .73rem; color: #9ca3af; line-height: 1.3; margin-top: 1px;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.deal-pick-price {
+  font-size: .78rem; color: #9ca3af; text-decoration: line-through;
+}
+.deal-pick-thumb { cursor: zoom-in; }
+.deal-pick-action {
+  flex-shrink: 0; display: flex; align-items: center;
+}
+.deal-pick-check {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2.5px solid #d1d5db; background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; color: transparent; font-size: .75rem;
+}
+.deal-pick-item.selected .deal-pick-check {
+  border-color: var(--c-primary); background: var(--c-primary); color: #fff;
+}
+.deal-pick-qty-controls {
+  display: flex; align-items: center; gap: 2px;
+  background: #f3f4f6; border-radius: 24px; padding: 3px;
+}
+.deal-pick-item.selected .deal-pick-qty-controls {
+  background: rgba(67,56,202,.08);
+}
+.pick-qty-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: var(--c-primary); color: #fff; font-size: 1.1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: opacity .15s; line-height: 1;
+}
+.pick-qty-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+.pick-qty-btn:active:not(:disabled) { opacity: .8; }
+.pick-qty-count {
+  font-weight: 800; font-size: .95rem; min-width: 28px; text-align: center;
+  color: #1e1b4b;
+}
+.deal-picker-footer {
+  padding: 12px 20px 16px; border-top: 1px solid #e5e7eb;
+  flex-shrink: 0; background: #fff;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.deal-picker-footer-price {
+  text-align: center; font-size: .85rem; color: #6b7280;
+}
+.deal-picker-footer-price strong {
+  color: #16a34a; font-size: 1.1rem;
+}
+.deal-picker-confirm {
+  width: 100%; padding: 15px; border: none; border-radius: 14px;
+  background: var(--c-primary); color: #fff;
+  font-weight: 700; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.deal-picker-confirm:disabled {
+  background: #d1d5db; cursor: not-allowed;
+}
+.deal-picker-confirm:not(:disabled):active { transform: scale(.98); }
+
+/* ─── Deal Item Detail (enlarged view) ─── */
+.deal-item-detail {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.deal-detail-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,.5);
+  animation: dealDetailFadeIn .2s ease;
+}
+@keyframes dealDetailFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.deal-detail-card {
+  position: relative; background: #fff;
+  border-radius: 20px 20px 0 0; overflow: hidden;
+  max-height: 85vh; display: flex; flex-direction: column;
+  animation: dealDetailSlideUp .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes dealDetailSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.deal-detail-close {
+  position: absolute; top: 12px; right: 12px; z-index: 5;
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,.45); color: #fff; font-size: .95rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px); transition: background .15s;
+}
+.deal-detail-close:active { background: rgba(0,0,0,.65); }
+.deal-detail-img-wrap {
+  width: 100%; max-height: 280px; overflow: hidden; background: #eee;
+  flex-shrink: 0;
+}
+.deal-detail-img-wrap img {
+  width: 100%; height: 280px; object-fit: cover; display: block;
+}
+.deal-detail-img-placeholder {
+  width: 100%; height: 180px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb); color: #9ca3af; font-size: 3rem;
+}
+.deal-detail-body {
+  padding: 20px; overflow-y: auto; flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+.deal-detail-name {
+  font-weight: 800; font-size: 1.3rem; color: #1e1b4b;
+  margin-bottom: 4px; line-height: 1.3;
+}
+.deal-detail-price {
+  font-size: 1rem; color: #9ca3af; text-decoration: line-through;
+  margin-bottom: 14px;
+}
+.deal-detail-desc {
+  font-size: .92rem; color: #374151; line-height: 1.6;
+  margin-bottom: 16px;
+}
+.deal-detail-ingredients-label {
+  font-weight: 700; font-size: .82rem; color: #6b7280;
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 8px;
+}
+.deal-detail-ingredients {
+  display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 8px;
+}
+.deal-detail-ing-chip {
+  background: #f3f4f6; color: #374151; font-size: .8rem;
+  padding: 5px 12px; border-radius: 20px; font-weight: 500;
+}
+.deal-pick-expand {
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: #f3f4f6; color: #6b7280; font-size: .8rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-inline-end: 6px; transition: all .15s;
+}
+.deal-pick-expand:active { background: #e5e7eb; transform: scale(.92); }
+</style>
+
+<script>
+const ENABLE_DELIVERY = {{ 'true' if enable_delivery else 'false' }};
+const ENABLE_PICKUP = {{ 'true' if enable_pickup else 'false' }};
+const IS_HE = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl');
+let cart = {};
+let orderType = '{{ session.get("order_type", "delivery") }}';
+
+function saveCartToStorage() {
+  try { localStorage.setItem('rai_cart', JSON.stringify(cart)); localStorage.setItem('rai_cart_ts', Date.now().toString()); } catch(e) {}
+}
+function loadCartFromStorage() {
+  try {
+    var ts = parseInt(localStorage.getItem('rai_cart_ts') || '0');
+    if (Date.now() - ts > 3600000) { localStorage.removeItem('rai_cart'); localStorage.removeItem('rai_cart_ts'); return; }
+    var saved = localStorage.getItem('rai_cart');
+    if (saved) { cart = JSON.parse(saved); }
+  } catch(e) {}
+}
+loadCartFromStorage();
+
+{% if reorder_data %}
+(function() {
+    var rd = {{ reorder_data|tojson }};
+    if (rd && rd.items && rd.items.length) {
+        cart = {};
+        for (var i = 0; i < rd.items.length; i++) {
+            var it = rd.items[i];
+            var key = 'reorder_' + i + '_' + (it.menu_item_id || 0);
+            var opts = [];
+            if (it.options_json) {
+                try {
+                    var parsed = typeof it.options_json === 'string' ? JSON.parse(it.options_json) : it.options_json;
+                    if (Array.isArray(parsed)) opts = parsed;
+                } catch(e) {}
+            }
+            cart[key] = {
+                id: it.menu_item_id,
+                nameHe: it.name_he || '',
+                nameEn: it.name_en || '',
+                price: it.price || 0,
+                qty: it.quantity || 1,
+                instructions: it.special_instructions || '',
+                options: opts,
+                excludedIngredients: []
+            };
+        }
+        saveCartToStorage();
+        if (rd.order_type === 'delivery') orderType = 'delivery';
+        else orderType = 'takeaway';
+    }
+})();
+{% endif %}
+
+const ITEM_OPTIONS = {
+{% for cat in categories %}
+  {% for item in cat._order_items %}
+    {% if item.option_groups | selectattr('is_active') | list %}
+  '{{ item.id }}': [
+      {% for g in item.option_groups if g.is_active %}
+    {id:{{ g.id }}, name_he:'{{ g.name_he | e }}', name_en:'{{ g.name_en | e }}',
+     type:'{{ g.selection_type }}', required:{{ 'true' if g.is_required else 'false' }},
+     min:{{ g.min_selections }}, max:{{ g.max_selections }},
+     choices:[
+        {% for c in g.choices if c.is_available %}
+       {id:{{ c.id }}, name_he:'{{ c.name_he | e }}', name_en:'{{ c.name_en | e }}',
+        price:{{ c.price_modifier }}, def:{{ 'true' if c.is_default else 'false' }}},
+        {% endfor %}
+     ]},
+      {% endfor %}
+  ],
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+};
+
+const ITEM_PRICES = {
+{% for cat in categories %}
+  {% for item in cat._order_items %}
+    {% set sorted_prices = item.price_options | sort(attribute='display_order') | list %}
+    {% if sorted_prices %}
+  '{{ item.id }}': [
+      {% for pv in sorted_prices %}
+    {id:{{ pv.id }}, name_he:'{{ pv.size_name_he | e }}', name_en:'{{ pv.size_name_en | e }}',
+     price:{{ pv.price }}, def:{{ 'true' if pv.is_default else 'false' }}},
+      {% endfor %}
+  ],
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+};
+
+const COMBO_DATA = {
+{% for cat in categories %}
+  {% for item in cat._order_items %}
+    {% if item.is_combo and item.combo_items_json %}
+  '{{ item.id }}': {{ item.combo_items_json | safe }},
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+};
+
+const MENU_ITEM_NAMES = {
+{% for cat in categories %}
+  {% for item in cat._order_items %}
+  {{ item.id }}: {he:'{{ item.name_he | e }}', en:'{{ item.name_en | e }}', price:{{ item._branch_price if item._branch_price is defined else (item.base_price or 0) }}},
+  {% endfor %}
+{% endfor %}
+};
+
+let _modalSelectedOptions = {};
+let _comboSelections = {};
+
+/* ─── Order type toggle ─── */
+function setOrderType(type) {
+  orderType = type;
+  document.querySelectorAll('.otype-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === type);
+  });
+  // Toggle info banners on the main page
+  const db = document.getElementById('delivery-banner');
+  const pb = document.getElementById('pickup-banner');
+  if (db) db.style.display = type === 'delivery' ? '' : 'none';
+  if (pb) pb.style.display = type === 'takeaway' ? '' : 'none';
+  renderCart();
+}
+
+/* ─── Cart ─── */
+/* ─── Item detail bottom sheet ─── */
+let _modalId = null, _modalQty = 1, _modalPrice = 0;
+
+function openItemModal(card) {
+  _modalId    = card.dataset.itemId;
+  _modalPrice = parseFloat(card.dataset.price);
+  _modalQty   = (cart[_modalId] && cart[_modalId].qty > 0) ? cart[_modalId].qty : 1;
+  _comboQtys  = {};
+  _comboSelections = {};
+
+  const name  = IS_HE ? card.dataset.nameHe  : (card.dataset.nameEn  || card.dataset.nameHe);
+  const desc  = IS_HE ? card.dataset.descriptionHe : (card.dataset.descriptionEn || card.dataset.descriptionHe);
+  const ingredients = IS_HE ? (card.dataset.ingredientsHe || '') : (card.dataset.ingredientsEn || card.dataset.ingredientsHe || '');
+  const image = card.dataset.imageHero || card.dataset.image || '';
+
+  document.getElementById('item-sheet-name').textContent = name;
+  document.getElementById('item-sheet-desc').textContent = desc || '';
+  var ingEl = document.getElementById('item-sheet-ingredients');
+  if (ingEl) {
+    ingEl.textContent = '';
+    ingEl.style.display = 'none';
+  }
+  var heroEl = document.getElementById('item-sheet-hero');
+  var img = document.getElementById('item-sheet-img');
+  delete img.dataset.tried;
+  var _placeholderUrl = '{{ url_for('order_page.static', filename='dish-placeholder.png') }}';
+  var _menuImageBase = '{{ url_for('order_page.menu_image', item_id=0) }}'.replace('/0', '/');
+  if (image && image !== _placeholderUrl) {
+    heroEl.style.display = '';
+    img.onerror = function() {
+      if (!this.dataset.tried && _modalId) {
+        this.dataset.tried = '1';
+        this.src = _menuImageBase + _modalId;
+      } else {
+        heroEl.style.display = 'none';
+        this.onerror = null;
+      }
+    };
+    img.src = image;
+  } else {
+    heroEl.style.display = 'none';
+  }
+
+  _modalSelectedOptions = {};
+  _comboSelections = {};
+  const existingInCart = cart[_modalId];
+  const isCombo = card.dataset.isCombo === '1';
+  const optContainer = document.getElementById('item-sheet-options');
+  let html = '';
+
+  if (isCombo) {
+    var comboSlots = COMBO_DATA[_modalId] || [];
+    if (comboSlots.length) {
+      comboSlots.forEach(function(slot, si) {
+        var slotName = IS_HE ? slot.slot_name_he : (slot.slot_name_en || slot.slot_name_he);
+        var isSingle = slot.max_select <= 1;
+        html += '<div class="opt-group combo-slot" data-slot-idx="' + si + '">';
+        html += '<div class="opt-group-head"><span class="opt-group-name">' + slotName + '</span>';
+        var maxS = slot.max_select || slot.items.length;
+        html += '<span class="combo-slot-counter warn" id="combo-counter-' + si + '">0/' + maxS + '</span>';
+        if (slot.min_select > 0) html += '<span class="opt-required-badge">{{ "חובה" if language == "he" else "Required" }}</span>';
+        html += '</div>';
+        if (isSingle) {
+          slot.items.forEach(function(ci) {
+            var mi = MENU_ITEM_NAMES[ci.menu_item_id];
+            if (!mi) return;
+            var cName = IS_HE ? mi.he : mi.en;
+            var priceStr = ci.price_modifier > 0 ? '+₪' + ci.price_modifier : '';
+            html += '<label class="opt-choice-row">';
+            html += '<input type="radio" name="combo_slot_' + si + '" value="' + ci.menu_item_id + '" class="opt-choice-input" data-slot="' + si + '" data-mid="' + ci.menu_item_id + '" data-price="' + ci.price_modifier + '"';
+            html += ' onchange="onComboChange()">';
+            html += '<span class="opt-choice-label">' + cName + '</span>';
+            if (priceStr) html += '<span class="opt-choice-price">' + priceStr + '</span>';
+            html += '</label>';
+          });
+        } else {
+          slot.items.forEach(function(ci) {
+            var mi = MENU_ITEM_NAMES[ci.menu_item_id];
+            if (!mi) return;
+            var cName = IS_HE ? mi.he : mi.en;
+            var priceStr = ci.price_modifier > 0 ? '+₪' + ci.price_modifier : '';
+            html += '<div class="combo-qty-row" data-slot="' + si + '" data-mid="' + ci.menu_item_id + '" data-price="' + ci.price_modifier + '">';
+            html += '<div class="combo-qty-info"><div class="combo-qty-name">' + cName + '</div>';
+            if (priceStr) html += '<div class="combo-qty-price">' + priceStr + '</div>';
+            html += '</div>';
+            html += '<div class="combo-qty-ctrl">';
+            html += '<button type="button" class="combo-qty-btn" onclick="comboItemQty(' + si + ',' + ci.menu_item_id + ',-1)">−</button>';
+            html += '<span class="combo-qty-val" id="combo-qty-' + si + '-' + ci.menu_item_id + '">0</span>';
+            html += '<button type="button" class="combo-qty-btn" onclick="comboItemQty(' + si + ',' + ci.menu_item_id + ',1)">+</button>';
+            html += '</div></div>';
+          });
+        }
+        html += '</div>';
+      });
+    }
+  } else {
+    var priceVariants = ITEM_PRICES[_modalId] || [];
+    if (priceVariants.length > 0) {
+      var defaultPv = priceVariants.find(function(p) { return p.def; }) || priceVariants[0];
+      _modalPrice = defaultPv.price;
+      html += '<div class="opt-group" data-gid="pv">';
+      html += '<div class="opt-group-head"><span class="opt-group-name">' + (IS_HE ? 'בחר אפשרות' : 'Choose option') + '</span>';
+      html += '<span class="opt-required-badge">{{ "חובה" if language == "he" else "Required" }}</span></div>';
+      priceVariants.forEach(function(pv, idx) {
+        var pvName = IS_HE ? pv.name_he : pv.name_en;
+        var isChecked = (pv.id === defaultPv.id);
+        html += '<label class="opt-choice-row">';
+        html += '<input type="radio" name="price_variant" value="' + pv.id + '" class="opt-choice-input" data-pv-price="' + pv.price + '"';
+        if (isChecked) html += ' checked';
+        html += ' onchange="onPriceVariantChange()">';
+        html += '<span class="opt-choice-label">' + pvName + '</span>';
+        html += '<span class="opt-choice-price">₪' + Math.round(pv.price) + '</span>';
+        html += '</label>';
+      });
+      html += '</div>';
+    }
+
+    const groups = ITEM_OPTIONS[_modalId] || [];
+    if (groups.length) {
+      groups.forEach(g => {
+        const gName = IS_HE ? g.name_he : g.name_en;
+        const isMulti = (g.type === 'multi' || g.type === 'multiple');
+        const inputType = isMulti ? 'checkbox' : 'radio';
+        html += '<div class="opt-group" data-gid="' + g.id + '">';
+        html += '<div class="opt-group-head"><span class="opt-group-name">' + gName + '</span>';
+        if (g.required) html += '<span class="opt-required-badge">{{ "חובה" if language == "he" else "Required" }}</span>';
+        if (isMulti && g.max > 0) html += '<span class="opt-required-badge" style="background:#e0e7ff;color:#4338ca;">' + (IS_HE ? 'עד ' + g.max : 'Up to ' + g.max) + '</span>';
+        html += '</div>';
+        g.choices.forEach(c => {
+          const cName = IS_HE ? c.name_he : c.name_en;
+          const priceStr = c.price > 0 ? '+₪' + c.price : (c.price < 0 ? '-₪' + Math.abs(c.price) : '');
+          const isChecked = existingInCart && existingInCart.options
+            ? existingInCart.options.some(o => o.choice_id === c.id)
+            : c.def;
+          html += '<label class="opt-choice-row">';
+          html += '<input type="' + inputType + '" name="opt_g_' + g.id + '" value="' + c.id + '" class="opt-choice-input" data-gid="' + g.id + '" data-cid="' + c.id + '" data-price="' + c.price + '"';
+          if (isChecked) html += ' checked';
+          html += ' onchange="onOptionChange(this)">';
+          html += '<span class="opt-choice-label">' + cName + '</span>';
+          if (priceStr) html += '<span class="opt-choice-price">' + priceStr + '</span>';
+          html += '</label>';
+        });
+        html += '</div>';
+      });
+    }
+
+    var rawIngredients = card.dataset.ingredientsHe || '';
+    var ingredientsList = rawIngredients.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+    if (ingredientsList.length > 0) {
+      var existingExcluded = (existingInCart && existingInCart.excluded_ingredients) ? existingInCart.excluded_ingredients : [];
+      html += '<div class="opt-group" data-gid="ingredients">';
+      html += '<div class="opt-group-head"><span class="opt-group-name">' + (IS_HE ? 'רכיבים' : 'Ingredients') + '</span></div>';
+      ingredientsList.forEach(function(ing, idx) {
+        var safeIng = ing.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        var isExcluded = existingExcluded.indexOf(ing) !== -1;
+        html += '<label class="opt-choice-row ingredient-row' + (isExcluded ? ' ingredient-excluded' : '') + '">';
+        html += '<input type="checkbox" name="ingredient_' + idx + '" value="' + safeIng + '" class="opt-choice-input ingredient-checkbox" data-ingredient="' + safeIng + '"';
+        if (!isExcluded) html += ' checked';
+        html += ' onchange="onIngredientToggle(this)">';
+        html += '<span class="opt-choice-label ingredient-label">' + safeIng + '</span>';
+        html += '</label>';
+      });
+      html += '</div>';
+    }
+  }
+  optContainer.innerHTML = html;
+
+  if (isCombo) { onComboChange(); } else { onOptionChange(); }
+  _updateModalQty();
+  var addBtn = document.getElementById('item-sheet-add');
+  if (addBtn) {
+    addBtn.style.background = '';
+    addBtn.innerHTML = '<span>{{ "הוסף לסל" if language == "he" else "Add to cart" }}</span><i class="fas fa-arrow-left"></i><span id="item-sheet-total">₪' + (_modalQty * _modalPrice).toFixed(0) + '</span>';
+  }
+  document.getElementById('item-overlay').classList.add('active');
+  document.getElementById('item-sheet').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function onPriceVariantChange() {
+  var sel = document.querySelector('#item-sheet-options input[name="price_variant"]:checked');
+  if (sel) _modalPrice = parseFloat(sel.dataset.pvPrice);
+  _updateModalQty();
+}
+
+function getSelectedOptionsPrice() {
+  let extra = 0;
+  document.querySelectorAll('#item-sheet-options .opt-choice-input:checked').forEach(inp => {
+    if (inp.name === 'price_variant') return;
+    extra += parseFloat(inp.dataset.price) || 0;
+  });
+  return extra;
+}
+
+var _comboQtys = {};
+
+function getComboExtra() {
+  let extra = 0;
+  Object.values(_comboSelections).forEach(function(arr) {
+    arr.forEach(function(s) { extra += s.price_modifier; });
+  });
+  return extra;
+}
+
+function comboItemQty(slotIdx, menuItemId, delta) {
+  var comboSlots = COMBO_DATA[_modalId] || [];
+  var slot = comboSlots[slotIdx];
+  if (!slot) return;
+  var maxS = slot.max_select || 99;
+  if (!_comboQtys[slotIdx]) _comboQtys[slotIdx] = {};
+  var cur = _comboQtys[slotIdx][menuItemId] || 0;
+  var totalInSlot = 0;
+  Object.values(_comboQtys[slotIdx]).forEach(function(v) { totalInSlot += v; });
+  var newVal = cur + delta;
+  if (newVal < 0) newVal = 0;
+  if (delta > 0 && totalInSlot >= maxS) return;
+  _comboQtys[slotIdx][menuItemId] = newVal;
+  var el = document.getElementById('combo-qty-' + slotIdx + '-' + menuItemId);
+  if (el) el.textContent = newVal;
+  onComboChange();
+}
+
+function onComboChange() {
+  _comboSelections = {};
+  var comboSlots = COMBO_DATA[_modalId] || [];
+  var extra = 0;
+  comboSlots.forEach(function(slot, si) {
+    _comboSelections[si] = [];
+    var isSingle = slot.max_select <= 1;
+    var maxS = slot.max_select || slot.items.length;
+    if (isSingle) {
+      var checked = document.querySelectorAll('#item-sheet-options input[data-slot="' + si + '"]:checked');
+      checked.forEach(function(inp) {
+        var mid = parseInt(inp.dataset.mid);
+        var priceMod = parseFloat(inp.dataset.price) || 0;
+        var mi = MENU_ITEM_NAMES[mid];
+        _comboSelections[si].push({
+          slot_index: si, slot_name_he: slot.slot_name_he, slot_name_en: slot.slot_name_en,
+          menu_item_id: mid, item_name_he: mi ? mi.he : '', item_name_en: mi ? mi.en : '',
+          price_modifier: priceMod
+        });
+        extra += priceMod;
+      });
+    } else {
+      var slotQtys = _comboQtys[si] || {};
+      slot.items.forEach(function(ci) {
+        var qty = slotQtys[ci.menu_item_id] || 0;
+        var mi = MENU_ITEM_NAMES[ci.menu_item_id];
+        for (var q = 0; q < qty; q++) {
+          _comboSelections[si].push({
+            slot_index: si, slot_name_he: slot.slot_name_he, slot_name_en: slot.slot_name_en,
+            menu_item_id: ci.menu_item_id, item_name_he: mi ? mi.he : '', item_name_en: mi ? mi.en : '',
+            price_modifier: ci.price_modifier
+          });
+          extra += ci.price_modifier;
+        }
+      });
+    }
+    var totalInSlot = _comboSelections[si].length;
+    var counter = document.getElementById('combo-counter-' + si);
+    if (counter) {
+      counter.textContent = totalInSlot + '/' + maxS;
+      counter.className = 'combo-slot-counter ' + (totalInSlot >= (slot.min_select || 0) && totalInSlot <= maxS ? 'ok' : 'warn');
+    }
+  });
+  _updateModalQty();
+}
+
+function onOptionChange(changedInput) {
+  _modalSelectedOptions = {};
+  const groups = ITEM_OPTIONS[_modalId] || [];
+  groups.forEach(g => {
+    const isMulti = (g.type === 'multi' || g.type === 'multiple');
+    const checked = document.querySelectorAll('#item-sheet-options input[data-gid="' + g.id + '"]:checked');
+    if (isMulti && g.max > 0 && checked.length > g.max) {
+      if (changedInput && changedInput.dataset && String(changedInput.dataset.gid) === String(g.id)) {
+        changedInput.checked = false;
+      }
+      var enforced = document.querySelectorAll('#item-sheet-options input[data-gid="' + g.id + '"]:checked');
+      _modalSelectedOptions[g.id] = [];
+      enforced.forEach(inp => {
+        const c = g.choices.find(ch => ch.id === parseInt(inp.dataset.cid));
+        if (c) _modalSelectedOptions[g.id].push({
+          group_id: g.id, group_name_he: g.name_he, group_name_en: g.name_en,
+          choice_id: c.id, choice_name_he: c.name_he, choice_name_en: c.name_en,
+          price_modifier: c.price
+        });
+      });
+    } else {
+      _modalSelectedOptions[g.id] = [];
+      checked.forEach(inp => {
+        const c = g.choices.find(ch => ch.id === parseInt(inp.dataset.cid));
+        if (c) _modalSelectedOptions[g.id].push({
+          group_id: g.id, group_name_he: g.name_he, group_name_en: g.name_en,
+          choice_id: c.id, choice_name_he: c.name_he, choice_name_en: c.name_en,
+          price_modifier: c.price
+        });
+      });
+    }
+  });
+  _updateModalQty();
+}
+
+function _updateModalQty() {
+  document.getElementById('item-sheet-qty').textContent = _modalQty;
+  var card = document.querySelector('[data-item-id="' + _modalId + '"]');
+  var isCombo = card && card.dataset.isCombo === '1';
+  var unitPrice = _modalPrice + (isCombo ? getComboExtra() : getSelectedOptionsPrice());
+  document.getElementById('item-sheet-total').textContent = '₪' + (unitPrice * _modalQty).toFixed(0);
+}
+
+function modalChangeQty(delta) {
+  var card = document.querySelector('[data-item-id="' + _modalId + '"]');
+  var inCart = false;
+  if (card && card.dataset.isCombo === '1') {
+    Object.keys(cart).forEach(function(k) { if (cart[k].id == _modalId && cart[k].is_combo) inCart = true; });
+  } else {
+    inCart = !!cart[_modalId];
+  }
+  _modalQty = Math.max(inCart ? 0 : 1, _modalQty + delta);
+  _updateModalQty();
+  var addBtn = document.getElementById('item-sheet-add');
+  if (addBtn) {
+    if (_modalQty === 0) {
+      addBtn.innerHTML = '<i class="fas fa-trash-alt me-2"></i><span>{{ "הסר מהסל" if language == "he" else "Remove" }}</span>';
+      addBtn.style.background = '#dc2626';
+    } else {
+      addBtn.innerHTML = '<span>{{ "הוסף לסל" if language == "he" else "Add to cart" }}</span><i class="fas fa-arrow-left"></i><span id="item-sheet-total">₪' + (_modalQty * (_modalPrice + (card && card.dataset.isCombo === '1' ? getComboExtra() : getSelectedOptionsPrice()))).toFixed(0) + '</span>';
+      addBtn.style.background = '';
+    }
+  }
+}
+
+function closeItemModal() {
+  document.getElementById('item-overlay').classList.remove('active');
+  document.getElementById('item-sheet').classList.remove('open');
+  document.body.style.overflow = '';
+  _modalId = null;
+}
+
+var _vw = { scale: 1, panX: 0, panY: 0, open: false, hintShown: false };
+
+function _applyVT(anim) {
+  var img = document.getElementById('img-viewer-src');
+  if (!img) return;
+  if (anim) {
+    img.style.transition = 'transform .28s cubic-bezier(.25,.8,.25,1)';
+    setTimeout(function() { img.style.transition = ''; }, 300);
+  } else {
+    img.style.transition = '';
+  }
+  img.style.transform = 'scale(' + _vw.scale + ') translate(' + (_vw.panX / _vw.scale) + 'px,' + (_vw.panY / _vw.scale) + 'px)';
+}
+
+function openImageViewer(src) {
+  if (!src) return;
+  var v = document.getElementById('img-viewer');
+  var img = document.getElementById('img-viewer-src');
+  _vw.scale = 1; _vw.panX = 0; _vw.panY = 0; _vw.open = true;
+  img.style.opacity = '0';
+  img.style.transform = 'scale(0.85)';
+  img.onload = function() {
+    requestAnimationFrame(function() {
+      img.style.transition = 'transform .3s cubic-bezier(.25,.8,.25,1), opacity .25s ease';
+      img.style.opacity = '1';
+      img.style.transform = 'scale(1)';
+      setTimeout(function() { img.style.transition = ''; }, 320);
+    });
+  };
+  img.onerror = function() { closeImageViewer(); };
+  img.src = src;
+  v.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  var hint = document.getElementById('img-viewer-hint');
+  hint.classList.remove('hidden');
+  if (!_vw.hintShown) {
+    _vw.hintShown = true;
+    setTimeout(function() { hint.classList.add('hidden'); }, 3000);
+  } else {
+    setTimeout(function() { hint.classList.add('hidden'); }, 1200);
+  }
+}
+
+function closeImageViewer() {
+  var v = document.getElementById('img-viewer');
+  if (!v.classList.contains('open')) return;
+  var bg = document.getElementById('img-viewer-bg');
+  var img = document.getElementById('img-viewer-src');
+  bg.style.opacity = '0';
+  img.style.transition = 'transform .2s ease, opacity .2s ease';
+  img.style.opacity = '0';
+  img.style.transform = 'scale(' + (_vw.scale * 0.85) + ') translate(' + (_vw.panX / _vw.scale) + 'px,' + ((_vw.panY + 40) / _vw.scale) + 'px)';
+  setTimeout(function() {
+    v.classList.remove('open');
+    img.src = '';
+    img.onload = null;
+    img.onerror = null;
+    img.style.transition = '';
+    img.style.opacity = '';
+    img.style.transform = '';
+    bg.style.opacity = '';
+    _vw.open = false;
+    _vw.scale = 1; _vw.panX = 0; _vw.panY = 0;
+    var sheetOpen = document.getElementById('item-sheet') && document.getElementById('item-sheet').classList.contains('open');
+    if (!sheetOpen) document.body.style.overflow = '';
+  }, 220);
+}
+
+(function() {
+  var wrap, img;
+  var _t0 = {}, _pinch0 = 0, _s0 = 1, _panX0 = 0, _panY0 = 0;
+  var _lastTap = 0, _swiping = false;
+
+  function init() {
+    wrap = document.getElementById('img-viewer-wrap');
+    img = document.getElementById('img-viewer-src');
+    document.getElementById('img-viewer-close').addEventListener('click', function(e) {
+      e.stopPropagation(); closeImageViewer();
+    });
+    document.getElementById('img-viewer-bg').addEventListener('click', function() {
+      if (_vw.open && _vw.scale <= 1.05) closeImageViewer();
+    });
+    wrap.addEventListener('touchstart', onTS, { passive: false });
+    wrap.addEventListener('touchmove', onTM, { passive: false });
+    wrap.addEventListener('touchend', onTE, { passive: false });
+    wrap.addEventListener('wheel', onWheel, { passive: false });
+    wrap.addEventListener('mousedown', onMD);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && _vw.open) closeImageViewer();
+    });
+  }
+
+  function dist(a, b) {
+    var dx = b.clientX - a.clientX, dy = b.clientY - a.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  function mid(a, b) {
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  }
+
+  function onTS(e) {
+    if (!_vw.open) return;
+    e.preventDefault();
+    var hint = document.getElementById('img-viewer-hint');
+    if (hint) hint.classList.add('hidden');
+
+    if (e.touches.length === 2) {
+      _pinch0 = dist(e.touches[0], e.touches[1]);
+      _s0 = _vw.scale;
+      _panX0 = _vw.panX; _panY0 = _vw.panY;
+      _t0 = mid(e.touches[0], e.touches[1]);
+      _swiping = false;
+    } else if (e.touches.length === 1) {
+      var now = Date.now();
+      if (now - _lastTap < 300) {
+        _doubleTap(e.touches[0].clientX, e.touches[0].clientY);
+        _lastTap = 0;
+        return;
+      }
+      _lastTap = now;
+      _t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      _panX0 = _vw.panX; _panY0 = _vw.panY;
+      _swiping = _vw.scale <= 1.05;
+    }
+  }
+
+  function onTM(e) {
+    if (!_vw.open) return;
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      var d = dist(e.touches[0], e.touches[1]);
+      var m = mid(e.touches[0], e.touches[1]);
+      _vw.scale = Math.max(1, Math.min(5, _s0 * (d / _pinch0)));
+      _vw.panX = _panX0 + (m.x - _t0.x);
+      _vw.panY = _panY0 + (m.y - _t0.y);
+      _swiping = false;
+      _applyVT();
+    } else if (e.touches.length === 1) {
+      var dx = e.touches[0].clientX - _t0.x;
+      var dy = e.touches[0].clientY - _t0.y;
+      if (_swiping && _vw.scale <= 1.05) {
+        _vw.panY = _panY0 + dy;
+        var prog = Math.min(Math.abs(dy) / 200, 1);
+        document.getElementById('img-viewer-bg').style.opacity = 1 - prog * 0.6;
+        _applyVT();
+      } else if (_vw.scale > 1.05) {
+        _swiping = false;
+        _vw.panX = _panX0 + dx;
+        _vw.panY = _panY0 + dy;
+        _applyVT();
+      }
+    }
+  }
+
+  function onTE(e) {
+    if (!_vw.open) return;
+    if (_swiping && _vw.scale <= 1.05 && (_vw.panY - _panY0) > 80) {
+      closeImageViewer();
+      return;
+    }
+    if (_vw.scale <= 1.05) {
+      _vw.scale = 1; _vw.panX = 0; _vw.panY = 0;
+    }
+    if (_swiping) {
+      _vw.panY = _panY0;
+      document.getElementById('img-viewer-bg').style.opacity = '';
+    }
+    _swiping = false;
+    _applyVT(true);
+  }
+
+  function _doubleTap(cx, cy) {
+    if (_vw.scale > 1.1) {
+      _vw.scale = 1; _vw.panX = 0; _vw.panY = 0;
+    } else {
+      _vw.scale = 2.5;
+      var rect = wrap.getBoundingClientRect();
+      _vw.panX = (rect.width / 2 - (cx - rect.left)) * 1.5;
+      _vw.panY = (rect.height / 2 - (cy - rect.top)) * 1.5;
+    }
+    _applyVT(true);
+  }
+
+  function onWheel(e) {
+    if (!_vw.open) return;
+    e.preventDefault();
+    var factor = e.deltaY > 0 ? 0.9 : 1.1;
+    _vw.scale = Math.max(1, Math.min(5, _vw.scale * factor));
+    if (_vw.scale <= 1.05) { _vw.panX = 0; _vw.panY = 0; }
+    _applyVT();
+  }
+
+  var _mDown = false, _mx0, _my0;
+  function onMD(e) {
+    if (!_vw.open || e.button !== 0) return;
+    if (e.target.closest('#img-viewer-close')) return;
+    _mDown = true; _mx0 = e.clientX; _my0 = e.clientY;
+    _panX0 = _vw.panX; _panY0 = _vw.panY;
+    document.addEventListener('mousemove', onMM);
+    document.addEventListener('mouseup', onMU);
+  }
+  function onMM(e) {
+    if (!_mDown) return;
+    if (_vw.scale > 1.05) {
+      _vw.panX = _panX0 + (e.clientX - _mx0);
+      _vw.panY = _panY0 + (e.clientY - _my0);
+      _applyVT();
+    }
+  }
+  function onMU(e) {
+    if (!_mDown) return;
+    _mDown = false;
+    document.removeEventListener('mousemove', onMM);
+    document.removeEventListener('mouseup', onMU);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+function optionsKey(itemId, options, excludedIngredients) {
+  var key = itemId;
+  if (options && options.length) {
+    key += '__' + options.map(o => o.choice_id).sort((a,b) => a-b).join('_');
+  }
+  if (excludedIngredients && excludedIngredients.length) {
+    var exHash = excludedIngredients.slice().sort().map(function(s) {
+      var h = 0; for (var i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return Math.abs(h).toString(36);
+    }).join('_');
+    key += '__ex_' + exHash;
+  }
+  return key;
+}
+
+function onIngredientToggle(cb) {
+  var row = cb.closest('.ingredient-row');
+  if (row) {
+    if (cb.checked) {
+      row.classList.remove('ingredient-excluded');
+    } else {
+      row.classList.add('ingredient-excluded');
+    }
+  }
+}
+
+function getExcludedIngredients() {
+  var excluded = [];
+  document.querySelectorAll('#item-sheet-options .ingredient-checkbox').forEach(function(cb) {
+    if (!cb.checked) {
+      excluded.push(cb.dataset.ingredient);
+    }
+  });
+  return excluded;
+}
+
+function addFromModal() {
+  if (!_modalId) return;
+  const card = document.querySelector('[data-item-id="' + _modalId + '"]');
+  if (!card) return;
+  var isCombo = card.dataset.isCombo === '1';
+
+  if (_modalQty === 0) {
+    if (isCombo) {
+      Object.keys(cart).forEach(function(k) { if (cart[k].id == _modalId && cart[k].is_combo) delete cart[k]; });
+    } else {
+      Object.keys(cart).forEach(function(k) { if (cart[k].id == _modalId) delete cart[k]; });
+    }
+    renderCart();
+    saveCartToStorage();
+    closeItemModal();
+    return;
+  }
+
+  if (isCombo) {
+    var comboSlots = COMBO_DATA[_modalId] || [];
+    for (var si = 0; si < comboSlots.length; si++) {
+      var slot = comboSlots[si];
+      var sel = _comboSelections[si] || [];
+      if (slot.min_select > 0 && sel.length < slot.min_select) {
+        var sName = IS_HE ? slot.slot_name_he : (slot.slot_name_en || slot.slot_name_he);
+        alert(IS_HE ? 'יש לבחור ' + sName : 'Please select ' + sName);
+        return;
+      }
+    }
+    var allCombo = [];
+    Object.values(_comboSelections).forEach(function(arr) { arr.forEach(function(s){ allCombo.push(s); }); });
+    var comboExtra = allCombo.reduce(function(s, c){ return s + c.price_modifier; }, 0);
+    var comboSig = allCombo.map(function(c){ return c.menu_item_id; }).sort().join('_');
+    var cartKey = _modalId + '__combo_' + comboSig;
+    var existing = cart[cartKey];
+
+    cart[cartKey] = {
+      id: _modalId,
+      name_he: card.dataset.nameHe,
+      name_en: card.dataset.nameEn,
+      category: card.dataset.category || '',
+      price: _modalPrice + comboExtra,
+      base_price: _modalPrice,
+      qty: existing ? existing.qty + _modalQty : _modalQty,
+      options: [],
+      combo_selections: allCombo,
+      is_combo: true
+    };
+    renderCart();
+    saveCartToStorage();
+    animateAdd(card);
+    closeItemModal();
+    return;
+  }
+
+  var pvSel = document.querySelector('#item-sheet-options input[name="price_variant"]:checked');
+  var priceVariants = ITEM_PRICES[_modalId] || [];
+  if (priceVariants.length > 0 && !pvSel) {
+    alert(IS_HE ? 'יש לבחור אפשרות' : 'Please choose an option');
+    return;
+  }
+  const groups = ITEM_OPTIONS[_modalId] || [];
+  for (const g of groups) {
+    if (g.required) {
+      const checked = document.querySelectorAll('#item-sheet-options input[data-gid="' + g.id + '"]:checked');
+      if (!checked.length) {
+        const gName = IS_HE ? g.name_he : g.name_en;
+        const msg = IS_HE ? 'יש לבחור ' + gName : 'Please select ' + gName;
+        alert(msg);
+        return;
+      }
+    }
+  }
+  const allOptions = [];
+  Object.values(_modalSelectedOptions).forEach(arr => arr.forEach(o => allOptions.push(o)));
+  const optionsExtra = allOptions.reduce((s, o) => s + o.price_modifier, 0);
+  const excludedIngredients = getExcludedIngredients();
+
+  var pvId = pvSel ? pvSel.value : '';
+  var pvKeySuffix = pvId ? '_pv' + pvId : '';
+  var cartKey = optionsKey(_modalId, allOptions, excludedIngredients) + pvKeySuffix;
+  var existing = cart[cartKey];
+
+  var itemNameHe = card.dataset.nameHe;
+  var itemNameEn = card.dataset.nameEn;
+  if (pvSel && priceVariants.length > 0) {
+    var selPv = priceVariants.find(function(p) { return String(p.id) === pvSel.value; });
+    if (selPv) {
+      itemNameHe = card.dataset.nameHe + ' - ' + selPv.name_he;
+      itemNameEn = (card.dataset.nameEn || card.dataset.nameHe) + ' - ' + selPv.name_en;
+    }
+  }
+
+  cart[cartKey] = {
+    id: _modalId,
+    name_he: itemNameHe,
+    name_en: itemNameEn,
+    category: card.dataset.category || '',
+    price: _modalPrice + optionsExtra,
+    base_price: _modalPrice,
+    qty: existing ? existing.qty + _modalQty : _modalQty,
+    options: allOptions,
+    excluded_ingredients: excludedIngredients,
+    price_variant_id: pvId || null
+  };
+  renderCart();
+  saveCartToStorage();
+  animateAdd(card);
+  closeItemModal();
+}
+var _dealPickerState = { dealId: null, pickCount: 0, selections: {}, items: [], dealNameHe: '', dealNameEn: '', dealPrice: 0 };
+
+function handleDealClick(el) {
+  var dealType = el.dataset.dealType || 'fixed';
+  if (dealType === 'customer_picks') {
+    openDealPicker(el);
+  } else {
+    addDealToCart(el);
+  }
+}
+
+function addDealToCart(el) {
+  var dealId = el.dataset.dealId;
+  var nameHe = el.dataset.dealNameHe;
+  var nameEn = el.dataset.dealNameEn;
+  var price = parseFloat(el.dataset.dealPrice);
+  var cartKey = 'deal_' + dealId;
+  var existing = cart[cartKey];
+  cart[cartKey] = {
+    id: 'deal_' + dealId,
+    name_he: nameHe,
+    name_en: nameEn || nameHe,
+    category: '',
+    price: price,
+    base_price: price,
+    qty: existing ? existing.qty + 1 : 1,
+    options: [],
+    is_deal: true,
+    deal_id: dealId
+  };
+  renderCart();
+  saveCartToStorage();
+  animateAdd(el);
+}
+
+function openDealPicker(el) {
+  var dealId = el.dataset.dealId;
+  _dealPickerState = { dealId: dealId, pickCount: parseInt(el.dataset.dealPickCount) || 1, selections: {}, items: [],
+    dealNameHe: el.dataset.dealNameHe, dealNameEn: el.dataset.dealNameEn, dealPrice: parseFloat(el.dataset.dealPrice) };
+  document.getElementById('deal-picker-overlay').style.display = 'block';
+  document.getElementById('deal-picker-sheet').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  var lang = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl') ? 'he' : 'en';
+  document.getElementById('deal-picker-title').textContent = lang === 'he' ? _dealPickerState.dealNameHe : (_dealPickerState.dealNameEn || _dealPickerState.dealNameHe);
+  var subtitleEl = document.getElementById('deal-picker-subtitle');
+  subtitleEl.textContent = lang === 'he'
+    ? 'בחר ' + _dealPickerState.pickCount + ' פריטים'
+    : 'Pick ' + _dealPickerState.pickCount + ' item' + (_dealPickerState.pickCount > 1 ? 's' : '');
+  var priceEl = document.getElementById('deal-picker-footer-price');
+  priceEl.innerHTML = (lang === 'he' ? 'מחיר המבצע: ' : 'Deal price: ') + '<strong>₪' + Math.round(_dealPickerState.dealPrice) + '</strong>';
+  updateDealPickerCounter();
+  document.getElementById('deal-picker-body').innerHTML = '<div class="deal-picker-loading"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+  fetch('/order/deal-picker-items/' + dealId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok) { closeDealPicker(); return; }
+      _dealPickerState.items = data.items;
+      renderDealPickerItems();
+    })
+    .catch(function() { closeDealPicker(); });
+}
+
+function closeDealPicker() {
+  document.getElementById('deal-item-detail').style.display = 'none';
+  document.getElementById('deal-picker-overlay').style.display = 'none';
+  document.getElementById('deal-picker-sheet').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderDealPickerItems() {
+  var body = document.getElementById('deal-picker-body');
+  var lang = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl') ? 'he' : 'en';
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  var maxReached = total >= _dealPickerState.pickCount;
+  body.innerHTML = '';
+  _dealPickerState.items.forEach(function(item) {
+    var count = _dealPickerState.selections[item.id] || 0;
+    var isSelected = count > 0;
+
+    var row = document.createElement('div');
+    row.className = 'deal-pick-item' + (isSelected ? ' selected' : '') + (!isSelected && maxReached ? ' pick-maxed' : '');
+    row.onclick = function() { toggleDealPick(item.id); };
+
+    var thumb = document.createElement('div');
+    thumb.className = 'deal-pick-thumb';
+    if (item.image) {
+      var img = document.createElement('img');
+      img.src = item.image;
+      img.alt = '';
+      img.loading = 'lazy';
+      thumb.appendChild(img);
+    } else {
+      var ph = document.createElement('div');
+      ph.className = 'deal-pick-thumb-placeholder';
+      ph.innerHTML = '<i class="fas fa-utensils"></i>';
+      thumb.appendChild(ph);
+    }
+    thumb.onclick = function(e) { e.stopPropagation(); openDealItemDetail(item); };
+
+    var info = document.createElement('div');
+    info.className = 'deal-pick-info';
+    var nameEl = document.createElement('div');
+    nameEl.className = 'deal-pick-name';
+    nameEl.textContent = lang === 'he' ? item.name_he : (item.name_en || item.name_he);
+    var descLine = lang === 'he' ? (item.description_he || '') : (item.description_en || item.description_he || '');
+    if (descLine) {
+      var descEl = document.createElement('div');
+      descEl.className = 'deal-pick-desc';
+      descEl.textContent = descLine.length > 45 ? descLine.substring(0, 45) + '…' : descLine;
+      info.appendChild(nameEl);
+      info.appendChild(descEl);
+    } else {
+      info.appendChild(nameEl);
+    }
+    var priceEl = document.createElement('div');
+    priceEl.className = 'deal-pick-price';
+    priceEl.textContent = '₪' + Math.round(item.price);
+    info.appendChild(priceEl);
+
+    var action = document.createElement('div');
+    action.className = 'deal-pick-action';
+    if (isSelected) {
+      action.onclick = function(e) { e.stopPropagation(); };
+      var qc = document.createElement('div');
+      qc.className = 'deal-pick-qty-controls';
+      var minusBtn = document.createElement('button');
+      minusBtn.type = 'button';
+      minusBtn.className = 'pick-qty-btn';
+      minusBtn.textContent = '−';
+      minusBtn.onclick = function() { removeDealPick(item.id); };
+      var countSpan = document.createElement('span');
+      countSpan.className = 'pick-qty-count';
+      countSpan.textContent = count;
+      var plusBtn = document.createElement('button');
+      plusBtn.type = 'button';
+      plusBtn.className = 'pick-qty-btn';
+      plusBtn.textContent = '+';
+      plusBtn.onclick = function() { addDealPick(item.id); };
+      if (maxReached) plusBtn.disabled = true;
+      qc.appendChild(minusBtn);
+      qc.appendChild(countSpan);
+      qc.appendChild(plusBtn);
+      action.appendChild(qc);
+    } else {
+      var chk = document.createElement('div');
+      chk.className = 'deal-pick-check';
+      chk.innerHTML = '<i class="fas fa-check" style="font-size:.7rem;"></i>';
+      action.appendChild(chk);
+    }
+
+    row.appendChild(thumb);
+    row.appendChild(info);
+    row.appendChild(action);
+    body.appendChild(row);
+  });
+}
+
+function openDealItemDetail(item) {
+  var lang = (document.documentElement.lang === 'he' || document.documentElement.dir === 'rtl') ? 'he' : 'en';
+  var panel = document.getElementById('deal-item-detail');
+  var imgWrap = document.getElementById('deal-detail-img-wrap');
+  imgWrap.innerHTML = '';
+  if (item.image) {
+    var imgEl = document.createElement('img');
+    imgEl.src = item.image;
+    imgEl.alt = '';
+    imgWrap.appendChild(imgEl);
+    imgWrap.style.display = '';
+  } else {
+    var phEl = document.createElement('div');
+    phEl.className = 'deal-detail-img-placeholder';
+    phEl.innerHTML = '<i class="fas fa-utensils"></i>';
+    imgWrap.appendChild(phEl);
+    imgWrap.style.display = '';
+  }
+  document.getElementById('deal-detail-name').textContent = lang === 'he' ? item.name_he : (item.name_en || item.name_he);
+  document.getElementById('deal-detail-price').textContent = '₪' + Math.round(item.price);
+  var desc = lang === 'he' ? (item.description_he || '') : (item.description_en || item.description_he || '');
+  var descEl = document.getElementById('deal-detail-desc');
+  descEl.textContent = desc;
+  descEl.style.display = desc ? '' : 'none';
+  var ingredients = lang === 'he' ? (item.ingredients_he || '') : (item.ingredients_en || item.ingredients_he || '');
+  var ingContainer = document.getElementById('deal-detail-ingredients');
+  var ingLabel = document.getElementById('deal-detail-ing-label');
+  ingContainer.innerHTML = '';
+  if (ingredients) {
+    ingLabel.style.display = '';
+    var parts = ingredients.split(',');
+    parts.forEach(function(part) {
+      var chip = document.createElement('span');
+      chip.className = 'deal-detail-ing-chip';
+      chip.textContent = part.trim();
+      ingContainer.appendChild(chip);
+    });
+  } else {
+    ingLabel.style.display = 'none';
+  }
+  panel.style.display = 'flex';
+}
+
+function closeDealItemDetail() {
+  document.getElementById('deal-item-detail').style.display = 'none';
+}
+
+function toggleDealPick(itemId) {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  if (_dealPickerState.selections[itemId]) {
+    _dealPickerState.selections[itemId]--;
+    if (_dealPickerState.selections[itemId] <= 0) delete _dealPickerState.selections[itemId];
+  } else {
+    if (total >= _dealPickerState.pickCount) return;
+    _dealPickerState.selections[itemId] = 1;
+  }
+  renderDealPickerItems();
+  updateDealPickerCounter();
+}
+function addDealPick(itemId) {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  if (total >= _dealPickerState.pickCount) return;
+  _dealPickerState.selections[itemId] = (_dealPickerState.selections[itemId] || 0) + 1;
+  renderDealPickerItems();
+  updateDealPickerCounter();
+}
+function removeDealPick(itemId) {
+  if (!_dealPickerState.selections[itemId]) return;
+  _dealPickerState.selections[itemId]--;
+  if (_dealPickerState.selections[itemId] <= 0) delete _dealPickerState.selections[itemId];
+  renderDealPickerItems();
+  updateDealPickerCounter();
+}
+
+function updateDealPickerCounter() {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  var max = _dealPickerState.pickCount;
+  document.getElementById('deal-picker-counter').textContent = total + '/' + max;
+  var pct = max > 0 ? Math.round((total / max) * 100) : 0;
+  document.getElementById('deal-picker-progress-fill').style.width = pct + '%';
+  var btn = document.getElementById('deal-picker-confirm');
+  btn.disabled = (total !== max);
+}
+
+function confirmDealPicks() {
+  var total = Object.values(_dealPickerState.selections).reduce(function(s, v) { return s + v; }, 0);
+  if (total !== _dealPickerState.pickCount) return;
+  var selectedItems = [];
+  for (var id in _dealPickerState.selections) {
+    var qty = _dealPickerState.selections[id];
+    var item = _dealPickerState.items.find(function(i) { return i.id == id; });
+    if (item && qty > 0) {
+      selectedItems.push({ item_id: parseInt(id), qty: qty, name_he: item.name_he, name_en: item.name_en });
+    }
+  }
+  var ts = Date.now();
+  var cartKey = 'deal_' + _dealPickerState.dealId + '_' + ts;
+  cart[cartKey] = {
+    id: 'deal_' + _dealPickerState.dealId,
+    name_he: _dealPickerState.dealNameHe,
+    name_en: _dealPickerState.dealNameEn || _dealPickerState.dealNameHe,
+    category: '',
+    price: _dealPickerState.dealPrice,
+    base_price: _dealPickerState.dealPrice,
+    qty: 1,
+    options: [],
+    is_deal: true,
+    deal_id: _dealPickerState.dealId,
+    deal_type: 'customer_picks',
+    selected_items: selectedItems
+  };
+  closeDealPicker();
+  renderCart();
+  saveCartToStorage();
+}
+function changeQty(id, delta) {
+  if (!cart[id]) return;
+  cart[id].qty += delta;
+  if (cart[id].qty <= 0) delete cart[id];
+  renderCart();
+  saveCartToStorage();
+}
+function cartTotal() {
+  return Object.values(cart).reduce((s, it) => s + it.qty * it.price, 0);
+}
+function cartCount() {
+  return Object.values(cart).reduce((s, it) => s + it.qty, 0);
+}
+function renderCart() {
+  const ids = Object.keys(cart);
+  const sub = cartTotal();
+  const count = cartCount();
+
+  // Desktop cart
+  const deskEmpty = document.getElementById('desk-empty');
+  const deskItems = document.getElementById('desk-items');
+  const deskTotals = document.getElementById('desk-totals');
+  const deskCta = document.getElementById('desk-cta');
+  if (deskEmpty) deskEmpty.style.display = ids.length ? 'none' : '';
+  if (deskTotals) deskTotals.style.display = ids.length ? '' : 'none';
+  if (deskCta) deskCta.style.display = ids.length ? '' : 'none';
+  var el;
+  el = document.getElementById('cart-count-desk');
+  if (el) el.textContent = count;
+  if (deskItems) {
+    deskItems.innerHTML = ids.map(id => {
+      const it = cart[id];
+      let optStr = '';
+      if (it.options && it.options.length) {
+        optStr = '<div style="font-size:.7rem;color:#6b7280;margin-top:2px;">' +
+          it.options.map(o => (IS_HE ? o.choice_name_he : o.choice_name_en)).join(', ') + '</div>';
+      }
+      let exclStr = '';
+      if (it.excluded_ingredients && it.excluded_ingredients.length) {
+        exclStr = '<div style="font-size:.7rem;color:#ef4444;margin-top:2px;">' +
+          it.excluded_ingredients.map(ing => 'ללא ' + String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(', ') + '</div>';
+      }
+      let selStr = '';
+      if (it.selected_items && it.selected_items.length) {
+        selStr = '<div style="font-size:.7rem;color:#6b7280;margin-top:2px;">' +
+          it.selected_items.map(s => '• ' + (IS_HE ? s.name_he : (s.name_en || s.name_he)) + (s.qty > 1 ? ' ×' + s.qty : '')).join('<br>') + '</div>';
+      }
+      return `<div class="cart-row">
+        <div style="flex:1;min-width:0"><div class="fw-semibold text-truncate" style="font-size:.83rem;">${it.name_he}</div>${optStr}${exclStr}${selStr}
+        <div class="text-muted" style="font-size:.75rem;">₪${it.price} × ${it.qty}</div></div>
+        <div class="d-flex align-items-center gap-1 flex-shrink-0">
+          <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
+          <span class="fw-bold" style="min-width:16px;text-align:center;">${it.qty}</span>
+          <button class="qty-btn" onclick="changeQty('${id}',1)">+</button>
+        </div></div>`;
+    }).join('');
+  }
+  el = document.getElementById('desk-sub');
+  if (el) el.textContent = sub.toFixed(0);
+  el = document.getElementById('desk-total');
+  if (el) el.textContent = sub.toFixed(0);
+  el = document.getElementById('desk-btn-total');
+  if (el) el.textContent = sub.toFixed(0);
+  const deskFeeRow = document.getElementById('desk-fee-row');
+  if (deskFeeRow) deskFeeRow.style.display = 'none';
+
+  // Floating cart FAB (mobile) — show count + subtotal
+  const fab = document.getElementById('cart-fab');
+  if (fab) fab.style.display = ids.length ? '' : 'none';
+  el = document.getElementById('cart-fab-count');
+  if (el) el.textContent = count;
+  el = document.getElementById('sticky-total');
+  if (el) el.textContent = sub.toFixed(0);
+
+  // Keep cart JSON in sync for form submission
+  el = document.getElementById('hidden-cart-json');
+  if (el) el.value = JSON.stringify(Object.values(cart));
+
+  // Update add buttons on menu page to reflect cart state
+  updateAddBtns();
+}
+
+function updateAddBtns() {
+  const itemTotals = {};
+  Object.values(cart).forEach(it => {
+    itemTotals[it.id] = (itemTotals[it.id] || 0) + it.qty;
+  });
+  document.querySelectorAll('.dish-card').forEach(card => {
+    const id = card.dataset.itemId;
+    const badge = document.getElementById('dish-qty-' + id);
+    if (!badge) return;
+    if (itemTotals[id] && itemTotals[id] > 0) {
+      badge.textContent = itemTotals[id];
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  });
+}
+
+/* ─── Scroll to category section ─── */
+function scrollToSection(sectionId, btn) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+  const tabsH = document.querySelector('.cat-tabs-wrap') ? document.querySelector('.cat-tabs-wrap').offsetHeight : 0;
+  const navH  = document.querySelector('.navbar') ? document.querySelector('.navbar').offsetHeight : 60;
+  const y = section.getBoundingClientRect().top + window.scrollY - navH - tabsH - 8;
+  window.scrollTo({ top: y, behavior: 'smooth' });
+  document.querySelectorAll('.cat-tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+/* ─── Scroll-spy: highlight active category tab while scrolling ─── */
+(function initScrollSpy() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        document.querySelectorAll('.cat-tab-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.target === id);
+        });
+      }
+    });
+  }, { rootMargin: '-50% 0px -45% 0px' });
+  document.querySelectorAll('.cat-section').forEach(s => obs.observe(s));
+})();
+
+/* ─── Navigate to checkout page ─── */
+function goToCheckout() {
+  if (cartCount() === 0) return;
+  var body = new URLSearchParams();
+  body.append('cart_json', JSON.stringify(Object.values(cart)));
+  body.append('order_type', orderType);
+  var utmSrc = document.getElementById('hidden-utm-source');
+  var utmMed = document.getElementById('hidden-utm-medium');
+  var utmCam = document.getElementById('hidden-utm-campaign');
+  var refEl  = document.getElementById('hidden-referrer');
+  if (utmSrc) body.append('utm_source', utmSrc.value);
+  if (utmMed) body.append('utm_medium', utmMed.value);
+  if (utmCam) body.append('utm_campaign', utmCam.value);
+  if (refEl)  body.append('referrer', refEl.value);
+  {% if selected_branch is defined and selected_branch %}
+  body.append('branch_id', '{{ selected_branch.id }}');
+  {% endif %}
+  var csrfEl = document.querySelector('#checkout-form input[name="csrf_token"]');
+  if (csrfEl && csrfEl.value) body.append('csrf_token', csrfEl.value);
+  fetch('{{ url_for("order_page.order_start_checkout") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: body.toString(),
+    redirect: 'follow'
+  }).then(function(r) {
+    if (r.redirected) {
+      window.location.href = r.url;
+    } else if (r.ok) {
+      window.location.href = '{{ url_for("order_page.order_checkout_page") }}';
+    } else {
+      r.text().then(function(t) { console.error('Checkout error:', r.status, t); });
+    }
+  }).catch(function(e) {
+    console.error('Checkout fetch error:', e);
+    var form = document.getElementById('checkout-form');
+    if (form) {
+      document.getElementById('hidden-cart-json').value = JSON.stringify(Object.values(cart));
+      document.getElementById('hidden-order-type').value = orderType;
+      form.submit();
+    }
+  });
+}
+
+/* ─── Add animation ─── */
+function animateAdd(btn) {
+  // Visual state is handled by updateAddBtns() — just do the bubble/bounce animation
+
+  const cartBadge = document.getElementById('cart-count-desk');
+  const btnRect = btn.getBoundingClientRect();
+  const targetRect = cartBadge ? cartBadge.getBoundingClientRect() : null;
+  const bubble = document.createElement('div');
+  bubble.className = 'add-bubble';
+  bubble.textContent = '+1';
+  bubble.style.cssText = `left:${btnRect.left + btnRect.width/2 - 15}px;top:${btnRect.top + window.scrollY - 8}px;`;
+  document.body.appendChild(bubble);
+
+  if (targetRect) {
+    const dx = (targetRect.left + targetRect.width/2 - 15) - (btnRect.left + btnRect.width/2 - 15);
+    const dy = (targetRect.top + window.scrollY - 8) - (btnRect.top + window.scrollY - 8);
+    bubble.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${dx}px,${dy}px) scale(.5)`, opacity: 0 }
+    ], { duration: 550, easing: 'ease-in', fill: 'forwards' }).onfinish = () => bubble.remove();
+  } else {
+    bubble.animate([{ opacity: 1 },{ transform:'translateY(-40px)', opacity: 0 }], { duration: 700, fill: 'forwards' }).onfinish = () => bubble.remove();
+  }
+
+  if (cartBadge) {
+    cartBadge.classList.remove('cart-count-bounce');
+    void cartBadge.offsetWidth;
+    cartBadge.classList.add('cart-count-bounce');
+    setTimeout(() => cartBadge.classList.remove('cart-count-bounce'), 500);
+  }
+}
+
+/* ─── Init ─── */
+renderCart();
+
+/* ─── UTM / Referrer capture ─── */
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var src = params.get('utm_source') || '';
+  var med = params.get('utm_medium') || '';
+  var cam = params.get('utm_campaign') || '';
+  var ref = document.referrer || '';
+  if (src) try { sessionStorage.setItem('rai_utm_source', src); } catch(e) {}
+  if (med) try { sessionStorage.setItem('rai_utm_medium', med); } catch(e) {}
+  if (cam) try { sessionStorage.setItem('rai_utm_campaign', cam); } catch(e) {}
+  if (ref && !sessionStorage.getItem('rai_referrer')) try { sessionStorage.setItem('rai_referrer', ref); } catch(e) {}
+  try {
+    document.getElementById('hidden-utm-source').value = src || sessionStorage.getItem('rai_utm_source') || '';
+    document.getElementById('hidden-utm-medium').value = med || sessionStorage.getItem('rai_utm_medium') || '';
+    document.getElementById('hidden-utm-campaign').value = cam || sessionStorage.getItem('rai_utm_campaign') || '';
+    document.getElementById('hidden-referrer').value = ref || sessionStorage.getItem('rai_referrer') || '';
+  } catch(e) {}
+})();
+
+/* ─── GA4 + FB Pixel: E-commerce funnel events ─── */
+(function() {
+  function ga4(ev, params) { if (typeof gtag === 'function') gtag('event', ev, params); }
+  function fbp(ev, params) { if (typeof fbq === 'function') fbq('track', ev, params); }
+
+  function buildItemsList() {
+    var items = [];
+    document.querySelectorAll('.dish-card[data-item-id]').forEach(function(card, idx) {
+      if (card.dataset.available === '0') return;
+      items.push({
+        item_id: card.dataset.itemId,
+        item_name: card.dataset.nameHe,
+        item_category: card.dataset.category || '',
+        price: parseFloat(card.dataset.price) || 0,
+        index: idx
+      });
+    });
+    return items;
+  }
+
+  var allItems = buildItemsList();
+  if (allItems.length > 0) {
+    ga4('view_item_list', {
+      item_list_id: 'order_menu',
+      item_list_name: 'Order Menu',
+      items: allItems
+    });
+    fbp('ViewContent', {
+      content_type: 'product_group',
+      content_ids: allItems.map(function(i) { return i.item_id; }),
+      currency: 'ILS'
+    });
+  }
+
+  var _origOpenItemModal = window.openItemModal;
+  window.openItemModal = function(card) {
+    if (card && card.dataset) {
+      var price = parseFloat(card.dataset.price) || 0;
+      ga4('view_item', {
+        currency: 'ILS',
+        value: price,
+        items: [{
+          item_id: card.dataset.itemId,
+          item_name: card.dataset.nameHe,
+          item_category: card.dataset.category || '',
+          price: price
+        }]
+      });
+      fbp('ViewContent', {
+        content_type: 'product',
+        content_ids: [card.dataset.itemId],
+        content_name: card.dataset.nameHe,
+        value: price,
+        currency: 'ILS'
+      });
+    }
+    return _origOpenItemModal.apply(this, arguments);
+  };
+
+  var _origAddFromModal = window.addFromModal;
+  window.addFromModal = function() {
+    var cartBefore = {};
+    Object.keys(cart).forEach(function(k) { cartBefore[k] = cart[k].qty; });
+    var capturedQty = _modalQty || 1;
+    var result = _origAddFromModal.apply(this, arguments);
+    var addedKey = null;
+    Object.keys(cart).forEach(function(k) {
+      if (!cartBefore[k] || cart[k].qty !== cartBefore[k]) addedKey = k;
+    });
+    if (addedKey && cart[addedKey]) {
+      var ci = cart[addedKey];
+      ga4('add_to_cart', {
+        currency: 'ILS',
+        value: ci.price * capturedQty,
+        items: [{
+          item_id: String(ci.id),
+          item_name: ci.name_he || ci.name_en || '',
+          item_category: ci.category || '',
+          price: ci.price,
+          quantity: capturedQty
+        }]
+      });
+      fbp('AddToCart', {
+        content_type: 'product',
+        content_ids: [String(ci.id)],
+        content_name: ci.name_he || ci.name_en || '',
+        value: ci.price * capturedQty,
+        currency: 'ILS'
+      });
+    }
+    return result;
+  };
+})();
+
+(function() {
+  var skeleton = document.getElementById('menu-skeleton');
+  var sections = document.getElementById('menu-sections');
+  var tabs = document.querySelector('.cat-tabs-wrap');
+  if (skeleton && sections) {
+    skeleton.classList.add('hidden');
+    sections.classList.add('revealed');
+    if (tabs) tabs.classList.add('revealed');
+    setTimeout(function() { if (skeleton.parentNode) skeleton.parentNode.removeChild(skeleton); }, 400);
+  } else {
+    if (sections) sections.classList.add('revealed');
+    if (tabs) tabs.classList.add('revealed');
+  }
+
+  document.querySelectorAll('.dish-img').forEach(function(img) {
+    if (img.complete && img.naturalWidth > 0) {
+      img.classList.add('loaded');
+    } else {
+      img.addEventListener('load', function() { this.classList.add('loaded'); });
+      img.addEventListener('error', function() { this.classList.add('loaded'); });
+    }
+  });
+})();
+</script>
+{% endblock %}

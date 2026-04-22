@@ -1,0 +1,353 @@
+{% extends "admin/base.html" %}
+
+{% block title %}יצירת תפקיד חדש{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --sumo-coral: #C75450;
+        --sumo-navy: #1B2951;
+        --success-green: #10b981;
+    }
+
+    .create-role-container {
+        padding: 1rem;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .hero-header {
+        background: linear-gradient(135deg, var(--sumo-navy) 0%, #2a3f73 100%);
+        border-radius: 20px;
+        padding: 2rem 1.5rem;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(27, 41, 81, 0.3);
+    }
+
+    .hero-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .form-card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--sumo-navy);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-hint {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        border-color: var(--sumo-coral);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(199, 84, 80, 0.1);
+    }
+
+    .form-textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .permissions-grid {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .permission-category {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .category-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .category-title {
+        font-weight: 700;
+        color: var(--sumo-navy);
+        text-transform: capitalize;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .select-all-btn {
+        background: none;
+        border: 1px solid #d1d5db;
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .select-all-btn:hover {
+        background: #f3f4f6;
+    }
+
+    .permissions-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .permission-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .permission-item:hover {
+        background: #f0fdf4;
+    }
+
+    .permission-checkbox {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--sumo-coral);
+        cursor: pointer;
+        margin-top: 2px;
+    }
+
+    .permission-info {
+        flex: 1;
+    }
+
+    .permission-name {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.9rem;
+    }
+
+    .permission-desc {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--sumo-coral);
+        color: white;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: #b04540;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(199, 84, 80, 0.3);
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: none;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
+    }
+
+    @media (max-width: 768px) {
+        .form-card {
+            padding: 1.25rem;
+        }
+
+        .permissions-list {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="create-role-container">
+    <div class="hero-header">
+        <h1 class="hero-title">
+            <i class="fas fa-plus-circle"></i>
+            {{ 'יצירת תפקיד חדש' if (admin_language or 'he') == 'he' else 'Create New Role' }}
+        </h1>
+        <p class="hero-subtitle">{{ 'הגדר תפקיד חדש עם הרשאות מותאמות' if (admin_language or 'he') == 'he' else 'Define a new role with custom permissions' }}</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.create_role') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-card">
+            <h2 class="form-card-title">
+                <i class="fas fa-info-circle"></i>
+                {{ 'פרטי התפקיד' if (admin_language or 'he') == 'he' else 'Role Details' }}
+            </h2>
+
+            <div class="form-group">
+                <label class="form-label" for="name">{{ 'שם התפקיד (אנגלית)' if (admin_language or 'he') == 'he' else 'Role Name (English)' }} *</label>
+                <input type="text" id="name" name="name" class="form-input" required pattern="[a-z_]+" placeholder="e.g., warehouse_manager">
+                <p class="form-hint">{{ 'אותיות קטנות וקו תחתון בלבד' if (admin_language or 'he') == 'he' else 'Lowercase letters and underscores only' }}</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="display_name">{{ 'שם תצוגה' if (admin_language or 'he') == 'he' else 'Display Name' }} *</label>
+                <input type="text" id="display_name" name="display_name" class="form-input" required placeholder="{{ 'מנהל מחסן' if (admin_language or 'he') == 'he' else 'Warehouse Manager' }}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="description">{{ 'תיאור' if (admin_language or 'he') == 'he' else 'Description' }}</label>
+                <textarea id="description" name="description" class="form-input form-textarea" placeholder="{{ 'תאר את תפקידו של בעל התפקיד' if (admin_language or 'he') == 'he' else 'Describe the responsibilities of this role' }}"></textarea>
+            </div>
+        </div>
+
+        <div class="form-card">
+            <h2 class="form-card-title">
+                <i class="fas fa-key"></i>
+                {{ 'הרשאות' if (admin_language or 'he') == 'he' else 'Permissions' }}
+            </h2>
+
+            {% if permissions_by_category %}
+            <div class="permissions-grid">
+                {% for category, perms in permissions_by_category.items() %}
+                <div class="permission-category">
+                    <div class="category-header">
+                        <span class="category-title">
+                            <i class="fas fa-folder"></i>
+                            {{ category }}
+                        </span>
+                        <button type="button" class="select-all-btn" onclick="toggleCategory('{{ category }}')">
+                            {{ 'בחר הכל' if (admin_language or 'he') == 'he' else 'Select All' }}
+                        </button>
+                    </div>
+                    <div class="permissions-list">
+                        {% for perm in perms %}
+                        <label class="permission-item">
+                            <input type="checkbox" 
+                                   name="permissions" 
+                                   value="{{ perm.id }}" 
+                                   class="permission-checkbox category-{{ category }}">
+                            <div class="permission-info">
+                                <div class="permission-name">{{ perm.display_name }}</div>
+                                {% if perm.description %}
+                                <div class="permission-desc">{{ perm.description }}</div>
+                                {% endif %}
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: #6b7280; text-align: center; padding: 2rem;">
+                {{ 'אין הרשאות זמינות במערכת' if (admin_language or 'he') == 'he' else 'No permissions available in the system' }}
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('admin.roles') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i>
+                {{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                {{ 'צור תפקיד' if (admin_language or 'he') == 'he' else 'Create Role' }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleCategory(category) {
+    const checkboxes = document.querySelectorAll(`.category-${category}`);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+}
+</script>
+{% endblock %}

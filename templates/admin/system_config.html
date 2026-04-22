@@ -1,0 +1,506 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות מערכת{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/modern-style.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1 class="mb-4">
+        <i class="fas fa-cogs"></i>
+        הגדרות מערכת - ללא קוד קשיח
+    </h1>
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        כל ההגדרות ניתנות לשינוי ללא צורך בקוד. המערכת תתאים את עצמה אוטומטית.
+    </div>
+
+    <!-- Configuration Tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#general">
+                <i class="fas fa-store"></i> כללי
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#order">
+                <i class="fas fa-shopping-cart"></i> הזמנות
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#delivery">
+                <i class="fas fa-truck"></i> משלוחים
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#payment">
+                <i class="fas fa-credit-card"></i> תשלומים
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#kitchen">
+                <i class="fas fa-utensils"></i> מטבח
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#notification">
+                <i class="fas fa-bell"></i> התראות
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content mt-4">
+        <!-- General Settings -->
+        <div class="tab-pane fade show active" id="general">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">הגדרות כלליות</h5>
+                </div>
+                <div class="card-body">
+                    <form id="generalForm" onsubmit="saveConfig(event, 'general')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">שם העסק</label>
+                                    <input type="text" class="form-control" name="business_name" 
+                                           placeholder="הכנס את שם העסק" required>
+                                    <small class="text-muted">השם יופיע בכל המסמכים והקבלות</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">סמל מטבע</label>
+                                    <input type="text" class="form-control" name="currency" 
+                                           value="₪" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">אחוז מע"מ</label>
+                                    <input type="number" class="form-control" name="tax_rate" 
+                                           value="17" min="0" max="100" step="0.1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">שפות נתמכות</label>
+                                    <select class="form-control" name="languages" multiple>
+                                        <option value="he" selected>עברית</option>
+                                        <option value="en" selected>English</option>
+                                        <option value="ar">العربية</option>
+                                        <option value="ru">Русский</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> שמור הגדרות
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Settings -->
+        <div class="tab-pane fade" id="order">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">הגדרות הזמנות</h5>
+                </div>
+                <div class="card-body">
+                    <form id="orderForm" onsubmit="saveConfig(event, 'order')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="auto_accept" 
+                                               id="autoAccept" checked>
+                                        <label class="form-check-label" for="autoAccept">
+                                            קבל הזמנות אוטומטית
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ימים מקסימליים להזמנה מראש</label>
+                                    <input type="number" class="form-control" name="max_advance_days" 
+                                           value="7" min="1" max="30" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">חלון ביטול (דקות)</label>
+                                    <input type="number" class="form-control" name="cancellation_window" 
+                                           value="5" min="0" max="60" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">סטטוסי הזמנה</label>
+                                    <input type="text" class="form-control" name="order_statuses" 
+                                           value="התקבלה,בהכנה,מוכנה,נמסרה" required>
+                                    <small class="text-muted">הפרד עם פסיקים</small>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> שמור הגדרות
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Settings -->
+        <div class="tab-pane fade" id="delivery">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">הגדרות משלוחים</h5>
+                </div>
+                <div class="card-body">
+                    <form id="deliveryForm" onsubmit="saveConfig(event, 'delivery')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="enabled" 
+                                               id="deliveryEnabled" checked>
+                                        <label class="form-check-label" for="deliveryEnabled">
+                                            אפשר משלוחים
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">דמי משלוח בסיסיים (₪)</label>
+                                    <input type="number" class="form-control" name="base_fee" 
+                                           value="15" min="0" step="0.5" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">משלוח חינם מעל (₪)</label>
+                                    <input type="number" class="form-control" name="free_delivery_minimum" 
+                                           value="100" min="0" step="1" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">מרחק מקסימלי (ק"מ)</label>
+                                    <input type="number" class="form-control" name="max_distance_km" 
+                                           value="10" min="1" max="50" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">זמן משלוח משוער (דקות)</label>
+                                    <input type="number" class="form-control" name="estimated_time_minutes" 
+                                           value="45" min="10" max="120" required>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> שמור הגדרות
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Settings -->
+        <div class="tab-pane fade" id="payment">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">הגדרות תשלומים</h5>
+                </div>
+                <div class="card-body">
+                    <form id="paymentForm" onsubmit="saveConfig(event, 'payment')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ספק שער תשלומים</label>
+                                    <select class="form-control" name="provider">
+                                        <option value="">-- בחר ספק --</option>
+                                        <option value="Stripe">Stripe (בינלאומי)</option>
+                                        <option value="PayPal">PayPal</option>
+                                        <option value="Square">Square</option>
+                                        <option value="MAX">MAX (ישראל)</option>
+                                        <option value="Tranzila">Tranzila (ישראל)</option>
+                                        <option value="PayMe">PayMe (ישראל)</option>
+                                        <option value="Cardcom">Cardcom (ישראל)</option>
+                                        <option value="Custom">אחר - מותאם אישית</option>
+                                    </select>
+                                    <small class="text-muted">בחר את ספק התשלומים שלך או 'אחר' להגדרה מותאמת</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="require_prepayment" 
+                                               id="requirePrepayment">
+                                        <label class="form-check-label" for="requirePrepayment">
+                                            דרוש תשלום מראש
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">אמצעי תשלום מאופשרים</label>
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="credit_card" 
+                                                   id="creditCard" checked>
+                                            <label class="form-check-label" for="creditCard">
+                                                כרטיס אשראי
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="bit" 
+                                                   id="bit" checked>
+                                            <label class="form-check-label" for="bit">
+                                                Bit
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="cash" 
+                                                   id="cash" checked>
+                                            <label class="form-check-label" for="cash">
+                                                מזומן
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="apple_pay" 
+                                                   id="applePay" checked>
+                                            <label class="form-check-label" for="applePay">
+                                                Apple Pay
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="google_pay" 
+                                                   id="googlePay" checked>
+                                            <label class="form-check-label" for="googlePay">
+                                                Google Pay
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> שמור הגדרות
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kitchen Settings -->
+        <div class="tab-pane fade" id="kitchen">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">הגדרות מטבח</h5>
+                </div>
+                <div class="card-body">
+                    <form id="kitchenForm" onsubmit="saveConfig(event, 'kitchen')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="auto_print" 
+                                               id="autoPrint" checked>
+                                        <label class="form-check-label" for="autoPrint">
+                                            הדפסה אוטומטית של הזמנות
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">סוג מדפסת</label>
+                                    <select class="form-control" name="printer_type">
+                                        <option value="SNBC" selected>SNBC</option>
+                                        <option value="Epson">Epson</option>
+                                        <option value="Star">Star</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">זמן הכנה נוסף (דקות)</label>
+                                    <input type="number" class="form-control" name="prep_time_buffer" 
+                                           value="10" min="0" max="60" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">מקסימום הזמנות במקביל</label>
+                                    <input type="number" class="form-control" name="max_concurrent_orders" 
+                                           value="20" min="1" max="100" required>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> שמור הגדרות
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="tab-pane fade" id="notification">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">הגדרות התראות</h5>
+                </div>
+                <div class="card-body">
+                    <form id="notificationForm" onsubmit="saveConfig(event, 'notification')">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="sms_enabled" 
+                                               id="smsEnabled" checked>
+                                        <label class="form-check-label" for="smsEnabled">
+                                            אפשר הודעות SMS
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">ספק SMS</label>
+                                    <select class="form-control" name="sms_provider">
+                                        <option value="sms4free" selected>SMS4Free</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="whatsapp_enabled" 
+                                               id="whatsappEnabled" checked>
+                                        <label class="form-check-label" for="whatsappEnabled">
+                                            אפשר WhatsApp
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="email_enabled" 
+                                               id="emailEnabled" checked>
+                                        <label class="form-check-label" for="emailEnabled">
+                                            אפשר דוא"ל
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="real_time_updates" 
+                                               id="realTimeUpdates" checked>
+                                        <label class="form-check-label" for="realTimeUpdates">
+                                            עדכונים בזמן אמת (WebSocket)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> שמור הגדרות
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load existing configuration
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/config/get/all')
+        .then(response => response.json())
+        .then(data => {
+            // Populate forms with existing values
+            for (const [category, settings] of Object.entries(data)) {
+                const form = document.getElementById(category + 'Form');
+                if (form) {
+                    for (const [key, value] of Object.entries(settings)) {
+                        const input = form.querySelector(`[name="${key}"]`);
+                        if (input) {
+                            if (input.type === 'checkbox') {
+                                input.checked = value === true || value === 'true';
+                            } else {
+                                input.value = value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+});
+
+function saveConfig(event, category) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    // Process each field
+    for (const [key, value] of formData.entries()) {
+        const input = form.querySelector(`[name="${key}"]`);
+        let processedValue = value;
+        
+        // Handle checkboxes
+        if (input.type === 'checkbox') {
+            processedValue = input.checked;
+        }
+        // Handle multiple select
+        else if (input.multiple) {
+            processedValue = Array.from(input.selectedOptions).map(opt => opt.value);
+        }
+        
+        // Send update
+        fetch('/api/config/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                category: category,
+                key: key,
+                value: processedValue
+            })
+        });
+    }
+    
+    // Show success message
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show mt-3';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle"></i> הגדרות ${category} נשמרו בהצלחה!
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    form.appendChild(alert);
+    
+    setTimeout(() => alert.remove(), 3000);
+}
+</script>
+{% endblock %}

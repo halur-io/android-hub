@@ -1,0 +1,1278 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות אתר - Site Settings{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- Page Header -->
+    <div class="settings-header">
+        <h1 class="settings-page-title">
+            <i class="fas fa-cog"></i>
+            הגדרות אתר / Site Settings
+        </h1>
+        <p class="settings-page-subtitle">נהל את כל ההגדרות של האתר במקום אחד</p>
+    </div>
+    
+    <!-- Modern Horizontal Tabs -->
+    <nav class="modern-tabs-nav">
+        <button type="button" class="modern-tab-button active" data-tab="general">
+            <span class="tab-icon"><i class="fas fa-home"></i></span>
+            <span class="tab-label">כללי / General</span>
+            <span class="tab-description">תוכן וטקסטים</span>
+        </button>
+        
+        <button type="button" class="modern-tab-button" data-tab="branding">
+            <span class="tab-icon"><i class="fas fa-palette"></i></span>
+            <span class="tab-label">מיתוג / Branding</span>
+            <span class="tab-description">לוגו ותמונות</span>
+        </button>
+        
+        <button type="button" class="modern-tab-button" data-tab="features">
+            <span class="tab-icon"><i class="fas fa-toggle-on"></i></span>
+            <span class="tab-label">תכונות / Features</span>
+            <span class="tab-description">הפעלה/כיבוי</span>
+        </button>
+        
+        <button type="button" class="modern-tab-button" data-tab="delivery">
+            <span class="tab-icon"><i class="fas fa-truck"></i></span>
+            <span class="tab-label">משלוחים / Delivery</span>
+            <span class="tab-description">עלויות ואיזורים</span>
+        </button>
+        
+        <button type="button" class="modern-tab-button" data-tab="advanced">
+            <span class="tab-icon"><i class="fas fa-code"></i></span>
+            <span class="tab-label">מתקדם / Advanced</span>
+            <span class="tab-description">Analytics & SEO</span>
+        </button>
+    </nav>
+    
+    <!-- Content Wrapper -->
+    <div class="settings-content-wrapper">
+        <form method="POST" enctype="multipart/form-data" id="settingsForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <!-- ============================= GENERAL TAB ============================= -->
+            <div class="settings-tab-content active" id="tab-general">
+                <div class="settings-content-header">
+                    <h1 class="settings-content-title">הגדרות כלליות / General Settings</h1>
+                    <p class="settings-content-subtitle">נהל את התוכן הראשי, טקסטים ופרטי התקשרות של האתר</p>
+                </div>
+                
+                <div class="accordion" id="generalSettingsAccordion">
+                    <!-- Hero Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHero" aria-expanded="true">
+                                <i class="fas fa-image"></i>
+                                Hero Section
+                            </h3>
+                        </div>
+                        <div id="collapseHero" class="accordion-collapse collapse show" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <div class="form-row-two-col">
+                            <!-- Hebrew -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת ראשית</label>
+                                    <input type="text" class="form-control-modern" name="hero_title_he" value="{{ settings.hero_title_he }}">
+                                    <small class="form-help-text">הכותרת הראשית שתוצג במסך הפתיחה</small>
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה</label>
+                                    <input type="text" class="form-control-modern" name="hero_subtitle_he" value="{{ settings.hero_subtitle_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">תיאור</label>
+                                    <textarea class="form-control-modern" name="hero_description_he" rows="3">{{ settings.hero_description_he }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- English -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Main Title</label>
+                                    <input type="text" class="form-control-modern" name="hero_title_en" value="{{ settings.hero_title_en }}">
+                                    <small class="form-help-text">The main headline on your homepage hero</small>
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle</label>
+                                    <input type="text" class="form-control-modern" name="hero_subtitle_en" value="{{ settings.hero_subtitle_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Description</label>
+                                    <textarea class="form-control-modern" name="hero_description_en" rows="3">{{ settings.hero_description_en }}</textarea>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- About Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAbout" aria-expanded="false">
+                                <i class="fas fa-info-circle"></i>
+                                About Section
+                            </h3>
+                        </div>
+                        <div id="collapseAbout" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <div class="form-row-two-col">
+                            <!-- Hebrew -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת</label>
+                                    <input type="text" class="form-control-modern" name="about_title_he" value="{{ settings.about_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">תוכן</label>
+                                    <textarea class="form-control-modern" name="about_content_he" rows="5">{{ settings.about_content_he }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- English -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title</label>
+                                    <input type="text" class="form-control-modern" name="about_title_en" value="{{ settings.about_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Content</label>
+                                    <textarea class="form-control-modern" name="about_content_en" rows="5">{{ settings.about_content_en }}</textarea>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Catering & Events Homepage Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCateringHome" aria-expanded="false">
+                                <i class="fas fa-utensils"></i>
+                                {{ 'קייטרינג - סקציה בדף הבית' if (admin_language or 'he') == 'he' else 'Catering - Homepage Section' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCateringHome" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">התוכן שמוצג בסקציית הקייטרינג בדף הבית / Content displayed in the catering section on homepage</p>
+                        <div class="form-row-two-col">
+                            <!-- Hebrew -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת</label>
+                                    <input type="text" class="form-control-modern" name="catering_title_he" value="{{ settings.catering_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">תיאור</label>
+                                    <textarea class="form-control-modern" name="catering_subtitle_he" rows="3">{{ settings.catering_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- English -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title</label>
+                                    <input type="text" class="form-control-modern" name="catering_title_en" value="{{ settings.catering_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle</label>
+                                    <textarea class="form-control-modern" name="catering_subtitle_en" rows="3">{{ settings.catering_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Catering Page Control -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCateringPage" aria-expanded="false">
+                                <i class="fas fa-file-alt"></i>
+                                {{ 'עמוד קייטרינג - שליטה מלאה' if (admin_language or 'he') == 'he' else 'Catering Page - Full Control' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCateringPage" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">שליטה מלאה על כל ההיבטים של עמוד הקייטרינג / Full control over all aspects of the catering page</p>
+                        
+                        <!-- Hero Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-image me-2"></i>Hero Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_hero_title_he" value="{{ settings.catering_page_hero_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה (עברית)</label>
+                                    <textarea class="form-control-modern" name="catering_page_hero_subtitle_he" rows="2">{{ settings.catering_page_hero_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_hero_title_en" value="{{ settings.catering_page_hero_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle (English)</label>
+                                    <textarea class="form-control-modern" name="catering_page_hero_subtitle_en" rows="2">{{ settings.catering_page_hero_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- Gallery Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-images me-2"></i>Gallery Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת גלריה (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_title_he" value="{{ settings.catering_page_gallery_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה גלריה (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_subtitle_he" value="{{ settings.catering_page_gallery_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Gallery Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_title_en" value="{{ settings.catering_page_gallery_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Gallery Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_gallery_subtitle_en" value="{{ settings.catering_page_gallery_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3" style="background-color: #f0f9ff; border-color: #3b82f6;">
+                            <i class="fas fa-images me-2" style="color: #3b82f6;"></i>
+                            <strong>{{ 'ניהול תמונות הגלריה:' if (admin_language or 'he') == 'he' else 'Gallery Image Management:' }}</strong>
+                            <a href="{{ url_for('admin.catering_gallery') }}" class="btn btn-sm btn-primary ms-2" target="_blank">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                {{ 'פתח ניהול גלריית קייטרינג' if (admin_language or 'he') == 'he' else 'Open Catering Gallery Manager' }}
+                            </a>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- CTA Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-phone me-2"></i>Contact CTA Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_title_he" value="{{ settings.catering_page_cta_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_subtitle_he" value="{{ settings.catering_page_cta_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_title_en" value="{{ settings.catering_page_cta_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="catering_page_cta_subtitle_en" value="{{ settings.catering_page_cta_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Deals Section Label -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDealsLabel" aria-expanded="false">
+                                <i class="fas fa-tags"></i>
+                                {{ 'שם סקציית המבצעים' if (admin_language or 'he') == 'he' else 'Deals Section Label' }}
+                            </h3>
+                        </div>
+                        <div id="collapseDealsLabel" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                                <p style="color: #6b7280; margin-bottom: 1.5rem;">שנה את השם המוצג עבור סקציית המבצעים בניווט וכותרות / Change the display name for the deals section in navigation and headings</p>
+                                <div class="form-row-two-col">
+                                    <div>
+                                        <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">שם הסקציה בעברית</label>
+                                            <input type="text" class="form-control-modern" name="deals_section_label_he" value="{{ settings.deals_section_label_he or 'מבצעים' }}" placeholder="לדוגמה: מבצעים, עסקאות, חבילות">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">Section Name in English</label>
+                                            <input type="text" class="form-control-modern" name="deals_section_label_en" value="{{ settings.deals_section_label_en or 'Deals' }}" placeholder="e.g. Deals, Combos, Packages">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Careers - Homepage Section -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCareersHome" aria-expanded="false">
+                                <i class="fas fa-briefcase"></i>
+                                {{ 'קריירה - סקציה בדף הבית' if (admin_language or 'he') == 'he' else 'Careers - Homepage Section' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCareersHome" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">התוכן שמוצג בסקציית הקריירה בדף הבית / Content displayed in the careers section on homepage</p>
+                        <div class="form-row-two-col">
+                            <!-- Hebrew -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">עברית</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת</label>
+                                    <input type="text" class="form-control-modern" name="careers_title_he" value="{{ settings.careers_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">תיאור</label>
+                                    <textarea class="form-control-modern" name="careers_subtitle_he" rows="3">{{ settings.careers_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- English -->
+                            <div>
+                                <h4 style="margin-bottom: 1.5rem; color: #374151; font-size: 1.125rem; font-weight: 600;">English</h4>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title</label>
+                                    <input type="text" class="form-control-modern" name="careers_title_en" value="{{ settings.careers_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle</label>
+                                    <textarea class="form-control-modern" name="careers_subtitle_en" rows="3">{{ settings.careers_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Careers Page - Full Control -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCareersPage" aria-expanded="false">
+                                <i class="fas fa-briefcase"></i>
+                                {{ 'עמוד קריירה - שליטה מלאה' if (admin_language or 'he') == 'he' else 'Careers Page - Full Control' }}
+                            </h3>
+                        </div>
+                        <div id="collapseCareersPage" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">שליטה מלאה על כל ההיבטים של עמוד הקריירה / Full control over all aspects of the careers page</p>
+                        
+                        <!-- Hero Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-image me-2"></i>Hero Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_hero_title_he" value="{{ settings.careers_page_hero_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה (עברית)</label>
+                                    <textarea class="form-control-modern" name="careers_page_hero_subtitle_he" rows="2">{{ settings.careers_page_hero_subtitle_he }}</textarea>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_hero_title_en" value="{{ settings.careers_page_hero_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Subtitle (English)</label>
+                                    <textarea class="form-control-modern" name="careers_page_hero_subtitle_en" rows="2">{{ settings.careers_page_hero_subtitle_en }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- Positions Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-list me-2"></i>Positions Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משרות (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_title_he" value="{{ settings.careers_page_positions_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה משרות (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_subtitle_he" value="{{ settings.careers_page_positions_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Positions Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_title_en" value="{{ settings.careers_page_positions_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">Positions Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_positions_subtitle_en" value="{{ settings.careers_page_positions_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3" style="background-color: #f0f9ff; border-color: #3b82f6;">
+                            <i class="fas fa-briefcase me-2" style="color: #3b82f6;"></i>
+                            <strong>{{ 'ניהול משרות:' if (admin_language or 'he') == 'he' else 'Job Positions Management:' }}</strong>
+                            <a href="{{ url_for('admin.careers') }}" class="btn btn-sm btn-primary ms-2" target="_blank">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                {{ 'פתח ניהול משרות' if (admin_language or 'he') == 'he' else 'Open Careers Manager' }}
+                            </a>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <!-- CTA Section -->
+                        <h5 style="margin-bottom: 1rem; color: #374151; font-weight: 600;"><i class="fas fa-phone me-2"></i>Contact CTA Section</h5>
+                        <div class="form-row-two-col">
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_title_he" value="{{ settings.careers_page_cta_title_he }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">כותרת משנה CTA (עברית)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_subtitle_he" value="{{ settings.careers_page_cta_subtitle_he }}">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Title (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_title_en" value="{{ settings.careers_page_cta_title_en }}">
+                                </div>
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">CTA Subtitle (English)</label>
+                                    <input type="text" class="form-control-modern" name="careers_page_cta_subtitle_en" value="{{ settings.careers_page_cta_subtitle_en }}">
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Form Email Configuration -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFormEmails" aria-expanded="false">
+                                <i class="fas fa-envelope"></i>
+                                Form Email Configuration / הגדרת אימיילים לטפסים
+                            </h3>
+                        </div>
+                        <div id="collapseFormEmails" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Where should messages from each form be sent to? / לאן להעביר הודעות מכל טופס?
+                        </p>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-phone me-2" style="color: #c96f44;"></i>
+                                Email for Contact Form / אימייל לטופס יצירת קשר
+                            </label>
+                            <input type="email" class="form-control-modern" name="contact_form_email" value="{{ settings.contact_form_email or 'info@sumo-restaurant.co.il' }}" required>
+                            <small class="form-help-text">Messages from the contact form will be sent here</small>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-utensils me-2" style="color: #c96f44;"></i>
+                                Email for Catering Form / אימייל לטופס קייטרינג
+                            </label>
+                            <input type="email" class="form-control-modern" name="catering_form_email" value="{{ settings.catering_form_email or 'info@sumo-restaurant.co.il' }}" required>
+                            <small class="form-help-text">Catering inquiries will be sent here</small>
+                        </div>
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fas fa-briefcase me-2" style="color: #c96f44;"></i>
+                                Email for Careers Form / אימייל לטופס קריירה
+                            </label>
+                            <input type="email" class="form-control-modern" name="careers_form_email" value="{{ settings.careers_form_email or 'info@sumo-restaurant.co.il' }}" required>
+                            <small class="form-help-text">Job applications will be sent here</small>
+                        </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Order Onboarding Flow -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOnboarding" aria-expanded="false">
+                                <i class="fas fa-clipboard-check"></i>
+                                {{ 'טופס כניסה להזמנה' if (admin_language or 'he') == 'he' else 'Order Onboarding Flow' }}
+                            </h3>
+                        </div>
+                        <div id="collapseOnboarding" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                                <div class="toggle-group">
+                                    <div class="toggle-label-wrapper">
+                                        <label class="toggle-label">{{ 'הפעל טופס כניסה' if (admin_language or 'he') == 'he' else 'Enable Onboarding' }}</label>
+                                        <span class="toggle-description">{{ 'חייב לקוחות למלא פרטים ולאמת טלפון (OTP) לפני גישה לתפריט ההזמנות' if (admin_language or 'he') == 'he' else 'Require customers to fill details & verify phone (OTP) before accessing the order menu' }}</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="enable_order_onboarding" {% if settings.enable_order_onboarding %}checked{% endif %}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Site Info & Social Media -->
+                    <section class="settings-section accordion-item">
+                        <div class="settings-section-header accordion-header">
+                            <h3 class="settings-section-title accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSiteInfo" aria-expanded="false">
+                                <i class="fas fa-share-alt"></i>
+                                Site Info & Social Media
+                            </h3>
+                        </div>
+                        <div id="collapseSiteInfo" class="accordion-collapse collapse" data-bs-parent="#generalSettingsAccordion">
+                            <div class="settings-section-body accordion-body">
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">שם האתר (עברית)</label>
+                                <input type="text" class="form-control-modern" name="site_name_he" value="{{ settings.site_name_he }}">
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Site Name (English)</label>
+                                <input type="text" class="form-control-modern" name="site_name_en" value="{{ settings.site_name_en }}">
+                            </div>
+                        </div>
+                        
+                        <div class="section-divider"></div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">
+                                    <i class="fab fa-facebook" style="color: #1877f2; margin-left: 0.5rem;"></i>
+                                    Facebook URL
+                                </label>
+                                <input type="url" class="form-control-modern" name="facebook_url" value="{{ settings.facebook_url }}" placeholder="https://facebook.com/yourpage">
+                            </div>
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">
+                                    <i class="fab fa-instagram" style="color: #e4405f; margin-left: 0.5rem;"></i>
+                                    Instagram URL
+                                </label>
+                                <input type="url" class="form-control-modern" name="instagram_url" value="{{ settings.instagram_url }}" placeholder="https://instagram.com/yourpage">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">
+                                <i class="fab fa-whatsapp" style="color: #25d366; margin-left: 0.5rem;"></i>
+                                WhatsApp Number
+                            </label>
+                            <input type="text" class="form-control-modern" name="whatsapp_number" value="{{ settings.whatsapp_number }}" placeholder="972501234567">
+                            <small class="form-help-text">מספר בפורמט בינלאומי ללא סימן +</small>
+                        </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            
+            <!-- ============================= BRANDING TAB ============================= -->
+            <div class="settings-tab-content" id="tab-branding" style="display: none;">
+                <div class="settings-content-header">
+                    <h1 class="settings-content-title">מיתוג / Branding</h1>
+                    <p class="settings-content-subtitle">עצב את המראה הויזואלי של המסעדה שלך</p>
+                </div>
+                
+                <!-- Hero Desktop Image -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-image"></i>
+                            Desktop Hero Background Image
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">תמונת רקע מרהיבה למסך הפתיחה (מומלץ 1920x1080px ומעלה)</p>
+                        
+                        <div class="file-upload-modern" onclick="document.getElementById('hero_desktop_image').click()">
+                            <div class="file-upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div class="file-upload-text">לחץ כדי להעלות תמונה / Click to upload image</div>
+                            <div class="file-upload-hint">PNG, JPG up to 5MB (max 1920px width recommended)</div>
+                            <input type="file" id="hero_desktop_image" name="hero_desktop_image" accept="image/*" style="display: none;" onchange="previewImage(this, 'hero-preview')">
+                        </div>
+                        
+                        {% if settings.hero_desktop_image %}
+                        <div class="file-preview" id="hero-preview">
+                            <img src="{{ url_for('static', filename='uploads/' + settings.hero_desktop_image) }}" alt="Hero Image">
+                        </div>
+                        {% else %}
+                        <div class="file-preview" id="hero-preview" style="display: none;"></div>
+                        {% endif %}
+                    </div>
+                </section>
+                
+                <!-- Logo -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-crown"></i>
+                            Restaurant Logo
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">הלוגו של המסעדה (מומלץ PNG עם רקע שקוף)</p>
+                        
+                        <div class="file-upload-modern" onclick="document.getElementById('logo_image').click()">
+                            <div class="file-upload-icon">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="file-upload-text">לחץ כדי להעלות לוגו / Click to upload logo</div>
+                            <div class="file-upload-hint">PNG with transparent background (max 500px)</div>
+                            <input type="file" id="logo_image" name="logo_image" accept="image/*" style="display: none;" onchange="previewImage(this, 'logo-preview')">
+                        </div>
+                        
+                        {% if settings.logo_image %}
+                        <div class="file-preview" id="logo-preview">
+                            <img src="{{ url_for('static', filename='uploads/' + settings.logo_image) }}" alt="Logo">
+                        </div>
+                        {% else %}
+                        <div class="file-preview" id="logo-preview" style="display: none;"></div>
+                        {% endif %}
+                    </div>
+                </section>
+                
+                <!-- Favicon -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-star"></i>
+                            Favicon
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">אייקון הטאב בדפדפן (32x32px או 64x64px)</p>
+                        
+                        <div class="file-upload-modern" onclick="document.getElementById('favicon_image').click()">
+                            <div class="file-upload-icon">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="file-upload-text">לחץ כדי להעלות favicon / Click to upload</div>
+                            <div class="file-upload-hint">.ico or .png (32x32px or 64x64px)</div>
+                            <input type="file" id="favicon_image" name="favicon_image" accept="image/x-icon,image/png" style="display: none;" onchange="previewImage(this, 'favicon-preview')">
+                        </div>
+                        
+                        {% if settings.favicon_image %}
+                        <div class="file-preview" id="favicon-preview">
+                            <img src="{{ url_for('static', filename='uploads/' + settings.favicon_image) }}" alt="Favicon" style="width: 32px; height: 32px;">
+                        </div>
+                        {% else %}
+                        <div class="file-preview" id="favicon-preview" style="display: none;"></div>
+                        {% endif %}
+                    </div>
+                </section>
+                
+                <!-- Catering Background Image -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-utensils"></i>
+                            Catering Section Background Image
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <p style="color: #6b7280; margin-bottom: 1.5rem;">תמונת רקע לסקציית הקייטרינג בדף הבית (מומלץ 1920x1080px ומעלה)</p>
+                        
+                        <div class="file-upload-modern" onclick="document.getElementById('catering_image').click()">
+                            <div class="file-upload-icon">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                            <div class="file-upload-text">לחץ כדי להעלות תמונה / Click to upload image</div>
+                            <div class="file-upload-hint">PNG, JPG up to 5MB (1920px width recommended)</div>
+                            <input type="file" id="catering_image" name="catering_image" accept="image/*" style="display: none;" onchange="previewImage(this, 'catering-preview')">
+                        </div>
+                        
+                        {% if settings.catering_image %}
+                        <div class="file-preview" id="catering-preview">
+                            <img src="{{ url_for('static', filename='uploads/' + settings.catering_image) }}" alt="Catering Image">
+                        </div>
+                        {% else %}
+                        <div class="file-preview" id="catering-preview" style="display: none;"></div>
+                        {% endif %}
+                    </div>
+                </section>
+                
+                <!-- Brand Colors -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-palette"></i>
+                            Brand Colors
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">צבע ראשי / Primary Color</label>
+                                <div class="color-picker-group">
+                                    <div class="color-preview-box" id="primary-color-preview" style="background-color: {{ settings.primary_color or '#1a3a6e' }}"></div>
+                                    <div class="color-input-wrapper">
+                                        <input type="color" class="form-control-modern" name="primary_color" value="{{ settings.primary_color or '#1a3a6e' }}" onchange="updateColorPreview(this, 'primary-color-preview')">
+                                    </div>
+                                </div>
+                                <small class="form-help-text">צבע עיקרי לכפתורים וקישורים</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">צבע משני / Secondary Color</label>
+                                <div class="color-picker-group">
+                                    <div class="color-preview-box" id="secondary-color-preview" style="background-color: {{ settings.secondary_color or '#dc3545' }}"></div>
+                                    <div class="color-input-wrapper">
+                                        <input type="color" class="form-control-modern" name="secondary_color" value="{{ settings.secondary_color or '#dc3545' }}" onchange="updateColorPreview(this, 'secondary-color-preview')">
+                                    </div>
+                                </div>
+                                <small class="form-help-text">צבע למבטאים והדגשות</small>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- ============================= FEATURES TAB ============================= -->
+            <div class="settings-tab-content" id="tab-features" style="display: none;">
+                <div class="settings-content-header">
+                    <h1 class="settings-content-title">תכונות / Features</h1>
+                    <p class="settings-content-subtitle">הפעל או כבה תכונות שונות באתר</p>
+                </div>
+                
+                <!-- Main Features -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-toggle-on"></i>
+                            Main Features
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'הזמנות אונליין' if (admin_language or 'he') == 'he' else 'Online Ordering' }}</label>
+                                <span class="toggle-description">{{ 'אפשר ללקוחות להזמין ישירות דרך האתר' if (admin_language or 'he') == 'he' else 'Allow customers to order directly through the website' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_online_ordering" {% if settings.enable_online_ordering %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'משלוחים' if (admin_language or 'he') == 'he' else 'Delivery' }}</label>
+                                <span class="toggle-description">{{ 'הפעל אפשרות משלוח הביתה' if (admin_language or 'he') == 'he' else 'Enable home delivery option' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_delivery" {% if settings.enable_delivery %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'איסוף עצמי' if (admin_language or 'he') == 'he' else 'Pickup' }}</label>
+                                <span class="toggle-description">{{ 'הפעל אפשרות איסוף עצמי מהמסעדה' if (admin_language or 'he') == 'he' else 'Enable customer pickup from restaurant' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_pickup" {% if settings.enable_pickup %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">שפות / Multi-Language</label>
+                                <span class="toggle-description">הצג אפשרות החלפה בין עברית לאנגלית</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_english_language" {% if settings.enable_english_language %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'תפריט' if (admin_language or 'he') == 'he' else 'Menu Display' }}</label>
+                                <span class="toggle-description">{{ 'הצג את עמוד התפריט המלא' if (admin_language or 'he') == 'he' else 'Show the full menu page' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_menu_display" {% if settings.enable_menu_display %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'גלריה' if (admin_language or 'he') == 'he' else 'Gallery' }}</label>
+                                <span class="toggle-description">{{ 'הצג את עמוד הגלריה' if (admin_language or 'he') == 'he' else 'Show the gallery page' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_gallery" {% if settings.enable_gallery %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'קטע גלריה בדף הבית' if (admin_language or 'he') == 'he' else 'Gallery Section' }}</label>
+                                <span class="toggle-description">{{ 'הצג קטע עם תמונות גלריה בדף הבית (8 תמונות, 2 עמודות)' if (admin_language or 'he') == 'he' else 'Show gallery section on homepage (8 photos, 2 columns)' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_gallery_section" {% if settings.enable_gallery_section %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">צור קשר / Contact Form</label>
+                                <span class="toggle-description">הצג טופס יצירת קשר</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_contact_form" {% if settings.enable_contact_form %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">הזמנת שולחן / Table Reservations</label>
+                                <span class="toggle-description">הפעל מערכת הזמנת שולחנות</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_table_reservations" {% if settings.enable_table_reservations %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'קטע קייטרינג בדף הבית' if (admin_language or 'he') == 'he' else 'Catering Homepage Section' }}</label>
+                                <span class="toggle-description">{{ 'הצג קטע קייטרינג ואירועים מיוחדים בדף הבית' if (admin_language or 'he') == 'he' else 'Show catering & special events section on homepage' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_catering_section" {% if settings.enable_catering_section %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'עמוד קייטרינג ייעודי' if (admin_language or 'he') == 'he' else 'Dedicated Catering Page' }}</label>
+                                <span class="toggle-description">{{ 'הפעל עמוד קייטרינג מפורט עם חבילות והצעות' if (admin_language or 'he') == 'he' else 'Enable detailed catering page with packages and offers' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_catering_page" {% if settings.enable_catering_page %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Mobile App Settings -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-mobile-alt"></i>
+                            Mobile App Download
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">{{ 'הורדת אפליקציה' if (admin_language or 'he') == 'he' else 'App Download' }}</label>
+                                <span class="toggle-description">{{ 'הצג קטע הורדת אפליקציה בדף הבית' if (admin_language or 'he') == 'he' else 'Show app download section on homepage' }}</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="enable_app_download" {% if settings.enable_app_download %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">באנר חכם / Smart Banner</label>
+                                <span class="toggle-description">הצג באנר הורדת אפליקציה במובייל</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="show_app_banner" {% if settings.show_app_banner %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">
+                                    <i class="fab fa-apple" style="font-size: 18px;"></i>
+                                    App Store URL
+                                </label>
+                                <input type="url" class="form-control-modern" name="app_store_url" value="{{ settings.app_store_url or '' }}" placeholder="https://apps.apple.com/app/your-app">
+                                <small class="form-help-text">קישור לאפליקציה ב-App Store (iOS)</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">
+                                    <i class="fab fa-google-play" style="font-size: 18px; background: linear-gradient(45deg, #ea4335 25%, #4285f4 25%, #4285f4 50%, #fbbc04 50%, #fbbc04 75%, #34a853 75%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                                    Google Play URL
+                                </label>
+                                <input type="url" class="form-control-modern" name="google_play_url" value="{{ settings.google_play_url or '' }}" placeholder="https://play.google.com/store/apps/details?id=your.app">
+                                <small class="form-help-text">קישור לאפליקציה ב-Google Play (Android)</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Banner Text Controls -->
+                        <h4 style="margin-top: 30px; margin-bottom: 20px; color: #1a3a6e;">
+                            <i class="fas fa-mobile-alt"></i> הגדרות באנר חכם למובייל
+                        </h4>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">כותרת באנר (עברית)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_title_he" value="{{ settings.app_banner_title_he or 'הזמנות רק באפליקציה' }}">
+                                <small class="form-help-text">הטקסט הראשי בבאנר למובייל</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Banner Title (English)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_title_en" value="{{ settings.app_banner_title_en or 'Order via App' }}">
+                                <small class="form-help-text">Main text for mobile banner</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">תת כותרת באנר (עברית)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_subtitle_he" value="{{ settings.app_banner_subtitle_he or 'הורידו עכשיו' }}">
+                                <small class="form-help-text">הטקסט המשני בבאנר למובייל</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Banner Subtitle (English)</label>
+                                <input type="text" class="form-control-modern" name="app_banner_subtitle_en" value="{{ settings.app_banner_subtitle_en or 'Download Now' }}">
+                                <small class="form-help-text">Secondary text for mobile banner</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">טקסט קידום (עברית)</label>
+                                <input type="text" class="form-control-modern" name="app_promo_text_he" value="{{ settings.app_promo_text_he or 'הורידו את האפליקציה שלנו!' }}">
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Promo Text (English)</label>
+                                <input type="text" class="form-control-modern" name="app_promo_text_en" value="{{ settings.app_promo_text_en or 'Download our app!' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">טקסט הנחה (עברית)</label>
+                                <input type="text" class="form-control-modern" name="app_discount_text_he" value="{{ settings.app_discount_text_he or '' }}" placeholder="אופציונלי: טקסט הנחה">
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Discount Text (English)</label>
+                                <input type="text" class="form-control-modern" name="app_discount_text_en" value="{{ settings.app_discount_text_en or '' }}" placeholder="Optional: discount text">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Ordering Settings -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-shopping-cart"></i>
+                            Ordering Settings
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">הזמנה מינימלית / Minimum Order (₪)</label>
+                                <input type="number" class="form-control-modern" name="min_order_amount" value="{{ settings.min_order_amount or 0 }}" step="0.01" min="0">
+                                <small class="form-help-text">סכום מינימלי להזמנה (0 = ללא מינימום)</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">מס / Tax Rate (%)</label>
+                                <input type="number" class="form-control-modern" name="tax_rate" value="{{ settings.tax_rate or 0 }}" step="0.01" min="0" max="100">
+                                <small class="form-help-text">אחוז המס (לדוגמה: 17 עבור מע"מ)</small>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- ============================= DELIVERY TAB ============================= -->
+            <div class="settings-tab-content" id="tab-delivery" style="display: none;">
+                <div class="settings-content-header">
+                    <h1 class="settings-content-title">משלוחים / Delivery</h1>
+                    <p class="settings-content-subtitle">נהל הגדרות משלוח, עלויות ואיזורי חלוקה</p>
+                </div>
+                
+                <!-- Delivery Costs -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-dollar-sign"></i>
+                            Delivery Costs
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">עלות משלוח / Delivery Fee (₪)</label>
+                                <input type="number" class="form-control-modern" name="delivery_fee" value="{{ settings.delivery_fee or 0 }}" step="0.01" min="0">
+                                <small class="form-help-text">עלות המשלוח הבסיסית</small>
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">משלוח חינם מעל / Free Delivery Above (₪)</label>
+                                <input type="number" class="form-control-modern" name="free_delivery_threshold" value="{{ settings.free_delivery_threshold or 0 }}" step="0.01" min="0">
+                                <small class="form-help-text">סכום הזמנה למשלוח חינם (0 = אין)</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">זמן משלוח משוער / Estimated Delivery Time (דקות)</label>
+                            <input type="number" class="form-control-modern" name="estimated_delivery_time" value="{{ settings.estimated_delivery_time or 45 }}" min="0">
+                            <small class="form-help-text">זמן משוער להגעת המשלוח בדקות</small>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Delivery Zones Info -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-map-marked-alt"></i>
+                            Delivery Zones
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+                            <p style="margin: 0; color: #1e40af; font-size: 0.9375rem;">
+                                <i class="fas fa-info-circle" style="margin-left: 0.5rem;"></i>
+                                <strong>איזורי משלוח מנוהלים בנפרד</strong> - לעריכת אזורי משלוח, היכנס לעמוד "ניהול איזורי משלוח" בתפריט הצד.
+                            </p>
+                        </div>
+                        <p style="color: #6b7280;">אזורי המשלוח מוגדרים עם ערים ספציפיות ועלויות נפרדות לכל איזור. ניתן להגדיר משלוח לאזורים שונים מסביב לכרמיאל.</p>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- ============================= ADVANCED TAB ============================= -->
+            <div class="settings-tab-content" id="tab-advanced" style="display: none;">
+                <div class="settings-content-header">
+                    <h1 class="settings-content-title">הגדרות מתקדמות / Advanced Settings</h1>
+                    <p class="settings-content-subtitle">Analytics, SEO, ומצב תחזוקה</p>
+                </div>
+                
+                <!-- Analytics -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-chart-line"></i>
+                            Analytics & Tracking
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Google Tag Manager ID (מומלץ)</label>
+                            <input type="text" class="form-control-modern" name="google_tag_manager_id" value="{{ settings.google_tag_manager_id or '' }}" placeholder="GTM-XXXXXXX">
+                            <small class="form-help-text">מזהה GTM למעקב מתקדם. כולל מעקב אחר צפיות בעמודים ולחיצות על מנות בתפריט</small>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Google Analytics ID</label>
+                            <input type="text" class="form-control-modern" name="google_analytics_id" value="{{ settings.google_analytics_id or '' }}" placeholder="G-XXXXXXXXXX">
+                            <small class="form-help-text">מזהה Google Analytics (נשתמש רק אם GTM לא מוגדר)</small>
+                        </div>
+                        
+                        <div class="form-group-modern">
+                            <label class="form-label-modern">Facebook Pixel ID</label>
+                            <input type="text" class="form-control-modern" name="facebook_pixel_id" value="{{ settings.facebook_pixel_id or '' }}" placeholder="123456789012345">
+                            <small class="form-help-text">מזהה Facebook Pixel למעקב אחר קמפיינים</small>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Announcements -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-bullhorn"></i>
+                            Announcement Banner
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">הצג באנר הודעה / Show Announcement</label>
+                                <span class="toggle-description">הצג באנר הודעה בראש האתר</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="announcement_enabled" {% if settings.announcement_enabled %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="form-row-two-col">
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">טקסט הודעה (עברית)</label>
+                                <input type="text" class="form-control-modern" name="announcement_text_he" value="{{ settings.announcement_text_he or '' }}" placeholder="שעות פתיחה מיוחדות לחגים">
+                            </div>
+                            
+                            <div class="form-group-modern">
+                                <label class="form-label-modern">Announcement Text (English)</label>
+                                <input type="text" class="form-control-modern" name="announcement_text_en" value="{{ settings.announcement_text_en or '' }}" placeholder="Special holiday hours">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Maintenance Mode -->
+                <section class="settings-section">
+                    <div class="settings-section-header">
+                        <h3 class="settings-section-title">
+                            <i class="fas fa-tools"></i>
+                            Maintenance Mode
+                        </h3>
+                    </div>
+                    <div class="settings-section-body">
+                        <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+                            <p style="margin: 0; color: #92400e; font-size: 0.9375rem;">
+                                <i class="fas fa-exclamation-triangle" style="margin-left: 0.5rem;"></i>
+                                <strong>אזהרה:</strong> מצב תחזוקה יחסום את האתר מכל המשתמשים. רק מנהלים יוכלו לגשת.
+                            </p>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-label-wrapper">
+                                <label class="toggle-label">מצב תחזוקה / Maintenance Mode</label>
+                                <span class="toggle-description">הפעל מצב תחזוקה וחסום גישה לאתר</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="maintenance_mode" {% if settings.maintenance_mode %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- STICKY ACTION BAR -->
+            <div class="settings-action-bar">
+                <div class="action-bar-left">
+                    <i class="fas fa-info-circle" style="margin-left: 0.5rem;"></i>
+                    לא לשכוח לשמור שינויים
+                </div>
+                <div class="action-bar-buttons">
+                    <button type="button" class="btn-modern btn-secondary-modern" onclick="window.location.reload()">
+                        <i class="fas fa-undo"></i>
+                        ביטול / Cancel
+                    </button>
+                    <button type="submit" class="btn-modern btn-primary-modern">
+                        <i class="fas fa-save"></i>
+                        שמור שינויים / Save Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </main>
+</div>
+
+<script>
+// Modern Horizontal Tabs Navigation
+document.querySelectorAll('.modern-tab-button').forEach(button => {
+    button.addEventListener('click', function() {
+        // Remove active class from all tab buttons
+        document.querySelectorAll('.modern-tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to clicked button
+        this.classList.add('active');
+        
+        // Hide all tab contents
+        document.querySelectorAll('.settings-tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+        
+        // Show selected tab content
+        const tabId = this.getAttribute('data-tab');
+        document.getElementById('tab-' + tabId).style.display = 'block';
+        
+        // Scroll to top of content wrapper
+        document.querySelector('.settings-content-wrapper').scrollTop = 0;
+    });
+});
+
+// Image Preview
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.alt = 'Preview';
+            
+            preview.innerHTML = '';
+            preview.appendChild(img);
+            preview.style.display = 'flex';
+            
+            // Update upload box style
+            const uploadBox = input.closest('.file-upload-modern');
+            if (uploadBox) {
+                uploadBox.classList.add('has-file');
+            }
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Color Preview Update
+function updateColorPreview(input, previewId) {
+    const preview = document.getElementById(previewId);
+    preview.style.backgroundColor = input.value;
+}
+
+// Form validation
+document.getElementById('settingsForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+});
+</script>
+{% endblock %}

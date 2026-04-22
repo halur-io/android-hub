@@ -1,0 +1,707 @@
+{% extends "admin/base.html" %}
+
+{% block title %}
+    {% if user %}עריכת משתמש{% else %}הוספת משתמש חדש{% endif %} - Admin Panel
+{% endblock %}
+
+{% block content %}
+<!-- Modern Page Header -->
+<div class="page-header-modern">
+    <div class="header-content">
+        <div class="header-text">
+            <h1 class="page-title">
+                <i class="fas fa-{% if user %}user-edit{% else %}user-plus{% endif %}"></i>
+                {% if user %}עריכת משתמש{% else %}הוספת משתמש חדש{% endif %}
+            </h1>
+            <p class="page-subtitle">
+                {% if user %}
+                    עדכן פרטי המשתמש {{ user.username }}
+                {% else %}
+                    הוסף משתמש חדש למערכת הניהול
+                {% endif %}
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary btn-modern">
+                <i class="fas fa-arrow-right"></i> חזור לרשימת משתמשים
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- User Form -->
+<div class="content-card">
+    <form method="POST" class="user-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-sections">
+            <!-- Basic Information -->
+            <div class="form-section">
+                <div class="section-header">
+                    <h3>
+                        <i class="fas fa-user"></i>
+                        פרטים בסיסיים
+                    </h3>
+                    <p>מידע בסיסי של המשתמש</p>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="username" class="form-label required">שם משתמש</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-user"></i>
+                            <input type="text" 
+                                   id="username" 
+                                   name="username" 
+                                   class="form-control"
+                                   value="{{ user.username if user else '' }}"
+                                   placeholder="הזן שם משתמש"
+                                   required>
+                        </div>
+                        <div class="form-help">לפחות 3 תווים, באנגלית בלבד</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email" class="form-label required">כתובת אימייל</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" 
+                                   id="email" 
+                                   name="email" 
+                                   class="form-control"
+                                   value="{{ user.email if user else '' }}"
+                                   placeholder="user@example.com"
+                                   required>
+                        </div>
+                        <div class="form-help">כתובת אימייל תקינה</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security -->
+            <div class="form-section">
+                <div class="section-header">
+                    <h3>
+                        <i class="fas fa-shield-alt"></i>
+                        אבטחה והרשאות
+                    </h3>
+                    <p>הגדרות סיסמה והרשאות משתמש</p>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="password" class="form-label {% if not user %}required{% endif %}">
+                            {% if user %}סיסמה חדשה (אופציונלי){% else %}סיסמה{% endif %}
+                        </label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" 
+                                   id="password" 
+                                   name="password" 
+                                   class="form-control"
+                                   placeholder="{% if user %}השאר ריק לשמירת הסיסמה הנוכחית{% else %}הזן סיסמה חזקה{% endif %}"
+                                   {% if not user %}required{% endif %}>
+                            <button type="button" class="toggle-password" onclick="togglePassword('password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-help">לפחות 6 תווים</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-check-modern">
+                            <input type="checkbox" 
+                                   id="is_superadmin" 
+                                   name="is_superadmin" 
+                                   class="form-check-input"
+                                   {% if user and user.is_superadmin %}checked{% endif %}>
+                            <label for="is_superadmin" class="form-check-label">
+                                <div class="check-content">
+                                    <div class="check-title">
+                                        <i class="fas fa-crown"></i>
+                                        מנהל מערכת
+                                    </div>
+                                    <div class="check-description">
+                                        הרשאות מלאות למערכת הניהול
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Roles & Permissions -->
+            <div class="form-section">
+                <div class="section-header">
+                    <h3>
+                        <i class="fas fa-user-shield"></i>
+                        תפקידים והרשאות
+                    </h3>
+                    <p>הקצה תפקידים ומערכת הרשאות למשתמש</p>
+                </div>
+                
+                <!-- Quick Role Assignment -->
+                <div class="roles-container">
+                    <h4 class="subsection-title">
+                        <i class="fas fa-briefcase"></i>
+                        בחר תפקיד
+                    </h4>
+                    <p class="subsection-description">תפקיד כולל קבוצת הרשאות מוכנה מראש</p>
+                    
+                    <div class="roles-grid">
+                        {% for role in roles %}
+                        <div class="role-card">
+                            <input type="checkbox" 
+                                   id="role_{{ role.id }}" 
+                                   name="roles" 
+                                   value="{{ role.id }}"
+                                   class="role-checkbox"
+                                   {% if user and role in user.roles %}checked{% endif %}>
+                            <label for="role_{{ role.id }}" class="role-label">
+                                <div class="role-icon">
+                                    <i class="fas fa-{% if 'admin' in role.name %}crown{% elif 'manager' in role.name %}user-tie{% elif 'kitchen' in role.name %}utensils{% elif 'menu' in role.name %}book{% elif 'stock' in role.name %}boxes{% else %}user{% endif %}"></i>
+                                </div>
+                                <div class="role-info">
+                                    <div class="role-name">{{ role.display_name }}</div>
+                                    <div class="role-desc">{{ role.description or 'תפקיד מערכת' }}</div>
+                                    <div class="role-perms-count">
+                                        <i class="fas fa-shield-alt"></i>
+                                        {{ role.permissions|length }} הרשאות
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Permission Categories Preview -->
+                <div class="permissions-info">
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>טיפ:</strong> ברירת תפקיד תעניק אוטומטית את כל ההרשאות המשויכות לתפקיד זה.
+                            מנהל מערכת (סופראדמין) מקבל אוטומטית גישה מלאה לכל הפונקציות.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-modern btn-lg">
+                <i class="fas fa-save"></i>
+                {% if user %}עדכן משתמש{% else %}הוסף משתמש{% endif %}
+            </button>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary btn-modern btn-lg">
+                <i class="fas fa-times"></i> ביטול
+            </a>
+        </div>
+    </form>
+</div>
+
+<style>
+.page-header-modern {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--sumo-navy);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-subtitle {
+    color: #6b7280;
+    margin: 0.5rem 0 0 0;
+    font-size: 1.1rem;
+}
+
+.content-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.form-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.form-section {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 2rem;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.section-header {
+    margin-bottom: 2rem;
+}
+
+.section-header h3 {
+    color: var(--sumo-navy);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-header p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--sumo-navy);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-label.required::after {
+    content: "*";
+    color: #dc3545;
+    margin-right: 0.25rem;
+}
+
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-icon i {
+    position: absolute;
+    right: 1rem;
+    color: #9ca3af;
+    z-index: 2;
+}
+
+.input-with-icon .form-control {
+    padding-right: 3rem;
+}
+
+.toggle-password {
+    position: absolute;
+    left: 1rem;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    z-index: 3;
+}
+
+.toggle-password:hover {
+    color: var(--sumo-coral);
+}
+
+.form-control {
+    padding: 1rem 1.25rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--sumo-coral);
+    box-shadow: 0 0 0 3px rgba(199, 84, 80, 0.1);
+}
+
+.form-help {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.form-check-modern {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.form-check-modern:has(.form-check-input:checked) {
+    background: rgba(199, 84, 80, 0.1);
+    border-color: var(--sumo-coral);
+}
+
+.form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: 0.5rem;
+    accent-color: var(--sumo-coral);
+}
+
+.form-check-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    flex: 1;
+}
+
+.check-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.check-title {
+    font-weight: 600;
+    color: var(--sumo-navy);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.check-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 2rem;
+}
+
+.btn-modern {
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.btn-modern.btn-lg {
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+}
+
+.btn-primary.btn-modern {
+    background: var(--sumo-coral);
+    border-color: var(--sumo-coral);
+    box-shadow: 0 4px 15px rgba(199, 84, 80, 0.2);
+}
+
+.btn-primary.btn-modern:hover {
+    background: #a63c38;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(199, 84, 80, 0.3);
+}
+
+.btn-secondary.btn-modern {
+    background: #6b7280;
+    border-color: #6b7280;
+    color: white;
+}
+
+.btn-secondary.btn-modern:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+/* Roles & Permissions Styling */
+.subsection-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--sumo-navy);
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.subsection-description {
+    color: #6b7280;
+    font-size: 0.95rem;
+    margin: 0 0 1.5rem 0;
+}
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.role-card {
+    position: relative;
+}
+
+.role-checkbox {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.role-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #f8f9fa;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.role-checkbox:checked + .role-label {
+    background: rgba(201, 111, 68, 0.1);
+    border-color: var(--accent-primary);
+    box-shadow: 0 2px 8px rgba(201, 111, 68, 0.15);
+}
+
+.role-checkbox:checked + .role-label .role-icon {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.role-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 1.4rem;
+    color: var(--accent-primary);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.role-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.role-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.role-desc {
+    font-size: 0.85rem;
+    color: #6b7280;
+    line-height: 1.3;
+}
+
+.role-perms-count {
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+}
+
+.permissions-info {
+    margin-top: 1.5rem;
+}
+
+.info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 10px;
+    color: #1565c0;
+}
+
+.info-box i {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+.info-box strong {
+    color: #0d47a1;
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .page-title {
+        font-size: 1.8rem;
+    }
+    
+    .content-card {
+        padding: 1.5rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .form-sections {
+        gap: 2rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-modern.btn-lg {
+        padding: 1rem;
+        justify-content: center;
+    }
+    
+    .roles-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* RTL Support */
+[dir="rtl"] .input-with-icon i {
+    right: auto;
+    left: 1rem;
+}
+
+[dir="rtl"] .input-with-icon .form-control {
+    padding-right: 1.25rem;
+    padding-left: 3rem;
+}
+
+[dir="rtl"] .toggle-password {
+    right: 1rem;
+    left: auto;
+}
+</style>
+
+<script>
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = input.parentElement.querySelector('.toggle-password i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.user-form');
+    
+    form.addEventListener('submit', function(e) {
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        
+        let hasError = false;
+        
+        // Reset previous errors
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.classList.remove('is-invalid');
+        });
+        
+        // Username validation
+        if (!username || username.length < 3) {
+            document.getElementById('username').classList.add('is-invalid');
+            hasError = true;
+        }
+        
+        // Email validation
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailPattern.test(email)) {
+            document.getElementById('email').classList.add('is-invalid');
+            hasError = true;
+        }
+        
+        // Password validation (only for new users or if password is provided)
+        const isNewUser = !{{ 'true' if user else 'false' }};
+        if (isNewUser && (!password || password.length < 6)) {
+            document.getElementById('password').classList.add('is-invalid');
+            hasError = true;
+        } else if (!isNewUser && password && password.length < 6) {
+            document.getElementById('password').classList.add('is-invalid');
+            hasError = true;
+        }
+        
+        if (hasError) {
+            e.preventDefault();
+            // Show error message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger alert-dismissible fade show';
+            alert.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                יש לתקן את השגיאות בטופס
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            form.parentElement.insertBefore(alert, form);
+            
+            // Scroll to top
+            alert.scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+});
+</script>
+
+{% endblock %}

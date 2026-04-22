@@ -1,0 +1,654 @@
+{% extends "ops/base.html" %}
+{% block title %}עיצוב פריסת שולחנות - Ops{% endblock %}
+
+{% block content %}
+<style>
+    .layout-page { display: flex; flex-direction: column; height: calc(100vh - 120px); overflow: hidden; }
+    .layout-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 16px; border-bottom: 1px solid #eee;
+        background: var(--ops-surface, #fff); flex-shrink: 0;
+    }
+    .layout-header h2 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+    .layout-header-actions { display: flex; gap: 8px; }
+    .layout-btn {
+        border: none; border-radius: 10px; padding: 8px 16px;
+        font-weight: 600; font-size: .85rem; cursor: pointer;
+    }
+    .layout-btn-save { background: var(--ops-green, #0f9b58); color: #fff; }
+    .layout-btn-back { background: #f0f0f0; color: #555; }
+    .layout-toolbar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 16px; border-bottom: 1px solid #eee;
+        background: #fafafa; flex-shrink: 0; overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .layout-toolbar::-webkit-scrollbar { display: none; }
+    .toolbar-group {
+        display: flex; align-items: center; gap: 6px;
+        padding: 0 8px; border-left: 1px solid #ddd;
+    }
+    .toolbar-group:first-child { border-left: none; }
+    .toolbar-label { font-size: .7rem; color: #888; font-weight: 600; white-space: nowrap; }
+    .toolbar-btn {
+        background: #fff; border: 1px solid #ddd; border-radius: 8px;
+        padding: 6px 12px; font-size: .75rem; font-weight: 600; cursor: pointer;
+        white-space: nowrap; transition: all .15s;
+    }
+    .toolbar-btn:hover { background: #f0f0f0; }
+    .toolbar-btn.active { background: var(--ops-accent, #e94560); color: #fff; border-color: var(--ops-accent); }
+    .area-filter-btn {
+        background: #fff; border: 1px solid #ddd; border-radius: 8px;
+        padding: 6px 14px; font-size: .75rem; font-weight: 600; cursor: pointer;
+        white-space: nowrap; transition: all .15s;
+    }
+    .area-filter-btn.active { background: var(--ops-accent, #e94560); color: #fff; border-color: var(--ops-accent); }
+    .canvas-container {
+        flex: 1; overflow: auto; background: #f5f5f5; position: relative;
+        -webkit-overflow-scrolling: touch;
+    }
+    .layout-canvas {
+        position: relative; width: 1200px; height: 800px;
+        background: #fff; margin: 16px;
+        border: 2px dashed #ddd; border-radius: 12px;
+        background-image:
+            linear-gradient(rgba(0,0,0,.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,.03) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    .layout-table {
+        position: absolute; cursor: grab;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 2px;
+        border: 2px solid #ccc; background: #f8f8f8;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08);
+        transition: box-shadow .15s;
+        -webkit-user-select: none; user-select: none;
+        z-index: 1;
+    }
+    .layout-table:hover { box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+    .layout-table.dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,.2); z-index: 10; opacity: .85; }
+    .layout-table.selected { border-color: var(--ops-accent, #e94560); border-width: 3px; z-index: 5; }
+    .layout-table.shape-rect { border-radius: 10px; }
+    .layout-table.shape-round { border-radius: 50%; }
+    .layout-table.status-available { border-color: #ccc; background: #f8f8f8; }
+    .layout-table.status-open { border-color: #ff9800; background: #fff8e1; }
+    .layout-table.status-awaiting_payment { border-color: #f44336; background: #fce4ec; }
+    .layout-table .lt-num { font-size: 1.2rem; font-weight: 700; line-height: 1; color: #333; }
+    .layout-table.status-open .lt-num { color: #e65100; }
+    .layout-table.status-awaiting_payment .lt-num { color: #c62828; }
+    .layout-table .lt-cap { font-size: .6rem; color: #999; }
+    .layout-table .lt-area-tag { font-size: .55rem; color: #aaa; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resize-handle {
+        position: absolute; bottom: 0; right: 0; width: 14px; height: 14px;
+        cursor: se-resize; background: var(--ops-accent, #e94560);
+        border-radius: 0 0 6px 0; opacity: 0; transition: opacity .15s;
+    }
+    .layout-table.selected .resize-handle,
+    .layout-table:hover .resize-handle { opacity: .7; }
+    .props-panel {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: #fff; border-top: 1px solid #eee;
+        padding: 12px 16px; z-index: 100;
+        box-shadow: 0 -4px 12px rgba(0,0,0,.08);
+        display: none;
+    }
+    .props-panel.show { display: block; }
+    .props-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .props-field { display: flex; align-items: center; gap: 4px; }
+    .props-field label { font-size: .7rem; font-weight: 600; color: #888; white-space: nowrap; }
+    .props-field input, .props-field select {
+        border: 1px solid #ddd; border-radius: 6px; padding: 4px 8px;
+        font-size: .8rem; width: 70px;
+    }
+    .props-field select { width: auto; }
+    .unsaved-badge {
+        background: #ff9800; color: #fff; font-size: .65rem;
+        padding: 2px 8px; border-radius: 6px; font-weight: 600;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
+</style>
+
+<div class="layout-page">
+    <div class="layout-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <h2><i class="fas fa-drafting-compass me-2"></i>עיצוב פריסת שולחנות</h2>
+            <span class="unsaved-badge" id="unsavedBadge" style="display:none;">שינויים לא נשמרו</span>
+        </div>
+        <div class="layout-header-actions">
+            <a href="{{ url_for('ops.tables_view') }}" class="layout-btn layout-btn-back"><i class="fas fa-arrow-right me-1"></i> חזרה</a>
+            <button class="layout-btn layout-btn-save" onclick="saveLayout()"><i class="fas fa-save me-1"></i> שמור פריסה</button>
+        </div>
+    </div>
+
+    <div class="layout-toolbar">
+        <div class="toolbar-group" id="areaFilterGroup">
+            <span class="toolbar-label">אזור:</span>
+            <button class="area-filter-btn active" data-area="__all__" onclick="filterLayoutArea('__all__', this)">הכל</button>
+            {% for area in areas %}
+            <button class="area-filter-btn" data-area="{{ area|e }}" onclick="filterLayoutArea({{ area|tojson }}, this)">{{ area }}</button>
+            {% endfor %}
+            <button class="toolbar-btn" onclick="addArea()" style="font-size:.7rem;"><i class="fas fa-plus"></i> אזור חדש</button>
+            <button class="toolbar-btn" onclick="renameArea()" style="font-size:.7rem;"><i class="fas fa-pen"></i> שנה שם</button>
+            <button class="toolbar-btn" onclick="deleteArea()" style="font-size:.7rem; color:#f44336;"><i class="fas fa-trash"></i> מחק אזור</button>
+        </div>
+        <div class="toolbar-group">
+            <span class="toolbar-label">צורה:</span>
+            <button class="toolbar-btn" onclick="setSelectedShape('rect')"><i class="fas fa-square"></i> מלבני</button>
+            <button class="toolbar-btn" onclick="setSelectedShape('round')"><i class="fas fa-circle"></i> עגול</button>
+        </div>
+        <div class="toolbar-group">
+            <span class="toolbar-label">גודל:</span>
+            <button class="toolbar-btn" onclick="setSelectedSize(80, 60)">2 מק׳</button>
+            <button class="toolbar-btn" onclick="setSelectedSize(100, 80)">4 מק׳</button>
+            <button class="toolbar-btn" onclick="setSelectedSize(130, 90)">6 מק׳</button>
+            <button class="toolbar-btn" onclick="setSelectedSize(160, 100)">8+ מק׳</button>
+        </div>
+        <div class="toolbar-group">
+            <span class="toolbar-label">שולחנות:</span>
+            <button class="toolbar-btn" onclick="showDesignerAddTable()" style="color:var(--ops-green,#0f9b58);"><i class="fas fa-plus"></i> הוסף</button>
+            <button class="toolbar-btn" onclick="removeSelectedTable()" style="color:#f44336;"><i class="fas fa-trash"></i> הסר</button>
+        </div>
+        <div class="toolbar-group">
+            <button class="toolbar-btn" onclick="autoArrange()"><i class="fas fa-th me-1"></i> סידור אוטומטי</button>
+            <button class="toolbar-btn" onclick="clearPositions()"><i class="fas fa-eraser me-1"></i> נקה מיקומים</button>
+        </div>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <div class="layout-canvas" id="layoutCanvas">
+            {% for table in tables %}
+            {% set sess = active_sessions.get(table.id) %}
+            {% set status = sess.status if sess else 'available' %}
+            <div class="layout-table shape-{{ table.shape or 'rect' }} status-{{ status }}"
+                 id="lt-{{ table.id }}"
+                 data-id="{{ table.id }}"
+                 data-area="{{ table.area or '' }}"
+                 data-shape="{{ table.shape or 'rect' }}"
+                 style="left:{{ table.pos_x if table.pos_x is not none else (loop.index0 % 6) * 140 + 30 }}px;
+                        top:{{ table.pos_y if table.pos_y is not none else (loop.index0 // 6) * 120 + 30 }}px;
+                        width:{{ table.width or 100 }}px;
+                        height:{{ table.height or 80 }}px;">
+                <div class="lt-num">{{ table.table_number }}</div>
+                <div class="lt-cap"><i class="fas fa-user" style="font-size:.5rem;"></i> {{ table.capacity }}</div>
+                {% if table.area %}<div class="lt-area-tag">{{ table.area }}</div>{% endif %}
+                <div class="resize-handle"></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="props-panel" id="propsPanel">
+    <div class="props-row">
+        <div class="props-field">
+            <label>שולחן:</label>
+            <strong id="propTableNum" style="font-size:.9rem;">-</strong>
+        </div>
+        <div class="props-field">
+            <label>רוחב:</label>
+            <input type="number" id="propWidth" min="40" max="300" onchange="updateSelectedProp()">
+        </div>
+        <div class="props-field">
+            <label>גובה:</label>
+            <input type="number" id="propHeight" min="40" max="300" onchange="updateSelectedProp()">
+        </div>
+        <div class="props-field">
+            <label>צורה:</label>
+            <select id="propShape" onchange="updateSelectedProp()">
+                <option value="rect">מלבני</option>
+                <option value="round">עגול</option>
+            </select>
+        </div>
+        <div class="props-field">
+            <label>אזור:</label>
+            <input type="text" id="propArea" style="width:100px;" onchange="updateSelectedProp()">
+        </div>
+        <div class="props-field" style="margin-right:auto;">
+            <label>X:</label>
+            <input type="number" id="propX" min="0" onchange="updateSelectedProp()">
+        </div>
+        <div class="props-field">
+            <label>Y:</label>
+            <input type="number" id="propY" min="0" onchange="updateSelectedProp()">
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="designerAddOverlay" onclick="hideDesignerAddTable()" style="display:none; align-items:flex-end; justify-content:center; z-index:1055; position:fixed; inset:0; background:rgba(0,0,0,.4);"></div>
+<div id="designerAddSheet" style="position:fixed; bottom:0; left:0; right:0; background:#fff; border-radius:20px 20px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.15); z-index:1060; padding:20px; transform:translateY(100%); transition:transform .3s ease;">
+    <div style="width:40px; height:4px; background:#ddd; border-radius:2px; margin:0 auto 16px;"></div>
+    <h4 style="font-weight:700; margin-bottom:12px; font-size:1rem;">הוספת שולחן</h4>
+    <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <div style="flex:2;">
+            <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מספר שולחן</label>
+            <input type="text" id="designerTableNum" placeholder="לדוגמא: 1" style="width:100%; border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+        </div>
+        <div style="flex:1;">
+            <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">מקומות</label>
+            <input type="number" id="designerTableCap" placeholder="4" value="4" style="width:100%; border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+        </div>
+    </div>
+    <div style="margin-bottom:12px;">
+        <label style="font-size:.75rem; font-weight:600; color:#555; margin-bottom:4px; display:block;">אזור</label>
+        <input type="text" id="designerTableArea" placeholder="לדוגמא: פנים, מרפסת..." style="width:100%; border-radius:10px; padding:10px 14px; font-size:.95rem; border:1px solid #ddd;">
+    </div>
+    <button onclick="doDesignerAddTable()" style="width:100%; background:var(--ops-green,#0f9b58); color:#fff; border:none; border-radius:10px; padding:14px; font-size:.95rem; font-weight:600; cursor:pointer;">
+        <i class="fas fa-plus me-1"></i> הוסף שולחן
+    </button>
+</div>
+
+<script>
+var selectedTableEl = null;
+var isDirty = false;
+var currentFilter = '__all__';
+var dragState = null;
+var resizeState = null;
+
+document.querySelectorAll('.layout-table').forEach(function(el) {
+    el.addEventListener('mousedown', function(e) { startInteraction(e, el); });
+    el.addEventListener('touchstart', function(e) { startInteraction(e, el); }, {passive: false});
+    el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        selectTable(el);
+    });
+});
+
+document.getElementById('layoutCanvas').addEventListener('click', function(e) {
+    if (e.target === this) deselectTable();
+});
+
+function startInteraction(e, el) {
+    var isTouch = e.type === 'touchstart';
+    var pt = isTouch ? e.touches[0] : e;
+    var target = e.target;
+    if (target.classList.contains('resize-handle')) {
+        e.preventDefault();
+        startResize(e, el, pt);
+    } else {
+        e.preventDefault();
+        startDrag(e, el, pt);
+    }
+}
+
+function startDrag(e, el, pt) {
+    var rect = el.getBoundingClientRect();
+    dragState = {
+        el: el,
+        offsetX: pt.clientX - rect.left,
+        offsetY: pt.clientY - rect.top,
+        startX: parseInt(el.style.left),
+        startY: parseInt(el.style.top),
+    };
+    el.classList.add('dragging');
+    selectTable(el);
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchmove', onDrag, {passive: false});
+    document.addEventListener('touchend', endDrag);
+}
+
+function onDrag(e) {
+    if (!dragState) return;
+    e.preventDefault();
+    var pt = e.type === 'touchmove' ? e.touches[0] : e;
+    var canvas = document.getElementById('layoutCanvas');
+    var canvasRect = canvas.getBoundingClientRect();
+    var newX = pt.clientX - canvasRect.left - dragState.offsetX;
+    var newY = pt.clientY - canvasRect.top - dragState.offsetY;
+    newX = Math.max(0, Math.min(newX, canvas.offsetWidth - dragState.el.offsetWidth));
+    newY = Math.max(0, Math.min(newY, canvas.offsetHeight - dragState.el.offsetHeight));
+    newX = Math.round(newX / 10) * 10;
+    newY = Math.round(newY / 10) * 10;
+    dragState.el.style.left = newX + 'px';
+    dragState.el.style.top = newY + 'px';
+    markDirty();
+    updatePropsFromElement(dragState.el);
+}
+
+function endDrag() {
+    if (dragState) dragState.el.classList.remove('dragging');
+    dragState = null;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', endDrag);
+}
+
+function startResize(e, el, pt) {
+    resizeState = {
+        el: el,
+        startW: el.offsetWidth,
+        startH: el.offsetHeight,
+        startX: pt.clientX,
+        startY: pt.clientY,
+    };
+    el.classList.add('dragging');
+    selectTable(el);
+    document.addEventListener('mousemove', onResize);
+    document.addEventListener('mouseup', endResize);
+    document.addEventListener('touchmove', onResize, {passive: false});
+    document.addEventListener('touchend', endResize);
+}
+
+function onResize(e) {
+    if (!resizeState) return;
+    e.preventDefault();
+    var pt = e.type === 'touchmove' ? e.touches[0] : e;
+    var dw = pt.clientX - resizeState.startX;
+    var dh = pt.clientY - resizeState.startY;
+    var newW = Math.max(40, Math.round((resizeState.startW + dw) / 10) * 10);
+    var newH = Math.max(40, Math.round((resizeState.startH + dh) / 10) * 10);
+    resizeState.el.style.width = newW + 'px';
+    resizeState.el.style.height = newH + 'px';
+    markDirty();
+    updatePropsFromElement(resizeState.el);
+}
+
+function endResize() {
+    if (resizeState) resizeState.el.classList.remove('dragging');
+    resizeState = null;
+    document.removeEventListener('mousemove', onResize);
+    document.removeEventListener('mouseup', endResize);
+    document.removeEventListener('touchmove', onResize);
+    document.removeEventListener('touchend', endResize);
+}
+
+function selectTable(el) {
+    document.querySelectorAll('.layout-table.selected').forEach(function(e) { e.classList.remove('selected'); });
+    el.classList.add('selected');
+    selectedTableEl = el;
+    updatePropsFromElement(el);
+    document.getElementById('propsPanel').classList.add('show');
+}
+
+function deselectTable() {
+    document.querySelectorAll('.layout-table.selected').forEach(function(e) { e.classList.remove('selected'); });
+    selectedTableEl = null;
+    document.getElementById('propsPanel').classList.remove('show');
+}
+
+function updatePropsFromElement(el) {
+    document.getElementById('propTableNum').textContent = el.querySelector('.lt-num').textContent;
+    document.getElementById('propWidth').value = Math.round(parseFloat(el.style.width));
+    document.getElementById('propHeight').value = Math.round(parseFloat(el.style.height));
+    document.getElementById('propShape').value = el.dataset.shape || 'rect';
+    document.getElementById('propArea').value = el.dataset.area || '';
+    document.getElementById('propX').value = Math.round(parseFloat(el.style.left));
+    document.getElementById('propY').value = Math.round(parseFloat(el.style.top));
+}
+
+function updateSelectedProp() {
+    if (!selectedTableEl) return;
+    var w = parseInt(document.getElementById('propWidth').value) || 100;
+    var h = parseInt(document.getElementById('propHeight').value) || 80;
+    var shape = document.getElementById('propShape').value;
+    var area = document.getElementById('propArea').value;
+    var x = parseInt(document.getElementById('propX').value) || 0;
+    var y = parseInt(document.getElementById('propY').value) || 0;
+    selectedTableEl.style.width = w + 'px';
+    selectedTableEl.style.height = h + 'px';
+    selectedTableEl.style.left = x + 'px';
+    selectedTableEl.style.top = y + 'px';
+    selectedTableEl.dataset.shape = shape;
+    selectedTableEl.dataset.area = area;
+    selectedTableEl.classList.remove('shape-rect', 'shape-round');
+    selectedTableEl.classList.add('shape-' + shape);
+    var areaTag = selectedTableEl.querySelector('.lt-area-tag');
+    if (area) {
+        if (!areaTag) {
+            areaTag = document.createElement('div');
+            areaTag.className = 'lt-area-tag';
+            selectedTableEl.insertBefore(areaTag, selectedTableEl.querySelector('.resize-handle'));
+        }
+        areaTag.textContent = area;
+    } else if (areaTag) {
+        areaTag.remove();
+    }
+    markDirty();
+}
+
+function setSelectedShape(shape) {
+    if (!selectedTableEl) { showToast('בחר שולחן קודם', 'warning'); return; }
+    document.getElementById('propShape').value = shape;
+    updateSelectedProp();
+}
+
+function setSelectedSize(w, h) {
+    if (!selectedTableEl) { showToast('בחר שולחן קודם', 'warning'); return; }
+    document.getElementById('propWidth').value = w;
+    document.getElementById('propHeight').value = h;
+    updateSelectedProp();
+}
+
+function filterLayoutArea(area, btn) {
+    currentFilter = area;
+    document.querySelectorAll('.area-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.layout-table').forEach(function(el) {
+        var a = el.dataset.area || '';
+        if (area === '__all__') { el.style.display = ''; }
+        else { el.style.display = a === area ? '' : 'none'; }
+    });
+}
+
+function autoArrange() {
+    var tables = document.querySelectorAll('.layout-table');
+    var visible = [];
+    tables.forEach(function(el) { if (el.style.display !== 'none') visible.push(el); });
+    var cols = Math.ceil(Math.sqrt(visible.length));
+    var gapX = 20, gapY = 20, startX = 30, startY = 30;
+    visible.forEach(function(el, i) {
+        var col = i % cols;
+        var row = Math.floor(i / cols);
+        var w = parseFloat(el.style.width) || 100;
+        var h = parseFloat(el.style.height) || 80;
+        el.style.left = (startX + col * (160 + gapX)) + 'px';
+        el.style.top = (startY + row * (120 + gapY)) + 'px';
+    });
+    markDirty();
+}
+
+function clearPositions() {
+    opsConfirm({title: 'ניקוי מיקומים', message: 'לנקות את כל המיקומים? השולחנות יחזרו לתצוגת רשת.', type: 'warning', okText: 'נקה'}).then(function(ok) {
+        if (!ok) return;
+        var positions = [];
+        document.querySelectorAll('.layout-table').forEach(function(el, i) {
+            el.style.left = ((i % 6) * 140 + 30) + 'px';
+            el.style.top = (Math.floor(i / 6) * 120 + 30) + 'px';
+            positions.push({id: parseInt(el.dataset.id), pos_x: null, pos_y: null});
+        });
+        fetch('/ops/api/tables/layout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({positions: positions})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) {
+                isDirty = false;
+                document.getElementById('unsavedBadge').style.display = 'none';
+                showToast('המיקומים נוקו');
+            } else {
+                showToast(d.error || 'שגיאה', true);
+            }
+        }).catch(function() { showToast('שגיאת תקשורת', true); });
+    });
+}
+
+function rebuildAreaButtons() {
+    var areaSet = {};
+    document.querySelectorAll('.layout-table').forEach(function(el) {
+        var a = el.dataset.area || '';
+        if (a) areaSet[a] = true;
+    });
+    var group = document.getElementById('areaFilterGroup');
+    var existingBtns = group.querySelectorAll('.area-filter-btn[data-area]');
+    existingBtns.forEach(function(b) { if (b.dataset.area !== '__all__') b.remove(); });
+    var allBtn = group.querySelector('[data-area="__all__"]');
+    var sortedAreas = Object.keys(areaSet).sort();
+    sortedAreas.forEach(function(a) {
+        var btn = document.createElement('button');
+        btn.className = 'area-filter-btn' + (currentFilter === a ? ' active' : '');
+        btn.dataset.area = a;
+        btn.textContent = a;
+        btn.onclick = function() { filterLayoutArea(a, btn); };
+        allBtn.parentNode.insertBefore(btn, allBtn.nextSibling);
+    });
+}
+
+function addArea() {
+    var name = prompt('שם האזור החדש:');
+    if (!name || !name.trim()) return;
+    name = name.trim();
+    var btn = document.createElement('button');
+    btn.className = 'area-filter-btn';
+    btn.dataset.area = name;
+    btn.textContent = name;
+    btn.onclick = function() { filterLayoutArea(name, btn); };
+    var allBtn = document.querySelector('[data-area="__all__"]');
+    allBtn.parentNode.insertBefore(btn, allBtn.nextSibling);
+    if (selectedTableEl) {
+        selectedTableEl.dataset.area = name;
+        document.getElementById('propArea').value = name;
+        var areaTag = selectedTableEl.querySelector('.lt-area-tag');
+        if (!areaTag) {
+            areaTag = document.createElement('div');
+            areaTag.className = 'lt-area-tag';
+            selectedTableEl.insertBefore(areaTag, selectedTableEl.querySelector('.resize-handle'));
+        }
+        areaTag.textContent = name;
+        markDirty();
+    }
+}
+
+function renameArea() {
+    if (currentFilter === '__all__') { showToast('בחר אזור לשינוי שם', 'warning'); return; }
+    var oldName = currentFilter;
+    var newName = prompt('שם חדש לאזור "' + oldName + '":', oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    newName = newName.trim();
+    document.querySelectorAll('.layout-table').forEach(function(el) {
+        if (el.dataset.area === oldName) {
+            el.dataset.area = newName;
+            var tag = el.querySelector('.lt-area-tag');
+            if (tag) tag.textContent = newName;
+        }
+    });
+    rebuildAreaButtons();
+    filterLayoutArea(newName, document.querySelector('[data-area="' + newName + '"]'));
+    if (selectedTableEl) document.getElementById('propArea').value = selectedTableEl.dataset.area || '';
+    markDirty();
+}
+
+function deleteArea() {
+    if (currentFilter === '__all__') { showToast('בחר אזור למחיקה', 'warning'); return; }
+    var areaName = currentFilter;
+    opsConfirm({title: 'מחיקת אזור', message: 'למחוק את האזור "' + areaName + '"? השולחנות יועברו לכללי.', type: 'danger', okText: 'מחק'}).then(function(ok) {
+        if (!ok) return;
+        document.querySelectorAll('.layout-table').forEach(function(el) {
+            if (el.dataset.area === areaName) {
+                el.dataset.area = '';
+                var tag = el.querySelector('.lt-area-tag');
+                if (tag) tag.remove();
+            }
+        });
+        rebuildAreaButtons();
+        filterLayoutArea('__all__', document.querySelector('[data-area="__all__"]'));
+        if (selectedTableEl) document.getElementById('propArea').value = '';
+        markDirty();
+    });
+}
+
+function showDesignerAddTable() {
+    document.getElementById('designerAddOverlay').style.display = 'flex';
+    document.getElementById('designerAddSheet').style.transform = 'translateY(0)';
+    document.getElementById('designerTableNum').value = '';
+    document.getElementById('designerTableCap').value = '4';
+    document.getElementById('designerTableArea').value = currentFilter !== '__all__' ? currentFilter : '';
+    document.getElementById('designerTableNum').focus();
+}
+
+function hideDesignerAddTable() {
+    document.getElementById('designerAddOverlay').style.display = 'none';
+    document.getElementById('designerAddSheet').style.transform = 'translateY(100%)';
+}
+
+function doDesignerAddTable() {
+    var num = document.getElementById('designerTableNum').value.trim();
+    var cap = parseInt(document.getElementById('designerTableCap').value) || 4;
+    var area = document.getElementById('designerTableArea').value.trim();
+    if (!num) { showToast('נא להזין מספר שולחן', true); return; }
+    fetch('/ops/api/tables/manage', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'add', table_number: num, capacity: cap, area: area})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            hideDesignerAddTable();
+            showToast('שולחן נוסף'); setTimeout(function() { location.reload(); }, 800);
+        } else {
+            showToast(d.error || 'שגיאה', true);
+        }
+    }).catch(function() { showToast('שגיאת תקשורת', true); });
+}
+
+function removeSelectedTable() {
+    if (!selectedTableEl) { showToast('בחר שולחן להסרה', 'warning'); return; }
+    var tableId = parseInt(selectedTableEl.dataset.id);
+    var tableNum = selectedTableEl.querySelector('.lt-num').textContent;
+    opsConfirm({title: 'הסרת שולחן', message: 'להסיר את שולחן ' + tableNum + '?', type: 'danger', okText: 'הסר'}).then(function(ok) {
+        if (!ok) return;
+        fetch('/ops/api/tables/manage', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'remove', table_id: tableId})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            if (d.ok) {
+                selectedTableEl.remove();
+                deselectTable();
+                showToast(d.message || 'שולחן הוסר');
+            } else {
+                showToast(d.error || 'שגיאה', true);
+            }
+        }).catch(function() { showToast('שגיאת תקשורת', true); });
+    });
+}
+
+function markDirty() {
+    isDirty = true;
+    document.getElementById('unsavedBadge').style.display = '';
+}
+
+function saveLayout() {
+    var positions = [];
+    document.querySelectorAll('.layout-table').forEach(function(el) {
+        positions.push({
+            id: parseInt(el.dataset.id),
+            pos_x: Math.round(parseFloat(el.style.left)),
+            pos_y: Math.round(parseFloat(el.style.top)),
+            width: Math.round(parseFloat(el.style.width)),
+            height: Math.round(parseFloat(el.style.height)),
+            shape: el.dataset.shape || 'rect',
+            area: el.dataset.area || '',
+        });
+    });
+    fetch('/ops/api/tables/layout', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({positions: positions})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.ok) {
+            isDirty = false;
+            document.getElementById('unsavedBadge').style.display = 'none';
+            showToast(d.message || 'נשמר');
+        } else {
+            showToast(d.error || 'שגיאה', true);
+        }
+    }).catch(function() { showToast('שגיאת תקשורת', true); });
+}
+
+window.addEventListener('beforeunload', function(e) {
+    if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+{% endblock %}

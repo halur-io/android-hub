@@ -1,0 +1,168 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'בקשות עבודה' if (admin_language or 'he') == 'he' else 'Job Applications' }} - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ 'בקשות עבודה שהתקבלו' if (admin_language or 'he') == 'he' else 'Job Applications Received' }}</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-briefcase me-2"></i> {{ 'בקשות שהתקבלו' if (admin_language or 'he') == 'he' else 'Received Applications' }}
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                        <th>{{ 'שם' if (admin_language or 'he') == 'he' else 'Name' }}</th>
+                        <th>{{ 'אימייל' if (admin_language or 'he') == 'he' else 'Email' }}</th>
+                        <th>{{ 'טלפון' if (admin_language or 'he') == 'he' else 'Phone' }}</th>
+                        <th>{{ 'משרה' if (admin_language or 'he') == 'he' else 'Position' }}</th>
+                        <th>{{ 'הודעה' if (admin_language or 'he') == 'he' else 'Message' }}</th>
+                        <th>{{ 'תאריך' if (admin_language or 'he') == 'he' else 'Date' }}</th>
+                        <th>{{ 'פעולות' if (admin_language or 'he') == 'he' else 'Actions' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr class="{{ '' if app.is_read else 'table-warning' }}">
+                        <td>
+                            {% if app.is_read %}
+                                <span class="badge bg-secondary">{{ 'נקראה' if (admin_language or 'he') == 'he' else 'Read' }}</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ 'חדשה' if (admin_language or 'he') == 'he' else 'New' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ app.name }}</td>
+                        <td><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
+                        <td><a href="tel:{{ app.phone }}">{{ app.phone }}</a></td>
+                        <td>
+                            {% if app.position_other %}
+                                {{ app.position_other }}
+                            {% elif app.position %}
+                                {{ app.position.title_he if (admin_language or 'he') == 'he' else app.position.title_en }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#messageModal{{ app.id }}">
+                                <i class="fas fa-eye"></i> {{ 'צפה' if (admin_language or 'he') == 'he' else 'View' }}
+                            </button>
+                        </td>
+                        <td>{{ app.created_at|il_time }}</td>
+                        <td>
+                            {% if not app.is_read %}
+                            <button class="btn btn-sm btn-success mark-read" data-id="{{ app.id }}">
+                                <i class="fas fa-check"></i> {{ 'סמן כנקראה' if (admin_language or 'he') == 'he' else 'Mark as Read' }}
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#forwardModal{{ app.id }}">
+                                <i class="fas fa-share"></i> {{ 'העבר' if (admin_language or 'he') == 'he' else 'Forward' }}
+                            </button>
+                        </td>
+                    </tr>
+                    
+                    <!-- Message Modal -->
+                    <div class="modal fade" id="messageModal{{ app.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{{ 'בקשה מ-' if (admin_language or 'he') == 'he' else 'Application from' }} {{ app.name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>{{ 'משרה:' if (admin_language or 'he') == 'he' else 'Position:' }}</strong>
+                                        {% if app.position_other %}
+                                            {{ app.position_other }}
+                                        {% elif app.position %}
+                                            {{ app.position.title_he if (admin_language or 'he') == 'he' else app.position.title_en }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </p>
+                                    <p><strong>{{ 'אימייל:' if (admin_language or 'he') == 'he' else 'Email:' }}</strong> {{ app.email }}</p>
+                                    <p><strong>{{ 'טלפון:' if (admin_language or 'he') == 'he' else 'Phone:' }}</strong> {{ app.phone }}</p>
+                                    <hr>
+                                    <p><strong>{{ 'הודעה:' if (admin_language or 'he') == 'he' else 'Message:' }}</strong></p>
+                                    <p>{{ app.message }}</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <a href="mailto:{{ app.email }}" class="btn btn-primary">
+                                        <i class="fas fa-envelope"></i> {{ 'שלח מייל' if (admin_language or 'he') == 'he' else 'Send Email' }}
+                                    </a>
+                                    <a href="tel:{{ app.phone }}" class="btn btn-success">
+                                        <i class="fas fa-phone"></i> {{ 'התקשר' if (admin_language or 'he') == 'he' else 'Call' }}
+                                    </a>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'סגור' if (admin_language or 'he') == 'he' else 'Close' }}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Forward Email Modal -->
+                    <div class="modal fade" id="forwardModal{{ app.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('admin.forward_career_application', id=app.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">{{ 'העבר הודעה' if (admin_language or 'he') == 'he' else 'Forward Message' }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ 'כתובת אימייל לשליחה:' if (admin_language or 'he') == 'he' else 'Email Address:' }}</label>
+                                            <input type="email" name="email" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i> {{ 'שלח' if (admin_language or 'he') == 'he' else 'Send' }}
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if not applications %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">{{ 'אין בקשות עבודה במערכת' if (admin_language or 'he') == 'he' else 'No job applications in the system' }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.mark-read').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/career-applications/mark-read/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('{{ 'שגיאה בעדכון' if (admin_language or 'he') == 'he' else 'Error updating' }}');
+        }
+    });
+});
+</script>
+{% endblock %}

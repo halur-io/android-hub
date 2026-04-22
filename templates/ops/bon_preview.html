@@ -1,0 +1,358 @@
+{% extends "ops/base.html" %}
+
+{% block title %}תצוגת בון{% endblock %}
+{% block header_title %}תצוגת בון{% endblock %}
+
+{% block head %}
+<style>
+.bp-container {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+}
+.bp-sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--ops-card);
+    border-radius: 12px;
+    padding: 12px;
+    overflow-y: auto;
+    border: 1px solid var(--ops-border);
+}
+.bp-sidebar h3 {
+    margin: 0 0 10px;
+    font-size: 0.85rem;
+    color: var(--ops-text-muted);
+}
+.bp-order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+}
+.bp-order-item:hover { background: rgba(255,255,255,0.05); }
+.bp-order-item.active {
+    background: rgba(229, 115, 115, 0.15);
+    border-color: var(--ops-accent);
+}
+.bp-order-num { font-weight: 700; font-size: 0.9rem; }
+.bp-order-info { font-size: 0.7rem; color: var(--ops-text-muted); }
+
+.bp-main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-content: flex-start;
+    justify-content: center;
+    padding: 8px;
+}
+.bp-bon-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.bp-bon-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ops-accent);
+    background: rgba(229, 115, 115, 0.15);
+    padding: 4px 14px;
+    border-radius: 20px;
+}
+
+.receipt {
+    width: 380px;
+    background: #fefefe;
+    color: #111;
+    font-family: 'Courier New', 'Lucida Console', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 24px 18px;
+    border-radius: 2px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    direction: rtl;
+    position: relative;
+    overflow: hidden;
+}
+.receipt::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: repeating-linear-gradient(90deg, transparent 0px, transparent 5px, #ddd 5px, #ddd 10px);
+}
+.receipt::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 16px;
+    background: linear-gradient(180deg, #fefefe, #eee);
+    mask: repeating-linear-gradient(135deg, #000 0 4px, transparent 4px 8px);
+    -webkit-mask: repeating-linear-gradient(135deg, #000 0 4px, transparent 4px 8px);
+}
+
+.r-center { text-align: center; }
+.r-right { text-align: right; }
+.r-left { text-align: left; direction: ltr; }
+.r-bold { font-weight: 800; }
+.r-big { font-size: 18px; font-weight: 800; }
+.r-huge { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+.r-feed { height: 10px; }
+.r-dashed {
+    border: none;
+    border-top: 1px dashed #888;
+    margin: 6px 0;
+}
+.r-cols {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+.r-cols .r-col-l { text-align: left; direction: ltr; }
+.r-cols .r-col-r { text-align: right; }
+.r-sub { font-size: 11px; color: #444; padding-right: 20px; }
+
+.bp-empty {
+    text-align: center;
+    color: var(--ops-text-muted);
+    padding: 60px 20px;
+    font-size: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bp-container">
+    <div class="bp-sidebar">
+        <h3>בחר הזמנה</h3>
+        {% for o in orders_list %}
+        <a href="{{ url_for('ops.bon_preview', order_id=o.id) }}" class="bp-order-item {% if selected_order and selected_order.id == o.id %}active{% endif %}" style="text-decoration:none;color:inherit;">
+            <div>
+                <div class="bp-order-num">#{{ disp_num(o) }}</div>
+                <div class="bp-order-info">{{ o.customer_name or '' }} | {{ 'משלוח' if o.order_type == 'delivery' else 'איסוף' }}</div>
+            </div>
+            <div class="bp-order-info">{{ o.total_amount|round(0)|int if o.total_amount else '' }}</div>
+        </a>
+        {% endfor %}
+        {% if not orders_list %}
+        <div class="bp-order-info" style="text-align:center;padding:20px;">אין הזמנות</div>
+        {% endif %}
+    </div>
+
+    <div class="bp-main">
+        {% if not selected_order %}
+        <div class="bp-empty">
+            <i class="fas fa-receipt" style="font-size:3rem;opacity:0.3;margin-bottom:16px;display:block;"></i>
+            בחר הזמנה מהרשימה לתצוגה מקדימה
+        </div>
+        {% else %}
+        {% set o = selected_order %}
+
+        <div class="bp-bon-wrap">
+            <div class="bp-bon-label">בון הזמנה (Checker)</div>
+            <div class="receipt" id="checker-bon">
+                <div class="r-center r-bold" style="font-size:16px;">SUMO</div>
+                <div class="r-center">רשת מסעדות סומו בע"מ</div>
+                {% if order_branch %}
+                <div class="r-center">{{ order_branch.name_he or '' }}</div>
+                {% if order_branch.phone %}
+                <div class="r-center">טל' {{ order_branch.phone }}</div>
+                {% endif %}
+                {% endif %}
+                <div class="r-feed"></div>
+
+                <div class="r-center">{{ o.created_at|il_time if o.created_at else '' }}</div>
+                {% set type_he = 'משלוח' if o.order_type == 'delivery' else 'איסוף עצמי' %}
+                {% set source_map = {'ops': 'טלפוני', 'online': 'אונליין', 'dine_in': 'ישיבה'} %}
+                {% if source_map.get(o.source or '') %}
+                <div class="r-center">מקור: {{ source_map[o.source] }}</div>
+                {% endif %}
+                <div class="r-feed"></div>
+
+                <div class="r-center r-big">הזמנה #{{ disp_num(o) }}  {{ type_he }}</div>
+                <div class="r-feed"></div>
+
+                <div class="r-right r-big">{{ o.customer_name or '' }}</div>
+                <div class="r-right r-big">{{ o.customer_phone or '' }}</div>
+                {% if o.delivery_address %}
+                <div class="r-right">{{ o.delivery_address }}{% if o.delivery_city %}, {{ o.delivery_city }}{% endif %}</div>
+                {% endif %}
+                <div class="r-feed"></div>
+
+                {% if o.customer_notes %}
+                <div class="r-center r-bold">** {{ o.customer_notes }} **</div>
+                {% endif %}
+                {% if o.delivery_notes %}
+                <div class="r-center r-bold">&gt;&gt; {{ o.delivery_notes }}</div>
+                {% endif %}
+                {% if o.customer_notes or o.delivery_notes %}
+                <div class="r-feed"></div>
+                {% endif %}
+
+                <hr class="r-dashed">
+                {% for item in preview_items %}
+                <div class="r-cols">
+                    <span class="r-col-l">{{ '%.2f'|format(item.line_total) }}</span>
+                    <span class="r-col-r">{{ item.qty }}  {{ item.display_name }}</span>
+                </div>
+                {% for opt in item.options %}
+                <div class="r-sub">({{ opt }})</div>
+                {% endfor %}
+                {% if item.notes %}
+                <div class="r-sub">*{{ item.notes }}</div>
+                {% endif %}
+                {% endfor %}
+                <hr class="r-dashed">
+
+                {% if o.delivery_fee and o.delivery_fee > 0 %}
+                <div class="r-cols">
+                    <span class="r-col-l">{{ '%.2f'|format(o.delivery_fee) }}</span>
+                    <span class="r-col-r">דמי משלוח</span>
+                </div>
+                {% endif %}
+                {% if o.discount_amount and o.discount_amount > 0 %}
+                <div class="r-cols">
+                    <span class="r-col-l">-{{ '%.2f'|format(o.discount_amount) }}</span>
+                    <span class="r-col-r">הנחה</span>
+                </div>
+                {% endif %}
+
+                <div class="r-feed"></div>
+                <div class="r-cols r-big">
+                    <span class="r-col-l">{{ '%.2f'|format(o.total_amount or 0) }}</span>
+                    <span class="r-col-r">סה"כ</span>
+                </div>
+                <div class="r-feed"></div>
+
+                {% set pay_map = {'cash': 'מזומן', 'credit': 'אשראי', 'card': 'אשראי', 'bit': 'ביט'} %}
+                {% if pay_map.get(o.payment_method or '') %}
+                <div class="r-center">צורת תשלום: {{ pay_map[o.payment_method] }}</div>
+                {% endif %}
+                <div class="r-feed"></div>
+                <div class="r-center">לא כולל שרות</div>
+                <div class="r-center">Tip not included</div>
+                <div class="r-feed"></div>
+                <div class="r-center">הזמנה #{{ disp_num(o) }}</div>
+                <div class="r-center" style="direction:ltr;">{{ now_il }}</div>
+            </div>
+        </div>
+
+        <div class="bp-bon-wrap">
+            <div class="bp-bon-label">בון תשלום (Payment)</div>
+            <div class="receipt" id="payment-bon">
+                <div class="r-center r-bold" style="font-size:16px;">SUMO</div>
+                <div class="r-center">רשת מסעדות סומו בע"מ</div>
+                {% if order_branch %}
+                <div class="r-center">{{ order_branch.name_he or '' }}</div>
+                {% if order_branch.phone %}
+                <div class="r-center">טל' {{ order_branch.phone }}</div>
+                {% endif %}
+                {% endif %}
+                <div class="r-feed"></div>
+
+                <div class="r-center">{{ o.created_at|il_time if o.created_at else '' }}</div>
+                <div class="r-feed"></div>
+
+                <div class="r-center r-big">חשבון #{{ disp_num(o) }}  {{ type_he }}</div>
+
+                <div class="r-right r-big">{{ o.customer_name or '' }}</div>
+                <div class="r-right">{{ o.customer_phone or '' }}</div>
+                {% if o.delivery_address %}
+                <div class="r-right">{{ o.delivery_address }}{% if o.delivery_city %}, {{ o.delivery_city }}{% endif %}</div>
+                {% endif %}
+                <div class="r-feed"></div>
+
+                <hr class="r-dashed">
+                {% for item in preview_items %}
+                <div class="r-cols">
+                    <span class="r-col-l">{{ '%.2f'|format(item.line_total) }}</span>
+                    <span class="r-col-r">{{ item.qty }}  {{ item.display_name }}</span>
+                </div>
+                {% for opt in item.options %}
+                <div class="r-sub">({{ opt }})</div>
+                {% endfor %}
+                {% if item.notes %}
+                <div class="r-sub">*{{ item.notes }}</div>
+                {% endif %}
+                {% endfor %}
+                <hr class="r-dashed">
+
+                {% if o.delivery_fee and o.delivery_fee > 0 %}
+                <div class="r-cols">
+                    <span class="r-col-l">{{ '%.2f'|format(o.delivery_fee) }}</span>
+                    <span class="r-col-r">דמי משלוח</span>
+                </div>
+                {% endif %}
+                {% if o.discount_amount and o.discount_amount > 0 %}
+                <div class="r-cols">
+                    <span class="r-col-l">-{{ '%.2f'|format(o.discount_amount) }}</span>
+                    <span class="r-col-r">הנחה</span>
+                </div>
+                {% endif %}
+
+                <div class="r-feed"></div>
+                <div class="r-cols r-big">
+                    <span class="r-col-l">{{ '%.2f'|format(o.total_amount or 0) }}</span>
+                    <span class="r-col-r">סה"כ</span>
+                </div>
+                <div class="r-feed"></div>
+
+                {% if pay_map.get(o.payment_method or '') %}
+                <div class="r-center">צורת תשלום: {{ pay_map[o.payment_method] }}</div>
+                {% endif %}
+                <div class="r-feed"></div>
+                <div class="r-center">לא כולל שרות</div>
+                <div class="r-center">Tip not included</div>
+                <div class="r-feed"></div>
+                <div class="r-center">חשבון #{{ disp_num(o) }}</div>
+                <div class="r-center" style="direction:ltr;">{{ now_il }}</div>
+            </div>
+        </div>
+
+        {% for st in station_previews %}
+        <div class="bp-bon-wrap">
+            <div class="bp-bon-label">בון עמדה - {{ st.name }}</div>
+            <div class="receipt">
+                <div class="r-center r-huge">{{ st.name }}</div>
+                <div class="r-feed"></div>
+
+                <div class="r-center r-big">#{{ disp_num(o) }}  {{ type_he }}</div>
+                <div class="r-center">{{ o.created_at|il_time if o.created_at else '' }}</div>
+                <div class="r-feed"></div>
+
+                {% if o.customer_notes %}
+                <div class="r-center r-bold">** {{ o.customer_notes }} **</div>
+                <div class="r-feed"></div>
+                {% endif %}
+
+                <hr class="r-dashed">
+                {% for item in st.station_items %}
+                <div class="r-right r-big">{{ item.qty }}  {{ item.display_name }}</div>
+                {% for opt in item.options %}
+                <div class="r-sub">+ {{ opt }}</div>
+                {% endfor %}
+                {% if item.notes %}
+                <div class="r-sub">* {{ item.notes }}</div>
+                {% endif %}
+                {% endfor %}
+                <div class="r-feed"></div>
+                <hr class="r-dashed">
+                <div class="r-center">#{{ disp_num(o) }} | {{ st.name }} | {{ now_il }}</div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

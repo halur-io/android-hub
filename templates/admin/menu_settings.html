@@ -1,0 +1,115 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות תפריט{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <h2><i class="fas fa-cogs me-2"></i>הגדרות תפריט</h2>
+            <p class="text-muted">שלוט בכל היבט של הצגת התפריט באתר</p>
+            
+            <form method="POST" action="{{ url_for('admin.save_menu_settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-layout me-2"></i>הגדרות תצוגה</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="menu_layout" class="form-label">סגנון תצוגת התפריט</label>
+                                    <select class="form-select" id="menu_layout" name="menu_layout">
+                                        <option value="grid" {% if get_setting('menu_layout') == 'grid' %}selected{% endif %}>רשת כרטיסים</option>
+                                        <option value="list" {% if get_setting('menu_layout') == 'list' %}selected{% endif %}>רשימה</option>
+                                        <option value="masonry" {% if get_setting('menu_layout') == 'masonry' %}selected{% endif %}>מזוניק</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="items_per_page" class="form-label">מנות בעמוד</label>
+                                    <select class="form-select" id="items_per_page" name="items_per_page">
+                                        <option value="6" {% if get_setting('items_per_page') == '6' %}selected{% endif %}>6</option>
+                                        <option value="9" {% if get_setting('items_per_page') == '9' %}selected{% endif %}>9</option>
+                                        <option value="12" {% if get_setting('items_per_page') == '12' %}selected{% endif %}>12</option>
+                                        <option value="18" {% if get_setting('items_per_page') == '18' %}selected{% endif %}>18</option>
+                                        <option value="24" {% if get_setting('items_per_page') == '24' %}selected{% endif %}>24</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="currency_symbol" class="form-label">סמל מטבע</label>
+                                    <input type="text" class="form-control" id="currency_symbol" name="currency_symbol" value="{{ get_setting('currency_symbol') or '₪' }}" maxlength="3">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6>מה להציג במנות:</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="show_prices" name="show_prices" {% if get_setting('show_prices') != 'false' %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_prices">הצג מחירים</label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="show_images" name="show_images" {% if get_setting('show_images') != 'false' %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_images">הצג תמונות</label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="show_dietary_icons" name="show_dietary_icons" {% if get_setting('show_dietary_icons') != 'false' %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_dietary_icons">הצג אייקוני תזונה</label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="show_spice_level" name="show_spice_level" {% if get_setting('show_spice_level') != 'false' %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_spice_level">הצג רמת חריפות</label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="show_prep_time" name="show_prep_time" {% if get_setting('show_prep_time') == 'true' %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_prep_time">הצג זמן הכנה</label>
+                                </div>
+                                
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="show_calories" name="show_calories" {% if get_setting('show_calories') == 'true' %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_calories">הצג קלוריות</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-save me-2"></i>
+                        שמור הגדרות
+                    </button>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary btn-lg ms-2">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        חזור לתפריט
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle me-2"></i>הסבר על ההגדרות</h6>
+                </div>
+                <div class="card-body">
+                    <small>
+                        <strong>רשת כרטיסים:</strong> מנות מוצגות בכרטיסים מסודרים ברשת<br><br>
+                        <strong>רשימה:</strong> מנות מוצגות ברשימה אנכית<br><br>
+                        <strong>מזוניק:</strong> כרטיסים בגדלים שונים המסודרים בצורה דינמית<br><br>
+                        <strong>אייקוני תזונה:</strong> סמלים עבור צמחוני, טבעוני, ללא גלוטן וכו'<br><br>
+                        <strong>רמת חריפות:</strong> מספר פלפלים המציינים עוצמת חריפות
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

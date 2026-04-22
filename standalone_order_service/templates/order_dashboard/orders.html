@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>KDS — לוח מטבח</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#060d1a; --panel:#0d1b2e; --card:#112036; --card2:#172844;
+      --border:#1e3a5f; --primary:#6366f1; --success:#10b981;
+      --warning:#f59e0b; --danger:#ef4444; --text:#f0f6ff; --muted:#6b8cae;
+      /* status column accent colours */
+      --col-new:#f59e0b; --col-prep:#6366f1; --col-ready:#10b981; --col-done:#334155;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body { background:var(--bg); color:var(--text); font-family:'Heebo',sans-serif; min-height:100vh; }
+
+    /* ── Top bar (2 rows) ───────────────────────────────────────── */
+    .top-bar {
+      background:var(--panel); border-bottom:2px solid var(--border);
+      position:sticky; top:0; z-index:200;
+    }
+    .top-bar-row1 {
+      padding:8px 14px;
+      display:flex; align-items:center; gap:10px;
+      min-width:0;
+    }
+    .brand-icon { width:36px; height:36px; border-radius:10px; background:var(--primary);
+                  display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+    .brand-title { font-size:.95rem; font-weight:900; letter-spacing:-.3px; white-space:nowrap; }
+    .brand-sub { font-size:.68rem; color:var(--muted); }
+    .clock { font-size:.95rem; font-weight:800; color:var(--muted); font-variant-numeric:tabular-nums;
+             margin-right:auto; white-space:nowrap; }
+    .top-nav-btns { display:flex; gap:6px; flex-shrink:0; }
+    .nav-btn {
+      background:var(--card2); border:1px solid var(--border); color:var(--muted);
+      border-radius:9px; padding:7px 13px; font-size:.8rem; font-weight:700;
+      text-decoration:none; display:flex; align-items:center; gap:5px; cursor:pointer;
+      font-family:'Heebo',sans-serif; transition:all .15s; white-space:nowrap; flex-shrink:0;
+    }
+    .nav-btn:hover { border-color:var(--primary); color:var(--primary); }
+    .nav-btn.red:hover { border-color:var(--danger); color:var(--danger); }
+
+    /* stat pills row — scrollable */
+    .top-bar-row2 {
+      padding:5px 14px 7px;
+      display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      scrollbar-width:none; align-items:center;
+    }
+    .top-bar-row2::-webkit-scrollbar { display:none; }
+    .stat-pill {
+      background:var(--card2); border:1px solid var(--border); border-radius:20px;
+      padding:4px 11px; font-size:.75rem; font-weight:700; white-space:nowrap; flex-shrink:0;
+    }
+    .stat-pill.warn { background:#422006; border-color:#854d0e; color:#fbbf24; }
+    .stat-pill.ok   { background:#052e16; border-color:#14532d; color:#4ade80; }
+    .stat-pill.info { background:#0c1a2e; border-color:#1e3a5f; color:#38bdf8; }
+
+    /* ── Date / filter bar ──────────────────────────────────────── */
+    .control-bar {
+      background:var(--panel); border-bottom:1px solid var(--border);
+      padding:7px 14px; display:flex; align-items:center; gap:8px;
+      overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+    }
+    .control-bar::-webkit-scrollbar { display:none; }
+    .date-nav { background:var(--card2); border:1px solid var(--border); color:var(--muted);
+                border-radius:8px; padding:5px 9px; cursor:pointer; font-size:.85rem;
+                text-decoration:none; flex-shrink:0; }
+    .date-nav:hover { border-color:var(--primary); color:var(--primary); }
+    .date-input { background:var(--card2); border:1px solid var(--border); color:var(--text);
+                  border-radius:8px; padding:5px 10px; font-size:.82rem;
+                  font-family:'Heebo',sans-serif; flex-shrink:0; }
+    .view-toggle { display:flex; gap:4px; flex-shrink:0; }
+    .vtab { background:var(--card2); border:1px solid var(--border); color:var(--muted);
+            border-radius:8px; padding:5px 10px; cursor:pointer; font-size:.78rem; font-weight:700;
+            font-family:'Heebo',sans-serif; transition:all .15s; flex-shrink:0; }
+    .vtab.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .ctrl-sep { width:1px; height:22px; background:var(--border); flex-shrink:0; }
+
+    /* ── KDS Board (kanban) ─────────────────────────────────────── */
+    .kds-board {
+      display:flex;
+      overflow-x:auto;
+      overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;
+      scroll-snap-type:x proximity;
+      height:calc(100vh - var(--bars-h, 152px));
+      scrollbar-width:none;
+      gap:0;
+    }
+    .kds-board::-webkit-scrollbar { display:none; }
+    .kds-col {
+      flex:0 0 300px;
+      min-width:280px;
+      scroll-snap-align:start;
+      display:flex; flex-direction:column;
+      border-left:1px solid var(--border);
+      overflow:hidden;
+    }
+    .kds-col:last-child { border-left:none; }
+    /* on wide screens — fill all columns equally, but never narrower than 240px */
+    @media(min-width:1180px) {
+      .kds-col { flex:1; min-width:240px; }
+    }
+    /* iPad portrait: 2 cols fill, others scroll */
+    @media(min-width:768px) and (max-width:1179px) {
+      .kds-col { flex:0 0 calc(50vw - 2px); }
+    }
+    /* phone: 1 col fills, others scroll */
+    @media(max-width:767px) {
+      .kds-col { flex:0 0 calc(100vw - 28px); }
+    }
+    .col-header {
+      padding:10px 14px 8px;
+      display:flex; align-items:center; gap:8px;
+      border-bottom:3px solid;
+      flex-shrink:0;
+    }
+    .col-header.new    { border-color:var(--col-new); }
+    .col-header.prep   { border-color:var(--col-prep); }
+    .col-header.ready  { border-color:var(--col-ready); }
+    .col-header.done   { border-color:var(--col-done); }
+    .col-title { font-size:.88rem; font-weight:800; flex:1;
+                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .col-title.new   { color:var(--col-new); }
+    .col-title.prep  { color:var(--col-prep); }
+    .col-title.ready { color:var(--col-ready); }
+    .col-title.done  { color:var(--col-done); }
+    .col-count { background:rgba(255,255,255,.08); border-radius:20px; padding:2px 9px;
+                 font-size:.78rem; font-weight:800; }
+    .col-body { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:8px; }
+    .col-body::-webkit-scrollbar { width:3px; }
+    .col-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    /* ── Order card ─────────────────────────────────────────────── */
+    .kds-card {
+      background:var(--card); border-radius:14px; overflow:hidden;
+      border:1.5px solid var(--border); display:flex; flex-direction:column;
+      transition:box-shadow .2s;
+    }
+    .kds-card:hover { box-shadow:0 0 0 2px rgba(99,102,241,.4); }
+
+    /* urgency glow */
+    .kds-card.urgent-warn  { border-color:#854d0e; box-shadow:0 0 12px rgba(245,158,11,.15); }
+    .kds-card.urgent-crit  { border-color:#991b1b; box-shadow:0 0 14px rgba(239,68,68,.25); animation:crit-pulse 2.5s infinite; }
+    @keyframes crit-pulse { 0%,100%{box-shadow:0 0 14px rgba(239,68,68,.25)} 50%{box-shadow:0 0 22px rgba(239,68,68,.5)} }
+
+    .card-header-strip {
+      padding:9px 11px 7px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:6px;
+      border-bottom:1px solid var(--border);
+    }
+    .card-header-left { min-width:0; flex:1; overflow:hidden; }
+    .order-num  { font-size:.68rem; color:var(--muted); margin-bottom:1px;
+                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cust-name  { font-size:.9rem; font-weight:800; line-height:1.2;
+                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cust-phone { font-size:.72rem; color:var(--muted);
+                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .card-header-right { text-align:left; flex-shrink:0; }
+    .order-price { font-size:.95rem; font-weight:900; color:var(--primary); }
+    .order-time-ago { font-size:.68rem; font-weight:700; border-radius:6px; padding:2px 6px; margin-top:3px; display:inline-block; }
+    .ota-fresh { background:#052e16; color:#4ade80; }
+    .ota-warn  { background:#422006; color:#fbbf24; }
+    .ota-crit  { background:#450a0a; color:#f87171; }
+
+    /* type + time badge row */
+    .card-badges { padding:5px 11px; display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+    .tbadge { border-radius:6px; padding:2px 8px; font-size:.7rem; font-weight:700; }
+    .tb-delivery { background:#1e1b4b; color:#818cf8; }
+    .tb-pickup   { background:#052e16; color:#4ade80; }
+    .tb-cash     { background:#422006; color:#fbbf24; }
+    .tb-card     { background:#0c1a2e; color:#38bdf8; }
+    .tb-time     { background:var(--card2); color:var(--muted); border:1px solid var(--border); }
+
+    /* items list */
+    .card-items { padding:7px 11px; flex:1; }
+    .item-line { display:flex; align-items:baseline; gap:6px; padding:3px 0;
+                 border-bottom:1px solid rgba(30,58,95,.5); }
+    .item-line:last-child { border-bottom:none; }
+    .item-qty { font-size:.85rem; font-weight:900; color:var(--primary); min-width:18px; flex-shrink:0; }
+    .item-name { font-size:.82rem; font-weight:600; flex:1; line-height:1.3; }
+    .item-note { font-size:.68rem; color:#f59e0b; display:block; margin-top:1px; }
+
+    /* customer notes */
+    .card-notes { padding:4px 11px 6px; font-size:.72rem; color:#f59e0b;
+                  border-top:1px dashed #422006; }
+
+    /* action strip */
+    .card-actions-strip {
+      padding:8px 9px; display:flex; gap:6px; border-top:1px solid var(--border);
+    }
+    .kds-btn {
+      flex:1; border:none; border-radius:10px; padding:12px 8px; min-height:46px;
+      font-size:.85rem; font-weight:800; font-family:'Heebo',sans-serif;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      gap:5px; transition:opacity .15s; letter-spacing:-.2px; touch-action:manipulation;
+      white-space:nowrap; overflow:hidden;
+    }
+    .kds-btn:hover { opacity:.82; }
+    .kds-btn:active { transform:scale(.97); }
+    .kds-btn.confirm  { background:#1d4ed8; color:#bfdbfe; }
+    .kds-btn.prepare  { background:#4f46e5; color:#c7d2fe; }
+    .kds-btn.ready    { background:#059669; color:#a7f3d0; }
+    .kds-btn.complete { background:#374151; color:#9ca3af; }
+    .kds-btn.detail   { background:var(--card2); color:var(--muted); border:1px solid var(--border); flex:0; min-width:46px; }
+    .kds-btn.cancel   { background:#7f1d1d; color:#fca5a5; flex:0; min-width:46px; }
+
+    /* empty column */
+    .col-empty { padding:30px 14px; text-align:center; color:var(--muted); font-size:.82rem; opacity:.5; }
+    .col-empty i { font-size:1.6rem; display:block; margin-bottom:8px; }
+
+    /* ── List view (fallback) ────────────────────────────────────── */
+    .list-view { display:none; padding:0 14px 90px; flex-direction:column; gap:8px; margin-top:10px; }
+    .list-view.active { display:flex; }
+
+    /* same card but compact horizontal */
+    .list-card {
+      background:var(--card); border:1.5px solid var(--border); border-radius:14px;
+      overflow:hidden; display:flex; flex-direction:column;
+    }
+    .list-card.st-pending { border-color:var(--col-new); }
+    .list-card.st-confirmed,.list-card.st-preparing { border-color:var(--col-prep); }
+    .list-card.st-ready { border-color:var(--col-ready); }
+
+    /* ── Refresh / bottom bar ────────────────────────────────────── */
+    .bottom-bar {
+      position:fixed; bottom:0; left:0; right:0; background:var(--panel);
+      border-top:1px solid var(--border); padding:7px 14px;
+      display:flex; align-items:center; justify-content:space-between; z-index:100;
+    }
+    .refresh-dot { width:7px; height:7px; border-radius:50%; background:var(--success);
+                   display:inline-block; margin-left:5px; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .progress-ring { width:22px; height:22px; flex-shrink:0; }
+    .ring-bg  { fill:none; stroke:#1e3a5f; stroke-width:3; }
+    .ring-fg  { fill:none; stroke:var(--success); stroke-width:3;
+                stroke-linecap:round; stroke-dasharray:63; stroke-dashoffset:0;
+                transition:stroke-dashoffset 1s linear; transform:rotate(-90deg); transform-origin:50% 50%; }
+    .bbar-left { display:flex; align-items:center; gap:8px; font-size:.78rem; color:var(--muted); }
+    .btn-refresh { background:transparent; border:1px solid var(--border); color:var(--muted);
+                   border-radius:8px; padding:4px 11px; font-size:.78rem; cursor:pointer; font-family:'Heebo',sans-serif; }
+    .btn-refresh:hover { border-color:var(--primary); color:var(--primary); }
+
+    /* ── Modals ─────────────────────────────────────────────────── */
+    .modal-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+      z-index:500; align-items:center; justify-content:center; padding:20px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .modal-overlay.open { display:flex; }
+    .modal-box {
+      background:#1e293b; border:1px solid #334155; border-radius:18px;
+      padding:22px; max-width:380px; width:100%;
+      max-height:90vh; overflow-y:auto;
+    }
+    .modal-title { font-size:1rem; font-weight:800; margin-bottom:14px; }
+    .dark-ta { background:#0f172a; border:1px solid #334155; color:#f8fafc;
+               border-radius:10px; padding:12px; width:100%; font-family:'Heebo',sans-serif;
+               font-size:16px; resize:none; }
+    .modal-actions { display:flex; gap:8px; margin-top:12px; }
+
+    /* ── List padding for bottom bar ────────────────────────────── */
+    .list-view { padding-bottom:calc(56px + env(safe-area-inset-bottom, 0px)); }
+
+    /* ── Bottom bar safe area ───────────────────────────────────── */
+    .bottom-bar {
+      padding-bottom:calc(7px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ══════════════ RESPONSIVE ══════════════════════════════════ */
+
+    /* ── Large desktop: 4 col board ──────────────────────────── */
+    @media(min-width:1180px) {
+      .top-bar-row1 { padding:10px 18px; }
+    }
+
+    /* ── iPad landscape (1025-1179px): board scroll, nav compact ─ */
+    @media(max-width:1179px) {
+      .nav-btn-text { display:none; }
+      .nav-btn { padding:9px 10px; }
+    }
+
+    /* ── iPad portrait (768-1024px) ─────────────────────────── */
+    @media(max-width:1024px) {
+      .brand-title { font-size:.85rem; }
+      .pause-text  { font-size:.72rem; }
+    }
+
+    /* ── Tablet/phone (<768px) ───────────────────────────────── */
+    @media(max-width:767px) {
+      /* Top bar tighter */
+      .top-bar-row1 { padding:7px 10px; gap:7px; }
+      .brand-sub    { display:none; }
+
+      /* Pause button: icon only on very small */
+      .pause-text   { display:none; }
+
+      /* Control bar: smaller text */
+      .control-bar  { padding:5px 10px; gap:6px; }
+      .vtab         { padding:5px 8px; font-size:.72rem; }
+      .date-input   { font-size:.78rem; padding:5px 7px; max-width:120px; }
+      .date-nav     { padding:6px 8px; }
+
+      /* Cards: slightly more padding for thumbs */
+      .card-actions-strip { padding:8px; gap:5px; }
+      .kds-btn      { font-size:.8rem; padding:13px 6px; }
+
+      /* Column header tighter */
+      .col-header   { padding:8px 10px; }
+      .col-body     { padding:6px; gap:6px; }
+
+      /* card header tighter */
+      .card-header-strip { padding:8px 9px 7px; }
+      .cust-name    { font-size:.85rem; }
+      .order-price  { font-size:.88rem; }
+
+      /* list view */
+      .list-view    { padding:0 8px; }
+
+      /* stat pills: scroll without stretching */
+      .top-bar-row2 { padding:4px 10px 6px; gap:6px; }
+      .stat-pill    { font-size:.7rem; padding:3px 9px; }
+
+      /* Modals: bottom sheet on phone */
+      .modal-overlay { align-items:flex-end; padding:0; }
+      .modal-box {
+        border-radius:22px 22px 0 0; max-width:100%; width:100%;
+        padding:20px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+        max-height:88vh;
+      }
+    }
+
+    /* ── Very small phones (<400px) ─────────────────────────── */
+    @media(max-width:399px) {
+      .brand-icon   { width:30px; height:30px; font-size:.85rem; }
+      .brand-title  { font-size:.78rem; }
+      .clock        { font-size:.82rem; }
+    }
+
+    /* ── KDS board swipe hint arrow (tablet only) ────────────── */
+    .swipe-hint {
+      display:none;
+      position:absolute; top:50%; right:8px; transform:translateY(-50%);
+      font-size:1.1rem; opacity:.35; pointer-events:none; animation:hint-bounce .9s infinite;
+    }
+    @keyframes hint-bounce { 0%,100%{transform:translateY(-50%) translateX(0)} 50%{transform:translateY(-50%) translateX(-4px)} }
+    @media(max-width:1179px) { .swipe-hint { display:block; } }
+
+  </style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ═══════════════════════════════════════════════════════════ -->
+<div class="top-bar">
+  <!-- Row 1: logo + clock + nav buttons -->
+  <div class="top-bar-row1">
+    <div class="brand-icon"><i class="fas fa-fire-alt"></i></div>
+    <div style="flex-shrink:0;min-width:0;">
+      <div class="brand-title">KDS — מטבח</div>
+      <div class="brand-sub">{{ staff_name }}{% if worker_branch_name %} · {{ worker_branch_name }}{% endif %}</div>
+    </div>
+    {% if is_kds_superadmin %}
+    <select id="kds-branch-select" onchange="kdsSwitchBranch(this.value)"
+            style="background:var(--card2);color:var(--text);border:1px solid var(--border);
+                   border-radius:8px;padding:4px 8px;font-size:0.72rem;font-family:'Heebo',sans-serif;
+                   max-width:110px;cursor:pointer;flex-shrink:0;">
+        <option value="" {% if not kds_branch_id %}selected{% endif %}>כל הסניפים</option>
+        {% for b in kds_branches %}
+        <option value="{{ b.id }}" {% if kds_branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <span class="clock" id="live-clock">--:--:--</span>
+    <div class="top-nav-btns">
+      {% if is_kds_admin %}
+      <!-- PAUSE toggle -->
+      <button id="pause-btn" onclick="togglePause()" type="button"
+        style="background:{% if ordering_paused %}#f59e0b{% else %}var(--card2){% endif %};
+               border:2px solid {% if ordering_paused %}#fbbf24{% else %}var(--border){% endif %};
+               color:{% if ordering_paused %}#1a1a1a{% else %}var(--muted){% endif %};
+               border-radius:9px;padding:8px 12px;font-size:.78rem;font-weight:900;min-height:40px;
+               font-family:'Heebo',sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;
+               transition:all .2s;touch-action:manipulation;flex-shrink:0;">
+        <i class="fas {% if ordering_paused %}fa-play{% else %}fa-pause{% endif %}" id="pause-icon"></i>
+        <span id="pause-label" class="pause-text">{% if ordering_paused %}פתח הזמנות{% else %}הקפא{% endif %}</span>
+      </button>
+      {% endif %}
+      <a href="{{ url_for('order_dashboard.statistics') }}" class="nav-btn" title="סטטיסטיקות">
+        <i class="fas fa-chart-bar"></i><span class="nav-btn-text" style="margin-right:5px;">סטטיסטיקות</span>
+      </a>
+      {% if is_kds_admin %}
+      <a href="{{ url_for('order_dashboard.settings_page') }}" class="nav-btn" title="הגדרות">
+        <i class="fas fa-cog"></i><span class="nav-btn-text" style="margin-right:5px;">הגדרות</span>
+      </a>
+      {% endif %}
+      <a href="{{ url_for('order_dashboard.logout') }}" class="nav-btn red" title="יציאה">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
+    </div>
+  </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;width:90%;max-width:500px;">
+    {% for category, message in messages %}
+    <div style="background:{% if category == 'danger' %}#ef4444{% elif category == 'warning' %}#f59e0b{% else %}#22c55e{% endif %};
+                color:#fff;padding:12px 18px;border-radius:10px;margin-bottom:8px;font-weight:700;text-align:center;
+                font-family:'Heebo',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.3);"
+         onclick="this.remove()">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+  <!-- Row 2: live stats pills (horizontally scrollable) -->
+  <div class="top-bar-row2">
+    <span class="stat-pill {% if pending_count > 0 %}warn{% endif %}">
+      <i class="fas fa-inbox me-1"></i>{{ pending_count }} ממתינות לאישור
+    </span>
+    <span class="stat-pill {% if active_count > 0 %}ok{% endif %}">
+      <i class="fas fa-fire me-1"></i>{{ active_count }} בטיפול
+    </span>
+    <span class="stat-pill info">
+      <i class="fas fa-list me-1"></i>{{ total_today }} סה"כ היום
+    </span>
+    <span class="stat-pill">
+      <i class="fas fa-shekel-sign me-1"></i>₪{{ revenue_today | int }} הכנסה
+    </span>
+  </div>
+</div>
+
+<!-- ══ CONTROL BAR ════════════════════════════════════════════════════════ -->
+<div class="control-bar">
+  <!-- Date nav -->
+  <a href="{{ url_for('order_dashboard.orders', date=prev_date, status=status_filter) }}" class="date-nav"><i class="fas fa-chevron-right"></i></a>
+  <input type="date" class="date-input" value="{{ selected_date.strftime('%Y-%m-%d') }}"
+    onchange="window.location='/order-dashboard/orders?status={{ status_filter }}&date='+this.value">
+  {% if selected_date < today %}
+  <a href="{{ url_for('order_dashboard.orders', date=next_date, status=status_filter) }}" class="date-nav"><i class="fas fa-chevron-left"></i></a>
+  {% endif %}
+  {% if selected_date != today %}
+  <a href="{{ url_for('order_dashboard.orders') }}" class="date-nav" style="border-color:var(--primary);color:var(--primary);">היום</a>
+  {% endif %}
+
+  <div class="nav-sep" style="margin:0 4px;"></div>
+
+  <!-- View toggle -->
+  <div class="view-toggle">
+    <button class="vtab active" id="btn-board" onclick="setView('board')"><i class="fas fa-th me-1"></i>בורד</button>
+    <button class="vtab" id="btn-list" onclick="setView('list')"><i class="fas fa-list me-1"></i>רשימה</button>
+  </div>
+
+  {% if branches is defined and branches | length > 1 %}
+  <div class="nav-sep" style="margin:0 4px;"></div>
+  {% if worker_branch_id %}
+  <span style="flex-shrink:0;background:var(--primary);border:1px solid var(--primary);color:#fff;border-radius:16px;padding:4px 12px;font-size:.74rem;font-weight:700;">
+    <i class="fas fa-map-marker-alt me-1"></i>{{ worker_branch_name }}
+  </span>
+  {% else %}
+  <select class="branch-filter-select" onchange="var p=new URLSearchParams(window.location.search);if(this.value){p.set('branch_id',this.value)}else{p.delete('branch_id')};window.location.search=p.toString();"
+    style="flex-shrink:0;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:16px;padding:4px 12px;font-size:.74rem;font-weight:700;">
+    <option value="">כל הסניפים</option>
+    {% for b in branches %}
+    <option value="{{ b.id }}" {% if branch_filter == b.id|string %}selected{% endif %}>{{ b.name_he }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  {% endif %}
+
+  <div class="ctrl-sep"></div>
+
+  <!-- Filter tabs — each is flex-shrink:0 so they don't compress, parent scrolls -->
+  {% set tab_statuses = [('active','הכל פעיל'),('all','הכל'),('pending','ממתין'),('confirmed','אושר'),('preparing','בהכנה'),('ready','מוכן'),('delivered','נמסר'),('pickedup','נאסף'),('cancelled','בוטל')] %}
+  {% for s, lbl in tab_statuses %}
+  <a href="{{ url_for('order_dashboard.orders', status=s, date=selected_date.strftime('%Y-%m-%d')) }}"
+     style="flex-shrink:0;background:{% if status_filter==s %}var(--primary){% else %}var(--card2){% endif %};border:1px solid {% if status_filter==s %}var(--primary){% else %}var(--border){% endif %};color:{% if status_filter==s %}#fff{% else %}var(--muted){% endif %};border-radius:16px;padding:4px 12px;font-size:.74rem;font-weight:700;white-space:nowrap;text-decoration:none;">
+    {{ lbl }}{% if s=='pending' and pending_count > 0 %} ({{ pending_count }}){% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- ══ KDS KANBAN BOARD ═══════════════════════════════════════════════════ -->
+<!-- Column navigation dots (visible on tablet/phone) -->
+<div id="col-dots" style="display:none;position:sticky;top:var(--bars-h,152px);z-index:190;
+  background:var(--panel);border-bottom:1px solid var(--border);padding:5px 12px;
+  flex-direction:row;gap:8px;align-items:center;justify-content:center;">
+  {% for col_name, col_color in [('חדשות','#f59e0b'),('הכנה','#6366f1'),('מוכן','#10b981'),('סיום','#334155')] %}
+  <button onclick="scrollToCol({{ loop.index0 }})" id="col-dot-{{ loop.index0 }}"
+    style="background:{% if loop.first %}{{ col_color }}{% else %}var(--card2){% endif %};
+           border:1.5px solid {% if loop.first %}{{ col_color }}{% else %}var(--border){% endif %};
+           border-radius:20px;padding:4px 14px;font-size:.72rem;font-weight:800;
+           color:{% if loop.first %}#fff{% else %}var(--muted){% endif %};
+           font-family:'Heebo',sans-serif;cursor:pointer;transition:all .2s;
+           display:flex;align-items:center;gap:4px;" data-color="{{ col_color }}">
+    {% if col_name == 'חדשות' %}<i class="fas fa-inbox" style="font-size:.65rem;"></i>{% endif %}
+    {% if col_name == 'הכנה' %}<i class="fas fa-fire" style="font-size:.65rem;"></i>{% endif %}
+    {% if col_name == 'מוכן' %}<i class="fas fa-bell" style="font-size:.65rem;"></i>{% endif %}
+    {% if col_name == 'סיום' %}<i class="fas fa-check" style="font-size:.65rem;"></i>{% endif %}
+    {{ col_name }}
+  </button>
+  {% endfor %}
+</div>
+
+<div class="kds-board" id="kds-board">
+
+  <!-- COL 1: NEW -->
+  <div class="kds-col">
+    <div class="col-header new">
+      <i class="fas fa-inbox" style="color:var(--col-new);font-size:.85rem;"></i>
+      <span class="col-title new">הזמנות חדשות</span>
+      <span class="col-count" style="color:var(--col-new);">{{ new_orders | length }}</span>
+    </div>
+    <div class="col-body">
+      {% if not new_orders %}
+      <div class="col-empty"><i class="fas fa-check-circle"></i>אין הזמנות חדשות</div>
+      {% endif %}
+      {% for order in new_orders %}
+      {% set items = order.get_items() %}
+      {% set age_min = ((now_ts - order.created_at.timestamp()) / 60) | int if order.created_at else 0 %}
+      <div class="kds-card {% if age_min >= 15 %}urgent-crit{% elif age_min >= 8 %}urgent-warn{% endif %}" id="card-{{ order.id }}" data-order-id="{{ order.id }}" data-order-type="{{ order.order_type }}" data-order-status="{{ order.status }}" data-tracking="{{ order.tracking_token or '' }}" data-payment="{{ order.payment_method }}" data-address="{{ (order.delivery_address or '')|replace('"', '') }}" data-city="{{ order.delivery_city or '' }}" data-pickup="{{ order.pickup_time or '' }}" data-total="{{ order.total_amount|int }}">
+        <div class="card-header-strip">
+          <div class="card-header-left">
+            <div class="order-num">{{ order.display_number or order.order_number }}</div>
+            <div class="cust-name">{{ order.customer_name }}</div>
+            <div class="cust-phone">
+              <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;" onclick="event.stopPropagation()">
+                <i class="fas fa-phone me-1" style="font-size:.62rem;"></i>{{ order.customer_phone }}
+              </a>
+            </div>
+          </div>
+          <div class="card-header-right">
+            <div class="order-price">₪{{ order.total_amount | int }}</div>
+            <span class="order-time-ago {% if age_min >= 15 %}ota-crit{% elif age_min >= 8 %}ota-warn{% else %}ota-fresh{% endif %}"
+                  data-created="{{ order.created_at.timestamp() | int if order.created_at else 0 }}">
+              {{ age_min }}ד׳
+            </span>
+          </div>
+        </div>
+        <div class="card-badges">
+          <span class="tbadge {% if order.order_type=='delivery' %}tb-delivery{% else %}tb-pickup{% endif %}">
+            <i class="fas {% if order.order_type=='delivery' %}fa-motorcycle{% else %}fa-shopping-bag{% endif %} me-1"></i>{{ 'משלוח' if order.order_type=='delivery' else 'איסוף' }}
+          </span>
+          <span class="tbadge {% if order.payment_method=='cash' %}tb-cash{% else %}tb-card{% endif %}">{{ 'מזומן' if order.payment_method=='cash' else 'אשראי' }}</span>
+          {% if order.pickup_time %}<span class="tbadge tb-time"><i class="fas fa-clock me-1"></i>{{ order.pickup_time }}</span>{% endif %}
+          {% if order.branch_name %}<span class="tbadge" style="background:#ede9fe;color:#4338ca;"><i class="fas fa-store me-1"></i>{{ order.branch_name }}</span>{% endif %}
+          {% if (order.source|default('online')) == 'ops' %}<span class="tbadge" style="background:#2e1065;color:#c084fc;">ידני</span>{% endif %}
+        </div>
+        <div class="card-items">
+          {% for item in items %}
+          <div class="item-line">
+            <span class="item-qty">{{ item.get('qty',1) }}×</span>
+            <span class="item-name">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}
+              {% if item.get('notes') %}<span class="item-note">⚠ {{ item.notes }}</span>{% endif %}
+            </span>
+          </div>
+          {% if item.get('selected_items') %}
+          {% for sel in item.get('selected_items') %}
+          <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% if order.customer_notes %}
+        <div class="card-notes"><i class="fas fa-comment-dots me-1"></i>{{ order.customer_notes }}</div>
+        {% endif %}
+        <div class="card-actions-strip">
+          <button class="kds-btn confirm" onclick="showConfirmModal({{ order.id }}, '{{ order.display_number or order.order_number }}', '{{ order.order_type }}')">
+            <i class="fas fa-check"></i> אשר הזמנה
+          </button>
+          <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
+          <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- COL 2: IN PREP -->
+  <div class="kds-col">
+    <div class="col-header prep">
+      <i class="fas fa-fire" style="color:var(--col-prep);font-size:.85rem;"></i>
+      <span class="col-title prep">בהכנה</span>
+      <span class="col-count" style="color:var(--col-prep);">{{ prep_orders | length }}</span>
+    </div>
+    <div class="col-body">
+      {% if not prep_orders %}
+      <div class="col-empty"><i class="fas fa-utensils"></i>לא בהכנה כרגע</div>
+      {% endif %}
+      {% for order in prep_orders %}
+      {% set items = order.get_items() %}
+      {% set age_min = ((now_ts - order.created_at.timestamp()) / 60) | int if order.created_at else 0 %}
+      <div class="kds-card {% if age_min >= 25 %}urgent-crit{% elif age_min >= 15 %}urgent-warn{% endif %}" id="card-{{ order.id }}" data-order-id="{{ order.id }}" data-order-type="{{ order.order_type }}" data-order-status="{{ order.status }}" data-tracking="{{ order.tracking_token or '' }}" data-payment="{{ order.payment_method }}" data-address="{{ (order.delivery_address or '')|replace('"', '') }}" data-city="{{ order.delivery_city or '' }}" data-pickup="{{ order.pickup_time or '' }}" data-total="{{ order.total_amount|int }}">
+        <div class="card-header-strip">
+          <div class="card-header-left">
+            <div class="order-num">{{ order.display_number or order.order_number }}</div>
+            <div class="cust-name">{{ order.customer_name }}</div>
+            <div class="cust-phone">
+              <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;" onclick="event.stopPropagation()">
+                <i class="fas fa-phone me-1" style="font-size:.62rem;"></i>{{ order.customer_phone }}
+              </a>
+            </div>
+          </div>
+          <div class="card-header-right">
+            <div class="order-price">₪{{ order.total_amount | int }}</div>
+            <span class="order-time-ago {% if age_min >= 25 %}ota-crit{% elif age_min >= 15 %}ota-warn{% else %}ota-fresh{% endif %}"
+                  data-created="{{ order.created_at.timestamp() | int if order.created_at else 0 }}">
+              {{ age_min }}ד׳
+            </span>
+          </div>
+        </div>
+        <div class="card-badges">
+          <span class="tbadge {% if order.order_type=='delivery' %}tb-delivery{% else %}tb-pickup{% endif %}">
+            <i class="fas {% if order.order_type=='delivery' %}fa-motorcycle{% else %}fa-shopping-bag{% endif %} me-1"></i>{{ 'משלוח' if order.order_type=='delivery' else 'איסוף' }}
+          </span>
+          <span class="tbadge" style="background:#1e1b4b;color:#a5b4fc;">{{ order.status_display_he }}</span>
+          {% if order.pickup_time %}<span class="tbadge tb-time"><i class="fas fa-clock me-1"></i>{{ order.pickup_time }}</span>{% endif %}
+          {% if (order.source|default('online')) == 'ops' %}<span class="tbadge" style="background:#2e1065;color:#c084fc;">ידני</span>{% endif %}
+        </div>
+        <div class="card-items">
+          {% for item in items %}
+          <div class="item-line">
+            <span class="item-qty">{{ item.get('qty',1) }}×</span>
+            <span class="item-name">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}
+              {% if item.get('notes') %}<span class="item-note">⚠ {{ item.notes }}</span>{% endif %}
+            </span>
+          </div>
+          {% if item.get('selected_items') %}
+          {% for sel in item.get('selected_items') %}
+          <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% if order.customer_notes %}
+        <div class="card-notes"><i class="fas fa-comment-dots me-1"></i>{{ order.customer_notes }}</div>
+        {% endif %}
+        {% if order.status == 'preparing' and order.estimated_ready_at %}
+        <div style="padding:5px 8px 0;display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-clock" style="color:#a78bfa;font-size:.75rem;"></i>
+          <span style="font-size:.75rem;color:#a78bfa;font-weight:800;" id="prep-timer-{{ order.id }}"
+            data-ready="{{ order.estimated_ready_at.timestamp() | int }}">
+            מחשב...
+          </span>
+        </div>
+        {% endif %}
+        <div class="card-actions-strip">
+          {% if order.status == 'confirmed' %}
+          <button class="kds-btn prepare" onclick="showPrepModal({{ order.id }}, '{{ order.display_number or order.order_number }}')">
+            <i class="fas fa-fire"></i> התחל בישול
+          </button>
+          {% else %}
+          <button class="kds-btn ready" onclick="quickStatus({{ order.id }}, 'ready', '1')">
+            <i class="fas fa-bell"></i> מוכן לאיסוף!
+          </button>
+          {% endif %}
+          <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
+          <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- COL 3: READY -->
+  <div class="kds-col">
+    <div class="col-header ready">
+      <i class="fas fa-bell" style="color:var(--col-ready);font-size:.85rem;"></i>
+      <span class="col-title ready">מוכן</span>
+      <span class="col-count" style="color:var(--col-ready);">{{ ready_orders | length }}</span>
+    </div>
+    <div class="col-body">
+      {% if not ready_orders %}
+      <div class="col-empty"><i class="fas fa-clock"></i>אין הזמנות מוכנות</div>
+      {% endif %}
+      {% for order in ready_orders %}
+      {% set items = order.get_items() %}
+      {% set age_min = ((now_ts - order.created_at.timestamp()) / 60) | int if order.created_at else 0 %}
+      <div class="kds-card" style="border-color:#065f46;">
+        <div class="card-header-strip" style="background:rgba(5,46,22,.4);">
+          <div class="card-header-left">
+            <div class="order-num">{{ order.display_number or order.order_number }}</div>
+            <div class="cust-name">{{ order.customer_name }}</div>
+            <div class="cust-phone">
+              <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;" onclick="event.stopPropagation()">
+                <i class="fas fa-phone me-1" style="font-size:.62rem;"></i>{{ order.customer_phone }}
+              </a>
+            </div>
+          </div>
+          <div class="card-header-right">
+            <div class="order-price">₪{{ order.total_amount | int }}</div>
+            <span class="order-time-ago ota-fresh"
+                  data-created="{{ order.created_at.timestamp() | int if order.created_at else 0 }}">
+              {{ age_min }}ד׳
+            </span>
+          </div>
+        </div>
+        <div class="card-badges">
+          <span class="tbadge {% if order.order_type=='delivery' %}tb-delivery{% else %}tb-pickup{% endif %}">
+            <i class="fas {% if order.order_type=='delivery' %}fa-motorcycle{% else %}fa-shopping-bag{% endif %} me-1"></i>{{ 'משלוח' if order.order_type=='delivery' else 'איסוף' }}
+          </span>
+          {% if order.pickup_time %}<span class="tbadge tb-time"><i class="fas fa-clock me-1"></i>{{ order.pickup_time }}</span>{% endif %}
+          {% if (order.source|default('online')) == 'ops' %}<span class="tbadge" style="background:#2e1065;color:#c084fc;">ידני</span>{% endif %}
+        </div>
+        <div class="card-items">
+          {% for item in items %}
+          <div class="item-line">
+            <span class="item-qty">{{ item.get('qty',1) }}×</span>
+            <span class="item-name">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}</span>
+          </div>
+          {% if item.get('selected_items') %}
+          {% for sel in item.get('selected_items') %}
+          <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+          {% endfor %}
+          {% endif %}
+          {% endfor %}
+        </div>
+        <div class="card-actions-strip">
+          <button class="kds-btn complete" onclick="quickStatus({{ order.id }}, '{{ 'delivered' if order.order_type == 'delivery' else 'pickedup' }}', '0')">
+            <i class="fas fa-check-double"></i> {{ 'נמסר ללקוח' if order.order_type=='delivery' else 'נאסף' }}
+          </button>
+          <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- COL 4: DONE (recent completed / cancelled) -->
+  <div class="kds-col col-done">
+    <div class="col-header done">
+      <i class="fas fa-check-double" style="color:var(--col-done);font-size:.85rem;"></i>
+      <span class="col-title done">הושלמו</span>
+      <span class="col-count" style="color:var(--col-done);">{{ done_orders | length }}</span>
+    </div>
+    <div class="col-body">
+      {% if not done_orders %}
+      <div class="col-empty"><i class="fas fa-box-open"></i>ריק</div>
+      {% endif %}
+      {% for order in done_orders[:15] %}
+      {% set items = order.get_items() %}
+      <div class="kds-card" style="opacity:.65;border-color:#1e293b;">
+        <div class="card-header-strip">
+          <div class="card-header-left">
+            <div class="order-num">{{ order.display_number or order.order_number }}{% if (order.source|default('online')) == 'ops' %} <span style="font-size:.65rem;color:#c084fc;font-weight:800;">ידני</span>{% endif %}</div>
+            <div class="cust-name" style="font-size:.82rem;">{{ order.customer_name }}</div>
+          </div>
+          <div class="card-header-right">
+            <div class="order-price" style="font-size:.82rem;">₪{{ order.total_amount | int }}</div>
+            <span class="tbadge" style="background:{% if order.status=='cancelled' %}#450a0a{% else %}#052e16{% endif %};color:{% if order.status=='cancelled' %}#f87171{% else %}#4ade80{% endif %};">
+              {{ order.status_display_he }}
+            </span>
+          </div>
+        </div>
+        <div class="card-items" style="padding:6px 11px;">
+          {% for item in items %}
+          <div class="item-line" style="padding:2px 0;">
+            <span class="item-qty" style="font-size:.75rem;">{{ item.get('qty',1) }}×</span>
+            <span class="item-name" style="font-size:.75rem;color:var(--muted);">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="card-actions-strip" style="padding:5px 8px;">
+          <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail" style="flex:1;"><i class="fas fa-info-circle me-1"></i>פרטים</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ LIST VIEW (fallback / mobile) ════════════════════════════════════ -->
+<div class="list-view" id="list-view">
+  {% if not orders %}
+  <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+    <i class="fas fa-inbox" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:.4;"></i>
+    אין הזמנות
+  </div>
+  {% endif %}
+  {% for order in orders %}
+  {% set items = order.get_items() %}
+  {% set age_min = ((now_ts - order.created_at.timestamp()) / 60) | int if order.created_at else 0 %}
+  <div class="list-card st-{{ order.status }}">
+    <div class="card-header-strip">
+      <div class="card-header-left">
+        <div class="order-num">{{ order.display_number or order.order_number }} · {{ order.created_at|il_hour }}</div>
+        <div class="cust-name">{{ order.customer_name }}</div>
+        <div class="cust-phone">
+          <a href="tel:{{ order.customer_phone }}" style="color:var(--muted);text-decoration:none;">{{ order.customer_phone }}</a>
+        </div>
+      </div>
+      <div class="card-header-right">
+        <div class="order-price">₪{{ order.total_amount | int }}</div>
+        <span class="order-time-ago {% if age_min >= 20 %}ota-crit{% elif age_min >= 10 %}ota-warn{% else %}ota-fresh{% endif %}"
+              data-created="{{ order.created_at.timestamp() | int if order.created_at else 0 }}">
+          {{ age_min }}ד׳
+        </span>
+      </div>
+    </div>
+    <div class="card-badges">
+      <span class="tbadge {% if order.order_type=='delivery' %}tb-delivery{% else %}tb-pickup{% endif %}">
+        {{ 'משלוח' if order.order_type=='delivery' else 'איסוף' }}
+      </span>
+      <span class="tbadge" style="background:var(--card2);color:var(--muted);">{{ order.status_display_he }}</span>
+      {% if (order.source|default('online')) == 'ops' %}<span class="tbadge" style="background:#2e1065;color:#c084fc;">ידני</span>{% endif %}
+    </div>
+    <div class="card-items">
+      {% for item in items %}
+      <div class="item-line">
+        <span class="item-qty">{{ item.get('qty',1) }}×</span>
+        <span class="item-name">{{ item.get('name_he') or item.get('name_en') or 'פריט' }}
+          {% if item.get('notes') %}<span class="item-note">⚠ {{ item.notes }}</span>{% endif %}
+        </span>
+      </div>
+      {% if item.get('selected_items') %}
+      {% for sel in item.get('selected_items') %}
+      <div class="item-line" style="padding-right:28px;font-size:.72rem;color:#9ca3af;">• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+      {% endfor %}
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% if order.customer_notes %}
+    <div class="card-notes"><i class="fas fa-comment-dots me-1"></i>{{ order.customer_notes }}</div>
+    {% endif %}
+    <div class="card-actions-strip">
+      {% if order.status == 'pending' %}
+      <button class="kds-btn confirm" onclick="showConfirmModal({{ order.id }}, '{{ order.display_number or order.order_number }}', '{{ order.order_type }}')"><i class="fas fa-check"></i> אשר</button>
+      {% elif order.status == 'confirmed' %}
+      <button class="kds-btn prepare" onclick="showPrepModal({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-fire"></i> לבישול</button>
+      {% elif order.status == 'preparing' %}
+      <button class="kds-btn ready" onclick="quickStatus({{ order.id }}, 'ready', '1')"><i class="fas fa-bell"></i> מוכן!</button>
+      {% elif order.status == 'ready' %}
+      <button class="kds-btn complete" onclick="quickStatus({{ order.id }}, '{{ 'delivered' if order.order_type == 'delivery' else 'pickedup' }}', '0')">
+        <i class="fas fa-check-double"></i> {{ 'נמסר' if order.order_type=='delivery' else 'נאסף' }}
+      </button>
+      {% endif %}
+      <a href="{{ url_for('order_dashboard.order_detail', order_id=order.id) }}" class="kds-btn detail"><i class="fas fa-ellipsis-v"></i></a>
+      {% if order.status not in ('cancelled','delivered','pickedup') %}
+      <button class="kds-btn cancel" onclick="cancelOrder({{ order.id }}, '{{ order.display_number or order.order_number }}')"><i class="fas fa-times"></i></button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ══ BOTTOM BAR ════════════════════════════════════════════════════════ -->
+<div class="bottom-bar">
+  <div class="bbar-left">
+    <svg class="progress-ring" viewBox="0 0 22 22">
+      <circle class="ring-bg" cx="11" cy="11" r="8"/>
+      <circle class="ring-fg" cx="11" cy="11" r="8" id="refresh-ring"/>
+    </svg>
+    <span class="refresh-dot"></span>
+    <span>עדכון אוטומטי כל 30 שניות</span>
+  </div>
+  <button class="btn-refresh" onclick="location.reload()"><i class="fas fa-sync-alt me-1"></i>רענן עכשיו</button>
+</div>
+
+<!-- ══ CANCEL MODAL ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="cancel-modal">
+  <div class="modal-box">
+    <div class="modal-title">ביטול הזמנה <span id="cancel-order-num"></span></div>
+    <textarea class="dark-ta" id="cancel-reason" rows="2" placeholder="סיבת ביטול (אופציונלי)"></textarea>
+    <div class="modal-actions">
+      <button class="kds-btn cancel" style="flex:1;min-width:unset;" onclick="confirmCancel()"><i class="fas fa-times me-1"></i>בטל הזמנה</button>
+      <button class="kds-btn detail" style="flex:1;min-width:unset;" onclick="closeCancel()">חזרה</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAUSE CONFIRM MODAL ══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="pause-modal" onclick="if(event.target===this)closePauseModal()">
+  <div class="modal-box" style="max-width:340px;text-align:center;">
+    <div style="width:60px;height:60px;border-radius:50%;background:#1c1008;border:2px solid #f59e0b;
+                display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.6rem;">
+      <span id="pause-modal-icon">⏸</span>
+    </div>
+    <div class="modal-title" id="pause-modal-title">להקפיא קבלת הזמנות?</div>
+    <p style="font-size:.82rem;color:var(--muted);margin:6px 0 18px;line-height:1.5;" id="pause-modal-desc">
+      הלקוחות יוכלו לעיין בתפריט אך לא לבצע הזמנות.<br>ניתן לשחרר בכל עת.
+    </p>
+    <!-- Hold-to-confirm button -->
+    <button id="pause-hold-btn" class="kds-btn" ontouchstart="startPauseHold(event)" onmousedown="startPauseHold(event)"
+      ontouchend="cancelPauseHold()" onmouseup="cancelPauseHold()" onmouseleave="cancelPauseHold()"
+      style="width:100%;padding:14px;font-size:.9rem;font-weight:900;background:#f59e0b;
+             border:none;border-radius:12px;color:#1a1a1a;cursor:pointer;position:relative;overflow:hidden;
+             font-family:'Heebo',sans-serif;user-select:none;-webkit-user-select:none;
+             display:flex;align-items:center;justify-content:center;gap:8px;">
+      <div id="pause-hold-fill" style="position:absolute;top:0;right:0;height:100%;width:0%;
+        background:rgba(0,0,0,.15);transition:width linear;border-radius:12px;"></div>
+      <i class="fas fa-pause-circle" id="pause-hold-icon"></i>
+      <span id="pause-hold-label">לחץ והחזק לאישור (3 שניות)</span>
+    </button>
+    <button onclick="closePauseModal()" style="margin-top:10px;width:100%;padding:10px;background:var(--card2);
+      border:1px solid var(--border);border-radius:12px;color:var(--muted);cursor:pointer;
+      font-family:'Heebo',sans-serif;font-size:.85rem;">ביטול</button>
+  </div>
+</div>
+
+<!-- ══ PREP TIME MODAL ═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="prep-modal" onclick="if(event.target===this)closePrepModal()">
+  <div class="modal-box" style="max-width:360px;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="width:54px;height:54px;border-radius:50%;background:#1a0e2e;border:2px solid #7c3aed;
+                  display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:1.4rem;">
+        🔥
+      </div>
+      <div class="modal-title">להתחיל בישול?</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:4px;">
+        הזמנה <strong id="prep-order-num" style="color:#a5b4fc;"></strong>
+      </p>
+    </div>
+    <div style="text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:16px;padding:10px;background:var(--card2);border-radius:10px;border:1px solid var(--border);">
+      <i class="fas fa-info-circle me-1" style="color:#818cf8;"></i>
+      זמן ההכנה כבר נקבע באישור ההזמנה
+    </div>
+    <div class="modal-actions">
+      <button class="kds-btn prepare" style="flex:1;min-width:unset;" id="prep-confirm-btn"
+        onclick="confirmPrepStart()"><i class="fas fa-fire me-1"></i>התחל בישול</button>
+      <button class="kds-btn detail" style="flex:1;min-width:unset;" onclick="closePrepModal()">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFIRM + TIME MODAL ═════════════════════════════════════════════ -->
+<div class="modal-overlay" id="confirm-modal" onclick="if(event.target===this)closeConfirmModal()">
+  <div class="modal-box" style="max-width:380px;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="width:54px;height:54px;border-radius:50%;background:#052e16;border:2px solid #10b981;
+                  display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:1.4rem;">✅</div>
+      <div class="modal-title">אישור הזמנה</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:4px;">
+        הזמנה <strong id="confirm-order-num" style="color:#86efac;"></strong> —
+        <span id="confirm-order-type" style="color:var(--muted);"></span>
+      </p>
+    </div>
+    <div style="font-size:.82rem;font-weight:700;color:#86efac;margin-bottom:10px;text-align:center;">
+      <i class="fas fa-clock me-1"></i> מתי תהיה מוכנה ההזמנה?
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+      {% for mins in [15, 20, 25, 30, 40, 45, 60, 90] %}
+      <button class="confirm-preset" onclick="selectConfirmTime({{ mins }})"
+        style="background:var(--card2);border:2px solid var(--border);border-radius:10px;
+               padding:10px 4px;font-size:.85rem;font-weight:800;color:var(--muted);cursor:pointer;
+               font-family:'Heebo',sans-serif;transition:all .15s;">
+        {{ mins }}<span style="font-size:.62rem;font-weight:600;display:block;color:#4b7099;">דקות</span>
+      </button>
+      {% endfor %}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+      <div style="font-size:.78rem;color:var(--muted);flex-shrink:0;">או הזן:</div>
+      <input type="number" id="confirm-custom-input" min="5" max="240"
+        style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:8px;
+               padding:8px 10px;color:var(--text);font-size:.9rem;font-family:'Heebo',sans-serif;text-align:center;"
+        placeholder="דקות" oninput="updateConfirmFromCustom(this.value)">
+      <div style="font-size:.78rem;color:var(--muted);flex-shrink:0;">דקות</div>
+    </div>
+    <div id="confirm-time-display" style="text-align:center;font-size:.9rem;font-weight:900;
+         color:#86efac;margin-bottom:14px;display:none;background:#052e16;border-radius:10px;padding:8px;">
+      <i class="fas fa-clock me-1"></i> מוכנה בשעה <span id="confirm-ready-clock">--:--</span>
+      <span style="font-size:.75rem;color:#4ade80;"> (בעוד <span id="confirm-ready-mins">0</span> דקות)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px;
+         background:var(--card2);border-radius:10px;border:1px solid var(--border);">
+      <input type="checkbox" id="confirm-sms-cb" checked style="accent-color:#10b981;width:16px;height:16px;flex-shrink:0;">
+      <label for="confirm-sms-cb" style="font-size:.8rem;color:var(--muted);cursor:pointer;line-height:1.3;">
+        שלח SMS ללקוח עם זמן ההכנה המשוער וקישור מעקב
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="kds-btn confirm" style="flex:1;min-width:unset;background:#059669;color:#ecfdf5;"
+        id="confirm-confirm-btn" onclick="executeConfirm()">
+        <i class="fas fa-check me-1"></i>אשר הזמנה
+      </button>
+      <button class="kds-btn detail" style="flex:1;min-width:unset;" onclick="closeConfirmModal()">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BON / TICKET MODAL ════════════════════════════════════════════════ -->
+<style>
+  .bon-overlay {
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);
+    z-index:500;align-items:center;justify-content:center;padding:16px;
+  }
+  .bon-overlay.open { display:flex; }
+  .bon-ticket {
+    background:#f8f4e8;color:#1a1008;font-family:'Courier New',Courier,monospace;
+    border-radius:4px 4px 0 0;max-width:360px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+    position:relative;overflow:hidden;
+  }
+  /* torn-bottom edge */
+  .bon-ticket::after {
+    content:'';display:block;height:14px;
+    background:radial-gradient(circle at 50% 0%,#0f172a 10px,#f8f4e8 11px) repeat-x;
+    background-size:20px 14px;
+  }
+  .bon-top {
+    background:#1a1008;color:#f8f4e8;padding:14px 16px 10px;
+    display:flex;align-items:flex-start;justify-content:space-between;
+  }
+  .bon-num   { font-size:1.1rem;font-weight:900;letter-spacing:1px; }
+  .bon-time  { font-size:.72rem;color:#a89060;margin-top:2px; }
+  .bon-type-badge {
+    font-size:.72rem;font-weight:900;letter-spacing:.5px;
+    padding:3px 9px;border-radius:4px;white-space:nowrap;
+  }
+  .bon-close {
+    background:transparent;border:none;color:#a89060;font-size:1.1rem;
+    cursor:pointer;padding:0 0 0 8px;line-height:1;
+  }
+  .bon-dash  { border:none;border-top:2px dashed #c8b89060;margin:0 12px; }
+  .bon-cust  {
+    padding:8px 14px;font-size:.82rem;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .bon-cust-name { font-weight:900;font-size:.95rem; }
+  .bon-cust-phone { color:#555;font-size:.8rem; }
+  .bon-items { padding:6px 14px 4px; }
+  .bon-item  {
+    display:flex;align-items:baseline;gap:0;padding:5px 0;
+    border-bottom:1px dotted #c8b89080;
+  }
+  .bon-item:last-child { border-bottom:none; }
+  .bon-item-qty  { font-size:1.05rem;font-weight:900;min-width:32px;color:#1a1008; }
+  .bon-item-name { font-size:.9rem;font-weight:700;flex:1;line-height:1.3; }
+  .bon-item-note { font-size:.72rem;color:#8b5e00;display:block;padding-right:32px;padding-bottom:2px; }
+  .bon-notes {
+    margin:2px 14px 4px;padding:7px 10px;background:#fff8e6;
+    border-radius:4px;font-size:.8rem;color:#8b5e00;border:1px dashed #c8b060;
+  }
+  .bon-total {
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 14px 8px;border-top:2px solid #c8b89060;margin-top:4px;
+  }
+  .bon-total-lbl { font-size:.82rem;font-weight:700; }
+  .bon-total-val { font-size:1.3rem;font-weight:900; }
+  .bon-action {
+    padding:10px 14px 4px;display:flex;gap:8px;
+  }
+  .bon-btn {
+    flex:1;border:none;border-radius:6px;padding:12px 8px;
+    font-size:.9rem;font-weight:900;font-family:'Heebo',sans-serif;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    gap:6px;transition:opacity .15s;
+  }
+  .bon-btn:hover{opacity:.85;}
+  .bon-btn.bb-confirm  { background:#059669;color:#fff; }
+  .bon-btn.bb-prepare  { background:#6366f1;color:#fff; }
+  .bon-btn.bb-ready    { background:#0891b2;color:#fff; }
+  .bon-btn.bb-complete { background:#374151;color:#fff; }
+  .bon-btn.bb-detail   {
+    flex:0;min-width:44px;background:transparent;border:1.5px solid #c8b890;color:#8b7040;
+  }
+  @media(max-width:767px) {
+    .bon-overlay { align-items:flex-end;padding:0; }
+    .bon-ticket  { border-radius:16px 16px 0 0;max-width:100%; }
+  }
+
+  /* ── Print styles ───────────────────────────────────────────── */
+  @media print {
+    @page { margin:6mm; size:80mm auto; }
+    body * { visibility:hidden !important; }
+    #print-bon-area, #print-bon-area * { visibility:visible !important; }
+    #print-bon-area {
+      display:block !important;
+      position:fixed;top:0;right:0;left:0;
+      background:#fff !important;color:#000 !important;
+      font-family:'Courier New',Courier,monospace;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    /* force every element to pure black — no grey leaking through */
+    #print-bon-area * { color:#000 !important; }
+    .pbon-head {
+      text-align:center;border-bottom:3px solid #000;
+      padding-bottom:8px;margin-bottom:8px;
+    }
+    .pbon-num   { font-size:18pt;font-weight:900;letter-spacing:1px; }
+    .pbon-sub   { font-size:10pt;font-weight:700;margin-top:3px; }
+    .pbon-cust  { margin-bottom:8px;padding-bottom:7px;border-bottom:2px dashed #000; }
+    .pbon-cname { font-size:14pt;font-weight:900; }
+    .pbon-cinfo { font-size:10pt;font-weight:700; }
+    .pbon-items { margin-bottom:8px; }
+    .pbon-item  {
+      display:flex;justify-content:space-between;
+      font-size:13pt;font-weight:900;padding:4px 0;
+      border-bottom:1px solid #000;
+    }
+    .pbon-item:last-child { border-bottom:none; }
+    .pbon-note  { font-size:9pt;font-weight:700;padding-right:20px;display:block; }
+    .pbon-notebox {
+      border:2px solid #000;padding:5px 8px;margin:4px 0 8px;
+      font-size:10pt;font-weight:700;
+    }
+    .pbon-total {
+      display:flex;justify-content:space-between;align-items:baseline;
+      border-top:3px solid #000;padding-top:7px;margin-top:4px;
+    }
+    .pbon-total-lbl { font-size:11pt;font-weight:700; }
+    .pbon-total-val { font-size:18pt;font-weight:900; }
+    .pbon-footer    { text-align:center;font-size:9pt;font-weight:700;
+                      margin-top:10px;border-top:2px dashed #000;padding-top:7px; }
+  }
+</style>
+
+<div class="bon-overlay" id="expand-modal" onclick="if(event.target===this)closeExpand()">
+  <div class="bon-ticket">
+    <div class="bon-top">
+      <div>
+        <div class="bon-num" id="ex-order-num"></div>
+        <div class="bon-time" id="ex-order-time"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="bon-type-badge" id="ex-type-badge"></span>
+        <button class="bon-close" onclick="closeExpand()">✕</button>
+      </div>
+    </div>
+
+    <hr class="bon-dash">
+    <div class="bon-cust">
+      <div>
+        <div class="bon-cust-name" id="ex-cust-name"></div>
+        <div class="bon-cust-phone" id="ex-cust-addr"></div>
+      </div>
+      <a id="ex-phone-link" href="#" onclick="event.stopPropagation()"
+         style="background:#1a1008;color:#f8f4e8;padding:7px 12px;border-radius:6px;
+                font-size:.78rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;">
+        <i class="fas fa-phone" style="font-size:.65rem;"></i><span id="ex-phone-num"></span>
+      </a>
+    </div>
+    <hr class="bon-dash">
+
+    <div class="bon-items" id="ex-items-list"></div>
+
+    <div id="ex-notes-wrap" style="display:none;">
+      <div class="bon-notes"><i class="fas fa-exclamation-circle me-1"></i><span id="ex-notes-text"></span></div>
+    </div>
+
+    <div class="bon-total">
+      <span class="bon-total-lbl">סה"כ</span>
+      <span class="bon-total-val" id="ex-total"></span>
+    </div>
+
+    <div class="bon-action" id="ex-actions"></div>
+    <div style="padding:0 14px 14px;display:flex;justify-content:center;">
+      <button onclick="printBon()" style="background:transparent;border:1.5px dashed #c8b890;color:#8b7040;
+        border-radius:6px;padding:7px 22px;font-size:.8rem;font-weight:700;cursor:pointer;
+        font-family:'Heebo',sans-serif;display:flex;align-items:center;gap:6px;transition:all .15s;"
+        onmouseover="this.style.background='#f5f0e0'" onmouseout="this.style.background='transparent'">
+        🖨 הדפס בון
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PRINT AREA (invisible except on print) ══════════════════════════ -->
+<div id="print-bon-area" style="display:none;"></div>
+
+<script>
+function kdsSwitchBranch(branchId) {
+  fetch('{{ url_for("order_dashboard.switch_branch") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({branch_id: branchId || null})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.ok) location.reload(); })
+  .catch(function() {});
+}
+/* ── board height calculation ────────────────────────────────── */
+function fitBoard() {
+  const topBar  = document.querySelector('.top-bar');
+  const ctrlBar = document.querySelector('.control-bar');
+  const bottomBar = document.querySelector('.bottom-bar');
+  if (!topBar || !ctrlBar) return;
+  const taken = topBar.getBoundingClientRect().height
+              + ctrlBar.getBoundingClientRect().height
+              + (bottomBar ? bottomBar.getBoundingClientRect().height : 50);
+  document.documentElement.style.setProperty('--bars-h', Math.ceil(taken) + 'px');
+}
+fitBoard();
+window.addEventListener('resize', () => { fitBoard(); checkColDots(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { fitBoard(); checkColDots(); }, 300));
+
+/* ── Column dots: show on tablet/mobile board view ──────────── */
+function checkColDots() {
+  const dots = document.getElementById('col-dots');
+  const board = document.getElementById('kds-board');
+  if (!dots) return;
+  const isNarrow = window.innerWidth < 1180;
+  const boardVisible = board && board.style.display !== 'none';
+  dots.style.display = (isNarrow && boardVisible) ? 'flex' : 'none';
+  if (isNarrow && boardVisible) {
+    // Adjust --bars-h to include dots bar
+    setTimeout(fitBoard, 50);
+  }
+}
+checkColDots();
+
+function scrollToCol(idx) {
+  const board = document.getElementById('kds-board');
+  if (!board) return;
+  const cols = board.querySelectorAll('.kds-col');
+  if (cols[idx]) {
+    board.scrollTo({ left: cols[idx].offsetLeft, behavior: 'smooth' });
+  }
+  // Update active dot
+  document.querySelectorAll('[id^="col-dot-"]').forEach((btn, i) => {
+    const color = btn.getAttribute('data-color');
+    if (i === idx) {
+      btn.style.background = color;
+      btn.style.borderColor = color;
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = 'var(--card2)';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--muted)';
+    }
+  });
+}
+
+// Update active dot on scroll
+(function() {
+  const board = document.getElementById('kds-board');
+  if (!board) return;
+  let scrollTimer;
+  board.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const cols = board.querySelectorAll('.kds-col');
+      const center = board.scrollLeft + board.clientWidth / 2;
+      let activeIdx = 0;
+      let minDist = Infinity;
+      cols.forEach((col, i) => {
+        const colCenter = col.offsetLeft + col.offsetWidth / 2;
+        const dist = Math.abs(colCenter - center);
+        if (dist < minDist) { minDist = dist; activeIdx = i; }
+      });
+      document.querySelectorAll('[id^="col-dot-"]').forEach((btn, i) => {
+        const color = btn.getAttribute('data-color');
+        if (i === activeIdx) {
+          btn.style.background = color;
+          btn.style.borderColor = color;
+          btn.style.color = '#fff';
+        } else {
+          btn.style.background = 'var(--card2)';
+          btn.style.borderColor = 'var(--border)';
+          btn.style.color = 'var(--muted)';
+        }
+      });
+    }, 80);
+  });
+})();
+
+/* ── view toggle ─────────────────────────────────────────────── */
+function _defaultView() {
+  // Phone portrait → list. Everything else → board (or user's saved pref)
+  const isPhone = window.innerWidth < 600;
+  const isPortrait = window.innerHeight > window.innerWidth;
+  if (isPhone && isPortrait) return 'list';
+  return localStorage.getItem('kds_view') || 'board';
+}
+
+function setView(mode, silent) {
+  const board = document.getElementById('kds-board');
+  const list  = document.getElementById('list-view');
+  const btnB  = document.getElementById('btn-board');
+  const btnL  = document.getElementById('btn-list');
+
+  if (mode === 'board') {
+    if (board) { board.style.display = ''; }
+    if (list)  { list.classList.remove('active'); }
+    btnB && btnB.classList.add('active');
+    btnL && btnL.classList.remove('active');
+    setTimeout(() => { fitBoard(); checkColDots(); }, 50);
+  } else {
+    if (board) { board.style.display = 'none'; }
+    if (list)  { list.classList.add('active'); }
+    btnL && btnL.classList.add('active');
+    btnB && btnB.classList.remove('active');
+    checkColDots();
+  }
+  if (!silent) localStorage.setItem('kds_view', mode);
+}
+
+// Apply default view on load
+setView(_defaultView(), true);
+
+// Re-evaluate on orientation change
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    const dv = _defaultView();
+    const current = localStorage.getItem('kds_view') || 'board';
+    // Only auto-switch from board→list when going to phone portrait
+    const isPhone = window.innerWidth < 600;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPhone && isPortrait && current === 'board') setView('list', true);
+  }, 350);
+});
+
+/* ── pause ordering modal ────────────────────────────────────── */
+let _isPaused = {{ 'true' if ordering_paused else 'false' }};
+let _pauseHoldTimer = null;
+let _pauseHoldInterval = null;
+
+function togglePause() {
+  // Show modal instead of direct toggle
+  const modal = document.getElementById('pause-modal');
+  const icon  = document.getElementById('pause-modal-icon');
+  const title = document.getElementById('pause-modal-title');
+  const desc  = document.getElementById('pause-modal-desc');
+  const holdBtn  = document.getElementById('pause-hold-btn');
+  const holdIcon = document.getElementById('pause-hold-icon');
+  const holdLabel= document.getElementById('pause-hold-label');
+  const fill  = document.getElementById('pause-hold-fill');
+
+  if (_isPaused) {
+    icon.textContent = '▶️';
+    title.textContent = 'לפתוח קבלת הזמנות?';
+    desc.innerHTML = 'הלקוחות יוכלו שוב לבצע הזמנות.';
+    holdBtn.style.background = '#10b981';
+    holdIcon.className = 'fas fa-play-circle';
+    holdLabel.textContent = 'לחץ והחזק לאישור (3 שניות)';
+  } else {
+    icon.textContent = '⏸';
+    title.textContent = 'להקפיא קבלת הזמנות?';
+    desc.innerHTML = 'הלקוחות יוכלו לעיין בתפריט אך לא לבצע הזמנות.<br>ניתן לשחרר בכל עת.';
+    holdBtn.style.background = '#f59e0b';
+    holdIcon.className = 'fas fa-pause-circle';
+    holdLabel.textContent = 'לחץ והחזק לאישור (3 שניות)';
+  }
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  modal.classList.add('open');
+}
+
+function closePauseModal() {
+  document.getElementById('pause-modal').classList.remove('open');
+  cancelPauseHold();
+}
+
+function startPauseHold(e) {
+  e.preventDefault();
+  const fill = document.getElementById('pause-hold-fill');
+  const label = document.getElementById('pause-hold-label');
+  fill.style.transition = 'width 3s linear';
+  fill.style.width = '100%';
+  label.textContent = 'מחזיק... אל תשחרר';
+  _pauseHoldTimer = setTimeout(() => {
+    cancelPauseHold();
+    executePauseToggle();
+  }, 3000);
+}
+
+function cancelPauseHold() {
+  if (_pauseHoldTimer) { clearTimeout(_pauseHoldTimer); _pauseHoldTimer = null; }
+  const fill = document.getElementById('pause-hold-fill');
+  const label = document.getElementById('pause-hold-label');
+  if (fill) { fill.style.transition = 'width .3s'; fill.style.width = '0%'; }
+  if (label) label.textContent = 'לחץ והחזק לאישור (3 שניות)';
+}
+
+function executePauseToggle() {
+  const fd = new FormData();
+  fd.append('action', 'toggle_pause');
+  fetch('{{ url_for("order_dashboard.settings_page") }}', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        _isPaused = d.paused;
+        const btn = document.getElementById('pause-btn');
+        btn.style.background = _isPaused ? '#f59e0b' : 'var(--card2)';
+        btn.style.borderColor = _isPaused ? '#fbbf24' : 'var(--border)';
+        btn.style.color = _isPaused ? '#1a1a1a' : 'var(--muted)';
+        document.getElementById('pause-icon').className = 'fas ' + (_isPaused ? 'fa-play' : 'fa-pause');
+        document.getElementById('pause-label').textContent = _isPaused ? 'פתח הזמנות' : 'הקפא';
+        closePauseModal();
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:' + (_isPaused?'#f59e0b':'#10b981') + ';color:#fff;padding:12px 28px;border-radius:14px;font-family:Heebo,sans-serif;font-weight:900;font-size:.95rem;box-shadow:0 6px 20px rgba(0,0,0,.4);';
+        banner.textContent = _isPaused ? '⏸ הזמנות הוקפאו בהצלחה' : '✅ הזמנות פעילות שוב';
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 3000);
+      }
+    });
+}
+
+/* ── prep start modal (no time selection — time set at confirm) ── */
+let _prepOrderId = null;
+
+function showPrepModal(orderId, orderNum) {
+  _prepOrderId = orderId;
+  document.getElementById('prep-order-num').textContent = orderNum;
+  document.getElementById('prep-modal').classList.add('open');
+}
+
+function closePrepModal() {
+  document.getElementById('prep-modal').classList.remove('open');
+  _prepOrderId = null;
+}
+
+function confirmPrepStart() {
+  if (!_prepOrderId) return;
+  const btn = document.getElementById('prep-confirm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>מתחיל...';
+  const fd = new FormData();
+  fd.append('status', 'preparing');
+  fd.append('send_sms', '0');
+  fetch('/order-dashboard/orders/' + _prepOrderId + '/update-status', { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        closePrepModal();
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#7c3aed;color:#fff;padding:12px 28px;border-radius:14px;font-family:Heebo,sans-serif;font-weight:900;font-size:.95rem;box-shadow:0 6px 20px rgba(0,0,0,.4);';
+        banner.textContent = '🔥 הבישול התחיל!';
+        document.body.appendChild(banner);
+        setTimeout(() => { banner.remove(); location.reload(); }, 2000);
+      }
+    })
+    .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-fire me-1"></i>התחל בישול'; });
+}
+
+/* ── prep timer countdown on cards ──────────────────────────── */
+function updatePrepTimers() {
+  const now = Math.floor(Date.now() / 1000);
+  document.querySelectorAll('[id^="prep-timer-"]').forEach(el => {
+    const readyTs = parseInt(el.getAttribute('data-ready'));
+    if (!readyTs) return;
+    const remaining = readyTs - now;
+    if (remaining <= 0) {
+      el.textContent = '✅ אמור להיות מוכן!';
+      el.style.color = '#4ade80';
+    } else {
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      el.textContent = `מוכן בעוד ${m}:${String(s).padStart(2,'0')}`;
+      if (remaining < 120) el.style.color = '#f87171';
+      else if (remaining < 300) el.style.color = '#fbbf24';
+    }
+  });
+}
+updatePrepTimers();
+setInterval(updatePrepTimers, 1000);
+
+
+/* ── live clock ──────────────────────────────────────────────── */
+function updateClock() {
+  const n = new Date();
+  document.getElementById('live-clock').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' +
+    String(n.getMinutes()).padStart(2,'0') + ':' +
+    String(n.getSeconds()).padStart(2,'0');
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+/* ── elapsed-time badges ─────────────────────────────────────── */
+function refreshTimers() {
+  const now = Math.floor(Date.now() / 1000);
+  document.querySelectorAll('[data-created]').forEach(el => {
+    const created = parseInt(el.dataset.created, 10);
+    if (!created) return;
+    const mins = Math.floor((now - created) / 60);
+    el.textContent = mins + 'ד׳';
+    el.className = 'order-time-ago ' +
+      (mins >= 20 ? 'ota-crit' : mins >= 10 ? 'ota-warn' : 'ota-fresh');
+    // update card urgency class
+    const card = el.closest('.kds-card');
+    if (card) {
+      card.classList.remove('urgent-warn','urgent-crit');
+      if (mins >= 20) card.classList.add('urgent-crit');
+      else if (mins >= 10) card.classList.add('urgent-warn');
+    }
+  });
+}
+refreshTimers();
+setInterval(refreshTimers, 30000);
+
+/* ── auto-refresh ring ───────────────────────────────────────── */
+const REFRESH_SECS = 30;
+let remaining = REFRESH_SECS;
+const ring = document.getElementById('refresh-ring');
+const circumference = 2 * Math.PI * 8; // r=8
+
+function updateRing() {
+  remaining--;
+  if (remaining <= 0) { location.reload(); return; }
+  const offset = circumference * (1 - remaining / REFRESH_SECS);
+  if (ring) ring.style.strokeDashoffset = offset;
+}
+setInterval(updateRing, 1000);
+
+/* ── quick status ────────────────────────────────────────────── */
+function quickStatus(orderId, status, sendSms) {
+  const fd = new FormData();
+  fd.append('status', status);
+  fd.append('send_sms', sendSms);
+  // Optimistic: hide the card immediately, reload after
+  const card = document.getElementById('card-' + orderId);
+  if (card) { card.style.opacity = '.35'; card.style.pointerEvents = 'none'; }
+  fetch('/order-dashboard/orders/' + orderId + '/update-status', { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else if (card) { card.style.opacity='1'; card.style.pointerEvents=''; } });
+}
+
+/* ── confirm + time modal ────────────────────────────────────── */
+let _confirmOrderId = null;
+let _confirmMinutes = 0;
+
+function showConfirmModal(orderId, orderNum, orderType) {
+  _confirmOrderId = orderId;
+  _confirmMinutes = 0;
+  document.getElementById('confirm-order-num').textContent = orderNum;
+  document.getElementById('confirm-order-type').textContent = orderType === 'delivery' ? 'משלוח 🛵' : 'איסוף 🛍';
+  document.getElementById('confirm-time-display').style.display = 'none';
+  document.getElementById('confirm-custom-input').value = '';
+  document.querySelectorAll('.confirm-preset').forEach(b => {
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--muted)';
+    b.style.background = 'var(--card2)';
+  });
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  _confirmOrderId = null;
+  _confirmMinutes = 0;
+}
+
+function selectConfirmTime(mins) {
+  _confirmMinutes = mins;
+  document.getElementById('confirm-custom-input').value = mins;
+  document.querySelectorAll('.confirm-preset').forEach(b => {
+    const isThis = parseInt(b.textContent) === mins;
+    b.style.borderColor = isThis ? '#10b981' : 'var(--border)';
+    b.style.color = isThis ? '#86efac' : 'var(--muted)';
+    b.style.background = isThis ? '#052e16' : 'var(--card2)';
+  });
+  _updateConfirmClock(mins);
+}
+
+function updateConfirmFromCustom(val) {
+  const v = parseInt(val);
+  if (!isNaN(v) && v > 0) {
+    _confirmMinutes = v;
+    document.querySelectorAll('.confirm-preset').forEach(b => {
+      b.style.borderColor = 'var(--border)';
+      b.style.color = 'var(--muted)';
+      b.style.background = 'var(--card2)';
+    });
+    _updateConfirmClock(v);
+  }
+}
+
+function _updateConfirmClock(mins) {
+  const readyAt = new Date(Date.now() + mins * 60000);
+  const h = String(readyAt.getHours()).padStart(2, '0');
+  const m = String(readyAt.getMinutes()).padStart(2, '0');
+  document.getElementById('confirm-ready-clock').textContent = `${h}:${m}`;
+  document.getElementById('confirm-ready-mins').textContent = mins;
+  document.getElementById('confirm-time-display').style.display = '';
+}
+
+function executeConfirm() {
+  if (!_confirmOrderId) return;
+  if (_confirmMinutes <= 0) {
+    // Flash the clock section to prompt for a time selection
+    const disp = document.getElementById('confirm-time-display');
+    disp.style.background = '#450a0a'; disp.style.color = '#f87171';
+    disp.style.display = '';
+    disp.querySelector('#confirm-ready-clock').textContent = '';
+    disp.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> נא לבחור זמן הכנה';
+    setTimeout(() => { disp.style.background='#052e16'; disp.style.color='#86efac'; }, 1800);
+    return;
+  }
+  const btn = document.getElementById('confirm-confirm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>מאשר...';
+  const sendSms = document.getElementById('confirm-sms-cb').checked ? '1' : '0';
+  const fd = new FormData();
+  fd.append('status', 'confirmed');
+  fd.append('prep_minutes', _confirmMinutes);
+  fd.append('send_sms', sendSms);
+  fetch('/order-dashboard/orders/' + _confirmOrderId + '/update-status', { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        closeConfirmModal();
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#059669;color:#fff;padding:12px 28px;border-radius:14px;font-family:Heebo,sans-serif;font-weight:900;font-size:.95rem;box-shadow:0 6px 20px rgba(0,0,0,.4);';
+        banner.textContent = `✅ הזמנה אושרה! מוכנה בעוד ${_confirmMinutes} דקות`;
+        document.body.appendChild(banner);
+        setTimeout(() => { banner.remove(); location.reload(); }, 2200);
+      }
+    })
+    .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check me-1"></i>אשר הזמנה'; });
+}
+
+/* ── card expand (quick view) ────────────────────────────────── */
+function openExpand(card) {
+  const orderId   = card.dataset.orderId;
+  const orderNum  = card.querySelector('.order-num')?.textContent?.trim() || '';
+  const custName  = card.querySelector('.cust-name')?.textContent?.trim() || '';
+  const phoneEl   = card.querySelector('.cust-phone a');
+  const phone     = phoneEl?.textContent?.trim() || '';
+  const phoneHref = phoneEl?.getAttribute('href') || '#';
+  const total     = card.dataset.total;
+  const orderType = card.dataset.orderType;
+  const address   = card.dataset.address;
+  const city      = card.dataset.city;
+  const pickup    = card.dataset.pickup;
+  const status    = card.dataset.orderStatus;
+
+  // Raw notes text — strip leading icon character
+  const notesEl = card.querySelector('.card-notes');
+  const notes   = notesEl ? notesEl.textContent.replace(/^\s*.\s*/, '').trim() : '';
+
+  // Order time (from the time badge data-created attr, fallback to card subtitle)
+  const timeAgoEl = card.querySelector('.order-time-ago');
+  const createdTs = timeAgoEl ? parseInt(timeAgoEl.dataset.created) * 1000 : 0;
+  const timeStr   = createdTs ? new Date(createdTs).toLocaleTimeString('he-IL', {hour:'2-digit',minute:'2-digit'}) : '';
+
+  // Populate bon
+  document.getElementById('ex-order-num').textContent = orderNum;
+  document.getElementById('ex-order-time').textContent = timeStr ? `הוזמן ב-${timeStr}` : '';
+  document.getElementById('ex-cust-name').textContent = custName;
+  document.getElementById('ex-phone-num').textContent = phone;
+  document.getElementById('ex-phone-link').href = phoneHref;
+  document.getElementById('ex-total').textContent = '₪' + total;
+
+  // Type badge
+  const badgeEl = document.getElementById('ex-type-badge');
+  if (orderType === 'delivery') {
+    badgeEl.textContent = '🛵 משלוח';
+    badgeEl.style.cssText = 'background:#6366f1;color:#fff;font-size:.72rem;font-weight:900;letter-spacing:.5px;padding:3px 9px;border-radius:4px;';
+  } else {
+    badgeEl.textContent = '🛍 איסוף';
+    badgeEl.style.cssText = 'background:#059669;color:#fff;font-size:.72rem;font-weight:900;letter-spacing:.5px;padding:3px 9px;border-radius:4px;';
+  }
+
+  // Address / pickup line under name
+  const addrEl = document.getElementById('ex-cust-addr');
+  if (orderType === 'delivery' && (city || address)) {
+    addrEl.textContent = [city, address].filter(Boolean).join(' · ');
+  } else if (pickup) {
+    addrEl.textContent = 'איסוף: ' + pickup;
+  } else {
+    addrEl.textContent = '';
+  }
+
+  // Items — read from card DOM
+  const itemLines = card.querySelectorAll('.item-line');
+  let itemsHtml = '';
+  itemLines.forEach(line => {
+    const qty    = line.querySelector('.item-qty')?.textContent?.replace('×','').trim() || '1';
+    const nameEl = line.querySelector('.item-name');
+    const name   = nameEl ? (nameEl.firstChild?.textContent?.trim() || nameEl.textContent.split('\n')[0].trim()) : 'פריט';
+    const note   = line.querySelector('.item-note')?.textContent?.trim() || '';
+    itemsHtml += `<div class="bon-item">
+      <span class="bon-item-qty">${qty}×</span>
+      <span class="bon-item-name">${name}${note ? `<span class="bon-item-note">⚠ ${note}</span>` : ''}</span>
+    </div>`;
+  });
+  document.getElementById('ex-items-list').innerHTML = itemsHtml;
+
+  // Customer notes
+  const notesWrap = document.getElementById('ex-notes-wrap');
+  if (notes) {
+    notesWrap.style.display = '';
+    document.getElementById('ex-notes-text').textContent = notes;
+  } else {
+    notesWrap.style.display = 'none';
+  }
+
+  // Single action button
+  const actionsEl = document.getElementById('ex-actions');
+  let btn = '';
+  if (status === 'pending') {
+    btn = `<button class="bon-btn bb-confirm"
+      onclick="closeExpand();showConfirmModal(${orderId},'${orderNum}','${orderType}')">
+      <i class="fas fa-check"></i> אשר הזמנה</button>`;
+  } else if (status === 'confirmed') {
+    btn = `<button class="bon-btn bb-prepare"
+      onclick="closeExpand();showPrepModal(${orderId},'${orderNum}')">
+      <i class="fas fa-fire"></i> התחל בישול</button>`;
+  } else if (status === 'preparing') {
+    btn = `<button class="bon-btn bb-ready"
+      onclick="closeExpand();quickStatus(${orderId},'ready','1')">
+      <i class="fas fa-bell"></i> מוכן!</button>`;
+  } else if (status === 'ready') {
+    const ns = orderType==='delivery'?'delivered':'pickedup';
+    const nl = orderType==='delivery'?'נמסר ללקוח':'נאסף';
+    btn = `<button class="bon-btn bb-complete"
+      onclick="closeExpand();quickStatus(${orderId},'${ns}','0')">
+      <i class="fas fa-flag-checkered"></i> ${nl}</button>`;
+  }
+  btn += `<a href="/order-dashboard/orders/${orderId}" class="bon-btn bb-detail" title="פרטים מלאים">
+    <i class="fas fa-ellipsis-v"></i></a>`;
+  actionsEl.innerHTML = btn;
+
+  document.getElementById('expand-modal').classList.add('open');
+}
+
+function closeExpand() {
+  document.getElementById('expand-modal').classList.remove('open');
+}
+
+/* ── print bon ───────────────────────────────────────────────── */
+function printBon() {
+  const orderNum = document.getElementById('ex-order-num').textContent;
+  const orderTime = document.getElementById('ex-order-time').textContent;
+  const custName  = document.getElementById('ex-cust-name').textContent;
+  const custAddr  = document.getElementById('ex-cust-addr').textContent;
+  const phone     = document.getElementById('ex-phone-num').textContent;
+  const total     = document.getElementById('ex-total').textContent;
+  const typeBadge = document.getElementById('ex-type-badge').textContent;
+  const notes     = document.getElementById('ex-notes-wrap').style.display !== 'none'
+                    ? document.getElementById('ex-notes-text').textContent : '';
+  const now = new Date().toLocaleString('he-IL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+  // Build item rows from the bon's item DOM
+  let itemRows = '';
+  document.querySelectorAll('#ex-items-list .bon-item').forEach(line => {
+    const qty  = line.querySelector('.bon-item-qty')?.textContent?.trim() || '';
+    const nm   = line.querySelector('.bon-item-name');
+    const name = nm ? (nm.firstChild?.textContent?.trim() || nm.textContent.split('\n')[0].trim()) : '';
+    const note = nm?.querySelector('.bon-item-note')?.textContent?.trim() || '';
+    itemRows += `<div class="pbon-item">
+      <span>${qty} ${name}</span>
+    </div>${note ? `<span class="pbon-note">⚠ ${note}</span>` : ''}`;
+  });
+
+  const html = `
+    <div class="pbon-head">
+      <div class="pbon-num">${orderNum}</div>
+      <div class="pbon-sub">${typeBadge} &nbsp;·&nbsp; ${now}</div>
+      ${orderTime ? `<div class="pbon-sub">${orderTime}</div>` : ''}
+    </div>
+    <div class="pbon-cust">
+      <div class="pbon-cname">${custName}</div>
+      ${custAddr ? `<div class="pbon-cinfo">${custAddr}</div>` : ''}
+      ${phone ? `<div class="pbon-cinfo">📞 ${phone}</div>` : ''}
+    </div>
+    <div class="pbon-items">${itemRows}</div>
+    ${notes ? `<div class="pbon-notebox">⚠ ${notes}</div>` : ''}
+    <div class="pbon-total">
+      <span class="pbon-total-lbl">סה״כ לתשלום</span>
+      <span class="pbon-total-val">${total}</span>
+    </div>
+    <div class="pbon-footer">תודה על הזמנתך!</div>`;
+
+  const area = document.getElementById('print-bon-area');
+  area.innerHTML = html;
+  window.print();
+  // Clean up after print dialog closes
+  setTimeout(() => { area.innerHTML = ''; }, 1000);
+}
+
+// Card click → expand (exclude buttons/links)
+document.querySelectorAll('.kds-card').forEach(card => {
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', function(e) {
+    if (e.target.closest('.card-actions-strip')) return;
+    openExpand(this);
+  });
+});
+
+/* ── cancel modal ────────────────────────────────────────────── */
+let cancelOrderId = null;
+function cancelOrder(id, num) {
+  cancelOrderId = id;
+  document.getElementById('cancel-order-num').textContent = num;
+  document.getElementById('cancel-reason').value = '';
+  document.getElementById('cancel-modal').classList.add('open');
+}
+function closeCancel() { document.getElementById('cancel-modal').classList.remove('open'); }
+function confirmCancel() {
+  const fd = new FormData();
+  fd.append('reason', document.getElementById('cancel-reason').value);
+  fetch('/order-dashboard/orders/' + cancelOrderId + '/cancel', { method:'POST', body:fd })
+    .then(() => location.reload());
+}
+
+/* close on backdrop click */
+document.getElementById('cancel-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCancel();
+});
+</script>
+</body>
+</html>

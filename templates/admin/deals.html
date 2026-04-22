@@ -1,0 +1,95 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ deals_label_he }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-tags me-2"></i>{{ deals_label_he }}</h1>
+    <a href="{{ url_for('admin.create_deal') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>מבצע חדש
+    </a>
+</div>
+
+{% if deals %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:25%;">שם</th>
+                <th style="width:15%;">מחיר מבצע</th>
+                <th style="width:15%;">מחיר מקורי</th>
+                <th style="width:15%;">פריטים</th>
+                <th style="width:10%;">סטטוס</th>
+                <th style="width:15%;">פעולות</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for deal in deals %}
+            <tr>
+                <td>{{ deal.display_order }}</td>
+                <td>
+                    <strong>{{ deal.name_he }}</strong>
+                    {% if deal.name_en %}<br><small class="text-muted">{{ deal.name_en }}</small>{% endif %}
+                </td>
+                <td><span class="fw-bold text-success">₪{{ deal.deal_price | int }}</span></td>
+                <td>
+                    {% if deal.original_price %}
+                    <span class="text-decoration-line-through text-muted">₪{{ deal.original_price | int }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    <span class="badge bg-secondary">{{ (deal.included_items or []) | length }} פריטים</span>
+                </td>
+                <td>
+                    {% if deal.is_valid() %}
+                    <span class="badge bg-success">פעיל</span>
+                    {% elif deal.is_active %}
+                    <span class="badge bg-warning">לא בטווח תאריכים</span>
+                    {% else %}
+                    <span class="badge bg-secondary">לא פעיל</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="action-menu">
+                        <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="action-dropdown">
+                            <a href="{{ url_for('admin.edit_deal', deal_id=deal.id) }}"><i class="fas fa-edit"></i> עריכה</a>
+                            <button onclick="toggleDeal({{ deal.id }}, this)">
+                                <i class="fas fa-toggle-{{ 'on' if deal.is_active else 'off' }}"></i>
+                                {{ 'השבת' if deal.is_active else 'הפעל' }}
+                            </button>
+                            <button class="delete-action" onclick="deleteDeal({{ deal.id }})">
+                                <i class="fas fa-trash"></i> מחיקה
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="fas fa-tags fa-3x mb-3 d-block"></i>
+    <p>אין מבצעים עדיין. צרו את המבצע הראשון!</p>
+</div>
+{% endif %}
+
+<script>
+function toggleDeal(id, btn) {
+    fetch('/admin/deals/toggle/' + id, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''}})
+    .then(r => r.json())
+    .then(d => { if(d.success) location.reload(); });
+}
+function deleteDeal(id) {
+    if(!confirm('למחוק את המבצע?')) return;
+    fetch('/admin/deals/delete/' + id, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''}})
+    .then(r => r.json())
+    .then(d => { if(d.success) location.reload(); });
+}
+</script>
+{% endblock %}

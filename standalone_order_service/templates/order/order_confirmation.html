@@ -1,0 +1,216 @@
+{% extends "public/base.html" %}
+{% block title %}{{ 'אישור הזמנה' if language == 'he' else 'Order Confirmed' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+{% block content %}
+<script>try { localStorage.removeItem('rai_cart'); localStorage.removeItem('rai_cart_ts'); } catch(e) {}</script>
+<div style="height: 80px;"></div>
+<section class="section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6">
+
+        {% if payment_failed %}
+        <div class="text-center py-5">
+          <div class="mb-4" style="font-size:4rem;">❌</div>
+          <h2 class="fw-bold mb-2">{{ 'התשלום נכשל' if language == 'he' else 'Payment Failed' }}</h2>
+          <p class="text-muted mb-4">{{ 'ניתן לנסות שוב או לבחור תשלום במזומן.' if language == 'he' else 'You can try again or pay cash on delivery.' }}</p>
+          <a href="{{ url_for('order_page.order_page') }}" class="btn btn-primary me-2">
+            <i class="fas fa-redo me-1"></i>{{ 'נסה שוב' if language == 'he' else 'Try again' }}
+          </a>
+        </div>
+
+        {% elif order %}
+        <!-- Success -->
+        <div class="text-center mb-4">
+          <div class="mb-3" style="font-size:3.5rem;">🎉</div>
+          <h2 class="fw-bold mb-1">{{ 'ההזמנה התקבלה!' if language == 'he' else 'Order Received!' }}</h2>
+          <p class="text-muted">{{ 'מספר הזמנה:' if language == 'he' else 'Order number:' }} <strong>#{{ order.display_number or order.order_number }}</strong></p>
+        </div>
+
+        <div class="card border-0 shadow mb-4" style="border-radius:16px;">
+          <div class="card-body p-4">
+
+            <!-- Status tracker -->
+            <div class="order-status-tracker mb-4">
+              {% set status_keys = ['pending','confirmed','preparing','ready','delivered','pickedup'] %}
+              {% set statuses = [('pending','ממתין','clock'),('confirmed','אושר','check-circle'),('preparing','בהכנה','fire'),('ready','מוכן','bell'),('delivered' if order.order_type == 'delivery' else 'pickedup','נמסר' if order.order_type == 'delivery' else 'נאסף','flag')] %}
+              {% set ns = namespace(current_idx=0) %}
+              {% for s_key, s_label, s_icon in statuses %}
+                {% if order.status == s_key %}{% set ns.current_idx = loop.index0 %}{% endif %}
+              {% endfor %}
+              <div class="d-flex justify-content-between position-relative">
+                <div class="progress position-absolute" style="top:18px;left:5%;right:5%;height:4px;z-index:0;">
+                  <div class="progress-bar bg-primary" id="status-progress" style="width:{{ [20, ns.current_idx * 25] | max }}%;transition:width 0.5s;"></div>
+                </div>
+                {% for s_key, s_label, s_icon in statuses %}
+                <div class="text-center flex-fill" style="z-index:1;">
+                  <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center mb-1 status-dot {% if order.status == s_key %}active{% elif loop.index0 < ns.current_idx %}done{% endif %}"
+                    style="width:36px;height:36px;background:#e5e7eb;font-size:0.8rem;"
+                    id="dot-{{ loop.index }}">
+                    <i class="fas fa-{{ s_icon }}"></i>
+                  </div>
+                  <div style="font-size:0.7rem;color:#6b7280;">{{ s_label }}</div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Live status -->
+            <div class="alert mb-3 text-center fw-bold" id="status-alert" style="border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;">
+              {{ order.status_display_he }}
+            </div>
+
+            <!-- Order summary -->
+            <table class="table table-sm table-borderless">
+              <tr>
+                <td class="text-muted">{{ 'סוג הזמנה' if language == 'he' else 'Type' }}</td>
+                <td class="fw-semibold text-end">{{ order.order_type_display_he }}</td>
+              </tr>
+              {% if order.order_type == 'delivery' %}
+              <tr>
+                <td class="text-muted">{{ 'כתובת' if language == 'he' else 'Address' }}</td>
+                <td class="fw-semibold text-end">{{ order.delivery_address }}{% if order.delivery_city %}, {{ order.delivery_city }}{% endif %}</td>
+              </tr>
+              {% endif %}
+              <tr>
+                <td class="text-muted">{{ 'תשלום' if language == 'he' else 'Payment' }}</td>
+                <td class="fw-semibold text-end">
+                  {% if order.payment_method == 'card' %}
+                    {% if order.payment_status == 'paid' %}<span class="text-success">💳 שולם</span>
+                    {% else %}<span class="text-warning">💳 ממתין לתשלום</span>{% endif %}
+                  {% else %}
+                    💵 מזומן בעת מסירה
+                  {% endif %}
+                </td>
+              </tr>
+            </table>
+
+            <hr>
+
+            <!-- Items -->
+            <h6 class="fw-bold mb-3">{{ 'פריטים שהוזמנו' if language == 'he' else 'Ordered items' }}</h6>
+            {% for item in order.get_items() %}
+            <div class="d-flex justify-content-between mb-1">
+              <span>{{ item.name_he }} × {{ item.qty }}</span>
+              <span class="fw-semibold">₪{{ (item.qty * item.price) | int }}</span>
+            </div>
+            {% if item.get('selected_items') %}
+            <div class="mb-2 ms-3" style="font-size:.82rem;color:#6b7280;">
+              {% for sel in item.get('selected_items') %}
+              <div>• {{ sel.name_he }}{% if sel.qty > 1 %} ×{{ sel.qty }}{% endif %}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            <hr>
+
+            {% if order.delivery_fee and order.delivery_fee > 0 %}
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>{{ 'דמי משלוח' if language == 'he' else 'Delivery fee' }}</span>
+              <span>₪{{ order.delivery_fee | int }}</span>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between fw-bold fs-5">
+              <span>{{ 'סה"כ' if language == 'he' else 'Total' }}</span>
+              <span style="color:var(--primary-color);">₪{{ order.total_amount | int }}</span>
+            </div>
+
+            {% if order.customer_notes %}
+            <div class="mt-3 p-2 rounded" style="background:#f9fafb;">
+              <small class="text-muted">{{ 'הערות:' if language == 'he' else 'Notes:' }} {{ order.customer_notes }}</small>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="text-center">
+          <p class="text-muted small mb-3">{{ 'תקבלו SMS כשההזמנה מוכנה.' if language == 'he' else 'You will receive an SMS when your order is ready.' }}</p>
+          <a href="{{ url_for('order_page.order_page') }}" class="btn btn-outline-primary">
+            <i class="fas fa-plus me-1"></i>{{ 'הזמינו שוב' if language == 'he' else 'Order again' }}
+          </a>
+          <a href="{{ url_for('order_page.order_page') }}" class="btn btn-outline-secondary ms-2">
+            <i class="fas fa-home me-1"></i>{{ 'דף הבית' if language == 'he' else 'Home' }}
+          </a>
+        </div>
+
+        {% else %}
+        <div class="text-center py-5">
+          <p class="text-muted">{{ 'ההזמנה לא נמצאה.' if language == 'he' else 'Order not found.' }}</p>
+          <a href="{{ url_for('order_page.order_page') }}" class="btn btn-primary">{{ 'חזרה' if language == 'he' else 'Back' }}</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.status-dot { background:#e5e7eb !important; color:#9ca3af; }
+.status-dot.done { background:#c7d2fe !important; color:#6366f1; }
+.status-dot.active { background:#6366f1 !important; color:#fff; box-shadow:0 0 0 4px rgba(99,102,241,0.25); }
+</style>
+
+{% if order and order.status not in ['delivered','pickedup','cancelled'] %}
+<script>
+function pollStatus() {
+  fetch('/order/status/{{ order.order_number }}')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('status-alert').textContent = data.status_he;
+    })
+    .catch(() => {});
+}
+setInterval(pollStatus, 15000);
+</script>
+{% endif %}
+
+{% if order and (order.payment_method == 'cash' or order.payment_status == 'paid') %}
+<script>
+(function() {
+  var orderKey = 'rai_purchase_tracked_{{ order.order_number }}';
+  if (sessionStorage.getItem(orderKey)) return;
+  sessionStorage.setItem(orderKey, '1');
+
+  function ga4(ev, params) { if (typeof gtag === 'function') gtag('event', ev, params); }
+  function fbp(ev, params) { if (typeof fbq === 'function') fbq('track', ev, params); }
+
+  var items = [
+    {% for item in order.get_items() %}
+    {
+      item_id: '{{ item.menu_item_id or item.id or "" }}',
+      item_name: '{{ (item.item_name_he or item.name_he or "") | e }}',
+      item_category: '{{ (item.category or "") | e }}',
+      price: {{ (item.unit_price or item.price or 0) | float }},
+      quantity: {{ (item.quantity or item.qty or 1) | int }}
+    }{{ ',' if not loop.last else '' }}
+    {% endfor %}
+  ];
+  var contentIds = items.map(function(i) { return i.item_id; });
+
+  ga4('purchase', {
+    transaction_id: '{{ order.order_number }}',
+    value: {{ order.total_amount | float }},
+    currency: 'ILS',
+    shipping: {{ (order.delivery_fee or 0) | float }},
+    payment_type: '{{ order.payment_method or "cash" }}',
+    items: items
+  });
+
+  fbp('Purchase', {
+    content_type: 'product',
+    content_ids: contentIds,
+    value: {{ order.total_amount | float }},
+    currency: 'ILS',
+    num_items: items.length
+  });
+
+  try {
+    sessionStorage.removeItem('rai_utm_source');
+    sessionStorage.removeItem('rai_utm_medium');
+    sessionStorage.removeItem('rai_utm_campaign');
+    sessionStorage.removeItem('rai_referrer');
+  } catch(e) {}
+})();
+</script>
+{% endif %}
+{% endblock %}

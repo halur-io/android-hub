@@ -1,0 +1,167 @@
+{% extends "admin/base.html" %}
+{% set he = (admin_language or 'he') == 'he' %}
+{% block title %}{{ ('עריכת אזור משלוח' if zone.id else 'הוספת אזור משלוח') if he else ('Edit Delivery Zone' if zone.id else 'Add Delivery Zone') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width:800px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-truck me-2"></i>
+            {{ ('עריכת אזור משלוח' if zone.id else 'הוספת אזור משלוח') if he else ('Edit Delivery Zone' if zone.id else 'Add Delivery Zone') }}
+        </h2>
+        <a href="{{ url_for('admin.delivery_zones') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-right me-1"></i>{{ 'חזרה' if he else 'Back' }}
+        </a>
+    </div>
+
+    <form method="post" action="{{ url_for('admin.edit_delivery_zone', zone_id=zone.id or 0) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-map-marker-alt me-1"></i>{{ 'פרטי אזור' if he else 'Zone Details' }}</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ 'סניף' if he else 'Branch' }}</label>
+                        <select name="branch_id" class="form-select">
+                            <option value="">{{ 'כללי (כל הסניפים)' if he else 'Global (all branches)' }}</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}" {% if zone.branch_id == b.id %}selected{% endif %}>{{ b.name_he }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6" style="position:relative;">
+                        <label class="form-label">{{ 'שם עיר / יישוב *' if he else 'City Name *' }}</label>
+                        <input type="text" name="city_name" id="city-input" class="form-control" required
+                               value="{{ zone.city_name or '' }}"
+                               placeholder="{{ 'הקלידו שם עיר...' if he else 'Type city name...' }}"
+                               autocomplete="off">
+                        <div id="city-suggestions" style="display:none;position:absolute;z-index:999;background:#fff;
+                             border:1px solid #dee2e6;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;
+                             width:calc(100% - 24px);box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ 'שם מותאם (אופציונלי)' if he else 'Custom Name (optional)' }}</label>
+                        <input type="text" name="name" class="form-control" value="{{ zone.name or '' }}"
+                               placeholder="{{ 'למשל: מרכז העיר' if he else 'e.g. City Center' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ 'תיאור (אופציונלי)' if he else 'Description (optional)' }}</label>
+                        <input type="text" name="description" class="form-control" value="{{ zone.description or '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-shekel-sign me-1"></i>{{ 'תמחור ומשלוח' if he else 'Pricing & Delivery' }}</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">{{ 'דמי משלוח (₪)' if he else 'Delivery Fee (₪)' }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₪</span>
+                            <input type="number" step="0.01" min="0" name="delivery_fee" class="form-control"
+                                   value="{{ zone.delivery_fee or 0 }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ 'הזמנה מינימלית (₪)' if he else 'Minimum Order (₪)' }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₪</span>
+                            <input type="number" step="0.01" min="0" name="minimum_order" class="form-control"
+                                   value="{{ zone.minimum_order or 0 }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ 'משלוח חינם מסכום (₪)' if he else 'Free Delivery Above (₪)' }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₪</span>
+                            <input type="number" step="0.01" min="0" name="free_delivery_above" class="form-control"
+                                   value="{{ zone.free_delivery_above or '' }}"
+                                   placeholder="{{ 'ריק = ללא' if he else 'empty = none' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ 'זמן משלוח (דקות)' if he else 'Delivery Time (min)' }}</label>
+                        <div class="input-group">
+                            <input type="number" step="1" min="0" name="estimated_minutes" class="form-control"
+                                   value="{{ zone.estimated_minutes or 30 }}">
+                            <span class="input-group-text">{{ 'דק\'' if he else 'min' }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ 'תיאור זמן (אופציונלי)' if he else 'Time Description (optional)' }}</label>
+                        <input type="text" name="estimated_delivery_time" class="form-control"
+                               value="{{ zone.estimated_delivery_time or '' }}"
+                               placeholder="{{ 'למשל: 30-45 דקות' if he else 'e.g. 30-45 minutes' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ 'סדר תצוגה' if he else 'Display Order' }}</label>
+                        <input type="number" step="1" min="0" name="display_order" class="form-control"
+                               value="{{ zone.display_order or 0 }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
+                           {% if zone.is_active or not zone.id %}checked{% endif %}>
+                    <label class="form-check-label" for="is_active">{{ 'פעיל' if he else 'Active' }}</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>{{ 'שמירה' if he else 'Save' }}
+            </button>
+            <a href="{{ url_for('admin.delivery_zones') }}" class="btn btn-outline-secondary">{{ 'ביטול' if he else 'Cancel' }}</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    var cityInput = document.getElementById('city-input');
+    var sugg = document.getElementById('city-suggestions');
+    var debounce = null;
+
+    cityInput.addEventListener('input', function() {
+        clearTimeout(debounce);
+        var q = cityInput.value.trim();
+        if (q.length < 2) { sugg.style.display = 'none'; return; }
+        debounce = setTimeout(function() {
+            fetch('{{ url_for("admin.api_cities") }}?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    var cities = d.cities || [];
+                    if (!cities.length) { sugg.style.display = 'none'; return; }
+                    sugg.innerHTML = '';
+                    cities.forEach(function(c) {
+                        var div = document.createElement('div');
+                        div.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:0.9rem;';
+                        div.textContent = c;
+                        div.addEventListener('mousedown', function() { pickCity(c); });
+                        sugg.appendChild(div);
+                    });
+                    sugg.style.display = '';
+                })
+                .catch(function() { sugg.style.display = 'none'; });
+        }, 300);
+    });
+
+    cityInput.addEventListener('blur', function() {
+        setTimeout(function() { sugg.style.display = 'none'; }, 200);
+    });
+})();
+
+function pickCity(name) {
+    document.getElementById('city-input').value = name;
+    document.getElementById('city-suggestions').style.display = 'none';
+}
+</script>
+{% endblock %}

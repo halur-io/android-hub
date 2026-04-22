@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הזמנות - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">ניהול הזמנות</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-calendar-check me-2"></i> הזמנות שולחן
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>סטטוס</th>
+                        <th>שם</th>
+                        <th>טלפון</th>
+                        <th>סניף</th>
+                        <th>תאריך</th>
+                        <th>שעה</th>
+                        <th>אורחים</th>
+                        <th>בקשות מיוחדות</th>
+                        <th>נוצרה ב</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr>
+                        <td>
+                            {% if reservation.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">ממתינה</span>
+                            {% elif reservation.status == 'confirmed' %}
+                                <span class="badge bg-success">אושרה</span>
+                            {% else %}
+                                <span class="badge bg-danger">בוטלה</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ reservation.customer_name }}</td>
+                        <td>{{ reservation.phone }}</td>
+                        <td>
+                            {% if reservation.branch_id %}
+                                {% for branch in branches %}
+                                    {% if branch.id == reservation.branch_id %}
+                                        {{ branch.name_he }}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ reservation.date|il_time('%d/%m/%Y') }}</td>
+                        <td>{{ reservation.time.strftime('%H:%M') if reservation.time else '-' }}</td>
+                        <td>{{ reservation.guests }}</td>
+                        <td>{{ reservation.special_requests or '-' }}</td>
+                        <td>{{ reservation.created_at|il_time }}</td>
+                        <td>
+                            <select class="form-select form-select-sm status-select" data-id="{{ reservation.id }}">
+                                <option value="pending" {% if reservation.status == 'pending' %}selected{% endif %}>ממתינה</option>
+                                <option value="confirmed" {% if reservation.status == 'confirmed' %}selected{% endif %}>אושרה</option>
+                                <option value="cancelled" {% if reservation.status == 'cancelled' %}selected{% endif %}>בוטלה</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not reservations %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">אין הזמנות במערכת</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.status-select').forEach(select => {
+    select.addEventListener('change', async function() {
+        const id = this.dataset.id;
+        const status = this.value;
+        
+        try {
+            const response = await fetch(`/admin/reservations/update-status/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ status: status })
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה בעדכון סטטוס');
+        }
+    });
+});
+</script>
+{% endblock %}

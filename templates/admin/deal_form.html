@@ -1,0 +1,243 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'עריכת מבצע' if deal else 'מבצע חדש' }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-tags me-2"></i>{{ 'עריכת מבצע' if deal else 'מבצע חדש' }}</h1>
+    <a href="{{ url_for('admin.deals') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-right me-1"></i>חזרה למבצעים
+    </a>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fas fa-info-circle me-2"></i>פרטי המבצע</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">שם בעברית *</label>
+                    <input type="text" name="name_he" class="form-control" value="{{ deal.name_he if deal else '' }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">שם באנגלית</label>
+                    <input type="text" name="name_en" class="form-control" value="{{ deal.name_en if deal else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">תיאור בעברית</label>
+                    <textarea name="description_he" class="form-control" rows="2">{{ deal.description_he if deal else '' }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">תיאור באנגלית</label>
+                    <textarea name="description_en" class="form-control" rows="2">{{ deal.description_en if deal else '' }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fas fa-shekel-sign me-2"></i>מחיר</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">מחיר מבצע (₪) *</label>
+                    <input type="number" step="0.5" min="0" name="deal_price" class="form-control" value="{{ deal.deal_price if deal else '' }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">מחיר מקורי (₪)</label>
+                    <input type="number" step="0.5" min="0" name="original_price" class="form-control" value="{{ deal.original_price if deal and deal.original_price else '' }}" placeholder="להצגת הנחה">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">סדר תצוגה</label>
+                    <input type="number" name="display_order" class="form-control" value="{{ deal.display_order if deal else 0 }}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fas fa-cog me-2"></i>סוג מבצע</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="deal_type" value="fixed" id="dt-fixed"
+                               {% if not deal or (deal.deal_type or 'fixed') == 'fixed' %}checked{% endif %}
+                               onchange="toggleDealType()">
+                        <label class="btn btn-outline-primary" for="dt-fixed">
+                            <i class="fas fa-list-check me-1"></i>פריטים קבועים
+                        </label>
+                        <input type="radio" class="btn-check" name="deal_type" value="customer_picks" id="dt-picks"
+                               {% if deal and deal.deal_type == 'customer_picks' %}checked{% endif %}
+                               onchange="toggleDealType()">
+                        <label class="btn btn-outline-primary" for="dt-picks">
+                            <i class="fas fa-hand-pointer me-1"></i>הלקוח בוחר
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="fixed-items-section" class="card mb-3" {% if deal and deal.deal_type == 'customer_picks' %}style="display:none"{% endif %}>
+        <div class="card-header"><i class="fas fa-utensils me-2"></i>פריטים כלולים במבצע</div>
+        <div class="card-body">
+            <div id="deal-items">
+                {% if deal and deal.included_items %}
+                {% for entry in deal.included_items %}
+                <div class="row g-2 mb-2 deal-item-row">
+                    <div class="col-7">
+                        <select name="item_ids" class="form-select">
+                            <option value="">-- בחרו פריט --</option>
+                            {% for item in menu_items %}
+                            <option value="{{ item.id }}" {% if item.id == entry.item_id %}selected{% endif %}>{{ item.name_he }} (₪{{ item.base_price | int }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <input type="number" name="item_qtys" class="form-control" value="{{ entry.qty or 1 }}" min="1" placeholder="כמות">
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.deal-item-row').remove()">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addDealItem()">
+                <i class="fas fa-plus me-1"></i>הוסף פריט
+            </button>
+        </div>
+    </div>
+
+    <div id="customer-picks-section" class="card mb-3" {% if not deal or (deal.deal_type or 'fixed') != 'customer_picks' %}style="display:none"{% endif %}>
+        <div class="card-header"><i class="fas fa-hand-pointer me-2"></i>הגדרות בחירת לקוח</div>
+        <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle me-2"></i>
+                הלקוח יבחר את הפריטים שלו מתוך הקטגוריות שתבחר. לדוגמה: "בחר 7 פריטים מתוך רולים, ניגירי ועוד".
+            </div>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">קטגוריות מקור *</label>
+                    <div class="border rounded p-2" style="max-height:200px;overflow-y:auto;background:#fff;">
+                        {% for cat in categories %}
+                        <div class="form-check">
+                            <input class="form-check-input source-cat-check" type="checkbox"
+                                   name="source_category_ids" value="{{ cat.id }}" id="src-cat-{{ cat.id }}"
+                                   {% if deal and cat.id in (deal.effective_category_ids or []) %}checked{% endif %}
+                                   onchange="updateCategoryPreview()">
+                            <label class="form-check-label" for="src-cat-{{ cat.id }}">{{ cat.name_he }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <small class="form-text text-muted">מאילו קטגוריות הלקוח יוכל לבחור פריטים</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">כמות פריטים לבחירה *</label>
+                    <input type="number" name="pick_count" class="form-control" id="pick-count"
+                           value="{{ deal.pick_count if deal else '' }}" min="1" placeholder="לדוג׳ 7">
+                    <small class="form-text text-muted">כמה פריטים הלקוח חייב לבחור</small>
+                </div>
+            </div>
+            <div class="mt-3">
+                <label class="form-label fw-bold"><i class="fas fa-eye me-1"></i>תצוגה מקדימה של פריטים בקטגוריות שנבחרו</label>
+                <div id="category-preview" class="border rounded p-3" style="background:#f8f9fa;min-height:60px;">
+                    <span class="text-muted">בחר קטגוריות לצפייה בפריטים הזמינים</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fas fa-image me-2"></i>תמונה</div>
+        <div class="card-body">
+            {% if deal and deal.image_path %}
+            <div class="mb-2">
+                <img src="{{ deal.image_path }}" alt="" style="max-width:200px;border-radius:8px;">
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" name="remove_image" value="1" id="remove-img">
+                    <label class="form-check-label" for="remove-img">הסר תמונה</label>
+                </div>
+            </div>
+            {% endif %}
+            <input type="file" name="image" class="form-control" accept="image/*">
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="fas fa-calendar me-2"></i>תאריכים וסטטוס</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">תאריך התחלה</label>
+                    <input type="datetime-local" name="start_date" class="form-control" value="{{ deal.start_date.strftime('%Y-%m-%dT%H:%M') if deal and deal.start_date else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">תאריך סיום</label>
+                    <input type="datetime-local" name="end_date" class="form-control" value="{{ deal.end_date.strftime('%Y-%m-%dT%H:%M') if deal and deal.end_date else '' }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="is-active" {% if not deal or deal.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="is-active">פעיל</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <button type="submit" class="btn btn-primary btn-lg px-5">
+            <i class="fas fa-save me-2"></i>{{ 'עדכון מבצע' if deal else 'צור מבצע' }}
+        </button>
+    </div>
+</form>
+
+<script>
+function toggleDealType() {
+    var isCustomerPicks = document.getElementById('dt-picks').checked;
+    document.getElementById('fixed-items-section').style.display = isCustomerPicks ? 'none' : '';
+    document.getElementById('customer-picks-section').style.display = isCustomerPicks ? '' : 'none';
+}
+
+function addDealItem() {
+    var container = document.getElementById('deal-items');
+    var row = document.createElement('div');
+    row.className = 'row g-2 mb-2 deal-item-row';
+    row.innerHTML = '<div class="col-7"><select name="item_ids" class="form-select"><option value="">-- בחרו פריט --</option>' +
+        {% for item in menu_items %}
+        '<option value="{{ item.id }}">{{ item.name_he }} (₪{{ item.base_price | int }})</option>' +
+        {% endfor %}
+        '</select></div><div class="col-3"><input type="number" name="item_qtys" class="form-control" value="1" min="1" placeholder="כמות"></div><div class="col-2"><button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="this.closest(\'.deal-item-row\').remove()"><i class="fas fa-trash"></i></button></div>';
+    container.appendChild(row);
+}
+
+var _catItems = {{ category_items_map | tojson }};
+function updateCategoryPreview() {
+    var checks = document.querySelectorAll('.source-cat-check:checked');
+    var preview = document.getElementById('category-preview');
+    if (checks.length === 0) {
+        preview.innerHTML = '<span class="text-muted">בחר קטגוריות לצפייה בפריטים הזמינים</span>';
+        return;
+    }
+    var allItems = [];
+    checks.forEach(function(cb) {
+        var catId = cb.value;
+        if (_catItems[catId]) {
+            allItems = allItems.concat(_catItems[catId]);
+        }
+    });
+    preview.innerHTML = '<div class="mb-2 fw-bold text-muted" style="font-size:.85rem;">' + allItems.length + ' פריטים זמינים מ-' + checks.length + ' קטגוריות:</div>' +
+        '<div class="d-flex flex-wrap gap-2">' + allItems.map(function(it) {
+            return '<span class="badge bg-light text-dark border" style="font-size:.8rem;padding:6px 10px;">' +
+                it.name + ' <small class="text-muted">₪' + it.price + '</small></span>';
+        }).join('') + '</div>';
+}
+document.addEventListener('DOMContentLoaded', updateCategoryPreview);
+</script>
+{% endblock %}

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    {% if site_settings and site_settings.google_tag_manager_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ site_settings.google_tag_manager_id }}');</script>
+    <!-- End Google Tag Manager -->
+    {% elif site_settings and site_settings.google_analytics_id %}
+    <!-- Google tag (gtag.js) - fallback when GTM not configured -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ site_settings.google_analytics_id }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ site_settings.google_analytics_id }}');
+    </script>
+    {% endif %}
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>{% block title %}סומו - מטבח אסייתי אותנטי | סושי ומנות אסייתיות בחולון{% endblock %}</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="מסעדת סומו בחולון - מטבח אסייתי אותנטי, סושי טרי, ראמן, מנות יפניות ותאילנדיות. הזמנת מקומות אונליין, משלוחים. גולדה מאיר 6, חולון">
+    <meta name="keywords" content="סושי חולון, מסעדה אסייתית, ראמן, סומו, מטבח יפני, מטבח תאילנדי, משלוחים חולון">
+    <meta name="author" content="סומו - מטבח אסייתי">
+    <meta property="og:title" content="סומו - מטבח אסייתי אותנטי בחולון">
+    <meta property="og:description" content="חוויה קולינרית אסייתית אותנטית. סושי טרי, ראמן, מנות יפניות ותאילנדיות">
+    <meta property="og:image" content="{{ url_for('static', filename='images/sumo-logo.svg', _external=True) }}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:type" content="restaurant">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url_root }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='android-chrome-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='android-chrome-512x512.png') }}">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sushifushi.css') }}">
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "סומו - מטבח אסייתי",
+        "image": "{{ url_for('static', filename='images/sumo-logo.svg', _external=True) }}",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "גולדה מאיר 6",
+            "addressLocality": "חולון",
+            "addressCountry": "IL"
+        },
+        "telephone": "077-806-6300",
+        "servesCuisine": ["Japanese", "Thai", "Asian"],
+        "priceRange": "$$",
+        "openingHours": ["Su-Th 12:00-23:00", "Fr-Sa 12:00-01:00"]
+    }
+    </script>
+</head>
+<body>
+    {% if site_settings and site_settings.google_tag_manager_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ site_settings.google_tag_manager_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="#hero">
+                    <img src="{{ url_for('static', filename='images/sumo-logo.png') }}" alt="סומו - מטבח אסייתי">
+                </a>
+            </div>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="navbar-menu" id="navbar-menu">
+                <li><a href="#about">אודות</a></li>
+                <li><a href="#menu">תפריט</a></li>
+                <li><a href="#reservation">הזמנות</a></li>
+                <li><a href="#contact">צור קשר</a></li>
+                <li class="contact-buttons">
+                    <a href="https://wa.me/972778066300" target="_blank" class="contact-btn whatsapp-btn" title="WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                    <a href="tel:077-806-6300" class="contact-btn phone-btn" title="חייג">
+                        <i class="fas fa-phone"></i>
+                    </a>
+                </li>
+                <li class="language-selector">
+                    <button class="lang-btn active" data-lang="he">עב</button>
+                    <button class="lang-btn" data-lang="en">EN</button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 סומו - מטבח אסייתי. כל הזכויות שמורות.</p>
+        </div>
+    </footer>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/sushifushi.js') }}"></script>
+    <!-- GTM Click Tracking -->
+    <script src="{{ url_for('static', filename='js/gtm-tracking.js') }}"></script>
+</body>
+</html>

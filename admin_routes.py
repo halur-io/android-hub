@@ -1,0 +1,11337 @@
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, session, abort
+from flask_login import login_user, logout_user, login_required, current_user
+from app import csrf
+from werkzeug.utils import secure_filename
+from markupsafe import escape as html_escape
+from database import db
+from models import *
+from permissions import require_permission, require_role, superadmin_required, has_permission
+from app import mail
+from sanitize_html import sanitize_html
+import os
+from datetime import datetime, timedelta
+import json
+from urllib.parse import urlparse
+
+
+def _to_il_full(dt_val):
+    if dt_val is None:
+        return '-'
+    try:
+        from zoneinfo import ZoneInfo
+        if dt_val.tzinfo is None:
+            dt_val = dt_val.replace(tzinfo=ZoneInfo('UTC'))
+        return dt_val.astimezone(ZoneInfo('Asia/Jerusalem')).strftime('%d/%m/%Y %H:%M')
+    except Exception:
+        return (dt_val + timedelta(hours=3)).strftime('%d/%m/%Y %H:%M')
+
+import pandas as pd
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, SubmitField, BooleanField, DecimalField, IntegerField
+from wtforms.validators import DataRequired, URL, Optional
+from sqlalchemy.orm import joinedload
+from PIL import Image
+from utilities.exporting import build_export_response
+
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+# Security: Protect all admin routes at the blueprint level
+PUBLIC_ADMIN_ROUTES = [
+    'admin.login', 'admin.admin_redirect', 'admin.api_settings',
+    'admin.api_branches', 'admin.api_gallery', 'admin.api_menu',
+    'admin.archived_orders_dashboard', 'admin.archived_order_restore',
+]
+
+# Route to permission mapping for RBAC enforcement
+ROUTE_PERMISSIONS = {
+    # Users
+    'admin.users': 'users.view',
+    'admin.add_user': 'users.create',
+    'admin.edit_user': 'users.edit',
+    'admin.delete_user': 'users.delete',
+    # Roles
+    'admin.roles': 'roles.view',
+    'admin.create_role': 'roles.create',
+    'admin.edit_role': 'roles.edit',
+    'admin.delete_role': 'roles.delete',
+    'admin.permissions': 'roles.view',
+    # Settings
+    'admin.settings': 'settings.view',
+    'admin.payment_settings': 'settings.edit',
+    # Menu
+    'admin.menu': 'menu.view',
+    'admin.edit_category': 'menu.edit',
+    'admin.edit_menu_item': 'menu.edit',
+    'admin.menu_settings': 'menu.view',
+    'admin.save_menu_settings': 'menu.edit',
+    'admin.toggle_item_availability': 'menu.edit',
+    'admin.dietary_properties': 'menu.view',
+    'admin.edit_dietary_property': 'menu.edit',
+    'admin.toggle_dietary_property': 'menu.edit',
+    'admin.delete_dietary_property': 'menu.edit',
+    'admin.api_option_groups': 'menu.edit',
+    'admin.api_option_group': 'menu.edit',
+    'admin.api_add_choice': 'menu.edit',
+    'admin.api_option_choice': 'menu.edit',
+    'admin.reorder_dietary_properties': 'menu.edit',
+    'admin.menu_reorder': 'menu.edit',
+    'admin.reorder_items': 'menu.edit',
+    'admin.reorder_categories': 'menu.edit',
+    'admin.menu_import': 'menu.edit',
+    'admin.menu_import_upload': 'menu.edit',
+    'admin.menu_import_process': 'menu.edit',
+    'admin.delete_menu_item': 'menu.edit',
+    'admin.delete_category': 'menu.edit',
+    'admin.excel_menu_upload': 'menu.edit',
+    'admin.excel_upload_simple': 'menu.edit',
+    'admin.upload_menu_item_image': 'menu.edit',
+    'admin.global_options': 'menu.edit',
+    'admin.create_global_option_group': 'menu.edit',
+    'admin.edit_global_option_group': 'menu.edit',
+    'admin.delete_global_option_group': 'menu.edit',
+    'admin.attach_global_option_group': 'menu.edit',
+    'admin.detach_global_option_group': 'menu.edit',
+    'admin.api_global_option_groups': 'menu.edit',
+    'admin.bulk_attach_global_group': 'menu.edit',
+    'admin.api_menu_item_global_links': 'menu.edit',
+    # Media/Gallery
+    'admin.media': 'settings.view',
+    'admin.upload_media': 'settings.edit',
+    'admin.delete_media': 'settings.edit',
+    'admin.gallery': 'settings.view',
+    'admin.edit_gallery_item': 'settings.edit',
+    'admin.toggle_gallery_item': 'settings.edit',
+    'admin.delete_gallery_item': 'settings.edit',
+    # Branches
+    'admin.branches': 'branches.view',
+    'admin.edit_branch': 'branches.edit',
+    'admin.delete_branch': 'branches.edit',
+    'admin.branch_menu': 'branches.edit',
+    # Messages/Contacts
+    'admin.messages': 'settings.view',
+    'admin.mark_message_read': 'settings.edit',
+    'admin.delete_message': 'settings.edit',
+    'admin.forward_message': 'settings.edit',
+    'admin.catering_contacts': 'settings.view',
+    'admin.mark_catering_read': 'settings.edit',
+    'admin.delete_catering': 'settings.edit',
+    'admin.forward_catering': 'settings.edit',
+    'admin.career_applications': 'settings.view',
+    'admin.mark_application_read': 'settings.edit',
+    'admin.delete_application': 'settings.edit',
+    'admin.forward_application': 'settings.edit',
+    # Reservations
+    'admin.reservations': 'settings.view',
+    'admin.update_reservation_status': 'settings.edit',
+    # Newsletter
+    'admin.newsletter': 'settings.view',
+    'admin.export_newsletter': 'settings.edit',
+    'admin.delete_newsletter_subscriber': 'settings.edit',
+    # Stock
+    'admin.stock_management': 'stock.view',
+    'admin.stock_items': 'stock.view',
+    'admin.stock_suppliers': 'stock.suppliers',
+    'admin.stock_transactions': 'stock.transactions',
+    'admin.stock_alerts': 'stock.alerts',
+    'admin.stock_analytics': 'stock.analytics',
+    'admin.shopping_lists': 'stock.shopping_lists',
+    'admin.stock_settings': 'stock.settings',
+    # Checklists
+    'admin.checklists': 'checklists.view',
+    'admin.edit_checklist': 'checklists.edit',
+    # Kitchen
+    'admin.kitchen': 'kitchen.view',
+    'admin.kitchen_config': 'kitchen.manage',
+    # Printers
+    'admin.printers': 'kitchen.manage',
+    'admin.add_printer': 'kitchen.manage',
+    'admin.edit_printer': 'kitchen.manage',
+    'admin.delete_printer': 'kitchen.manage',
+    'admin.toggle_printer': 'kitchen.manage',
+    # Reports
+    'admin.reports': 'reports.view',
+    # System
+    'admin.microservices': 'system.admin',
+    'admin.system_config': 'system.admin',
+    # Popups
+    'admin.popups': 'settings.view',
+    'admin.create_popup': 'settings.edit',
+    'admin.edit_popup': 'settings.edit',
+    'admin.delete_popup': 'settings.edit',
+    'admin.toggle_popup': 'settings.edit',
+    'admin.duplicate_popup': 'settings.edit',
+    # Food Orders
+    'admin.food_orders_list': 'kitchen.view',
+    'admin.food_order_detail': 'kitchen.view',
+    # Coupons
+    'admin.coupons': 'settings.view',
+    'admin.create_coupon': 'settings.edit',
+    'admin.edit_coupon': 'settings.edit',
+    'admin.delete_coupon': 'settings.edit',
+    'admin.toggle_coupon': 'settings.edit',
+    'admin.duplicate_coupon': 'settings.edit',
+    'admin.generate_coupon_qr': 'settings.edit',
+    'admin.regenerate_coupon_qr': 'settings.edit',
+    # Deals
+    'admin.deals': 'menu.view',
+    'admin.create_deal': 'menu.edit',
+    'admin.edit_deal': 'menu.edit',
+    'admin.delete_deal': 'menu.edit',
+    'admin.toggle_deal': 'menu.edit',
+    # Upsell Rules
+    'admin.upsell_rules': 'menu.view',
+    'admin.create_upsell_rule': 'menu.edit',
+    'admin.edit_upsell_rule': 'menu.edit',
+    'admin.delete_upsell_rule': 'menu.edit',
+    'admin.toggle_upsell_rule': 'menu.edit',
+    # Enrolled Devices & Manager PINs
+    'admin.enrolled_devices': 'system.admin',
+    'admin.create_enrolled_device': 'system.admin',
+    'admin.revoke_enrolled_device': 'system.admin',
+    'admin.activate_enrolled_device': 'system.admin',
+    'admin.delete_enrolled_device': 'system.admin',
+    'admin.regenerate_enrollment': 'system.admin',
+    'admin.approve_enrolled_device': 'system.admin',
+    'admin.create_manager_pin': 'system.admin',
+    'admin.edit_manager_pin': 'system.admin',
+    'admin.delete_manager_pin': 'system.admin',
+    'admin.time_logs': 'system.admin',
+    'admin.time_logs_export': 'system.admin',
+    'admin.time_log_clock_out': 'system.admin',
+    'admin.time_log_auto_close': 'system.admin',
+    'admin.api_cities': 'branches.view',
+    'admin.delivery_zones': 'branches.view',
+    'admin.edit_delivery_zone': 'branches.edit',
+    'admin.delete_delivery_zone': 'branches.edit',
+    'admin.toggle_delivery_zone': 'branches.edit',
+    'admin.sms_templates': 'system.admin',
+    'admin.sms_logs': 'system.admin',
+    'admin.sms_center': 'system.admin',
+    'admin.sms_template_save': 'system.admin',
+    'admin.sms_template_toggle': 'system.admin',
+    'admin.sms_template_delete': 'system.admin',
+    'admin.sms_trigger_save': 'system.admin',
+    'admin.sms_trigger_toggle': 'system.admin',
+    'admin.sms_trigger_delete': 'system.admin',
+    'admin.sms_quick_send': 'system.admin',
+    'admin.sms_health_check': 'system.admin',
+}
+
+@admin_bp.before_request
+def require_login():
+    """Ensure all admin routes require authentication and proper permissions"""
+    if request.endpoint in PUBLIC_ADMIN_ROUTES:
+        return None
+    if not current_user.is_authenticated:
+        flash('יש להתחבר כדי לגשת לעמוד זה', 'error')
+        return redirect(url_for('admin.login', next=request.url))
+    
+    # Check route-level permissions (superadmins bypass all checks)
+    if current_user.is_superadmin:
+        return None
+    
+    # Check if this route requires a specific permission
+    required_permission = ROUTE_PERMISSIONS.get(request.endpoint)
+    if required_permission and not current_user.has_permission(required_permission):
+        flash('אין לך הרשאה לגשת לעמוד זה', 'error')
+        return redirect(url_for('admin.dashboard'))
+
+# Context processor to inject admin language into all admin templates
+@admin_bp.context_processor
+def inject_admin_language():
+    s = SiteSettings.query.first()
+    deals_he = (s.deals_section_label_he if s and s.deals_section_label_he else 'מבצעים')
+    deals_en = (s.deals_section_label_en if s and s.deals_section_label_en else 'Deals')
+    return dict(
+        admin_language=session.get('admin_language', 'he'),
+        deals_label_he=deals_he,
+        deals_label_en=deals_en,
+    )
+
+# Site Settings Form
+class SiteSettingsForm(FlaskForm):
+    site_name_he = StringField('שם האתר בעברית', validators=[DataRequired()])
+    site_name_en = StringField('Site Name in English', validators=[DataRequired()])
+    hero_title_he = StringField('כותרת ראשית בעברית')
+    hero_title_en = StringField('Hero Title in English')
+    hero_subtitle_he = StringField('כותרת משנה בעברית')
+    hero_subtitle_en = StringField('Hero Subtitle in English')
+    hero_description_he = TextAreaField('תיאור בעברית')
+    hero_description_en = TextAreaField('Description in English')
+    about_title_he = StringField('כותרת אודות בעברית')
+    about_title_en = StringField('About Title in English')
+    about_content_he = TextAreaField('תוכן אודות בעברית')
+    about_content_en = TextAreaField('About Content in English')
+    facebook_url = StringField('Facebook URL', validators=[Optional(), URL()])
+    instagram_url = StringField('Instagram URL', validators=[Optional(), URL()])
+    whatsapp_number = StringField('WhatsApp Number')
+    
+    # Feature Toggles
+    enable_online_ordering = BooleanField('אפשר הזמנה אונליין / Enable Online Ordering')
+    enable_english_language = BooleanField('אפשר שפה אנגלית / Enable English Language')
+    enable_delivery = BooleanField('אפשר משלוחים / Enable Delivery')
+    enable_pickup = BooleanField('אפשר איסוף עצמי / Enable Pickup')
+    enable_menu_display = BooleanField('הצג תפריט / Show Menu')
+    enable_gallery = BooleanField('הצג גלריה / Show Gallery')
+    enable_contact_form = BooleanField('הצג טופס יצירת קשר / Show Contact Form')
+    enable_table_reservations = BooleanField('אפשר הזמנת שולחנות / Enable Table Reservations')
+    
+    # Order Settings
+    minimum_order_amount = DecimalField('סכום הזמנה מינימלי / Minimum Order Amount', validators=[Optional()])
+    tax_rate = DecimalField('אחוז מע"מ / Tax Rate (%)', validators=[Optional()])
+    
+    # Form Email Configuration
+    contact_form_email = StringField('Email for Contact Form / אימייל לטופס יצירת קשר', validators=[DataRequired()])
+    catering_form_email = StringField('Email for Catering Form / אימייל לטופס קייטרינג', validators=[DataRequired()])
+    careers_form_email = StringField('Email for Careers Form / אימייל לטופס קריירה', validators=[DataRequired()])
+    
+    submit = SubmitField('שמור')
+
+UPLOAD_FOLDER = 'static/uploads'
+CSV_UPLOAD_FOLDER = 'static/csv_uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_CSV_EXTENSIONS = {'csv', 'xlsx', 'xls'}
+
+def allowed_file(filename):
+    """Allow all media files (images and videos)"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_image_file(filename):
+    """Allow only image files (no video)"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+def allowed_csv_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_CSV_EXTENSIONS
+
+def get_setting(key, default=''):
+    """Helper function to get menu settings"""
+    try:
+        setting = MenuSettings.query.filter_by(setting_key=key).first()
+        return setting.setting_value if setting else default
+    except:
+        return default
+
+# Custom route for /admin without trailing slash
+@admin_bp.route('', methods=['GET'])
+def admin_redirect():
+    if current_user.is_authenticated:
+        return redirect(url_for('admin.dashboard'))
+    return redirect(url_for('admin.login'))
+
+# Admin Login
+@admin_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        flash('You are already logged in!', 'info')
+        return redirect(url_for('admin.dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not username or not password:
+            flash('Please enter both username and password.', 'error')
+            return render_template('admin/login.html')
+        
+        user = AdminUser.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            login_user(user)
+            next_page = request.args.get('next')
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            flash(f'Welcome back, {user.username}!', 'success')
+            return redirect(next_page) if next_page else redirect(url_for('admin.dashboard'))
+        else:
+            flash('Invalid username or password. Please try again.', 'error')
+    
+    return render_template('admin/login.html')
+
+# Admin Logout
+@admin_bp.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('admin.login'))
+
+# Admin Language Switching
+@admin_bp.route('/set-language/<lang>')
+@login_required
+def set_language(lang):
+    """Set admin panel language preference"""
+    if lang in ['he', 'en']:
+        session['admin_language'] = lang
+    next_page = request.referrer
+    if next_page:
+        parsed = urlparse(next_page)
+        if parsed.netloc:
+            next_page = None
+    return redirect(next_page or url_for('admin.dashboard'))
+
+# User Management Routes
+@admin_bp.route('/users')
+@login_required
+@require_permission('users.view')
+def users():
+    """List all admin users"""
+    users = AdminUser.query.order_by(AdminUser.created_at.desc()).all()
+    return render_template('admin/users.html', users=users)
+
+@admin_bp.route('/users/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('users.create')
+def add_user():
+    """Add new admin user"""
+    from models import Role, Permission
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        is_superadmin = request.form.get('is_superadmin') == 'on'
+        
+        # Validation
+        if not username or not email or not password:
+            flash('יש למלא את כל השדות הנדרשים', 'error')
+            return render_template('admin/edit_user.html', user=None)
+        
+        if len(username) < 3:
+            flash('שם המשתמש חייב להכיל לפחות 3 תווים', 'error')
+            return render_template('admin/edit_user.html', user=None)
+            
+        if len(password) < 6:
+            flash('הסיסמה חייבת להכיל לפחות 6 תווים', 'error')
+            return render_template('admin/edit_user.html', user=None)
+            
+        # Check if username or email already exists
+        existing_user = AdminUser.query.filter(
+            (AdminUser.username == username) | (AdminUser.email == email)
+        ).first()
+        
+        if existing_user:
+            if existing_user.username == username:
+                flash('שם המשתמש כבר קיים במערכת', 'error')
+            else:
+                flash('כתובת האימייל כבר קיימת במערכת', 'error')
+            return render_template('admin/edit_user.html', user=None)
+        
+        # Create new user
+        new_user = AdminUser(
+            username=username,
+            email=email,
+            is_superadmin=is_superadmin
+        )
+        new_user.set_password(password)
+        
+        # Assign roles
+        role_ids = request.form.getlist('roles')
+        if role_ids:
+            roles = Role.query.filter(Role.id.in_(role_ids)).all()
+            new_user.roles = roles
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash(f'המשתמש {username} נוסף בהצלחה!', 'success')
+        return redirect(url_for('admin.users'))
+    
+    # Load roles and permissions for the form
+    roles = Role.query.filter_by(is_active=True).order_by(Role.display_name).all()
+    permissions = Permission.query.filter_by(is_active=True).order_by(Permission.category, Permission.display_name).all()
+    
+    # Group permissions by category
+    permission_categories = {}
+    for perm in permissions:
+        if perm.category not in permission_categories:
+            permission_categories[perm.category] = []
+        permission_categories[perm.category].append(perm)
+    
+    return render_template('admin/edit_user.html', 
+                         user=None, 
+                         roles=roles,
+                         permission_categories=permission_categories)
+
+@admin_bp.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@require_permission('users.edit')
+def edit_user(user_id):
+    """Edit existing admin user"""
+    from models import Role, Permission
+    
+    user = AdminUser.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        is_superadmin = request.form.get('is_superadmin') == 'on'
+        
+        # Validation
+        if not username or not email:
+            flash('יש למלא את כל השדות הנדרשים', 'error')
+            return render_template('admin/edit_user.html', user=user)
+        
+        if len(username) < 3:
+            flash('שם המשתמש חייב להכיל לפחות 3 תווים', 'error')
+            return render_template('admin/edit_user.html', user=user)
+            
+        # Check if username or email already exists (excluding current user)
+        existing_user = AdminUser.query.filter(
+            ((AdminUser.username == username) | (AdminUser.email == email)) &
+            (AdminUser.id != user_id)
+        ).first()
+        
+        if existing_user:
+            if existing_user.username == username:
+                flash('שם המשתמש כבר קיים במערכת', 'error')
+            else:
+                flash('כתובת האימייל כבר קיימת במערכת', 'error')
+            return render_template('admin/edit_user.html', user=user)
+        
+        # Update user
+        user.username = username
+        user.email = email
+        user.is_superadmin = is_superadmin
+        
+        # Update password only if provided
+        if password and len(password) >= 6:
+            user.set_password(password)
+        elif password and len(password) < 6:
+            flash('הסיסמה חייבת להכיל לפחות 6 תווים', 'error')
+            roles = Role.query.filter_by(is_active=True).order_by(Role.display_name).all()
+            permissions = Permission.query.filter_by(is_active=True).order_by(Permission.category, Permission.display_name).all()
+            permission_categories = {}
+            for perm in permissions:
+                if perm.category not in permission_categories:
+                    permission_categories[perm.category] = []
+                permission_categories[perm.category].append(perm)
+            return render_template('admin/edit_user.html', user=user, roles=roles, permission_categories=permission_categories)
+        
+        # Assign roles
+        role_ids = request.form.getlist('roles')
+        if role_ids:
+            roles = Role.query.filter(Role.id.in_(role_ids)).all()
+            user.roles = roles
+        else:
+            user.roles = []
+        
+        db.session.commit()
+        
+        flash(f'פרטי המשתמש {username} עודכנו בהצלחה!', 'success')
+        return redirect(url_for('admin.users'))
+    
+    # Load roles and permissions for the form
+    roles = Role.query.filter_by(is_active=True).order_by(Role.display_name).all()
+    permissions = Permission.query.filter_by(is_active=True).order_by(Permission.category, Permission.display_name).all()
+    
+    # Group permissions by category
+    permission_categories = {}
+    for perm in permissions:
+        if perm.category not in permission_categories:
+            permission_categories[perm.category] = []
+        permission_categories[perm.category].append(perm)
+    
+    return render_template('admin/edit_user.html', 
+                         user=user,
+                         roles=roles,
+                         permission_categories=permission_categories)
+
+@admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
+@login_required
+@require_permission('users.delete')
+def delete_user(user_id):
+    """Delete admin user"""
+    user = AdminUser.query.get_or_404(user_id)
+    
+    # Prevent deleting self
+    if user.id == current_user.id:
+        return jsonify({'success': False, 'error': 'לא ניתן למחוק את המשתמש הנוכחי'}), 400
+    
+    # Prevent deleting the only superadmin
+    if user.is_superadmin:
+        superadmin_count = AdminUser.query.filter_by(is_superadmin=True).count()
+        if superadmin_count <= 1:
+            return jsonify({'success': False, 'error': 'לא ניתן למחוק את מנהל המערכת האחרון'}), 400
+    
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'המשתמש {username} נמחק בהצלחה'})
+
+# Newsletter Management
+@admin_bp.route('/newsletter')
+@login_required
+def newsletter():
+    """List all newsletter subscribers"""
+    subscribers = NewsletterSubscriber.query.order_by(NewsletterSubscriber.subscribed_at.desc()).all()
+    active_count = NewsletterSubscriber.query.filter_by(is_active=True).count()
+    total_count = NewsletterSubscriber.query.count()
+    return render_template('admin/newsletter.html', 
+                         subscribers=subscribers,
+                         active_count=active_count,
+                         total_count=total_count)
+
+@admin_bp.route('/newsletter/export')
+@login_required
+def newsletter_export():
+    """Export newsletter subscribers to CSV"""
+    subscribers = NewsletterSubscriber.query.filter_by(is_active=True).all()
+    emails = [s.email for s in subscribers]
+    return jsonify({'success': True, 'emails': emails, 'count': len(emails)})
+
+@admin_bp.route('/newsletter/delete/<int:subscriber_id>', methods=['POST'])
+@login_required
+def delete_newsletter_subscriber(subscriber_id):
+    """Delete newsletter subscriber"""
+    subscriber = NewsletterSubscriber.query.get_or_404(subscriber_id)
+    email = subscriber.email
+    db.session.delete(subscriber)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'המנוי {email} נמחק בהצלחה'})
+
+# Admin Dashboard
+@admin_bp.route('/')
+@login_required
+def dashboard():
+    stats = {
+        'total_messages': ContactMessage.query.count(),
+        'unread_messages': ContactMessage.query.filter_by(is_read=False).count(),
+        'total_reservations': Reservation.query.count(),
+        'pending_reservations': Reservation.query.filter_by(status='pending').count(),
+        'active_branches': Branch.query.filter_by(is_active=True).count(),
+        'menu_items': MenuItem.query.count(),
+        'gallery_photos': GalleryPhoto.query.count()
+    }
+    return render_template('admin/dashboard.html', stats=stats)
+
+# Site Settings Management
+@admin_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    settings = SiteSettings.query.first()
+    if not settings:
+        settings = SiteSettings()
+        db.session.add(settings)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        # General Settings
+        settings.site_name_he = request.form.get('site_name_he')
+        settings.site_name_en = request.form.get('site_name_en')
+        settings.hero_title_he = request.form.get('hero_title_he')
+        settings.hero_title_en = request.form.get('hero_title_en')
+        settings.hero_subtitle_he = request.form.get('hero_subtitle_he')
+        settings.hero_subtitle_en = request.form.get('hero_subtitle_en')
+        settings.hero_description_he = request.form.get('hero_description_he')
+        settings.hero_description_en = request.form.get('hero_description_en')
+        settings.about_title_he = request.form.get('about_title_he')
+        settings.about_title_en = request.form.get('about_title_en')
+        settings.about_content_he = request.form.get('about_content_he')
+        settings.about_content_en = request.form.get('about_content_en')
+        settings.facebook_url = request.form.get('facebook_url')
+        settings.instagram_url = request.form.get('instagram_url')
+        settings.whatsapp_number = request.form.get('whatsapp_number')
+        
+        # Branding & Media - File Uploads
+        if 'hero_desktop_image' in request.files:
+            file = request.files['hero_desktop_image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                original_ext = filename.rsplit('.', 1)[1].lower()
+                filename_base = filename.rsplit('.', 1)[0]
+                filename = f'hero_desktop_{timestamp}_{filename_base}.jpg'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                
+                # Save and optimize image
+                try:
+                    # Save original first to a temp location
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Verify file was saved and has content
+                    if not os.path.exists(temp_path) or os.path.getsize(temp_path) < 100:
+                        raise ValueError(f"Uploaded file is too small or empty: {os.path.getsize(temp_path) if os.path.exists(temp_path) else 0} bytes")
+                    
+                    # Open and verify image
+                    img = Image.open(temp_path)
+                    img.verify()  # Verify it's a valid image
+                    
+                    # Reopen after verify (verify closes the file)
+                    img = Image.open(temp_path)
+                    
+                    # Check image dimensions are reasonable
+                    if img.width < 10 or img.height < 10:
+                        raise ValueError(f"Image dimensions too small: {img.width}x{img.height}")
+                    
+                    print(f"Original image: {img.width}x{img.height}, mode: {img.mode}, size: {os.path.getsize(temp_path)} bytes")
+                    
+                    # Resize if too large
+                    if img.width > 1920:
+                        ratio = 1920 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((1920, new_height), Image.Resampling.LANCZOS)
+                        print(f"Resized to: {img.width}x{img.height}")
+                    
+                    # Convert RGBA to RGB
+                    if img.mode == 'RGBA':
+                        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                        rgb_img.paste(img, mask=img.split()[3])
+                        img = rgb_img
+                        print("Converted RGBA to RGB")
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                        print(f"Converted {img.mode} to RGB")
+                    
+                    # Save optimized version
+                    img.save(filepath, 'JPEG', quality=85, optimize=True)
+                    
+                    # Verify saved file has content
+                    if not os.path.exists(filepath) or os.path.getsize(filepath) < 100:
+                        raise ValueError(f"Saved file is too small: {os.path.getsize(filepath) if os.path.exists(filepath) else 0} bytes")
+                    
+                    # Remove temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"Hero image optimized and saved: {filename} ({os.path.getsize(filepath)} bytes)")
+                except Exception as e:
+                    print(f"Image optimization error: {e}. Saving original file instead.")
+                    # If optimization fails, save original file
+                    try:
+                        if 'temp_path' in locals() and os.path.exists(temp_path):
+                            # Copy temp to final location
+                            import shutil
+                            shutil.copy2(temp_path, filepath)
+                            os.remove(temp_path)
+                            print(f"Saved original file: {filename} ({os.path.getsize(filepath)} bytes)")
+                        else:
+                            # Save file directly
+                            file.seek(0)
+                            file.save(filepath)
+                            print(f"Saved file directly: {filename} ({os.path.getsize(filepath)} bytes)")
+                    except Exception as e2:
+                        print(f"Failed to save file: {e2}")
+                        flash(f'Error uploading hero image: {str(e2)}', 'error')
+                
+                settings.hero_desktop_image = filename
+        
+        if 'logo_image' in request.files:
+            file = request.files['logo_image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename_base = filename.rsplit('.', 1)[0]
+                original_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'png'
+                filename = f'logo_{timestamp}_{filename_base}.{original_ext}'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                
+                try:
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Optimize logo (keep transparency if PNG)
+                    img = Image.open(temp_path)
+                    
+                    # Resize if too large (max 500px width for logo)
+                    if img.width > 500:
+                        ratio = 500 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((500, new_height), Image.Resampling.LANCZOS)
+                    
+                    # Save optimized
+                    if original_ext == 'png' and img.mode in ('RGBA', 'LA', 'P'):
+                        img.save(filepath, 'PNG', optimize=True)
+                    else:
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        img.save(filepath, 'JPEG', quality=90, optimize=True)
+                        filename = f'logo_{timestamp}_{filename_base}.jpg'
+                        filepath = os.path.join(UPLOAD_FOLDER, filename)
+                        img.save(filepath, 'JPEG', quality=90, optimize=True)
+                    
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"Logo image optimized and saved: {filename}")
+                except Exception as e:
+                    print(f"Logo optimization error: {e}. Saving original file.")
+                    if os.path.exists(temp_path):
+                        os.rename(temp_path, filepath)
+                    else:
+                        file.seek(0)
+                        file.save(filepath)
+                
+                settings.logo_image = filename
+        
+        if 'favicon_image' in request.files:
+            file = request.files['favicon_image']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'favicon_{timestamp}_{filename}'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                
+                try:
+                    file.save(filepath)
+                    print(f"Favicon saved: {filename}")
+                except Exception as e:
+                    print(f"Favicon save error: {e}")
+                    flash(f'Error saving favicon: {str(e)}', 'error')
+                
+                settings.favicon_image = filename
+        
+        # Catering Image Upload
+        if 'catering_image' in request.files:
+            file = request.files['catering_image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                original_ext = filename.rsplit('.', 1)[1].lower()
+                filename_base = filename.rsplit('.', 1)[0]
+                filename = f'catering_{timestamp}_{filename_base}.jpg'
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                
+                # Save and optimize image
+                try:
+                    # Save original first to a temp location
+                    temp_path = os.path.join(UPLOAD_FOLDER, f'temp_{timestamp}_{secure_filename(file.filename)}')
+                    file.save(temp_path)
+                    
+                    # Verify file was saved and has content
+                    if not os.path.exists(temp_path) or os.path.getsize(temp_path) < 100:
+                        raise ValueError(f"Uploaded file is too small or empty: {os.path.getsize(temp_path) if os.path.exists(temp_path) else 0} bytes")
+                    
+                    # Open and verify image
+                    img = Image.open(temp_path)
+                    img.verify()
+                    img = Image.open(temp_path)
+                    
+                    if img.width < 10 or img.height < 10:
+                        raise ValueError(f"Image dimensions too small: {img.width}x{img.height}")
+                    
+                    print(f"Original catering image: {img.width}x{img.height}, mode: {img.mode}")
+                    
+                    # Resize if too large
+                    if img.width > 1920:
+                        ratio = 1920 / img.width
+                        new_height = int(img.height * ratio)
+                        img = img.resize((1920, new_height), Image.Resampling.LANCZOS)
+                        print(f"Resized to: {img.width}x{img.height}")
+                    
+                    # Convert RGBA to RGB
+                    if img.mode == 'RGBA':
+                        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                        rgb_img.paste(img, mask=img.split()[3])
+                        img = rgb_img
+                        print("Converted RGBA to RGB")
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Save optimized version
+                    img.save(filepath, 'JPEG', quality=85, optimize=True)
+                    
+                    if not os.path.exists(filepath) or os.path.getsize(filepath) < 100:
+                        raise ValueError(f"Saved file is too small: {os.path.getsize(filepath)}")
+                    
+                    # Remove temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    
+                    print(f"Catering image optimized and saved: {filename} ({os.path.getsize(filepath)} bytes)")
+                except Exception as e:
+                    print(f"Catering image optimization error: {e}. Saving original file instead.")
+                    try:
+                        if 'temp_path' in locals() and os.path.exists(temp_path):
+                            import shutil
+                            shutil.copy2(temp_path, filepath)
+                            os.remove(temp_path)
+                            print(f"Saved original file: {filename}")
+                        else:
+                            file.seek(0)
+                            file.save(filepath)
+                            print(f"Saved file directly: {filename}")
+                    except Exception as e2:
+                        print(f"Failed to save catering image: {e2}")
+                        flash(f'Error uploading catering image: {str(e2)}', 'error')
+                
+                settings.catering_image = filename
+        
+        # Color Scheme
+        settings.primary_color = request.form.get('primary_color') or request.form.get('primary_color_text') or '#1a3a6e'
+        settings.accent_color = request.form.get('accent_color') or request.form.get('accent_color_text') or '#dc3545'
+        
+        # Feature Toggles (checkboxes)
+        settings.enable_online_ordering = request.form.get('enable_online_ordering') == 'on'
+        settings.enable_english_language = request.form.get('enable_english_language') == 'on'
+        settings.enable_delivery = request.form.get('enable_delivery') == 'on'
+        settings.enable_pickup = request.form.get('enable_pickup') == 'on'
+        settings.enable_order_onboarding = request.form.get('enable_order_onboarding') == 'on'
+        settings.enable_menu_display = request.form.get('enable_menu_display') == 'on'
+        settings.enable_gallery = request.form.get('enable_gallery') == 'on'
+        settings.enable_contact_form = request.form.get('enable_contact_form') == 'on'
+        settings.enable_table_reservations = request.form.get('enable_table_reservations') == 'on'
+        settings.enable_catering_section = request.form.get('enable_catering_section') == 'on'
+        settings.enable_catering_page = request.form.get('enable_catering_page') == 'on'
+        
+        # Catering Homepage Section Content
+        settings.catering_title_he = request.form.get('catering_title_he')
+        settings.catering_title_en = request.form.get('catering_title_en')
+        settings.catering_subtitle_he = request.form.get('catering_subtitle_he')
+        settings.catering_subtitle_en = request.form.get('catering_subtitle_en')
+        
+        # Dedicated Catering Page Content
+        settings.catering_page_hero_title_he = request.form.get('catering_page_hero_title_he')
+        settings.catering_page_hero_title_en = request.form.get('catering_page_hero_title_en')
+        settings.catering_page_hero_subtitle_he = request.form.get('catering_page_hero_subtitle_he')
+        settings.catering_page_hero_subtitle_en = request.form.get('catering_page_hero_subtitle_en')
+        settings.catering_page_gallery_title_he = request.form.get('catering_page_gallery_title_he')
+        settings.catering_page_gallery_title_en = request.form.get('catering_page_gallery_title_en')
+        settings.catering_page_gallery_subtitle_he = request.form.get('catering_page_gallery_subtitle_he')
+        settings.catering_page_gallery_subtitle_en = request.form.get('catering_page_gallery_subtitle_en')
+        settings.catering_page_cta_title_he = request.form.get('catering_page_cta_title_he')
+        settings.catering_page_cta_title_en = request.form.get('catering_page_cta_title_en')
+        settings.catering_page_cta_subtitle_he = request.form.get('catering_page_cta_subtitle_he')
+        settings.catering_page_cta_subtitle_en = request.form.get('catering_page_cta_subtitle_en')
+
+        # Deals Section Label
+        settings.deals_section_label_he = request.form.get('deals_section_label_he') or 'מבצעים'
+        settings.deals_section_label_en = request.form.get('deals_section_label_en') or 'Deals'
+
+        # Mobile App Settings
+        settings.enable_app_download = request.form.get('enable_app_download') == 'on'
+        settings.show_app_banner = request.form.get('show_app_banner') == 'on'
+        settings.app_store_url = request.form.get('app_store_url')
+        settings.google_play_url = request.form.get('google_play_url')
+        settings.app_promo_text_he = request.form.get('app_promo_text_he')
+        settings.app_promo_text_en = request.form.get('app_promo_text_en')
+        settings.app_discount_text_he = request.form.get('app_discount_text_he')
+        settings.app_discount_text_en = request.form.get('app_discount_text_en')
+        settings.app_banner_title_he = request.form.get('app_banner_title_he')
+        settings.app_banner_title_en = request.form.get('app_banner_title_en')
+        settings.app_banner_subtitle_he = request.form.get('app_banner_subtitle_he')
+        settings.app_banner_subtitle_en = request.form.get('app_banner_subtitle_en')
+        
+        # Order & Delivery Settings
+        min_order = request.form.get('minimum_order_amount')
+        if min_order and min_order.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.minimum_order_amount = float(min_order)
+            except (ValueError, OverflowError):
+                pass
+        
+        delivery_fee = request.form.get('delivery_fee')
+        if delivery_fee and delivery_fee.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.delivery_fee = float(delivery_fee)
+            except (ValueError, OverflowError):
+                pass
+        
+        free_delivery = request.form.get('free_delivery_threshold')
+        if free_delivery and free_delivery.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.free_delivery_threshold = float(free_delivery)
+            except (ValueError, OverflowError):
+                pass
+        
+        settings.estimated_delivery_time = request.form.get('estimated_delivery_time') or '45-60'
+        
+        tax = request.form.get('tax_rate')
+        if tax and tax.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.tax_rate = float(tax)
+            except (ValueError, OverflowError):
+                pass
+        
+        service_fee = request.form.get('service_fee_percentage')
+        if service_fee and service_fee.strip().lower() not in ('nan', 'inf', '-inf'):
+            try:
+                settings.service_fee_percentage = float(service_fee)
+            except (ValueError, OverflowError):
+                pass
+        
+        settings.currency_symbol = request.form.get('currency_symbol') or '₪'
+        
+        # Form Email Configuration
+        settings.contact_form_email = request.form.get('contact_form_email') or 'info@sumo-restaurant.co.il'
+        settings.catering_form_email = request.form.get('catering_form_email') or 'info@sumo-restaurant.co.il'
+        settings.careers_form_email = request.form.get('careers_form_email') or 'info@sumo-restaurant.co.il'
+        
+        # Advanced Features
+        settings.google_tag_manager_id = request.form.get('google_tag_manager_id')
+        settings.google_analytics_id = request.form.get('google_analytics_id')
+        settings.facebook_pixel_id = request.form.get('facebook_pixel_id')
+        settings.maintenance_mode = request.form.get('maintenance_mode') == 'on'
+        settings.announcement_enabled = request.form.get('announcement_enabled') == 'on'
+        settings.announcement_text_he = request.form.get('announcement_text_he')
+        settings.announcement_text_en = request.form.get('announcement_text_en')
+        settings.announcement_bg_color = request.form.get('announcement_bg_color') or '#ffc107'
+        
+        db.session.commit()
+        flash('Settings updated successfully! / ההגדרות עודכנו בהצלחה!', 'success')
+        return redirect(url_for('admin.settings'))
+    
+    return render_template('admin/settings.html', settings=settings)
+
+# Payment Settings
+@admin_bp.route('/payment-settings', methods=['GET', 'POST'])
+@login_required
+def payment_settings():
+    # Get or create Grow payment provider
+    grow = PaymentConfiguration.query.filter_by(provider_name='grow').first()
+    if not grow:
+        grow = PaymentConfiguration(
+            provider_name='grow',
+            display_name_he='כרטיס אשראי (Grow)',
+            display_name_en='Credit Card (Grow)',
+            display_order=1,
+            is_active=False
+        )
+        db.session.add(grow)
+    
+    # Get or create Max payment provider
+    max_provider = PaymentConfiguration.query.filter_by(provider_name='max').first()
+    if not max_provider:
+        max_provider = PaymentConfiguration(
+            provider_name='max',
+            display_name_he='כרטיס אשראי (Max)',
+            display_name_en='Credit Card (Max)',
+            display_order=2,
+            is_active=False
+        )
+        db.session.add(max_provider)
+    
+    db.session.commit()
+    
+    if request.method == 'POST':
+        # Update Grow settings
+        grow.is_active = request.form.get('grow_is_active') == 'on'
+        grow.merchant_id = request.form.get('grow_user_id', '')
+        grow.api_key = request.form.get('grow_page_code', '')
+        grow.api_secret = request.form.get('grow_api_key', '')
+        grow.display_name_he = request.form.get('grow_display_name_he', 'כרטיס אשראי')
+        grow.display_name_en = request.form.get('grow_display_name_en', 'Credit Card')
+        
+        # Update Max settings
+        max_provider.is_active = request.form.get('max_is_active') == 'on'
+        max_provider.merchant_id = request.form.get('max_masof', '')
+        max_provider.api_key = request.form.get('max_api_key', '')
+        max_provider.display_name_he = request.form.get('max_display_name_he', 'כרטיס אשראי (Max)')
+        max_provider.display_name_en = request.form.get('max_display_name_en', 'Credit Card (Max)')
+        
+        db.session.commit()
+        flash('Payment settings updated successfully! / הגדרות התשלום עודכנו בהצלחה!', 'success')
+        return redirect(url_for('admin.payment_settings'))
+    
+    return render_template('admin/payment_settings.html', grow=grow, max_provider=max_provider)
+
+# Media Management
+@admin_bp.route('/media')
+@login_required
+def media():
+    media_files = MediaFile.query.order_by(MediaFile.section, MediaFile.display_order).all()
+    return render_template('admin/media.html', media_files=media_files)
+
+@admin_bp.route('/media/upload', methods=['POST'])
+@login_required
+def upload_media():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if file and file.filename and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{timestamp}_{filename}"
+            
+            # Create upload directory if it doesn't exist
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            
+            # Save file directly - no processing
+            file.save(filepath)
+            
+            # Create database entry
+            media = MediaFile(
+                filename=filename,
+                file_path=f'/static/uploads/{filename}',
+                file_type='video' if filename.lower().endswith(('.mp4', '.mov', '.avi')) else 'image',
+                section=request.form.get('section', 'gallery'),
+                caption_he=request.form.get('caption_he', ''),
+                caption_en=request.form.get('caption_en', ''),
+                display_order=int(request.form.get('display_order', 0))
+            )
+            db.session.add(media)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'id': media.id, 'path': media.file_path})
+        
+        return jsonify({'error': 'Invalid file type. Only images and videos allowed.'}), 400
+    
+    except Exception as e:
+        current_app.logger.error(f"Upload error: {e}")
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+
+@admin_bp.route('/media/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_media(id):
+    media = MediaFile.query.get_or_404(id)
+    
+    # Delete file from filesystem
+    try:
+        file_path = media.file_path.replace('/static/', 'static/')
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except:
+        pass
+    
+    db.session.delete(media)
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+# Branch Management
+@admin_bp.route('/branches')
+@login_required
+def branches():
+    branches = Branch.query.order_by(Branch.display_order).all()
+    return render_template('admin/branches.html', branches=branches)
+
+@admin_bp.route('/branches/edit/<int:id>', methods=['GET', 'POST'])
+@admin_bp.route('/branches/new', methods=['GET', 'POST'])
+@login_required
+def edit_branch(id=None):
+    if id:
+        branch = Branch.query.get_or_404(id)
+    else:
+        branch = Branch()
+    
+    if request.method == 'POST':
+        branch.name_he = request.form.get('name_he')
+        branch.name_en = request.form.get('name_en')
+        branch.address_he = request.form.get('address_he')
+        branch.address_en = request.form.get('address_en')
+        branch.phone = request.form.get('phone')
+        branch.email = request.form.get('email')
+        branch.waze_link = request.form.get('waze_link')
+        branch.google_maps_link = request.form.get('google_maps_link')
+        branch.is_active = request.form.get('is_active') == 'on'
+        branch.enable_delivery = request.form.get('enable_delivery') == 'on'
+        branch.enable_pickup = request.form.get('enable_pickup') == 'on'
+        ordering_status = request.form.get('ordering_status', 'open').strip()
+        if ordering_status in ('open', 'busy', 'closed'):
+            branch.ordering_status = ordering_status
+        branch.display_order = int(request.form.get('display_order', 0))
+        branch.payment_provider = request.form.get('payment_provider', 'hyp').strip() or 'hyp'
+        branch.hyp_terminal = request.form.get('hyp_terminal', '').strip() or None
+        branch.hyp_api_key = request.form.get('hyp_api_key', '').strip() or None
+        branch.hyp_passp = request.form.get('hyp_passp', '').strip() or None
+        branch.max_api_url = request.form.get('max_api_url', '').strip() or None
+        branch.max_api_key = request.form.get('max_api_key', '').strip() or None
+        branch.max_merchant_id = request.form.get('max_merchant_id', '').strip() or None
+        
+        if not id:
+            db.session.add(branch)
+        
+        db.session.commit()
+        
+        # Update working hours
+        days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        days_he = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+        
+        for i, (day_en, day_he) in enumerate(zip(days, days_he)):
+            wh = WorkingHours.query.filter_by(branch_id=branch.id, day_of_week=i).first()
+            if not wh:
+                wh = WorkingHours(branch_id=branch.id, day_of_week=i, day_name_en=day_en, day_name_he=day_he)
+            
+            wh.open_time = request.form.get(f'open_time_{i}', '12:00')
+            wh.close_time = request.form.get(f'close_time_{i}', '23:00')
+            wh.is_closed = request.form.get(f'is_closed_{i}') == 'on'
+            
+            db.session.add(wh)
+        
+        db.session.commit()
+        flash('Branch saved successfully!', 'success')
+        return redirect(url_for('admin.branches'))
+    
+    return render_template('admin/edit_branch.html', branch=branch)
+
+@admin_bp.route('/branches/<int:branch_id>/ordering-status', methods=['POST'])
+@login_required
+def update_branch_ordering_status(branch_id):
+    branch = Branch.query.get_or_404(branch_id)
+    data = request.get_json(force=True)
+    new_status = data.get('ordering_status', 'open')
+    if new_status not in ('open', 'busy', 'closed'):
+        return jsonify({'success': False, 'error': 'Invalid status'}), 400
+    branch.ordering_status = new_status
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/branches/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_branch(id):
+    branch = Branch.query.get_or_404(id)
+    db.session.delete(branch)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/branches/<int:branch_id>/menu', methods=['GET', 'POST'])
+@login_required
+def branch_menu(branch_id):
+    branch = Branch.query.get_or_404(branch_id)
+    if request.method == 'POST':
+        categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+        for cat in categories:
+            items = MenuItem.query.filter_by(category_id=cat.id).all()
+            for item in items:
+                avail_key = f'avail_{item.id}'
+                price_key = f'price_{item.id}'
+                order_key = f'order_{item.id}'
+                is_available = request.form.get(avail_key) == 'on'
+                custom_price_str = request.form.get(price_key, '').strip()
+                display_order_str = request.form.get(order_key, '').strip()
+                custom_price = None
+                display_order = None
+                if custom_price_str:
+                    try:
+                        custom_price = float(custom_price_str)
+                    except ValueError:
+                        pass
+                if display_order_str:
+                    try:
+                        display_order = int(display_order_str)
+                    except ValueError:
+                        pass
+                has_override = not is_available or custom_price is not None or display_order is not None
+                existing = BranchMenuItem.query.filter_by(
+                    branch_id=branch.id, menu_item_id=item.id
+                ).first()
+                if has_override:
+                    if not existing:
+                        existing = BranchMenuItem(branch_id=branch.id, menu_item_id=item.id)
+                        db.session.add(existing)
+                    existing.is_available = is_available
+                    existing.custom_price = custom_price
+                    existing.display_order = display_order
+                elif existing:
+                    db.session.delete(existing)
+        db.session.commit()
+        flash('תפריט הסניף עודכן בהצלחה!', 'success')
+        return redirect(url_for('admin.branch_menu', branch_id=branch.id))
+
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    cat_items = []
+    for cat in categories:
+        items = MenuItem.query.filter_by(category_id=cat.id).order_by(MenuItem.display_order).all()
+        items_with_overrides = []
+        for item in items:
+            override = BranchMenuItem.query.filter_by(
+                branch_id=branch.id, menu_item_id=item.id
+            ).first()
+            items_with_overrides.append({
+                'item': item,
+                'override': override,
+                'is_available': override.is_available if override else True,
+                'custom_price': override.custom_price if override else None,
+                'display_order': override.display_order if override else None,
+            })
+        if items_with_overrides:
+            cat_items.append({'category': cat, 'menu_items': items_with_overrides})
+    return render_template('admin/branch_menu.html', branch=branch, cat_items=cat_items)
+
+# Menu Management
+@admin_bp.route('/menu')
+@login_required
+def menu():
+    categories = db.session.query(MenuCategory).filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    for category in categories:
+        category.menu_items = db.session.query(MenuItem).filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
+        for item in category.menu_items:
+            item.dietary_properties = [prop for prop in item.dietary_properties if prop.is_active]
+
+    print_stations = PrintStation.query.order_by(PrintStation.name).all()
+    return render_template('admin/menu.html', categories=categories, print_stations=print_stations)
+
+@admin_bp.route('/menu/category/edit/<int:id>', methods=['GET', 'POST'])
+@admin_bp.route('/menu/category/new', methods=['GET', 'POST'])
+@login_required
+def edit_category(id=None):
+    if id:
+        category = MenuCategory.query.get_or_404(id)
+    else:
+        category = MenuCategory()
+    
+    if request.method == 'POST':
+        category.name_he = request.form.get('name_he')
+        category.name_en = request.form.get('name_en')
+        category.description_he = request.form.get('description_he')
+        category.description_en = request.form.get('description_en')
+        category.footer_text_he = request.form.get('footer_text_he')
+        category.footer_text_en = request.form.get('footer_text_en')
+        category.display_order = int(request.form.get('display_order', 0))
+        category.is_active = request.form.get('is_active') == 'on'
+        category.show_in_menu = request.form.get('show_in_menu') == 'on'
+        category.show_in_order = request.form.get('show_in_order') == 'on'
+        category.featured = request.form.get('featured') == 'on'
+        category.icon = request.form.get('icon')
+        category.color = request.form.get('color')
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"category_{timestamp}_{filename}"
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(filepath)
+                category.image_path = f'uploads/{filename}'
+        
+        if not id:
+            db.session.add(category)
+        
+        db.session.commit()
+        flash('קטגוריה נשמרה בהצלחה!', 'success')
+        return redirect(url_for('admin.menu'))
+    
+    return render_template('admin/enhanced_category.html', category=category)
+
+@admin_bp.route('/menu/item/<int:item_id>/toggle-availability', methods=['POST'])
+@login_required
+def toggle_item_availability(item_id):
+    """Quick toggle for menu item availability (for mobile-friendly updates)"""
+    item = MenuItem.query.get_or_404(item_id)
+    
+    data = request.get_json() or {}
+    item.is_available = data.get('is_available', not item.is_available)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'is_available': item.is_available,
+        'message': 'זמינות עודכנה בהצלחה'
+    })
+
+@admin_bp.route('/menu/item/edit/<int:id>', methods=['GET', 'POST'])
+@admin_bp.route('/menu/item/new', methods=['GET', 'POST'])
+@login_required
+def edit_menu_item(id=None):
+    from flask_wtf import FlaskForm
+    
+    print(f"★★★ ROUTE HIT: method={request.method}, id={id}")  # Debug line
+    print(f"★★★ Files in request: {list(request.files.keys())}")  # Debug line
+    
+    # Create form for CSRF token (needs to be before any conditional logic)
+    form = FlaskForm()
+    
+    if id:
+        item = MenuItem.query.get_or_404(id)
+    else:
+        item = MenuItem()
+    
+    categories = MenuCategory.query.filter_by(is_active=True).all()
+    dietary_properties = DietaryProperty.query.filter_by(is_active=True).order_by(DietaryProperty.display_order).all()
+    
+    if request.method == 'POST':
+        print(f"★★★ POST REQUEST - Form valid: {form.validate_on_submit()}")  # Debug line
+    
+    if request.method == 'POST' and form.validate_on_submit():
+        print(f"DEBUG: Form data received: {dict(request.form)}")  # Debug line
+        print(f"DEBUG: All form data: {request.form.to_dict(flat=False)}")  # Debug line
+        
+        # Basic information
+        item.category_id = int(request.form.get('category_id'))
+        item.name_he = request.form.get('name_he')
+        item.name_en = request.form.get('name_en')
+        item.description_he = request.form.get('description_he')
+        item.description_en = request.form.get('description_en')
+        item.short_description_he = request.form.get('short_description_he')
+        item.short_description_en = request.form.get('short_description_en')
+        item.ingredients_he = request.form.get('ingredients_he')
+        item.ingredients_en = request.form.get('ingredients_en')
+        
+        # Pricing
+        base_price_val = request.form.get('base_price', 0)
+        item.base_price = float(base_price_val) if str(base_price_val).lower() != 'nan' else 0
+        discount_val = request.form.get('discount_percentage', 0)
+        item.discount_percentage = float(discount_val) if str(discount_val).lower() != 'nan' else 0
+        
+        # Handle dietary properties (many-to-many relationship)
+        selected_property_ids = request.form.getlist('dietary_properties')
+        print(f"DEBUG: Selected property IDs: {selected_property_ids}")  # Debug line
+        # Clear existing properties
+        item.dietary_properties.clear()
+        # Add selected properties
+        for property_id in selected_property_ids:
+            if property_id.isdigit():
+                property_obj = DietaryProperty.query.get(int(property_id))
+                if property_obj and property_obj.is_active:
+                    item.dietary_properties.append(property_obj)
+                    print(f"DEBUG: Added property {property_obj.name_he}")  # Debug line
+        
+        # Operations & Availability
+        item.is_available = request.form.get('is_available') == 'on'
+        item.allow_delivery = request.form.get('allow_delivery') == 'on'
+        item.allow_takeaway = request.form.get('allow_takeaway') == 'on'
+        item.prep_time_minutes = int(request.form.get('prep_time_minutes', 0)) if request.form.get('prep_time_minutes') else None
+        item.print_station = request.form.get('print_station', '').strip() or None
+        item.print_name = request.form.get('print_name', '').strip() or None
+        item.calories = int(request.form.get('calories', 0)) if request.form.get('calories') else None
+        item.spice_level = int(request.form.get('spice_level', 0))
+        
+        # Special offers
+        item.special_offer_text_he = request.form.get('special_offer_text_he')
+        item.special_offer_text_en = request.form.get('special_offer_text_en')
+        
+        # Availability schedule
+        item.available_from_time = request.form.get('available_from_time')
+        item.available_to_time = request.form.get('available_to_time')
+        
+        # Display settings
+        item.display_order = int(request.form.get('display_order', 0))
+        
+        # Custom tags (JSON)
+        custom_tags = request.form.get('custom_tags', '').strip()
+        if custom_tags:
+            try:
+                import json
+                item.custom_tags = json.dumps([tag.strip() for tag in custom_tags.split(',') if tag.strip()])
+            except:
+                item.custom_tags = '[]'
+        else:
+            item.custom_tags = '[]'
+        
+        # Allergens (JSON)
+        allergens = request.form.get('allergens', '').strip()
+        if allergens:
+            try:
+                import json
+                item.allergens = json.dumps([allergen.strip() for allergen in allergens.split(',') if allergen.strip()])
+            except:
+                item.allergens = '[]'
+        else:
+            item.allergens = '[]'
+        
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+                filename_base = filename.rsplit('.', 1)[0]
+                raw_filename = f"menu_{timestamp}_{filename_base}_raw.jpg"
+
+                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+                raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
+                file.save(raw_path)
+
+                old_image = item.image_path
+                old_hero = item.image_hero_path
+                form_refine = request.form.get('refine_image') == 'on'
+
+                if not form_refine:
+                    from image_processing import fix_exif_orientation
+                    img = Image.open(raw_path)
+                    img = fix_exif_orientation(img)
+                    if max(img.size) > 1200:
+                        ratio = 1200 / max(img.size)
+                        img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    final_name = f"menu_{timestamp}_{filename_base}.jpg"
+                    final_path = os.path.join(UPLOAD_FOLDER, final_name)
+                    img.save(final_path, 'JPEG', quality=85, optimize=True)
+                    item.image_path = f'/static/uploads/{final_name}'
+                    item.image_hero_path = None
+                    if os.path.exists(raw_path) and raw_path != final_path:
+                        os.remove(raw_path)
+                else:
+                    try:
+                        from image_processing import process_dish_image
+                        base_name = f"menu_{timestamp}_{filename_base}"
+                        result = process_dish_image(raw_path, output_dir=UPLOAD_FOLDER, base_name=base_name)
+                        item.image_path = f'/static/uploads/{base_name}_card.jpg'
+                        item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
+                        if os.path.exists(raw_path):
+                            os.remove(raw_path)
+                        for old_file in [old_image, old_hero]:
+                            if old_file and old_file.startswith('/static/uploads/'):
+                                old_abs = old_file.lstrip('/')
+                                if os.path.exists(old_abs) and old_abs != f'static/uploads/{base_name}_card.jpg' and old_abs != f'static/uploads/{base_name}_hero.jpg':
+                                    try:
+                                        os.remove(old_abs)
+                                    except OSError:
+                                        pass
+                        print(f"Menu image processed: card={result['card_size_kb']}KB, hero={result['hero_size_kb']}KB")
+                    except Exception as e:
+                        print(f"Image processing failed, using fallback: {e}")
+                        try:
+                            from image_processing import fix_exif_orientation as _fix_exif
+                            img = Image.open(raw_path)
+                            img = _fix_exif(img)
+                            if max(img.size) > 1200:
+                                ratio = 1200 / max(img.size)
+                                img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                            if img.mode in ('RGBA', 'P'):
+                                img = img.convert('RGB')
+                            fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
+                            fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
+                            img.save(fallback_path, 'JPEG', quality=85, optimize=True)
+                            item.image_path = f'/static/uploads/{fallback_name}'
+                            item.image_hero_path = None
+                            if os.path.exists(raw_path) and raw_path != fallback_path:
+                                os.remove(raw_path)
+                        except Exception as e2:
+                            print(f"Fallback also failed: {e2}")
+                            item.image_path = f'/static/uploads/{raw_filename}'
+                            item.image_hero_path = None
+        
+        if not id:
+            db.session.add(item)
+            db.session.flush()
+
+        branch_ids_str = request.form.get('branch_ids', '')
+        if branch_ids_str and item.id:
+            branch_ids = [int(bid) for bid in branch_ids_str.split(',') if bid.strip().isdigit()]
+            existing_overrides = {o.branch_id: o for o in BranchMenuItem.query.filter_by(menu_item_id=item.id).all()}
+            for bid in branch_ids:
+                is_avail = request.form.get(f'branch_available_{bid}') == '1'
+                price_val = request.form.get(f'branch_price_{bid}', '').strip()
+                order_val = request.form.get(f'branch_order_{bid}', '').strip()
+                custom_price = float(price_val) if price_val else None
+                display_order = int(order_val) if order_val else 0
+                has_override = (not is_avail) or (custom_price is not None) or (display_order != 0)
+                existing = existing_overrides.get(bid)
+                if has_override:
+                    if not existing:
+                        existing = BranchMenuItem(branch_id=bid, menu_item_id=item.id)
+                        db.session.add(existing)
+                    existing.is_available = is_avail
+                    existing.custom_price = custom_price
+                    existing.display_order = display_order
+                elif existing:
+                    db.session.delete(existing)
+
+        db.session.commit()
+        flash('המנה נשמרה בהצלחה! ✓', 'success')
+        
+        return redirect(url_for('admin.edit_menu_item', id=item.id))
+    
+    from models import PrintStation, PrinterStation, Printer
+    all_print_stations = PrintStation.query.order_by(PrintStation.name).all()
+    station_printer_map = {}
+    all_links = db.session.query(PrinterStation.station_name, Printer).join(
+        Printer, PrinterStation.printer_id == Printer.id
+    ).all()
+    for station_name, p in all_links:
+        entry = {'name': p.name + (' [לא פעילה]' if not p.is_active else ''), 'ip': p.ip_address, 'branch': p.branch.name_he if p.branch else ''}
+        station_printer_map.setdefault(station_name, []).append(entry)
+
+    branches_data = []
+    if item.id:
+        active_branches = Branch.query.filter_by(is_active=True).order_by(Branch.id).all()
+        overrides = {o.branch_id: o for o in BranchMenuItem.query.filter_by(menu_item_id=item.id).all()}
+        for branch in active_branches:
+            o = overrides.get(branch.id)
+            branches_data.append({
+                'branch': branch,
+                'is_available': o.is_available if o else True,
+                'custom_price': o.custom_price if o else None,
+                'display_order': o.display_order if o else 0,
+            })
+
+    return render_template('admin/enhanced_menu_item.html', form=form, item=item, categories=categories, dietary_properties=dietary_properties, print_stations=all_print_stations, station_printer_map=station_printer_map, branches_data=branches_data)
+
+@admin_bp.route('/menu/item/<int:item_id>/upload-image', methods=['POST'])
+@csrf.exempt
+@login_required
+def upload_menu_item_image(item_id):
+    import json as _json
+    from flask import Response, stream_with_context
+
+    item = MenuItem.query.get_or_404(item_id)
+
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'error': 'No image file'}), 400
+
+    file = request.files['image']
+    if not file or not file.filename or not allowed_image_file(file.filename):
+        return jsonify({'success': False, 'error': 'Invalid file type. Allowed: jpg, jpeg, png, gif, webp'}), 400
+
+    filename = secure_filename(file.filename)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    filename_base = filename.rsplit('.', 1)[0]
+    raw_filename = f"menu_{timestamp}_{filename_base}_raw.jpg"
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    raw_path = os.path.join(UPLOAD_FOLDER, raw_filename)
+    file.save(raw_path)
+
+    old_image = item.image_path
+    old_hero = item.image_hero_path
+
+    refine = request.form.get('refine', '1') == '1'
+
+    if not refine:
+        try:
+            from image_processing import fix_exif_orientation
+            img = Image.open(raw_path)
+            img = fix_exif_orientation(img)
+            if max(img.size) > 1200:
+                ratio = 1200 / max(img.size)
+                img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            final_name = f"menu_{timestamp}_{filename_base}.jpg"
+            final_path = os.path.join(UPLOAD_FOLDER, final_name)
+            img.save(final_path, 'JPEG', quality=85, optimize=True)
+            item.image_path = f'/static/uploads/{final_name}'
+            item.image_hero_path = None
+            db.session.commit()
+            if os.path.exists(raw_path) and raw_path != final_path:
+                os.remove(raw_path)
+            for old_file in [old_image, old_hero]:
+                if old_file and old_file.startswith('/static/uploads/'):
+                    old_abs = old_file.lstrip('/')
+                    if os.path.exists(old_abs) and old_abs != f'static/uploads/{final_name}':
+                        try:
+                            os.remove(old_abs)
+                        except OSError:
+                            pass
+            file_size_kb = round(os.path.getsize(final_path) / 1024, 1)
+            return jsonify({
+                'success': True,
+                'image_path': item.image_path,
+                'hero_path': None,
+                'card_size_kb': file_size_kb,
+            })
+        except Exception as e:
+            print(f"Error saving original image: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    import queue
+    import threading
+
+    step_map = {
+        'opening': ('upload', 25),
+        'removing_bg': ('removing_bg', 40),
+        'cropping': ('compositing', 60),
+        'compositing': ('compositing', 75),
+        'saving': ('saving', 90),
+        'done': ('saving', 95),
+    }
+    progress_queue = queue.Queue()
+    result_holder = [None]
+    error_holder = [None]
+
+    def run_processing():
+        try:
+            from image_processing import process_dish_image
+            base_name = f"menu_{timestamp}_{filename_base}"
+
+            def on_progress(step, _pct):
+                mapped = step_map.get(step, (step, _pct))
+                progress_queue.put({'step': mapped[0], 'progress': mapped[1]})
+
+            result = process_dish_image(
+                raw_path,
+                output_dir=UPLOAD_FOLDER,
+                base_name=base_name,
+                progress_callback=on_progress,
+            )
+            result_holder[0] = (base_name, result)
+        except Exception as e:
+            error_holder[0] = e
+        finally:
+            progress_queue.put(None)
+
+    def generate():
+        yield _json.dumps({'step': 'upload', 'progress': 20}) + '\n'
+
+        worker = threading.Thread(target=run_processing, daemon=True)
+        worker.start()
+
+        while True:
+            try:
+                evt = progress_queue.get(timeout=60)
+            except queue.Empty:
+                yield _json.dumps({'success': False, 'error': 'Processing timeout'}) + '\n'
+                return
+            if evt is None:
+                break
+            yield _json.dumps(evt) + '\n'
+
+        worker.join(timeout=5)
+
+        if result_holder[0]:
+            base_name, result = result_holder[0]
+            item.image_path = f'/static/uploads/{base_name}_card.jpg'
+            item.image_hero_path = f'/static/uploads/{base_name}_hero.jpg'
+            db.session.commit()
+
+            if os.path.exists(raw_path):
+                os.remove(raw_path)
+            for old_file in [old_image, old_hero]:
+                if old_file and old_file.startswith('/static/uploads/'):
+                    old_abs = old_file.lstrip('/')
+                    if os.path.exists(old_abs) and old_abs != f'static/uploads/{base_name}_card.jpg' and old_abs != f'static/uploads/{base_name}_hero.jpg':
+                        try:
+                            os.remove(old_abs)
+                        except OSError:
+                            pass
+
+            yield _json.dumps({
+                'step': 'done',
+                'progress': 100,
+                'success': True,
+                'image_path': item.image_path,
+                'hero_path': item.image_hero_path,
+                'card_size_kb': result['card_size_kb'],
+                'hero_size_kb': result['hero_size_kb'],
+            }) + '\n'
+        elif error_holder[0]:
+            e = error_holder[0]
+            print(f"Error processing dish image: {e}")
+            import traceback
+            traceback.print_exc()
+
+            try:
+                from image_processing import fix_exif_orientation
+                img = Image.open(raw_path)
+                img = fix_exif_orientation(img)
+                if max(img.size) > 1200:
+                    ratio = 1200 / max(img.size)
+                    img = img.resize((int(img.size[0] * ratio), int(img.size[1] * ratio)), Image.Resampling.LANCZOS)
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                fallback_name = f"menu_{timestamp}_{filename_base}.jpg"
+                fallback_path = os.path.join(UPLOAD_FOLDER, fallback_name)
+                img.save(fallback_path, 'JPEG', quality=85, optimize=True)
+                item.image_path = f'/static/uploads/{fallback_name}'
+                item.image_hero_path = None
+                db.session.commit()
+                if os.path.exists(raw_path) and raw_path != fallback_path:
+                    os.remove(raw_path)
+                yield _json.dumps({
+                    'step': 'done',
+                    'progress': 100,
+                    'success': True,
+                    'image_path': item.image_path,
+                    'hero_path': None,
+                    'warning': 'Background processing failed, image saved without processing',
+                }) + '\n'
+            except Exception as e2:
+                print(f"Fallback save also failed: {e2}")
+                yield _json.dumps({'success': False, 'error': str(e)}) + '\n'
+
+    return Response(stream_with_context(generate()), content_type='application/x-ndjson')
+
+
+# Image Editor - Rotate, Crop, Zoom for menu item images
+@admin_bp.route('/menu/item/<int:item_id>/edit-image', methods=['POST'])
+@login_required
+def edit_menu_item_image(item_id):
+    """Apply image transformations (rotate, crop) to menu item image"""
+    import base64
+    import io
+    
+    item = MenuItem.query.get_or_404(item_id)
+    
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        
+        if not item.image_path:
+            return jsonify({'success': False, 'error': 'No image to edit'}), 400
+        
+        # Get current image path
+        image_path = item.image_path.replace('/static/', 'static/')
+        
+        if not os.path.exists(image_path):
+            return jsonify({'success': False, 'error': 'Image file not found'}), 404
+        
+        img = Image.open(image_path)
+        
+        if action == 'rotate':
+            degrees = data.get('degrees', 90)
+            img = img.rotate(-degrees, expand=True)  # Negative because PIL rotates counter-clockwise
+            
+        elif action == 'crop':
+            # Crop data from Cropper.js
+            crop_data = data.get('cropData', {})
+            x = int(crop_data.get('x', 0))
+            y = int(crop_data.get('y', 0))
+            width = int(crop_data.get('width', img.width))
+            height = int(crop_data.get('height', img.height))
+            
+            # Ensure valid crop bounds
+            x = max(0, min(x, img.width))
+            y = max(0, min(y, img.height))
+            width = min(width, img.width - x)
+            height = min(height, img.height - y)
+            
+            img = img.crop((x, y, x + width, y + height))
+            
+        elif action == 'save_cropped':
+            # Save base64 cropped image from Cropper.js
+            image_data = data.get('imageData', '')
+            image_format = data.get('format', 'jpeg')
+            
+            if image_data.startswith('data:'):
+                image_data = image_data.split(',')[1]
+            
+            img_bytes = base64.b64decode(image_data)
+            img = Image.open(io.BytesIO(img_bytes))
+        
+        # Determine save format based on file extension
+        is_png = image_path.lower().endswith('.png')
+        
+        # Convert to RGB if needed for JPEG (PNG can have alpha)
+        if not is_png and img.mode == 'RGBA':
+            img = img.convert('RGB')
+        
+        # Save the edited image with correct format
+        if is_png:
+            img.save(image_path, 'PNG', optimize=True)
+        else:
+            img.save(image_path, 'JPEG', quality=85, optimize=True)
+        
+        # Return success with new image URL (add timestamp to bust cache)
+        import time
+        new_url = f"{item.image_path}?t={int(time.time())}"
+        
+        return jsonify({
+            'success': True,
+            'message': 'Image updated successfully',
+            'newImageUrl': new_url
+        })
+        
+    except Exception as e:
+        print(f"Error editing image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/option-groups', methods=['GET', 'POST'])
+@login_required
+def api_option_groups(item_id):
+    from models import MenuItemOptionGroup, MenuItemOptionChoice
+    item = MenuItem.query.get_or_404(item_id)
+
+    if request.method == 'GET':
+        groups = MenuItemOptionGroup.query.filter_by(menu_item_id=item_id).order_by(MenuItemOptionGroup.display_order).all()
+        result = []
+        for g in groups:
+            choices = MenuItemOptionChoice.query.filter_by(option_group_id=g.id).order_by(MenuItemOptionChoice.display_order).all()
+            result.append({
+                'id': g.id, 'name_he': g.name_he, 'name_en': g.name_en,
+                'selection_type': g.selection_type, 'is_required': g.is_required,
+                'min_selections': g.min_selections, 'max_selections': g.max_selections,
+                'display_order': g.display_order, 'is_active': g.is_active,
+                'choices': [{
+                    'id': c.id, 'name_he': c.name_he, 'name_en': c.name_en,
+                    'price_modifier': c.price_modifier, 'is_default': c.is_default,
+                    'is_available': c.is_available, 'display_order': c.display_order
+                } for c in choices]
+            })
+        return jsonify({'ok': True, 'groups': result})
+
+    try:
+        data = request.get_json(force=True)
+        name_he = (data.get('name_he') or '').strip()
+        if not name_he:
+            return jsonify({'ok': False, 'error': 'name_he is required'}), 400
+        sel_type = data.get('selection_type', 'single')
+        if sel_type not in ('single', 'multiple'):
+            return jsonify({'ok': False, 'error': 'Invalid selection_type'}), 400
+        min_sel = max(0, int(data.get('min_selections', 0)))
+        max_sel = max(0, int(data.get('max_selections', 0)))
+        max_order = db.session.query(db.func.max(MenuItemOptionGroup.display_order)).filter_by(menu_item_id=item_id).scalar() or 0
+        g = MenuItemOptionGroup(
+            menu_item_id=item_id,
+            name_he=name_he,
+            name_en=(data.get('name_en') or name_he).strip(),
+            selection_type=sel_type,
+            is_required=bool(data.get('is_required', False)),
+            min_selections=min_sel,
+            max_selections=max_sel,
+            display_order=max_order + 1,
+            is_active=True
+        )
+        db.session.add(g)
+        db.session.commit()
+        return jsonify({'ok': True, 'id': g.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/option-group/<int:group_id>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
+def api_option_group(group_id):
+    from models import MenuItemOptionGroup, MenuItemOptionChoice
+    g = MenuItemOptionGroup.query.get_or_404(group_id)
+
+    if request.method == 'GET':
+        choices = MenuItemOptionChoice.query.filter_by(option_group_id=g.id).order_by(MenuItemOptionChoice.display_order).all()
+        return jsonify({'ok': True, 'group': {
+            'id': g.id, 'name_he': g.name_he, 'name_en': g.name_en,
+            'selection_type': g.selection_type, 'is_required': g.is_required,
+            'min_selections': g.min_selections, 'max_selections': g.max_selections,
+            'display_order': g.display_order, 'is_active': g.is_active,
+            'choices': [{
+                'id': c.id, 'name_he': c.name_he, 'name_en': c.name_en,
+                'price_modifier': c.price_modifier, 'is_default': c.is_default,
+                'is_available': c.is_available, 'display_order': c.display_order
+            } for c in choices]
+        }})
+
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(g)
+            db.session.commit()
+            return jsonify({'ok': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    try:
+        data = request.get_json(force=True)
+        if 'name_he' in data: g.name_he = (data['name_he'] or '').strip()
+        if 'name_en' in data: g.name_en = (data['name_en'] or '').strip()
+        if 'selection_type' in data:
+            if data['selection_type'] not in ('single', 'multiple'):
+                return jsonify({'ok': False, 'error': 'Invalid selection_type'}), 400
+            g.selection_type = data['selection_type']
+        if 'is_required' in data: g.is_required = bool(data['is_required'])
+        if 'min_selections' in data: g.min_selections = max(0, int(data['min_selections']))
+        if 'max_selections' in data: g.max_selections = max(0, int(data['max_selections']))
+        if 'display_order' in data: g.display_order = int(data['display_order'])
+        if 'is_active' in data: g.is_active = bool(data['is_active'])
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/option-group/<int:group_id>/choices', methods=['POST'])
+@login_required
+def api_add_choice(group_id):
+    from models import MenuItemOptionGroup, MenuItemOptionChoice
+    g = MenuItemOptionGroup.query.get_or_404(group_id)
+    try:
+        data = request.get_json(force=True)
+        name_he = (data.get('name_he') or '').strip()
+        if not name_he:
+            return jsonify({'ok': False, 'error': 'name_he is required'}), 400
+        price = float(data.get('price_modifier', 0))
+        if price < 0:
+            return jsonify({'ok': False, 'error': 'price_modifier cannot be negative'}), 400
+        max_order = db.session.query(db.func.max(MenuItemOptionChoice.display_order)).filter_by(option_group_id=group_id).scalar() or 0
+        c = MenuItemOptionChoice(
+            option_group_id=group_id,
+            name_he=name_he,
+            name_en=(data.get('name_en') or name_he).strip(),
+            price_modifier=price,
+            is_default=bool(data.get('is_default', False)),
+            is_available=bool(data.get('is_available', True)),
+            display_order=max_order + 1
+        )
+        db.session.add(c)
+        db.session.commit()
+        return jsonify({'ok': True, 'id': c.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/option-choice/<int:choice_id>', methods=['PUT', 'DELETE'])
+@login_required
+def api_option_choice(choice_id):
+    from models import MenuItemOptionChoice
+    c = MenuItemOptionChoice.query.get_or_404(choice_id)
+
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(c)
+            db.session.commit()
+            return jsonify({'ok': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    try:
+        data = request.get_json(force=True)
+        if 'name_he' in data: c.name_he = (data['name_he'] or '').strip()
+        if 'name_en' in data: c.name_en = (data['name_en'] or '').strip()
+        if 'price_modifier' in data:
+            price = float(data['price_modifier'])
+            if price < 0:
+                return jsonify({'ok': False, 'error': 'price_modifier cannot be negative'}), 400
+            c.price_modifier = price
+        if 'is_default' in data: c.is_default = bool(data['is_default'])
+        if 'is_available' in data: c.is_available = bool(data['is_available'])
+        if 'display_order' in data: c.display_order = int(data['display_order'])
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# Menu Settings Management
+@admin_bp.route('/menu/settings')
+@login_required
+def menu_settings():
+    settings = MenuSettings.query.all()
+    return render_template('admin/menu_settings.html', settings=settings, get_setting=get_setting)
+
+@admin_bp.route('/menu/settings/save', methods=['POST'])
+@login_required
+def save_menu_settings():
+    settings_data = [
+        ('menu_layout', 'Menu Layout Style', request.form.get('menu_layout', 'grid')),
+        ('show_prices', 'Show Prices', request.form.get('show_prices', 'true')),
+        ('show_images', 'Show Images', request.form.get('show_images', 'true')),
+        ('show_dietary_icons', 'Show Dietary Icons', request.form.get('show_dietary_icons', 'true')),
+        ('show_spice_level', 'Show Spice Level', request.form.get('show_spice_level', 'true')),
+        ('show_prep_time', 'Show Preparation Time', request.form.get('show_prep_time', 'false')),
+        ('show_calories', 'Show Calories', request.form.get('show_calories', 'false')),
+        ('currency_symbol', 'Currency Symbol', request.form.get('currency_symbol', '₪')),
+        ('items_per_page', 'Items Per Page', request.form.get('items_per_page', '12')),
+    ]
+    
+    for key, description, value in settings_data:
+        setting = MenuSettings.query.filter_by(setting_key=key).first()
+        if setting:
+            setting.setting_value = value
+            setting.updated_at = datetime.utcnow()
+        else:
+            setting = MenuSettings(setting_key=key, setting_value=value, description=description)
+            db.session.add(setting)
+    
+    db.session.commit()
+    flash('Menu settings saved successfully!', 'success')
+    return redirect(url_for('admin.menu_settings'))
+
+@admin_bp.route('/menu/item/<int:item_id>/prices')
+@login_required
+def manage_item_prices(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    prices = MenuItemPrice.query.filter_by(menu_item_id=item_id).order_by(MenuItemPrice.display_order).all()
+    return render_template('admin/item_prices.html', item=item, prices=prices)
+
+@admin_bp.route('/menu/item/<int:item_id>/prices/add', methods=['POST'])
+@login_required
+def add_item_price(item_id):
+    price = MenuItemPrice()
+    price.menu_item_id = item_id
+    price.size_name_he = request.form.get('size_name_he')
+    price.size_name_en = request.form.get('size_name_en')
+    price_val = request.form.get('price')
+    price.price = float(price_val) if price_val and price_val.lower() != 'nan' else 0
+    price.is_default = request.form.get('is_default') == 'on'
+    price.display_order = int(request.form.get('display_order', 0))
+    
+    # If this is set as default, unset other defaults
+    if price.is_default:
+        MenuItemPrice.query.filter_by(menu_item_id=item_id).update({'is_default': False})
+    
+    db.session.add(price)
+    db.session.commit()
+    flash('Price option added successfully!', 'success')
+    return redirect(url_for('admin.manage_item_prices', item_id=item_id))
+
+@admin_bp.route('/menu/item/<int:item_id>/variations')
+@login_required
+def manage_item_variations(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    variations = MenuItemVariation.query.filter_by(menu_item_id=item_id).order_by(MenuItemVariation.display_order).all()
+    return render_template('admin/item_variations.html', item=item, variations=variations)
+
+@admin_bp.route('/menu/item/<int:item_id>/variations/add', methods=['POST'])
+@login_required
+def add_item_variation(item_id):
+    variation = MenuItemVariation()
+    variation.menu_item_id = item_id
+    variation.variation_type = request.form.get('variation_type')
+    variation.name_he = request.form.get('name_he')
+    variation.name_en = request.form.get('name_en')
+    price_mod_val = request.form.get('price_modifier', 0)
+    variation.price_modifier = float(price_mod_val) if str(price_mod_val).lower() != 'nan' else 0
+    variation.is_default = request.form.get('is_default') == 'on'
+    variation.display_order = int(request.form.get('display_order', 0))
+    
+    db.session.add(variation)
+    db.session.commit()
+    flash('Variation added successfully!', 'success')
+    return redirect(url_for('admin.manage_item_variations', item_id=item_id))
+
+# Dietary Properties Management
+@admin_bp.route('/menu/dietary-properties')
+@login_required
+def dietary_properties():
+    properties = DietaryProperty.query.order_by(DietaryProperty.display_order).all()
+    return render_template('admin/dietary_properties.html', properties=properties)
+
+@admin_bp.route('/menu/dietary-properties/edit/<int:id>', methods=['GET', 'POST'])
+@admin_bp.route('/menu/dietary-properties/new', methods=['GET', 'POST'])
+@login_required
+def edit_dietary_property(id=None):
+    if id:
+        prop = DietaryProperty.query.get_or_404(id)
+    else:
+        prop = DietaryProperty()
+    
+    if request.method == 'POST':
+        prop.name_he = request.form.get('name_he')
+        prop.name_en = request.form.get('name_en')
+        prop.icon = request.form.get('icon')
+        prop.color = request.form.get('color')
+        prop.description_he = request.form.get('description_he')
+        prop.description_en = request.form.get('description_en')
+        prop.is_active = request.form.get('is_active') == 'on'
+        prop.display_order = int(request.form.get('display_order', 0))
+        
+        if not id:
+            db.session.add(prop)
+        
+        db.session.commit()
+        flash('Dietary property saved successfully!', 'success')
+        return redirect(url_for('admin.dietary_properties'))
+    
+    return render_template('admin/edit_dietary_property.html', property=prop)
+
+@admin_bp.route('/menu/dietary-properties/toggle/<int:id>', methods=['POST'])
+@login_required
+def toggle_dietary_property(id):
+    """Toggle dietary property active status"""
+    
+    try:
+        prop = DietaryProperty.query.get_or_404(id)
+        data = request.get_json() if request.is_json else request.form
+        is_active = data.get('is_active', False)
+        
+        # Handle both boolean and string values
+        if isinstance(is_active, str):
+            is_active = is_active.lower() in ['true', '1', 'on', 'yes']
+        
+        prop.is_active = bool(is_active)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'property_id': id, 
+            'new_status': prop.is_active
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/menu/dietary-properties/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_dietary_property(id):
+    # Skip CSRF validation for admin API endpoints
+    from flask import current_app
+    current_app.config['WTF_CSRF_ENABLED'] = False
+    
+    prop = DietaryProperty.query.get_or_404(id)
+    db.session.delete(prop)
+    db.session.commit()
+    
+    current_app.config['WTF_CSRF_ENABLED'] = True  # Re-enable CSRF
+    return jsonify({'success': True})
+
+@admin_bp.route('/menu/dietary-properties/reorder', methods=['POST'])
+@login_required
+def reorder_dietary_properties():
+    property_ids = request.json.get('property_ids', [])
+    for index, property_id in enumerate(property_ids):
+        prop = DietaryProperty.query.get(property_id)
+        if prop:
+            prop.display_order = index
+            db.session.add(prop)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# Menu Item Reordering System
+@admin_bp.route('/menu/reorder')
+@login_required
+def menu_reorder():
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    
+    # Get menu items grouped by category
+    menu_data = {}
+    for category in categories:
+        items_list = MenuItem.query.filter_by(category_id=category.id).order_by(MenuItem.display_order).all()
+        menu_data[category.id] = {
+            'category': category,
+            'items': items_list
+        }
+    
+    # Get items without category
+    uncategorized_items = MenuItem.query.filter_by(category_id=None).order_by(MenuItem.display_order).all()
+    
+    return render_template('admin/menu_reorder.html', 
+                         menu_data=menu_data, 
+                         categories=categories,
+                         uncategorized_items=uncategorized_items)
+
+@admin_bp.route('/menu/reorder/items', methods=['POST'])
+@login_required
+def reorder_menu_items():
+    item_orders = request.json.get('item_orders', {})
+    
+    for item_id, order_data in item_orders.items():
+        item = MenuItem.query.get(int(item_id))
+        if item:
+            item.display_order = order_data['order']
+            if 'category_id' in order_data:
+                item.category_id = order_data['category_id'] if order_data['category_id'] != 'null' else None
+            db.session.add(item)
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/menu/reorder/categories', methods=['POST'])
+@login_required
+def reorder_categories():
+    category_ids = request.json.get('category_ids', [])
+    for index, category_id in enumerate(category_ids):
+        category = MenuCategory.query.get(category_id)
+        if category:
+            category.display_order = index
+            db.session.add(category)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# CSV/Excel Import System
+@admin_bp.route('/menu/import')
+@login_required
+def menu_import():
+    return render_template('admin/menu_import.html')
+
+@admin_bp.route('/menu/import/upload', methods=['POST'])
+@login_required
+def upload_csv():
+    if 'file' not in request.files:
+        flash('No file selected', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('No file selected', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    if file and allowed_csv_file(file.filename):
+        # Create upload directory if it doesn't exist
+        os.makedirs(CSV_UPLOAD_FOLDER, exist_ok=True)
+        
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(CSV_UPLOAD_FOLDER, filename)
+        file.save(filepath)
+        
+        # Read and preview the file
+        try:
+            if filename.endswith('.csv'):
+                df = pd.read_csv(filepath, encoding='utf-8')
+            else:  # Excel files
+                df = pd.read_excel(filepath)
+            
+            # Get first 5 rows for preview
+            preview_data = df.head(5).to_dict('records')
+            columns = list(df.columns)
+            total_rows = len(df)
+            
+            # Get existing categories and dietary properties for mapping
+            categories = MenuCategory.query.filter_by(is_active=True).all()
+            dietary_properties = DietaryProperty.query.filter_by(is_active=True).all()
+            
+            return render_template('admin/csv_column_mapping.html', 
+                                 filename=filename,
+                                 columns=columns,
+                                 preview_data=preview_data,
+                                 total_rows=total_rows,
+                                 categories=categories,
+                                 dietary_properties=dietary_properties)
+        
+        except Exception as e:
+            flash(f'Error reading file: {str(e)}', 'error')
+            return redirect(url_for('admin.menu_import'))
+    
+    flash('Invalid file format. Please upload CSV, XLS, or XLSX files only.', 'error')
+    return redirect(url_for('admin.menu_import'))
+
+@admin_bp.route('/menu/import/process', methods=['POST'])
+@login_required
+def process_csv_import():
+    filename = request.form.get('filename')
+    if not filename:
+        flash('No file to process', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    filepath = os.path.join(CSV_UPLOAD_FOLDER, filename)
+    if not os.path.exists(filepath):
+        flash('File not found', 'error')
+        return redirect(url_for('admin.menu_import'))
+    
+    # Get column mappings from form
+    mappings = {}
+    for field in ['name_he', 'name_en', 'description_he', 'description_en', 'price', 'category', 'ingredients_he', 'ingredients_en']:
+        column = request.form.get(f'mapping_{field}')
+        if column and column != '':
+            mappings[field] = column
+    
+    # Read the file
+    try:
+        if filename.endswith('.csv'):
+            df = pd.read_csv(filepath, encoding='utf-8')
+        else:
+            df = pd.read_excel(filepath)
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        # Get default category if specified
+        default_category_id = request.form.get('default_category')
+        if default_category_id == '':
+            default_category_id = None
+        else:
+            default_category_id = int(default_category_id) if default_category_id else None
+        
+        # Process each row
+        for index, row in df.iterrows():
+            try:
+                # Create new menu item
+                item = MenuItem()
+                
+                # Map basic fields
+                if 'name_he' in mappings:
+                    item.name_he = str(row[mappings['name_he']]) if pd.notna(row[mappings['name_he']]) else ''
+                if 'name_en' in mappings:
+                    item.name_en = str(row[mappings['name_en']]) if pd.notna(row[mappings['name_en']]) else ''
+                if 'description_he' in mappings:
+                    item.description_he = str(row[mappings['description_he']]) if pd.notna(row[mappings['description_he']]) else ''
+                if 'description_en' in mappings:
+                    item.description_en = str(row[mappings['description_en']]) if pd.notna(row[mappings['description_en']]) else ''
+                if 'ingredients_he' in mappings:
+                    item.ingredients_he = str(row[mappings['ingredients_he']]) if pd.notna(row[mappings['ingredients_he']]) else ''
+                if 'ingredients_en' in mappings:
+                    item.ingredients_en = str(row[mappings['ingredients_en']]) if pd.notna(row[mappings['ingredients_en']]) else ''
+                
+                # Handle price
+                if 'price' in mappings and pd.notna(row[mappings['price']]):
+                    try:
+                        item.base_price = float(row[mappings['price']])
+                    except:
+                        item.base_price = 0
+                
+                # Handle category
+                if 'category' in mappings and pd.notna(row[mappings['category']]):
+                    category_name = str(row[mappings['category']])
+                    category = MenuCategory.query.filter(
+                        (MenuCategory.name_he == category_name) | 
+                        (MenuCategory.name_en == category_name)
+                    ).first()
+                    if category:
+                        item.category_id = category.id
+                    else:
+                        item.category_id = default_category_id
+                else:
+                    item.category_id = default_category_id
+                
+                # Set default values
+                item.is_available = True
+                item.display_order = index
+                
+                # Validate required fields
+                if not item.name_he and not item.name_en:
+                    errors.append(f'Row {index + 2}: Missing both Hebrew and English names')
+                    error_count += 1
+                    continue
+                
+                db.session.add(item)
+                success_count += 1
+                
+            except Exception as e:
+                errors.append(f'Row {index + 2}: {str(e)}')
+                error_count += 1
+        
+        # Commit all changes
+        try:
+            db.session.commit()
+            flash(f'Import completed! {success_count} items imported successfully.', 'success')
+            if error_count > 0:
+                flash(f'{error_count} items had errors and were skipped.', 'warning')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Database error during import: {str(e)}', 'error')
+        
+        # Clean up uploaded file
+        try:
+            os.remove(filepath)
+        except:
+            pass
+        
+        return render_template('admin/import_results.html', 
+                             success_count=success_count,
+                             error_count=error_count,
+                             errors=errors)
+    
+    except Exception as e:
+        flash(f'Error processing file: {str(e)}', 'error')
+        return redirect(url_for('admin.menu_import'))
+
+# Delete menu items and categories
+@admin_bp.route('/menu/item/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_menu_item(id):
+    item = MenuItem.query.get_or_404(id)
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/menu/category/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_category(id):
+    category = MenuCategory.query.get_or_404(id)
+    db.session.delete(category)
+    db.session.commit()
+    return jsonify({'success': True})
+
+# ===== EXCEL MENU UPLOAD SYSTEM =====
+
+@admin_bp.route('/menu/excel-upload')
+@login_required  
+def excel_menu_upload():
+    """Excel menu upload interface with field mapping"""
+    branches = Branch.query.filter_by(is_active=True).all()
+    categories = MenuCategory.query.filter_by(is_active=True).all()
+    return render_template('admin/excel_menu_upload.html', 
+                         branches=branches, 
+                         categories=categories)
+
+@admin_bp.route('/menu/excel-upload/simple', methods=['POST'])
+@login_required
+def simple_excel_upload():
+    """Direct Excel processing - bypass complex mapping"""
+    try:
+        if 'excel_file' not in request.files:
+            flash('❌ לא נבחר קובץ Excel', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        file = request.files['excel_file']
+        branch_id = request.form.get('branch_id')
+        
+        if not file.filename or not branch_id:
+            flash('❌ חסרים נתונים', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+        
+        # Direct processing with pandas
+        import pandas as pd
+        from flask import session
+        df = pd.read_excel(file)
+        
+        # Your Excel structure: category name, dish name, description, price
+        df.columns = df.columns.astype(str).str.strip()
+        
+        current_app.logger.info(f"Excel columns: {list(df.columns)}")
+        current_app.logger.info(f"Excel rows: {len(df)}")
+        
+        processed_items = []
+        current_category = ''
+        categories_created = {}  # Track created categories
+        
+        for index, row in df.iterrows():
+            # Handle your exact column names
+            category = str(row.get('category name', '')).strip() if pd.notna(row.get('category name')) else ''
+            name = str(row.get('dish name', '')).strip() if pd.notna(row.get('dish name')) else ''
+            description = str(row.get('description', '')).strip() if pd.notna(row.get('description')) else ''
+            price = str(row.get('price', '')).strip() if pd.notna(row.get('price')) else ''
+            
+            # Category inheritance (Excel pattern)
+            if category:
+                current_category = category
+            elif current_category:
+                category = current_category
+                
+            # Only process rows with name and price
+            if name and price:
+                # Auto-create category if needed
+                category_id = None
+                if category and category not in categories_created:
+                    # Check if category exists in database
+                    existing_cat = MenuCategory.query.filter_by(name_he=category).first()
+                    if existing_cat:
+                        category_id = existing_cat.id
+                        categories_created[category] = existing_cat.id
+                    else:
+                        # Create new category
+                        new_category = MenuCategory(
+                            name_he=category,
+                            name_en=category,  # Default to same as Hebrew
+                            display_order=len(categories_created) + 1,
+                            is_active=True
+                        )
+                        db.session.add(new_category)
+                        db.session.flush()  # Get ID without committing
+                        category_id = new_category.id
+                        categories_created[category] = category_id
+                        current_app.logger.info(f"Created category: {category} with ID: {category_id}")
+                elif category in categories_created:
+                    category_id = categories_created[category]
+                
+                # Handle complex pricing like "56/62"
+                price_parts = str(price).split('/')
+                base_price = price_parts[0].strip()
+                alt_price = price_parts[1].strip() if len(price_parts) > 1 else ''
+                
+                # Create object structure that template expects
+                class SimpleItem:
+                    def __init__(self, name, category, description, base_price, alt_price, has_multiple, cat_id):
+                        self.item_id = f"item_{len(processed_items)}"
+                        self.mapped_fields = {
+                            'name': name,
+                            'category': category,
+                            'description': description
+                        }
+                        self.pricing = {
+                            'base_price': base_price,
+                            'alt_price': alt_price,
+                            'has_multiple_prices': has_multiple
+                        }
+                        self.category_id = cat_id  # Store category ID for selection
+                
+                item = SimpleItem(name, category, description, base_price, alt_price, len(price_parts) > 1, category_id)
+                processed_items.append(item)
+        
+        current_app.logger.info(f"Processed {len(processed_items)} items")
+        current_app.logger.info(f"Created {len(categories_created)} categories: {list(categories_created.keys())}")
+        
+        # Commit all category creations
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error committing categories: {str(e)}")
+        
+        # No session storage needed - direct form processing
+        
+        return render_template('admin/excel_dish_settings.html',
+                             items=processed_items,
+                             categories=MenuCategory.query.filter_by(is_active=True).all(),
+                             dietary_properties=DietaryProperty.query.filter_by(is_active=True).all(),
+                             branch_id=branch_id)
+                             
+    except Exception as e:
+        current_app.logger.error(f"Simple Excel upload error: {str(e)}")
+        flash(f'❌ שגיאה: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
+@admin_bp.route('/menu/excel-upload/process', methods=['POST'])
+@login_required
+def process_excel_upload():
+    """Process uploaded Excel file and show field mapping interface"""
+    try:
+        if 'excel_file' not in request.files:
+            flash('❌ לא נבחר קובץ Excel', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        file = request.files['excel_file']
+        if file.filename == '':
+            flash('❌ לא נבחר קובץ', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        if not file.filename.lower().endswith(('.xlsx', '.xls')):
+            flash('❌ הקובץ חייב להיות בפורמט Excel (.xlsx או .xls)', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        # Save uploaded file temporarily
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"menu_upload_{timestamp}_{filename}"
+        
+        upload_path = os.path.join('temp_uploads', filename)
+        os.makedirs('temp_uploads', exist_ok=True)
+        file.save(upload_path)
+        
+        # Parse Excel file 
+        import pandas as pd
+        try:
+            # Try to read all sheets
+            excel_data = pd.read_excel(upload_path, sheet_name=None)
+            
+            parsed_data = {
+                'file_path': upload_path,
+                'filename': file.filename,
+                'sheets': {},
+                'suggested_mapping': {}
+            }
+            
+            # Analyze each sheet
+            for sheet_name, df in excel_data.items():
+                # Clean column names
+                df.columns = df.columns.astype(str).str.strip()
+                
+                sheet_info = {
+                    'name': sheet_name,
+                    'rows': len(df),
+                    'columns': list(df.columns),
+                    'sample_data': df.head(10).to_dict('records'),
+                    'column_types': {col: str(dtype) for col, dtype in df.dtypes.to_dict().items()}
+                }
+                
+                parsed_data['sheets'][sheet_name] = sheet_info
+                
+                # Suggest field mapping based on column names
+                suggested_mapping = {}
+                for col in df.columns:
+                    col_lower = col.lower()
+                    if any(word in col_lower for word in ['category', 'קטגוריה', 'סוג']):
+                        suggested_mapping[col] = 'category'
+                    elif any(word in col_lower for word in ['name', 'שם', 'מנה', 'dish']):
+                        suggested_mapping[col] = 'name'
+                    elif any(word in col_lower for word in ['desc', 'תיאור', 'description']):
+                        suggested_mapping[col] = 'description' 
+                    elif any(word in col_lower for word in ['price', 'מחיר', 'cost']):
+                        suggested_mapping[col] = 'price'
+                    elif any(word in col_lower for word in ['image', 'תמונה', 'photo']):
+                        suggested_mapping[col] = 'image'
+                
+                parsed_data['suggested_mapping'][sheet_name] = suggested_mapping
+            
+            # Store in session for next step
+            from flask import session
+            session['excel_upload_data'] = parsed_data
+            
+            branches = Branch.query.filter_by(is_active=True).all()
+            categories = MenuCategory.query.filter_by(is_active=True).all()
+            
+            return render_template('admin/excel_field_mapping.html',
+                                 data=parsed_data,
+                                 branches=branches,
+                                 categories=categories)
+                                 
+        except Exception as e:
+            current_app.logger.error(f"Excel parsing error: {str(e)}")
+            flash(f'❌ שגיאה בקריאת קובץ Excel: {str(e)}', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+    except Exception as e:
+        current_app.logger.error(f"Excel upload error: {str(e)}")
+        flash(f'❌ שגיאה בהעלאת הקובץ: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
+@admin_bp.route('/menu/excel-upload/mapping', methods=['POST'])
+@login_required
+def process_excel_mapping():
+    """Process field mapping and show comprehensive dish settings"""
+    try:
+        from flask import session
+        excel_data = session.get('excel_upload_data')
+        if not excel_data:
+            flash('❌ לא נמצאו נתוני Excel. אנא התחל מחדש.', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        branch_id = request.form.get('branch_id')
+        if not branch_id:
+            flash('❌ לא נבחר סניף', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        # Parse mapping from form data
+        mapping_data = {}
+        for key, value in request.form.items():
+            if key.startswith('mapping['):
+                # Extract sheet and column from key like "mapping[Sheet1][column_name]"
+                parts = key.replace('mapping[', '').replace(']', '').split('][')
+                if len(parts) == 2:
+                    sheet_name, column_name = parts
+                    if sheet_name not in mapping_data:
+                        mapping_data[sheet_name] = {}
+                    mapping_data[sheet_name][column_name] = value
+        
+        # Debug: log the mapping data
+        current_app.logger.info(f"Mapping data received: {mapping_data}")
+        
+        # Process Excel data with mapping
+        import pandas as pd
+        processed_items = []
+        
+        for sheet_name, mapping in mapping_data.items():
+            if sheet_name not in excel_data['sheets']:
+                continue
+                
+            # Read the Excel file again with proper handling
+            df = pd.read_excel(excel_data['file_path'], sheet_name=sheet_name)
+            df.columns = df.columns.astype(str).str.strip()
+            
+            # Reverse mapping for easier access
+            field_to_column = {v: k for k, v in mapping.items() if v and v != 'ignore'}
+            
+            # Debug: log the field mapping
+            current_app.logger.info(f"Field to column mapping for {sheet_name}: {field_to_column}")
+            
+            current_category = ''
+            
+            for index, row in df.iterrows():
+                item_data = {
+                    'sheet_name': sheet_name,
+                    'row_index': index,
+                    'original_data': dict(row),
+                    'mapped_fields': {}
+                }
+                
+                # Map fields according to user's mapping
+                for field, column in field_to_column.items():
+                    if column in row and pd.notna(row[column]) and str(row[column]).strip():
+                        item_data['mapped_fields'][field] = str(row[column]).strip()
+                
+                # Handle category grouping (Excel pattern where category appears once)
+                if 'category' in item_data['mapped_fields']:
+                    current_category = item_data['mapped_fields']['category']
+                elif current_category:
+                    item_data['mapped_fields']['category'] = current_category
+                
+                # Debug: log mapped fields for first few items
+                if index < 3:
+                    current_app.logger.info(f"Row {index} mapped fields: {item_data['mapped_fields']}")
+                
+                # Only include items with required fields
+                if 'name' in item_data['mapped_fields'] and 'price' in item_data['mapped_fields']:
+                    # Handle complex pricing (like "56/62")
+                    price_str = item_data['mapped_fields']['price']
+                    price_parts = str(price_str).split('/')
+                    
+                    item_data['pricing'] = {
+                        'base_price': price_parts[0].strip() if price_parts else '',
+                        'alt_price': price_parts[1].strip() if len(price_parts) > 1 else '',
+                        'has_multiple_prices': len(price_parts) > 1
+                    }
+                    
+                    # Generate unique ID for each item
+                    item_data['item_id'] = f"{sheet_name}_{index}"
+                    
+                    processed_items.append(item_data)
+                else:
+                    # Debug: log why item was skipped
+                    if index < 5:
+                        current_app.logger.info(f"Row {index} skipped - missing required fields. Has name: {'name' in item_data['mapped_fields']}, Has price: {'price' in item_data['mapped_fields']}")
+        
+        # Debug: log final count
+        current_app.logger.info(f"Total processed items: {len(processed_items)}")
+        
+        # Store processed data in session
+        session['processed_excel_items'] = {
+            'items': processed_items,
+            'branch_id': branch_id,
+            'original_data': excel_data
+        }
+        
+        # Get categories and other data for the settings interface
+        categories = MenuCategory.query.filter_by(is_active=True).all()
+        dietary_properties = DietaryProperty.query.filter_by(is_active=True).all()
+        
+        return render_template('admin/excel_dish_settings.html',
+                             items=processed_items,
+                             categories=categories, 
+                             dietary_properties=dietary_properties,
+                             branch_id=branch_id)
+        
+    except Exception as e:
+        current_app.logger.error(f"Mapping processing error: {str(e)}")
+        flash(f'❌ שגיאה בעיבוד המיפוי: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
+@admin_bp.route('/menu/excel-upload/finalize-direct', methods=['POST'])
+@login_required
+def finalize_direct_excel_import():
+    """Direct Excel import without session storage"""
+    try:
+        branch_id = request.form.get('branch_id')
+        selected_items = request.form.getlist('selected_items[]')
+        
+        if not selected_items:
+            flash('❌ לא נבחרו מנות לייבוא', 'error')
+            next_page = request.referrer
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            return redirect(next_page or url_for('admin.menu'))
+            
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for item_id in selected_items:
+            try:
+                # Get form data for this item
+                item_prefix = f'items[{item_id}]'
+                name = request.form.get(f'{item_prefix}[name]')
+                category_id = request.form.get(f'{item_prefix}[category_id]')
+                description = request.form.get(f'{item_prefix}[description]')
+                base_price = request.form.get(f'{item_prefix}[base_price]')
+                alt_price = request.form.get(f'{item_prefix}[alt_price]')
+                preparation_time = request.form.get(f'{item_prefix}[preparation_time]')
+                spice_level = request.form.get(f'{item_prefix}[spice_level]')
+                
+                if not name or not base_price:
+                    error_count += 1
+                    errors.append(f'חסרים נתונים בסיסיים עבור מנה: {name or item_id}')
+                    continue
+                
+                # Create menu item
+                menu_item = MenuItem(
+                    name_he=name,
+                    name_en='',  # Leave English name empty to avoid duplication
+                    description_he=description or '',
+                    description_en='',  # Leave English description empty  
+                    base_price=float(base_price),
+                    category_id=int(category_id) if category_id else None,
+                    is_available=True,
+                    prep_time_minutes=int(preparation_time) if preparation_time else None
+                )
+                
+                # Handle spice level
+                if spice_level:
+                    menu_item.spice_level = spice_level
+                
+                # Handle alternative price
+                if alt_price and alt_price.strip():
+                    try:
+                        menu_item.alt_price = float(alt_price)
+                    except ValueError:
+                        pass
+                
+                db.session.add(menu_item)
+                db.session.flush()  # Get ID
+                
+                # Handle dietary properties
+                dietary_properties = request.form.getlist(f'{item_prefix}[dietary_properties][]')
+                for prop_id in dietary_properties:
+                    if prop_id:
+                        menu_item.dietary_properties.append(DietaryProperty.query.get(int(prop_id)))
+                
+                success_count += 1
+                current_app.logger.info(f"Successfully imported: {name}")
+                
+            except Exception as e:
+                error_count += 1
+                errors.append(f'שגיאה בייבוא {name if "name" in locals() else item_id}: {str(e)}')
+                current_app.logger.error(f"Error importing item {item_id}: {str(e)}")
+                continue
+        
+        # Commit all changes
+        try:
+            db.session.commit()
+            current_app.logger.info(f"Successfully committed {success_count} items")
+        except Exception as e:
+            db.session.rollback()
+            flash(f'❌ שגיאה בשמירת הנתונים: {str(e)}', 'error')
+            next_page = request.referrer
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            return redirect(next_page or url_for('admin.menu'))
+        
+        # Success message
+        if success_count > 0:
+            flash(f'✅ יובאו בהצלחה {success_count} מנות!', 'success')
+        if error_count > 0:
+            flash(f'⚠️ {error_count} מנות נכשלו בייבוא', 'warning')
+            for error in errors[:5]:  # Show first 5 errors
+                flash(f'📝 {error}', 'info')
+        
+        return redirect(url_for('admin.menu'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Direct import error: {str(e)}")
+        flash(f'❌ שגיאה כללית: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
+@admin_bp.route('/menu/excel-upload/finalize', methods=['POST'])
+@login_required
+def finalize_excel_import():
+    """Finalize Excel import by saving selected dishes to database"""
+    try:
+        from flask import session
+        processed_data = session.get('processed_excel_items')
+        if not processed_data:
+            flash('❌ לא נמצאו נתונים לייבוא. אנא התחל מחדש.', 'error')
+            return redirect(url_for('admin.excel_menu_upload'))
+            
+        branch_id = request.form.get('branch_id')
+        selected_items = request.form.getlist('selected_items[]')
+        
+        if not selected_items:
+            flash('❌ לא נבחרו מנות לייבוא', 'error')
+            next_page = request.referrer
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc:
+                    next_page = None
+            return redirect(next_page or url_for('admin.menu'))
+            
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for item_id in selected_items:
+            try:
+                # Find original item data
+                original_item = None
+                for item in processed_data['items']:
+                    if item['item_id'] == item_id:
+                        original_item = item
+                        break
+                        
+                if not original_item:
+                    error_count += 1
+                    errors.append(f'לא נמצא פריט: {item_id}')
+                    continue
+                
+                # Get form data for this item
+                item_prefix = f'items[{item_id}]'
+                name = request.form.get(f'{item_prefix}[name]')
+                category_id = request.form.get(f'{item_prefix}[category_id]')
+                description = request.form.get(f'{item_prefix}[description]')
+                base_price = request.form.get(f'{item_prefix}[base_price]')
+                alt_price = request.form.get(f'{item_prefix}[alt_price]')
+                preparation_time = request.form.get(f'{item_prefix}[preparation_time]')
+                spice_level = request.form.get(f'{item_prefix}[spice_level]')
+                
+                if not name or not base_price:
+                    error_count += 1
+                    errors.append(f'שדות חובה חסרים עבור: {name or item_id}')
+                    continue
+                
+                # Create new menu item
+                menu_item = MenuItem(
+                    name_he=name,
+                    name_en=name,  # Default to Hebrew name
+                    description_he=description or '',
+                    description_en=description or '',
+                    price=float(base_price),
+                    category_id=int(category_id) if category_id else None,
+                    branch_id=int(branch_id),
+                    is_available=True,
+                    is_featured=False,
+                    preparation_time=int(preparation_time) if preparation_time else None,
+                    spice_level=spice_level,
+                    created_by=current_user.id
+                )
+                
+                # Handle alternative pricing if exists
+                if alt_price and alt_price.strip():
+                    menu_item.alt_price = float(alt_price)
+                
+                db.session.add(menu_item)
+                db.session.flush()  # Get the ID
+                
+                # Add dietary properties if selected
+                dietary_props = request.form.getlist(f'{item_prefix}[dietary_properties][]')
+                for prop_id in dietary_props:
+                    if prop_id:
+                        dietary_prop = DietaryProperty.query.get(int(prop_id))
+                        if dietary_prop:
+                            menu_item.dietary_properties.append(dietary_prop)
+                
+                # Handle image upload if provided
+                image_file = request.files.get(f'{item_prefix}[image]')
+                if image_file and image_file.filename:
+                    try:
+                        # Save image (implement based on your image handling system)
+                        filename = secure_filename(image_file.filename)
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        filename = f"menu_{timestamp}_{filename}"
+                        
+                        image_path = os.path.join('static', 'uploads', 'menu', filename)
+                        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                        image_file.save(image_path)
+                        
+                        menu_item.image_url = f'/static/uploads/menu/{filename}'
+                    except Exception as e:
+                        current_app.logger.warning(f"Image upload failed for {name}: {str(e)}")
+                
+                success_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                errors.append(f'שגיאה בייבוא {name or item_id}: {str(e)}')
+                current_app.logger.error(f"Item import error: {str(e)}")
+        
+        # Commit all changes
+        if success_count > 0:
+            db.session.commit()
+            
+            # Clean up temporary files
+            if processed_data.get('original_data', {}).get('file_path'):
+                try:
+                    os.remove(processed_data['original_data']['file_path'])
+                except:
+                    pass
+            
+            # Clear session data
+            session.pop('excel_upload_data', None)
+            session.pop('processed_excel_items', None)
+            
+        flash(f'✅ יובאו בהצלחה {success_count} מנות!', 'success')
+        
+        if error_count > 0:
+            flash(f'⚠️ {error_count} מנות נכשלו בייבוא', 'warning')
+            for error in errors[:5]:  # Show first 5 errors
+                flash(f'• {error}', 'warning')
+                
+        return redirect(url_for('admin.menu'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Excel import finalization error: {str(e)}")
+        flash(f'❌ שגיאה בסיום הייבוא: {str(e)}', 'error')
+        return redirect(url_for('admin.excel_menu_upload'))
+
+# ===== MENU PARSING FROM WORD DOCUMENTS =====
+
+@admin_bp.route('/menu/parse-word', methods=['GET', 'POST'])
+@login_required
+def parse_word_menu():
+    """Parse menu items from Word document content"""
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            branch_id = request.form.get('branch_id')
+            menu_content = request.form.get('menu_content')
+            
+            if not branch_id or not menu_content:
+                flash('נא לבחור סניף ולהדביק את תוכן התפריט', 'error')
+                return render_template('admin/parse_word_menu.html', branches=branches)
+            
+            # Import parser class
+            from menu_parser import MenuParser
+            parser = MenuParser()
+            
+            # Parse and get potential items for manual selection
+            result = parser.parse_word_menu_simple(menu_content)
+            
+            if result['potential_items']:
+                categories = MenuCategory.query.filter_by(is_active=True).all()
+                flash(f'🔍 נמצאו {result["total_found"]} פריטים אפשריים. בחר אילו לייבא:', 'info')
+                return render_template('admin/menu_selection.html', 
+                                     items=result['potential_items'],
+                                     branch_id=branch_id,
+                                     categories=categories,
+                                     result=result)
+            else:
+                flash('❌ לא נמצאו פריטים בפורמט הנכון. וודא שהמחירים מופיעים אחרי שמות המנות.', 'warning')
+                
+        except Exception as e:
+            current_app.logger.error(f"Menu parsing error: {str(e)}")
+            flash(f'❌ שגיאה בעיבוד התפריט: {str(e)}', 'error')
+    
+    categories = MenuCategory.query.filter_by(is_active=True).all()
+    return render_template('admin/parse_word_menu.html', branches=branches, categories=categories)
+
+@admin_bp.route('/menu/parse-word/process-selection', methods=['POST'])
+@login_required  
+def process_menu_selection():
+    """Process user's selected menu items"""
+    try:
+        branch_id = request.form.get('branch_id')
+        selected_items_json = request.form.get('selected_items')
+        
+        if not branch_id or not selected_items_json:
+            flash('נתונים חסרים', 'error')
+            return redirect(url_for('admin.parse_word_menu'))
+        
+        import json
+        selected_items = json.loads(selected_items_json)
+        
+        # Import parser class
+        from menu_parser import MenuParser
+        parser = MenuParser()
+        
+        # Process only selected items
+        result = parser.process_selected_items(
+            selected_items=selected_items,
+            branch_id=int(branch_id),
+            uploaded_by=current_user.id
+        )
+        
+        if result['success']:
+            flash(f'✅ הייבוא הושלם! נוספו {result["items_added"]} פריטים', 'success')
+            return redirect(url_for('admin.menu'))
+        else:
+            flash('❌ שגיאה בייבוא הפריטים', 'error')
+            return redirect(url_for('admin.parse_word_menu'))
+            
+    except Exception as e:
+        current_app.logger.error(f"Selection processing error: {str(e)}")
+        flash(f'❌ שגיאה: {str(e)}', 'error')
+        return redirect(url_for('admin.parse_word_menu'))
+
+@admin_bp.route('/menu/parse-word/demo', methods=['POST'])
+@login_required
+def parse_word_menu_demo():
+    """Parse the demo menu content provided by user"""
+    try:
+        branch_id = request.form.get('branch_id')
+        if not branch_id:
+            return jsonify({'error': 'נא לבחור סניף'}), 400
+        
+        # Demo menu content from the user's Word document
+        demo_content = """ראשונות
+
+56
+הביס היפני
+לחם חלב יפני מושחם, קרם אבוקדו, סביצ'ה דג לבן בתיבול יוזו, צילי חריף ,כוסברה ונענע
+
+62
+סלט טרופי 
+מיקס חסה, בצל סגול, פרי טרופי, שירי צבעים, אבוקדו, קרוטונים אסייתים
+
+34
+קימצ'י קוריאני 
+
+52
+סלט ויאטנמי 
+אטריות זכוכית, מלפפון, כרוב סגול, גזר, בצל ירוק,נבטים סינים​ ברוטב בוטנים ויאטנמי
+
+28
+חמוצים יפנים 
+
+56/62
+הקיסר האסייתי
+חסה ליטל ג'ם, תירס אומאמי, בצל סגול, צלפים ,קלמארי פריך / עוף צלוי
+
+38
+אדממה של סומו 
+
+58
+קריספי רייס 
+4 יח' קריספי מיני מאקי במילוי טרטר סלמון פיקנטי, שמנת, עירית.
+
+42/32
+אגרול ירקות/עוף
+2 יח' אגרול ירקות/עוף - מוגש על מצע חסה אסייתית, צילי חריף, נענע, כוסברה ומתבלים אסייתיים
+
+42/32
+נאמס ירקות/עוף 
+2 יח' ספרינג רול וויאטנמי במילוי ירקות/עוף על מצע חסה אסייתית, צ'ילי חריף, נענע, כוסברה ומתבלים אסייתיים
+
+52
+שרימפס פינגרז
+שרימפס פינגרז 4 יח' עם רוטב טרטר ולימון
+
+68
+טטאקי סינטה כבושה
+סינטה עגל בכבישה קרה, איולי כמהין ,איולי יוזו, עירית קצוצה וזסט לימון
+
+58
+קלמארי פריך
+קלמרי מטוגן בציפוי פריך, מוגש עם רוטב חמוץ מתוק ו לימון​ 
+
+58
+פופ שרימפס
+קוביות שרימפס בטמפורה עטופות באיולי יוזו, תבלין אומאמי​ ,עירית
+
+ווק
+
+60
+סמוקי
+אטריות ביצים, כרוב לבן, גזר, פטריות, באק צ'וי, אווז מעושן, בצל קריספי ברוטב טריאקי מעושן - תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12
+
+56
+פאד תאי 
+אטריות אורז, כרוב, גזר, בצל ירוק, נבטים סינים, שבבי בוטנים וכוסברה  - תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12/ ביצה 5 
+
+60
+תאילנד הירוקה 
+אטריות תרד ירוקים, קוביות אננס, זוקיני, ברוקולי, באק צ'וי ובצל ירוק ברוטב קארי ירוק וחלב קוקוס – תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12
+
+85
+ים השחור
+אטריות שחורות, שרימפס, קלמארי, צילי קוריאני, שום וגנגר,בצל ירוק ונבטים סינים
+
+62
+עוף קשיו 
+עוף בטמפורה מוקפץ עם קשיו, בצל לבן, גמבה וצ'ילי מוגש עם אורז מאודה
+
+52
+פרייד רייס
+אורז מוקפץ עם גזר, בצל לבן, כרוב, גמבה ברוטב סויה כהה בתוספת ביצת עין מעל - תוספת עוף 12/ בקר 15/ שרימפס 20/ טופו 12
+
+64
+החריפה 
+אטריות ביצים, עוף, בצל לבן ופטריות מוקפצים ברוטב קארי אדום וחלב קוקוס מוגש עם שבבי בוטנים וקריספי בצל אסייתי
+
+יקיטורי
+
+78
+יקיטורי עגל
+לוליפופ עגל מוגש עם באק צ'וי​ ואורז מעושן
+
+68
+יקיטורי סלמון
+גלייז צילי מותסס, צ'ימיצ'ורי יפני, ירקות חרוכים
+
+58
+יקיטורי עוף
+שיפודי עוף במרינדה אסייתית על הגריל, מיקס פטריות מוקפצות ברוטב חמאת בוטנים קוריאני
+
+78
+יקיטורי שרימפס
+יקיטורי שרימפס בתיבול ג'נג'ר שום, תבלינים יפנים ויוזו מוגש עם אבוקדו חרוך
+
+68
+יקטורי דג לבן
+שיפוד של דג לבן במרינדה של קפיר ליים, ג'נג'ר ושום, מוגש עם רוטב קארי ירוק וחלב קוקוס בתוספת אורז מאודה​ ​
+
+באנים
+
+36
+ביף באן  
+פרוסות עגל פלאנצ'ה, קרם אבוקדו, חסה, בצל סגול וצ'ילי חריף
+
+28
+ Infected mushrooms
+פטריות שינוגי פריכות, איולי קוג'י כמהין וסויט שימאגי
+
+36
+קריספי שרימפס באן
+קולסלואו אסייתי, בצל סגול, חסה ואיולי יוזו
+
+36
+סיי באן
+דג לבן טמפורה, איולי מעושן, סלט כרוב סגול אסייתי
+
+ארוחות ילדים
+
+50
+מוקפץ ילדים
+אטריות ביצים, עוף, טריאקי ושתיה קלה
+
+50
+באן שניצל
+באן שניצל, ציפס​ ושתיה קלה
+
+50
+הוט דוג קוריאני
+2 נקניקיות עוף קוריאני בציפוי דוריטוס/פנקו/טמפורה ושתיה קלה"""
+        
+        # Import parser class
+        from menu_parser import MenuParser
+        parser = MenuParser()
+        
+        # Parse the demo menu content
+        result = parser.parse_word_menu_simple(demo_content)
+        
+        if result['potential_items']:
+            categories = MenuCategory.query.filter_by(is_active=True).all()
+            return jsonify({
+                'success': True,
+                'message': f'🔍 נמצאו {result["total_found"]} פריטים אפשריים',
+                'items': result['potential_items'],
+                'branch_id': branch_id,
+                'categories': [{'id': c.id, 'name_he': c.name_he} for c in categories]
+            })
+        else:
+            return jsonify({'success': False, 'error': 'לא נמצאו פריטים בפורמט הנכון'}), 400
+            
+    except Exception as e:
+        current_app.logger.error(f"Demo menu parsing error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Gallery Management
+@admin_bp.route('/gallery')
+@login_required
+def gallery():
+    photos = GalleryPhoto.query.order_by(GalleryPhoto.display_order).all()
+    return render_template('admin/gallery.html', photos=photos)
+
+# Catering Gallery Management
+@admin_bp.route('/catering-gallery')
+@login_required
+def catering_gallery():
+    from models import CateringGalleryImage
+    images = CateringGalleryImage.query.order_by(CateringGalleryImage.display_order).all()
+    return render_template('admin/catering_gallery.html', images=images)
+
+@admin_bp.route('/catering-gallery/upload', methods=['POST'])
+@login_required
+def upload_catering_gallery():
+    """Upload catering gallery image"""
+    try:
+        from models import CateringGalleryImage
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        
+        # Always save as .jpg for consistency
+        base_name = filename.rsplit('.', 1)[0]
+        filename = f"catering_{timestamp}_{base_name}.jpg"
+        
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        
+        # Resize and optimize image
+        try:
+            img = Image.open(file.stream)
+            
+            # Convert RGBA to RGB if needed
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            
+            # Resize if too large
+            max_width = 1920
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Save with optimization
+            img.save(filepath, 'JPEG', quality=85, optimize=True)
+            
+        except Exception as img_error:
+            current_app.logger.error(f"Image processing error: {str(img_error)}")
+            file.seek(0)
+            file.save(filepath)
+        
+        # Create database entry
+        image = CateringGalleryImage(
+            file_path=f'/static/uploads/{filename}',
+            caption_he=request.form.get('caption_he', ''),
+            caption_en=request.form.get('caption_en', ''),
+            alt_text_he=request.form.get('alt_text_he', ''),
+            alt_text_en=request.form.get('alt_text_en', ''),
+            display_order=CateringGalleryImage.query.count()
+        )
+        db.session.add(image)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'id': image.id,
+            'file_path': image.file_path
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Catering gallery upload error: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/catering-gallery/<int:image_id>/delete', methods=['POST'])
+@login_required
+def delete_catering_gallery_image(image_id):
+    """Delete catering gallery image"""
+    try:
+        from models import CateringGalleryImage
+        image = CateringGalleryImage.query.get_or_404(image_id)
+        
+        # Delete file
+        if image.file_path:
+            file_path = image.file_path.lstrip('/')
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        
+        db.session.delete(image)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/catering-gallery/<int:image_id>/update', methods=['POST'])
+@login_required
+def update_catering_gallery_image(image_id):
+    """Update catering gallery image details"""
+    try:
+        from models import CateringGalleryImage
+        image = CateringGalleryImage.query.get_or_404(image_id)
+        
+        image.caption_he = request.form.get('caption_he', '')
+        image.caption_en = request.form.get('caption_en', '')
+        image.alt_text_he = request.form.get('alt_text_he', '')
+        image.alt_text_en = request.form.get('alt_text_en', '')
+        image.is_active = request.form.get('is_active') == 'true'
+        
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/gallery/upload-single', methods=['POST'])
+@login_required
+def upload_single_gallery():
+    """Upload ONE image at a time with automatic resizing for performance"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        
+        # Always save as .jpg for consistency and smaller size
+        base_name = filename.rsplit('.', 1)[0]
+        filename = f"gallery_{timestamp}_{base_name}.jpg"
+        
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        
+        # Resize and optimize image for web
+        try:
+            img = Image.open(file.stream)
+            
+            # Convert RGBA to RGB if needed (for PNG with transparency)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+            
+            # Resize if too large - max 1920px width for web
+            max_width = 1920
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Save with optimization - 85% quality is great for web
+            img.save(filepath, 'JPEG', quality=85, optimize=True)
+            
+        except Exception as img_error:
+            current_app.logger.error(f"Image processing error: {str(img_error)}")
+            # Fall back to saving original file if processing fails
+            file.seek(0)
+            file.save(filepath)
+        
+        # Create database entry
+        photo = GalleryPhoto(
+            file_path=f'/static/uploads/{filename}',
+            caption_he=request.form.get('caption_he', ''),
+            caption_en=request.form.get('caption_en', ''),
+            display_order=GalleryPhoto.query.count()
+        )
+        db.session.add(photo)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'file_path': photo.file_path,
+            'filename': file.filename
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Single file upload error: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+# Checklist Management
+@admin_bp.route('/checklist')
+@login_required
+def checklist():
+    return render_template('admin/checklist_tasks.html')
+
+# Menu Wizard Management
+@admin_bp.route('/menu-wizard')
+@login_required
+def menu_wizard():
+    try:
+        # Preload branches data
+        branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+        branches_data = [
+            {
+                'id': branch.id,
+                'name_he': branch.name_he,
+                'name_en': branch.name_en,
+                'address_he': branch.address_he
+            } for branch in branches
+        ]
+        
+        # Preload categories with items
+        categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+        categories_data = []
+        
+        for category in categories:
+            items = MenuItem.query.filter_by(
+                category_id=category.id,
+                is_available=True
+            ).order_by(MenuItem.display_order).all()
+            
+            category_data = {
+                'id': category.id,
+                'name_he': category.name_he,
+                'name_en': category.name_en,
+                'icon': category.icon,
+                'color': category.color,
+                'items': []
+            }
+            
+            for item in items:
+                item_data = {
+                    'id': item.id,
+                    'name_he': item.name_he,
+                    'name_en': item.name_en,
+                    'description_he': item.description_he,
+                    'description_en': item.description_en,
+                    'base_price': float(item.base_price) if item.base_price else 0,
+                    'dietary_properties': [
+                        {
+                            'name_he': prop.name_he,
+                            'name_en': prop.name_en,
+                            'icon': prop.icon,
+                            'color': prop.color
+                        } for prop in item.dietary_properties if prop.is_active
+                    ]
+                }
+                category_data['items'].append(item_data)
+            
+            categories_data.append(category_data)
+        
+        # Preload templates
+        templates = MenuTemplate.query.order_by(MenuTemplate.created_at.desc()).all()
+        templates_data = []
+        
+        for template in templates:
+            template_data = {
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'branch_name': template.branch.name_he if template.branch else 'כללי',
+                'is_default': template.is_default,
+                'created_at': template.created_at.strftime('%Y-%m-%d'),
+                'categories_count': len(template.categories_config) if template.categories_config else 0,
+                'items_count': len(template.items_config) if template.items_config else 0
+            }
+            templates_data.append(template_data)
+        
+        return render_template('admin/menu_wizard.html', 
+                             branches=branches_data,
+                             categories=categories_data,
+                             templates=templates_data)
+                             
+    except Exception as e:
+        print(f"Error loading menu wizard data: {str(e)}")
+        return render_template('admin/menu_wizard.html', 
+                             branches=[],
+                             categories=[],
+                             templates=[])
+
+# Menu Wizard API Routes
+@admin_bp.route('/api/menu-wizard/categories')
+@login_required
+def api_menu_wizard_categories():
+    """Get all active categories with their menu items"""
+    try:
+        categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+        result = []
+        
+        for category in categories:
+            category_data = {
+                'id': category.id,
+                'name_he': category.name_he,
+                'name_en': category.name_en,
+                'description_he': category.description_he,
+                'icon': category.icon,
+                'color': category.color,
+                'items_count': len([item for item in category.menu_items if item.is_available]),
+                'items': []
+            }
+            
+            # Add available menu items
+            for item in category.menu_items:
+                if item.is_available:
+                    item_data = {
+                        'id': item.id,
+                        'name_he': item.name_he,
+                        'description_he': item.description_he,
+                        'base_price': float(item.base_price) if item.base_price else 0,
+                        'spice_level': item.spice_level,
+                        'prep_time_minutes': item.prep_time_minutes,
+                        'dietary_properties': [
+                            {
+                                'name_he': prop.name_he,
+                                'icon': prop.icon,
+                                'color': prop.color
+                            } for prop in item.dietary_properties if prop.is_active
+                        ]
+                    }
+                    category_data['items'].append(item_data)
+            
+            result.append(category_data)
+        
+        return jsonify({'success': True, 'categories': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/branches')
+@login_required
+def api_menu_wizard_branches():
+    """Get all active branches"""
+    try:
+        branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+        result = [
+            {
+                'id': branch.id,
+                'name_he': branch.name_he,
+                'name_en': branch.name_en,
+                'address_he': branch.address_he
+            } for branch in branches
+        ]
+        return jsonify({'success': True, 'branches': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/templates')
+@login_required
+def api_menu_wizard_templates():
+    """Get all menu templates"""
+    try:
+        templates = MenuTemplate.query.order_by(MenuTemplate.created_at.desc()).all()
+        result = []
+        
+        for template in templates:
+            template_data = {
+                'id': template.id,
+                'name': template.name,
+                'description': template.description,
+                'branch_name': template.branch.name_he if template.branch else 'כללי',
+                'is_default': template.is_default,
+                'created_at': template.created_at.strftime('%Y-%m-%d'),
+                'categories_count': len(template.categories_config) if template.categories_config else 0,
+                'items_count': len(template.items_config) if template.items_config else 0
+            }
+            result.append(template_data)
+        
+        return jsonify({'success': True, 'templates': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/create-menu', methods=['POST'])
+@login_required
+def api_create_menu():
+    """Create a new menu from wizard"""
+    try:
+        data = request.get_json()
+        
+        # Extract data
+        menu_name = data.get('name', 'תפריט חדש')
+        branch_id = data.get('branch_id')
+        selected_categories = data.get('categories', [])
+        selected_items = data.get('items', [])
+        layout_config = data.get('layout', {})
+        print_config = data.get('print_settings', {})
+        style_config = data.get('style_settings', {})
+        page_config = data.get('page_settings', {})
+        save_as_template = data.get('save_as_template', False)
+        template_name = data.get('template_name', '')
+        
+        # Validate required fields
+        if not branch_id:
+            return jsonify({'success': False, 'error': 'חובה לבחור סניף'}), 400
+            
+        if not selected_items:
+            return jsonify({'success': False, 'error': 'חובה לבחור לפחות מנה אחת'}), 400
+        
+        # Build menu content
+        menu_content = {
+            'name': menu_name,
+            'branch_id': branch_id,
+            'categories': selected_categories,
+            'items': selected_items,
+            'layout': layout_config,
+            'generated_at': datetime.utcnow().isoformat()
+        }
+        
+        # Create GeneratedMenu
+        generated_menu = GeneratedMenu(
+            name=menu_name,
+            branch_id=branch_id,
+            date_created=datetime.utcnow().date(),
+            created_by=current_user.id if hasattr(current_user, 'id') else None,
+            menu_content=menu_content,
+            print_settings=print_config,
+            style_settings=style_config,
+            page_settings=page_config
+        )
+        
+        db.session.add(generated_menu)
+        
+        # Save as template if requested
+        template_id = None
+        if save_as_template and template_name:
+            menu_template = MenuTemplate(
+                name=template_name,
+                description=f'תבנית נוצרה מ-{menu_name}',
+                branch_id=branch_id,
+                created_by=current_user.id if hasattr(current_user, 'id') else None,
+                categories_config=selected_categories,
+                items_config=selected_items,
+                layout_config=layout_config,
+                print_config=print_config,
+                style_config=style_config,
+                page_config=page_config
+            )
+            db.session.add(menu_template)
+            db.session.flush()  # Get the ID
+            template_id = menu_template.id
+            generated_menu.template_id = template_id
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'menu_id': generated_menu.id,
+            'template_id': template_id,
+            'message': 'התפריט נוצר בהצלחה!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/save-template', methods=['POST'])
+@login_required
+def api_save_menu_template():
+    """Save menu configuration as template"""
+    try:
+        data = request.get_json()
+        
+        template_name = data.get('name')
+        description = data.get('description', '')
+        branch_id = data.get('branch_id')
+        categories_config = data.get('categories', [])
+        items_config = data.get('items', [])
+        layout_config = data.get('layout', {})
+        print_config = data.get('print_settings', {})
+        style_config = data.get('style_settings', {})
+        page_config = data.get('page_settings', {})
+        
+        if not template_name:
+            return jsonify({'success': False, 'error': 'חובה להזין שם לתבנית'}), 400
+            
+        # Check if template name already exists
+        existing = MenuTemplate.query.filter_by(name=template_name).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'תבנית עם השם הזה כבר קיימת'}), 400
+        
+        menu_template = MenuTemplate(
+            name=template_name,
+            description=description,
+            branch_id=branch_id,
+            created_by=current_user.id if hasattr(current_user, 'id') else None,
+            categories_config=categories_config,
+            items_config=items_config,
+            layout_config=layout_config,
+            print_config=print_config,
+            style_config=style_config,
+            page_config=page_config
+        )
+        
+        db.session.add(menu_template)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'template_id': menu_template.id,
+            'message': 'התבנית נשמרה בהצלחה!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/template/<int:template_id>')
+@login_required
+def api_get_menu_template(template_id):
+    """Get specific template configuration"""
+    try:
+        template = MenuTemplate.query.get_or_404(template_id)
+        
+        result = {
+            'id': template.id,
+            'name': template.name,
+            'description': template.description,
+            'branch_id': template.branch_id,
+            'categories_config': template.categories_config or [],
+            'items_config': template.items_config or [],
+            'layout_config': template.layout_config or {},
+            'print_config': template.print_config or {},
+            'style_config': template.style_config or {},
+            'page_settings': template.page_config or {},
+            'created_at': template.created_at.isoformat() if template.created_at else None
+        }
+        
+        return jsonify({'success': True, 'template': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/template/<int:template_id>', methods=['DELETE'])
+@login_required
+def api_delete_menu_template(template_id):
+    """Delete menu template"""
+    try:
+        template = MenuTemplate.query.get_or_404(template_id)
+        
+        # Don't allow deletion of default templates
+        if template.is_default:
+            return jsonify({'success': False, 'error': 'לא ניתן למחוק תבנית ברירת מחדל'}), 400
+        
+        db.session.delete(template)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'התבנית נמחקה בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/print-preview/<int:menu_id>')
+@login_required
+def api_menu_print_preview(menu_id):
+    """Generate print preview for menu"""
+    try:
+        generated_menu = GeneratedMenu.query.get_or_404(menu_id)
+        menu_content = generated_menu.menu_content
+        
+        # Get actual data for selected items with dietary properties
+        selected_items = []
+        if menu_content.get('items'):
+            items_query = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter(MenuItem.id.in_(menu_content['items']))
+            selected_items = items_query.all()
+        
+        # Get branch info
+        branch = Branch.query.get(generated_menu.branch_id)
+        
+        # Group items by category
+        categories_with_items = {}
+        for item in selected_items:
+            category = item.category
+            if category and category.id in menu_content.get('categories', []):
+                if category.id not in categories_with_items:
+                    categories_with_items[category.id] = {
+                        'category': category,
+                        'items': []
+                    }
+                categories_with_items[category.id]['items'].append(item)
+        
+        # Generate print HTML
+        print_html = generate_menu_print_html(
+            menu_name=generated_menu.name,
+            branch=branch,
+            categories_with_items=categories_with_items,
+            print_settings=generated_menu.print_settings or {},
+            layout_settings=menu_content.get('layout', {}),
+            style_settings=generated_menu.style_settings or {},
+            page_settings=generated_menu.page_settings or {},
+            menu_description=generated_menu.description
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': print_html,
+            'menu_name': generated_menu.name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/saved-menus')
+@login_required
+def api_saved_menus():
+    """Get all saved generated menus"""
+    try:
+        menus = GeneratedMenu.query.order_by(GeneratedMenu.date_created.desc()).all()
+        result = []
+        
+        for menu in menus:
+            menu_data = {
+                'id': menu.id,
+                'name': menu.name,
+                'branch_name': menu.branch.name_he if menu.branch else 'לא צוין',
+                'date_created': menu.date_created.strftime('%Y-%m-%d'),
+                'items_count': len(menu.menu_content.get('items', [])) if menu.menu_content else 0,
+                'categories_count': len(menu.menu_content.get('categories', [])) if menu.menu_content else 0,
+                'has_print_settings': bool(menu.print_settings),
+                'has_style_settings': bool(menu.style_settings),
+                'has_page_settings': bool(menu.page_settings)
+            }
+            result.append(menu_data)
+        
+        return jsonify({'success': True, 'menus': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/saved-menu/<int:menu_id>')
+@login_required
+def api_get_saved_menu(menu_id):
+    """Get a saved menu by ID"""
+    try:
+        menu = GeneratedMenu.query.get_or_404(menu_id)
+        
+        menu_data = {
+            'id': menu.id,
+            'name': menu.name,
+            'branch_id': menu.branch_id,
+            'branch_name': menu.branch.name_he if menu.branch else 'לא צוין',
+            'date_created': menu.date_created.strftime('%Y-%m-%d'),
+            'menu_content': menu.menu_content,
+            'print_settings': menu.print_settings,
+            'style_settings': menu.style_settings,
+            'page_settings': menu.page_settings
+        }
+        
+        return jsonify({'success': True, 'menu': menu_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/delete-menu/<int:menu_id>', methods=['DELETE'])
+@login_required 
+def api_delete_saved_menu(menu_id):
+    """Delete a saved menu"""
+    try:
+        menu = GeneratedMenu.query.get_or_404(menu_id)
+        db.session.delete(menu)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'התפריט נמחק בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/menu-wizard/simple-print/<int:menu_id>', methods=['GET', 'POST'])
+@login_required
+def api_menu_simple_print(menu_id):
+    """Generate simple table-based print HTML for menu"""
+    try:
+        generated_menu = GeneratedMenu.query.get_or_404(menu_id)
+        menu_content = generated_menu.menu_content
+        
+        # Get current settings from request (for live preview) or use saved settings
+        request_data = request.get_json() if request.method == 'POST' else {}
+        
+        # DEBUG: Check what's in the database
+        import logging
+        logging.debug(f"=== SETTINGS DEBUG for menu {menu_id} ===")
+        logging.debug(f"Request data: {request_data}")
+        logging.debug(f"Database page_settings: {generated_menu.page_settings}")
+        
+        current_print_settings = request_data.get('print_settings', generated_menu.print_settings or {})
+        current_style_settings = request_data.get('style_settings', generated_menu.style_settings or {})
+        current_page_settings = request_data.get('page_settings', generated_menu.page_settings or {})
+        
+        logging.debug(f"Final current_page_settings: {current_page_settings}")
+        
+        # Settings ready for print generation
+        
+        # Get actual data for selected items with dietary properties
+        selected_items = []
+        if menu_content.get('items'):
+            items_query = MenuItem.query.options(joinedload(MenuItem.dietary_properties)).filter(MenuItem.id.in_(menu_content['items']))
+            selected_items = items_query.all()
+        
+        # Get branch info
+        branch = Branch.query.get(generated_menu.branch_id)
+        
+        # Group items by category
+        categories_with_items = {}
+        for item in selected_items:
+            category = item.category
+            if category:
+                if category.id not in categories_with_items:
+                    categories_with_items[category.id] = {
+                        'category': category,
+                        'items': []
+                    }
+                categories_with_items[category.id]['items'].append(item)
+        
+        # Create ordered list of categories based on page_settings if available
+        # This prevents duplicates and respects the user's exact page configuration
+        ordered_categories = []
+        if current_page_settings.get('pageGroups'):
+            # Extract unique categories from page groups in order
+            seen_categories = set()
+            for group in current_page_settings['pageGroups']:
+                for category_id in group.get('categories', []):
+                    if category_id not in seen_categories and category_id in categories_with_items:
+                        ordered_categories.append((category_id, categories_with_items[category_id]))
+                        seen_categories.add(category_id)
+        else:
+            # Fallback to menu_content order, but remove duplicates
+            seen_categories = set()
+            for category_id in menu_content.get('categories', []):
+                if category_id not in seen_categories and category_id in categories_with_items:
+                    ordered_categories.append((category_id, categories_with_items[category_id]))
+                    seen_categories.add(category_id)
+        
+        # Generate simple print HTML with current settings (from request or saved)
+        print_html = generate_simple_menu_print_html(
+            menu_name=generated_menu.name,
+            branch=branch,
+            categories_with_items=ordered_categories,
+            print_settings=current_print_settings,
+            style_settings=current_style_settings,
+            page_settings=current_page_settings,
+            menu_description=generated_menu.description
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': print_html,
+            'menu_name': generated_menu.name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def generate_simple_menu_print_html(menu_name, branch, categories_with_items, print_settings=None, style_settings=None, page_settings=None, menu_description=None):
+    """Generate 2-column print HTML with configurable page breaks"""
+    
+    # Default settings
+    print_settings = print_settings or {}
+    style_settings = style_settings or {}
+    page_settings = page_settings or {}
+    
+    # Extract print settings
+    show_prices = print_settings.get('show_prices', True)
+    show_descriptions = print_settings.get('show_descriptions', True)
+    show_category_icons = print_settings.get('show_category_icons', True)
+    show_date = print_settings.get('show_date', True)
+    show_branch_info = print_settings.get('show_branch_info', True)
+    show_menu_title = print_settings.get('show_menu_title', True)
+    
+    # Extract page settings
+    page_groups = page_settings.get('pageGroups', [])
+    page_break_categories = page_settings.get('pageBreakCategories', [])
+    
+    # Advanced style settings
+    primary_color = style_settings.get('primaryColor', '#2c3e50')
+    secondary_color = style_settings.get('secondaryColor', '#e74c3c')
+    primary_font = style_settings.get('primaryFont', 'Heebo')
+    base_font_size = style_settings.get('baseFontSize', 'medium')
+    icon_style = style_settings.get('iconStyle', 'solid')
+    
+    from datetime import datetime
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    
+    # Helper function to format a menu item
+    def format_menu_item(item, show_prices, show_descriptions):
+        item_html = '<div class="menu-item">'
+        
+        # Item header with name and price
+        item_html += '<div class="item-header">'
+        item_html += f'<span class="item-name">{item.name_he}</span>'
+        
+        if show_prices and item.base_price:
+            try:
+                price_value = int(float(item.base_price))
+                item_html += f'<span class="item-price">₪ {price_value}</span>'
+            except (ValueError, TypeError):
+                pass
+        
+        item_html += '</div>'
+        
+        # Item description
+        if show_descriptions and item.description_he:
+            item_html += f'<div class="item-description">{item.description_he}</div>'
+        
+        # Dietary properties icons
+        if item.dietary_properties:
+            item_html += '<div class="dietary-icons">'
+            for prop in item.dietary_properties:
+                if prop.is_active:
+                    icon_color = prop.color or '#666'
+                    # Normalize icon name - add 'fa-' prefix if not present
+                    icon_name = prop.icon if prop.icon and prop.icon.startswith('fa-') else f'fa-{prop.icon}'
+                    item_html += f'<span class="dietary-icon" style="color: {icon_color};" title="{prop.name_he}">'
+                    item_html += f'<i class="fas {icon_name}"></i>'
+                    item_html += '</span>'
+            item_html += '</div>'
+        
+        item_html += '</div>'
+        return item_html
+    
+    # Create HTML with 2-column table layout and separate pages per category
+    html = f'''
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <title>{menu_name}</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap');
+            
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            
+            body {{
+                font-family: 'Heebo', Arial, sans-serif;
+                font-size: 12pt;
+                line-height: 1.4;
+                color: {primary_color};
+                direction: rtl;
+                text-align: right;
+            }}
+            
+            @page {{
+                size: A4;
+                margin: 15mm 15mm 15mm 15mm;
+            }}
+            
+            .page-break {{
+                page-break-before: always;
+                break-before: page;
+            }}
+            
+            .menu-header {{
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 3px solid {secondary_color};
+                padding-bottom: 15px;
+            }}
+            
+            .menu-title {{
+                font-size: 24pt;
+                font-weight: 700;
+                color: {primary_color};
+                margin-bottom: 8px;
+            }}
+            
+            .branch-info {{
+                font-size: 14pt;
+                color: {primary_color};
+                margin-bottom: 5px;
+            }}
+            
+            .print-date {{
+                font-size: 11pt;
+                color: #666;
+            }}
+            
+            .page-group-container {{
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-after: avoid;
+                break-after: avoid;
+            }}
+            
+            .category-title {{
+                font-size: 18pt;
+                font-weight: 600;
+                color: {secondary_color};
+                text-align: center;
+                margin: 20px 0 15px 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid {secondary_color};
+                page-break-after: avoid;
+                break-after: avoid;
+            }}
+            
+            .two-column-table {{
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                margin-bottom: 15px;
+            }}
+            
+            .two-column-table td {{
+                width: 50%;
+                vertical-align: top;
+                padding: 0 10px;
+                border: none;
+            }}
+            
+            .menu-item {{
+                margin-bottom: 8px;
+                padding: 3px 0;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }}
+            
+            .item-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 2px;
+            }}
+            
+            .item-name {{
+                font-size: 13pt;
+                font-weight: 500;
+                color: {primary_color};
+                flex: 1;
+                margin-left: 5px;
+            }}
+            
+            .item-price {{
+                font-size: 13pt;
+                font-weight: 600;
+                color: {secondary_color};
+                white-space: nowrap;
+            }}
+            
+            .item-description {{
+                font-size: 10pt;
+                color: #666;
+                margin-top: 2px;
+                font-style: italic;
+            }}
+            
+            .dietary-icons {{
+                display: flex;
+                gap: 6px;
+                margin-top: 4px;
+                align-items: center;
+            }}
+            
+            .dietary-icon {{
+                font-size: 11pt;
+                display: inline-flex;
+                align-items: center;
+            }}
+            
+            .dietary-icon i {{
+                margin: 0;
+            }}
+            
+            /* Menu description section */
+            .menu-description-section {{
+                margin-top: 30px;
+                padding: 15px 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                text-align: center;
+            }}
+            
+            .menu-description {{
+                font-size: 11pt;
+                color: #666;
+                font-style: italic;
+                margin: 0;
+                line-height: 1.6;
+            }}
+            
+            /* Icon legend section */
+            .icon-legend {{
+                margin-top: 25px;
+                padding: 15px 20px;
+                border-top: 2px solid {secondary_color};
+                page-break-inside: avoid;
+            }}
+            
+            .legend-title {{
+                font-size: 14pt;
+                font-weight: 600;
+                color: {primary_color};
+                margin-bottom: 12px;
+                text-align: center;
+            }}
+            
+            .legend-items {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 8px;
+            }}
+            
+            .legend-item {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 10pt;
+                color: #666;
+            }}
+            
+            .legend-item i {{
+                font-size: 12pt;
+                width: 20px;
+                text-align: center;
+            }}
+            
+            /* Print optimizations */
+            @media print {{
+                .page-break {{
+                    page-break-before: always !important;
+                    break-before: page !important;
+                }}
+                
+                .page-group-container {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }}
+                
+                .two-column-table {{
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                }}
+                
+                .two-column-table td {{
+                    width: 50% !important;
+                    padding: 0 8px !important;
+                }}
+                
+                .menu-item {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }}
+                
+                .category-title {{
+                    page-break-after: avoid !important;
+                    break-after: avoid !important;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <!-- Header -->
+        <div class="menu-header">
+    '''
+    
+    # Only show title if setting is enabled
+    if show_menu_title:
+        html += f'<h1 class="menu-title">{menu_name}</h1>'
+    
+    if show_branch_info and branch:
+        html += f'<div class="branch-info">{branch.name_he}</div>'
+    
+    if show_date:
+        html += f'<div class="print-date">תאריך: {current_date}</div>'
+    
+    html += '</div>'
+    
+    # Create a mapping of category_id to category data for quick lookup
+    category_data_map = {category_id: data for category_id, data in categories_with_items}
+    
+    # DEBUG: Log what we received
+    import logging
+    logging.debug(f"=== PRINT DEBUG ===")
+    logging.debug(f"Page groups: {page_groups}")
+    logging.debug(f"Categories with items (order): {[cat_id for cat_id, _ in categories_with_items]}")
+    logging.debug(f"Category data map keys: {list(category_data_map.keys())}")
+    
+    # If we have page groups, use them to organize the layout
+    if page_groups and len(page_groups) > 0:
+        # Process each page group - EACH GROUP GETS ITS OWN PAGE
+        for group_index, group in enumerate(page_groups):
+            group_categories = group.get('categories', [])
+            
+            # Add page break before each new page group (except the first)
+            if group_index > 0:
+                html += '<div class="page-break"></div>'
+            
+            # Wrap the entire page group in a container to keep it together
+            html += '<div class="page-group-container">'
+            
+            # Process each category in this page group
+            for cat_index, category_id in enumerate(group_categories):
+                if category_id in category_data_map:
+                    data = category_data_map[category_id]
+                    category = data['category']
+                    items = data['items']
+                    
+                    # Add category title
+                    html += f'<h2 class="category-title">{category.name_he}</h2>'
+                    
+                    # Create 2-column table for items
+                    if items:
+                        # Split items into 2 columns
+                        mid_point = (len(items) + 1) // 2
+                        left_column = items[:mid_point]
+                        right_column = items[mid_point:]
+                        
+                        html += '<table class="two-column-table"><tr>'
+                        
+                        # Left column
+                        html += '<td>'
+                        for item in left_column:
+                            html += format_menu_item(item, show_prices, show_descriptions)
+                        html += '</td>'
+                        
+                        # Right column  
+                        html += '<td>'
+                        for item in right_column:
+                            html += format_menu_item(item, show_prices, show_descriptions)
+                        html += '</td>'
+                        
+                        html += '</tr></table>'
+            
+            # Close page group container
+            html += '</div>'
+    else:
+        # Fallback to old logic if no page groups defined
+        for category_index, (category_id, data) in enumerate(categories_with_items):
+            category = data['category']
+            items = data['items']
+            
+            # Add page break only if this category is in the page break list
+            should_break = category_id in page_break_categories
+            
+            if should_break and category_index > 0:
+                html += '<div class="page-break"></div>'
+            
+            # Add category title
+            html += f'<h2 class="category-title">{category.name_he}</h2>'
+            
+            # Create 2-column table for items
+            if items:
+                # Split items into 2 columns
+                mid_point = (len(items) + 1) // 2
+                left_column = items[:mid_point]
+                right_column = items[mid_point:]
+                
+                html += '<table class="two-column-table"><tr>'
+                
+                # Left column
+                html += '<td>'
+                for item in left_column:
+                    html += format_menu_item(item, show_prices, show_descriptions)
+                html += '</td>'
+                
+                # Right column  
+                html += '<td>'
+                for item in right_column:
+                    html += format_menu_item(item, show_prices, show_descriptions)
+                html += '</td>'
+                
+                html += '</tr></table>'
+    
+    # Collect all active dietary properties from all items
+    all_properties = set()
+    for category_id, data in categories_with_items:
+        for item in data['items']:
+            if item.dietary_properties:
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        all_properties.add((prop.id, prop.name_he, prop.icon, prop.color, prop.description_he))
+    
+    # Add menu description if provided
+    if menu_description and menu_description.strip():
+        html += f'''
+    <div class="menu-description-section">
+        <p class="menu-description">{menu_description}</p>
+    </div>
+        '''
+    
+    # Add icon legend if there are any dietary properties
+    if all_properties:
+        html += '''
+    <div class="icon-legend">
+        <h3 class="legend-title">מקרא סימונים:</h3>
+        <div class="legend-items">
+        '''
+        # Sort properties by name
+        sorted_properties = sorted(all_properties, key=lambda x: x[1])
+        for prop_id, name_he, icon, color, description_he in sorted_properties:
+            # Normalize icon name
+            icon_name = icon if icon and icon.startswith('fa-') else f'fa-{icon}'
+            icon_color = color or '#666'
+            prop_desc = f' - {description_he}' if description_he else ''
+            html += f'''
+            <div class="legend-item">
+                <i class="fas {icon_name}" style="color: {icon_color};"></i>
+                <span>{name_he}{prop_desc}</span>
+            </div>
+            '''
+        html += '''
+        </div>
+    </div>
+        '''
+    
+    html += '''
+    </body>
+    </html>
+    '''
+    
+    return html
+def generate_menu_print_html(menu_name, branch, categories_with_items, print_settings, layout_settings, style_settings=None, page_settings=None, menu_description=None):
+    """Generate simple 2-column table-based print HTML with proper page breaks"""
+    
+    # Default settings
+    style_settings = style_settings or {}
+    page_settings = page_settings or {}
+    
+    # Layout settings
+    show_prices = layout_settings.get('show_prices', True)
+    show_descriptions = layout_settings.get('show_descriptions', True)
+    
+    # Print settings
+    paper_size = print_settings.get('paper_size', 'A4')
+    show_branch_info = print_settings.get('show_branch_info', True)
+    show_date = print_settings.get('show_date', True)
+    
+    # Style settings
+    primary_color = style_settings.get('primaryColor', '#1B2951')
+    secondary_color = style_settings.get('secondaryColor', '#C75450')
+    
+    # Page settings
+    page_break_categories = page_settings.get('pageBreakCategories', [])
+    
+    from datetime import datetime
+    current_date = datetime.now().strftime('%d/%m/%Y')
+    
+    # Create HTML with proper 2-column table layout and page breaks
+    html = f'''
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <title>{menu_name}</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&display=swap');
+            
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            
+            body {{
+                font-family: 'Heebo', Arial, sans-serif;
+                font-size: 12pt;
+                line-height: 1.4;
+                color: {primary_color};
+                direction: rtl;
+                text-align: right;
+            }}
+            
+            @page {{
+                size: {paper_size};
+                margin: 15mm 0mm 15mm 15mm;
+            }}
+            
+            .page-break {{
+                page-break-before: always;
+                break-before: page;
+            }}
+            
+            .menu-header {{
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 3px solid {secondary_color};
+                padding-bottom: 15px;
+            }}
+            
+            .menu-title {{
+                font-size: 24pt;
+                font-weight: 700;
+                color: {primary_color};
+                margin-bottom: 8px;
+            }}
+            
+            .branch-info {{
+                font-size: 14pt;
+                color: {primary_color};
+                margin-bottom: 5px;
+            }}
+            
+            .print-date {{
+                font-size: 11pt;
+                color: #666;
+            }}
+            
+            .page-group-container {{
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-after: avoid;
+                break-after: avoid;
+            }}
+            
+            .category-title {{
+                font-size: 18pt;
+                font-weight: 600;
+                color: {secondary_color};
+                text-align: center;
+                margin: 20px 0 15px 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid {secondary_color};
+                page-break-after: avoid;
+                break-after: avoid;
+            }}
+            
+            .two-column-table {{
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                margin-bottom: 15px;
+            }}
+            
+            .two-column-table td {{
+                width: 50%;
+                vertical-align: top;
+                padding: 0 10px;
+                border: none;
+            }}
+            
+            .menu-item {{
+                margin-bottom: 8px;
+                padding: 3px 0;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }}
+            
+            .item-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 2px;
+            }}
+            
+            .item-name {{
+                font-size: 13pt;
+                font-weight: 500;
+                color: {primary_color};
+                flex: 1;
+                margin-left: 5px;
+            }}
+            
+            .item-price {{
+                font-size: 13pt;
+                font-weight: 600;
+                color: {secondary_color};
+                white-space: nowrap;
+            }}
+            
+            .item-description {{
+                font-size: 10pt;
+                color: #666;
+                margin-top: 2px;
+                font-style: italic;
+            }}
+            
+            .dietary-icons {{
+                display: flex;
+                gap: 6px;
+                margin-top: 4px;
+                align-items: center;
+            }}
+            
+            .dietary-icon {{
+                font-size: 11pt;
+                display: inline-flex;
+                align-items: center;
+            }}
+            
+            .dietary-icon i {{
+                margin: 0;
+            }}
+            
+            /* Menu description section */
+            .menu-description-section {{
+                margin-top: 30px;
+                padding: 15px 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                text-align: center;
+            }}
+            
+            .menu-description {{
+                font-size: 11pt;
+                color: #666;
+                font-style: italic;
+                margin: 0;
+                line-height: 1.6;
+            }}
+            
+            /* Icon legend section */
+            .icon-legend {{
+                margin-top: 25px;
+                padding: 15px 20px;
+                border-top: 2px solid {secondary_color};
+                page-break-inside: avoid;
+            }}
+            
+            .legend-title {{
+                font-size: 14pt;
+                font-weight: 600;
+                color: {primary_color};
+                margin-bottom: 12px;
+                text-align: center;
+            }}
+            
+            .legend-items {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 8px;
+            }}
+            
+            .legend-item {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 10pt;
+                color: #666;
+            }}
+            
+            .legend-item i {{
+                font-size: 12pt;
+                width: 20px;
+                text-align: center;
+            }}
+            
+            /* Print optimizations */
+            @media print {{
+                .page-break {{
+                    page-break-before: always !important;
+                    break-before: page !important;
+                }}
+                
+                .page-group-container {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }}
+                
+                .two-column-table {{
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                }}
+                
+                .two-column-table td {{
+                    width: 50% !important;
+                    padding: 0 8px !important;
+                }}
+                
+                .menu-item {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }}
+                
+                .category-title {{
+                    page-break-after: avoid !important;
+                    break-after: avoid !important;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <!-- Header -->
+        <div class="menu-header">
+            <h1 class="menu-title">{menu_name}</h1>
+    '''
+    
+    if show_branch_info and branch:
+        html += f'<div class="branch-info">{branch.name_he}</div>'
+    
+    if show_date:
+        html += f'<div class="print-date">תאריך: {current_date}</div>'
+    
+    html += '</div>'
+    
+    # Process categories
+    for category_index, (category_id, data) in enumerate(categories_with_items.items()):
+        category = data['category']
+        items = data['items']
+        
+        # Add page break for specified categories
+        if int(category_id) in page_break_categories and category_index > 0:
+            html += '<div class="page-break"></div>'
+        
+        # Add category title
+        html += f'<h2 class="category-title">{category.name_he}</h2>'
+        
+        # Create 2-column table for items
+        if items:
+            # Split items into 2 columns
+            mid_point = (len(items) + 1) // 2
+            left_column = items[:mid_point]
+            right_column = items[mid_point:]
+            
+            html += '<table class="two-column-table"><tr>'
+            
+            # Left column
+            html += '<td>'
+            for item in left_column:
+                html += format_menu_item(item, show_prices, show_descriptions, primary_color, secondary_color)
+            html += '</td>'
+            
+            # Right column
+            html += '<td>'
+            for item in right_column:
+                html += format_menu_item(item, show_prices, show_descriptions, primary_color, secondary_color)
+            html += '</td>'
+            
+            html += '</tr></table>'
+    
+    # Collect all active dietary properties from all items
+    all_properties = set()
+    for category_id, data in categories_with_items.items():
+        for item in data['items']:
+            if hasattr(item, 'dietary_properties') and item.dietary_properties:
+                for prop in item.dietary_properties:
+                    if prop.is_active:
+                        all_properties.add((prop.id, prop.name_he, prop.icon, prop.color, prop.description_he))
+    
+    # Add menu description if provided
+    if menu_description and menu_description.strip():
+        html += f'''
+    <div class="menu-description-section">
+        <p class="menu-description">{menu_description}</p>
+    </div>
+        '''
+    
+    # Add icon legend if there are any dietary properties
+    if all_properties:
+        html += '''
+    <div class="icon-legend">
+        <h3 class="legend-title">מקרא סימונים:</h3>
+        <div class="legend-items">
+        '''
+        # Sort properties by name
+        sorted_properties = sorted(all_properties, key=lambda x: x[1])
+        for prop_id, name_he, icon, color, description_he in sorted_properties:
+            # Normalize icon name
+            icon_name = icon if icon and icon.startswith('fa-') else f'fa-{icon}'
+            icon_color = color or '#666'
+            prop_desc = f' - {description_he}' if description_he else ''
+            html += f'''
+            <div class="legend-item">
+                <i class="fas {icon_name}" style="color: {icon_color};"></i>
+                <span>{name_he}{prop_desc}</span>
+            </div>
+            '''
+        html += '''
+        </div>
+    </div>
+        '''
+    
+    html += '''
+    </body>
+    </html>
+    '''
+    
+    return html
+
+def format_menu_item(item, show_prices, show_descriptions, primary_color, secondary_color):
+    """Format a single menu item for display"""
+    item_html = '<div class="menu-item">'
+    
+    # Item header with name and price
+    item_html += '<div class="item-header">'
+    item_html += f'<span class="item-name">{item.name_he}</span>'
+    
+    if show_prices and item.base_price:
+        try:
+            price_value = int(float(item.base_price))
+            item_html += f'<span class="item-price">₪ {price_value}</span>'
+        except (ValueError, TypeError):
+            pass
+    
+    item_html += '</div>'
+    
+    # Item description
+    if show_descriptions and item.description_he:
+        item_html += f'<div class="item-description">{item.description_he}</div>'
+    
+    # Dietary property icons
+    if hasattr(item, 'dietary_properties') and item.dietary_properties:
+        active_properties = [prop for prop in item.dietary_properties if prop.is_active]
+        if active_properties:
+            item_html += '<div class="dietary-icons">'
+            for prop in active_properties:
+                # Normalize icon name - add 'fa-' prefix if not present
+                icon_class = prop.icon or 'fa-circle'
+                if icon_class and not icon_class.startswith('fa-'):
+                    icon_class = f'fa-{icon_class}'
+                color_style = f'color: {prop.color};' if prop.color else ''
+                item_html += f'<span class="dietary-icon" style="{color_style}" title="{prop.name_he}"><i class="fas {icon_class}"></i></span>'
+            item_html += '</div>'
+    
+    item_html += '</div>'
+    return item_html
+
+# Messages Management - Unified Page
+@admin_bp.route('/messages')
+@login_required
+def messages():
+    from models import CateringContact, CareerContact
+    
+    # Fetch all three types of messages
+    contact_messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+    catering_contacts = CateringContact.query.order_by(CateringContact.created_at.desc()).all()
+    career_applications = CareerContact.query.order_by(CareerContact.created_at.desc()).all()
+    
+    # Get active tab from query param (default: contact)
+    active_tab = request.args.get('tab', 'contact')
+    
+    return render_template('admin/messages.html', 
+                         contact_messages=contact_messages,
+                         catering_contacts=catering_contacts,
+                         career_applications=career_applications,
+                         active_tab=active_tab)
+
+@admin_bp.route('/messages/mark-read/<int:id>', methods=['POST'])
+@login_required
+def mark_message_read(id):
+    message = ContactMessage.query.get_or_404(id)
+    message.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/catering-contacts')
+@login_required
+def catering_contacts():
+    # Redirect to unified messages page with catering tab
+    return redirect(url_for('admin.messages', tab='catering'))
+
+@admin_bp.route('/catering-contacts/mark-read/<int:id>', methods=['POST'])
+@login_required
+def mark_catering_contact_read(id):
+    from models import CateringContact
+    contact = CateringContact.query.get_or_404(id)
+    contact.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/career-applications')
+@login_required
+def career_applications():
+    # Redirect to unified messages page with careers tab
+    return redirect(url_for('admin.messages', tab='careers'))
+
+@admin_bp.route('/career-applications/mark-read/<int:id>', methods=['POST'])
+@login_required
+def mark_career_application_read(id):
+    from models import CareerContact
+    application = CareerContact.query.get_or_404(id)
+    application.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+@admin_bp.route('/messages/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_contact_message(id):
+    message = ContactMessage.query.get_or_404(id)
+    db.session.delete(message)
+    db.session.commit()
+    flash('ההודעה נמחקה בהצלחה', 'success')
+    return redirect(url_for('admin.messages', tab='contact'))
+
+@admin_bp.route('/catering-contacts/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_catering_contact(id):
+    from models import CateringContact
+    contact = CateringContact.query.get_or_404(id)
+    db.session.delete(contact)
+    db.session.commit()
+    flash('הפנייה נמחקה בהצלחה', 'success')
+    return redirect(url_for('admin.messages', tab='catering'))
+
+@admin_bp.route('/career-applications/delete/<int:id>', methods=['POST'])
+@login_required
+def delete_career_application(id):
+    from models import CareerContact
+    application = CareerContact.query.get_or_404(id)
+    db.session.delete(application)
+    db.session.commit()
+    flash('המועמדות נמחקה בהצלחה', 'success')
+    return redirect(url_for('admin.messages', tab='careers'))
+
+# Email forwarding routes
+@admin_bp.route('/messages/forward/<int:id>', methods=['POST'])
+@login_required
+def forward_message(id):
+    from gmail_helper import send_email_via_gmail
+    message = ContactMessage.query.get_or_404(id)
+    
+    recipient_email = request.form.get('email')
+    if not recipient_email:
+        flash('נא להזין כתובת אימייל', 'error')
+        return redirect(url_for('admin.messages'))
+    
+    try:
+        subject = f'העברה: הודעת קשר מ-{message.name}'
+        created_at_str = message.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(message.created_at, 'strftime') else str(message.created_at)
+        html_content = f'''
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>הודעת קשר מועברת</h2>
+            <p><strong>שם:</strong> {message.name}</p>
+            <p><strong>אימייל:</strong> {message.email}</p>
+            <p><strong>טלפון:</strong> {message.phone}</p>
+            <p><strong>תאריך:</strong> {created_at_str}</p>
+            <hr>
+            <p><strong>הודעה:</strong></p>
+            <p>{message.message}</p>
+        </div>
+        '''
+        success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
+        if success:
+            flash('ההודעה הועברה בהצלחה', 'success')
+        else:
+            flash(f'שגיאה בהעברת ההודעה: {error_msg}', 'error')
+    except Exception as e:
+        current_app.logger.error(f"Error forwarding message: {str(e)}")
+        flash(f'שגיאה בהעברת ההודעה: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.messages'))
+
+@admin_bp.route('/catering-contacts/forward/<int:id>', methods=['POST'])
+@login_required
+def forward_catering_contact(id):
+    from gmail_helper import send_email_via_gmail
+    from models import CateringContact
+    contact = CateringContact.query.get_or_404(id)
+    
+    recipient_email = request.form.get('email')
+    if not recipient_email:
+        flash('נא להזין כתובת אימייל', 'error')
+        return redirect(url_for('admin.catering_contacts'))
+    
+    try:
+        event_date_str = contact.event_date.strftime('%Y-%m-%d') if hasattr(contact.event_date, 'strftime') else (str(contact.event_date) if contact.event_date else 'לא צוין')
+        created_at_str = contact.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(contact.created_at, 'strftime') else str(contact.created_at)
+        subject = f'העברה: פנייה לקייטרינג מ-{html_escape(contact.name or "")}'
+        html_content = f'''
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>פנייה לקייטרינג מועברת</h2>
+            <p><strong>שם:</strong> {html_escape(contact.name or '')}</p>
+            <p><strong>אימייל:</strong> {html_escape(contact.email or '')}</p>
+            <p><strong>טלפון:</strong> {html_escape(contact.phone or '')}</p>
+            <p><strong>תאריך אירוע:</strong> {html_escape(event_date_str)}</p>
+            <p><strong>סוג אירוע:</strong> {html_escape(contact.event_type or 'לא צוין')}</p>
+            <p><strong>מספר אורחים:</strong> {html_escape(str(contact.guest_count or 'לא צוין'))}</p>
+            <p><strong>תאריך קבלה:</strong> {html_escape(created_at_str)}</p>
+            <hr>
+            <p><strong>הודעה:</strong></p>
+            <p>{html_escape(contact.message or '')}</p>
+        </div>
+        '''
+        success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
+        if success:
+            flash('ההודעה הועברה בהצלחה', 'success')
+        else:
+            flash(f'שגיאה בהעברת ההודעה: {error_msg}', 'error')
+    except Exception as e:
+        current_app.logger.error(f"Error forwarding catering contact: {str(e)}")
+        flash(f'שגיאה בהעברת ההודעה: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.catering_contacts'))
+
+@admin_bp.route('/career-applications/forward/<int:id>', methods=['POST'])
+@login_required
+def forward_career_application(id):
+    from gmail_helper import send_email_via_gmail
+    from models import CareerContact
+    application = CareerContact.query.get_or_404(id)
+    
+    recipient_email = request.form.get('email')
+    if not recipient_email:
+        flash('נא להזין כתובת אימייל', 'error')
+        return redirect(url_for('admin.career_applications'))
+    
+    position_name = application.position_other if application.position_other else \
+                   (application.position.title_en if application.position else 'לא צוין')
+    
+    try:
+        created_at_str = application.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(application.created_at, 'strftime') else str(application.created_at)
+        subject = f'העברה: מועמדות לעבודה מ-{html_escape(application.name or "")} - {html_escape(position_name or "")}'
+        html_content = f'''
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+            <h2>מועמדות לעבודה מועברת</h2>
+            <p><strong>שם:</strong> {html_escape(application.name or '')}</p>
+            <p><strong>אימייל:</strong> {html_escape(application.email or '')}</p>
+            <p><strong>טלפון:</strong> {html_escape(application.phone or '')}</p>
+            <p><strong>משרה:</strong> {html_escape(position_name or '')}</p>
+            <p><strong>תאריך קבלה:</strong> {html_escape(created_at_str)}</p>
+            <hr>
+            <p><strong>הודעה:</strong></p>
+            <p>{html_escape(application.message or '')}</p>
+        </div>
+        '''
+        success, error_msg = send_email_via_gmail(recipient_email, subject, html_content)
+        if success:
+            flash('ההודעה הועברה בהצלחה', 'success')
+        else:
+            flash(f'שגיאה בהעברת ההודעה: {error_msg}', 'error')
+    except Exception as e:
+        current_app.logger.error(f"Error forwarding career application: {str(e)}")
+        flash(f'שגיאה בהעברת ההודעה: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.career_applications'))
+
+# Reservations Management
+@admin_bp.route('/reservations')
+@login_required
+def reservations():
+    reservations = Reservation.query.order_by(Reservation.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    return render_template('admin/reservations.html', reservations=reservations, branches=branches)
+
+@admin_bp.route('/reservations/update-status/<int:id>', methods=['POST'])
+@login_required
+def update_reservation_status(id):
+    reservation = Reservation.query.get_or_404(id)
+    status = request.json.get('status')
+    
+    if status in ['pending', 'confirmed', 'cancelled']:
+        reservation.status = status
+        db.session.commit()
+        return jsonify({'success': True})
+    
+    return jsonify({'error': 'Invalid status'}), 400
+
+# API Endpoints for Frontend
+@admin_bp.route('/api/settings')
+def api_settings():
+    settings = SiteSettings.query.first()
+    if not settings:
+        return jsonify({})
+    
+    return jsonify({
+        'site_name_he': settings.site_name_he,
+        'site_name_en': settings.site_name_en,
+        'hero_title_he': settings.hero_title_he,
+        'hero_title_en': settings.hero_title_en,
+        'hero_subtitle_he': settings.hero_subtitle_he,
+        'hero_subtitle_en': settings.hero_subtitle_en,
+        'hero_description_he': settings.hero_description_he,
+        'hero_description_en': settings.hero_description_en,
+        'about_title_he': settings.about_title_he,
+        'about_title_en': settings.about_title_en,
+        'about_content_he': settings.about_content_he,
+        'about_content_en': settings.about_content_en,
+        'facebook_url': settings.facebook_url,
+        'instagram_url': settings.instagram_url,
+        'whatsapp_number': settings.whatsapp_number
+    })
+
+@admin_bp.route('/api/branches')
+def api_branches():
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    result = []
+    
+    for branch in branches:
+        working_hours = []
+        for wh in branch.working_hours:
+            working_hours.append({
+                'day_of_week': wh.day_of_week,
+                'day_name_he': wh.day_name_he,
+                'day_name_en': wh.day_name_en,
+                'open_time': wh.open_time,
+                'close_time': wh.close_time,
+                'is_closed': wh.is_closed
+            })
+        
+        result.append({
+            'id': branch.id,
+            'name_he': branch.name_he,
+            'name_en': branch.name_en,
+            'address_he': branch.address_he,
+            'address_en': branch.address_en,
+            'phone': branch.phone,
+            'email': branch.email,
+            'waze_link': branch.waze_link,
+            'google_maps_link': branch.google_maps_link,
+            'working_hours': working_hours
+        })
+    
+    return jsonify(result)
+
+@admin_bp.route('/api/gallery')
+def api_gallery():
+    photos = GalleryPhoto.query.filter_by(is_active=True).order_by(GalleryPhoto.display_order).all()
+    return jsonify([{
+        'id': p.id,
+        'file_path': p.file_path,
+        'caption_he': p.caption_he,
+        'caption_en': p.caption_en
+    } for p in photos])
+
+@admin_bp.route('/api/menu')
+def api_menu():
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    result = []
+    
+    for cat in categories:
+        items = []
+        # Get items ordered by display_order
+        menu_items = MenuItem.query.filter_by(category_id=cat.id, is_available=True).order_by(MenuItem.display_order).all()
+        
+        for item in menu_items:
+            # Get dietary properties for this item
+            dietary_properties = []
+            for prop in item.dietary_properties:
+                if prop.is_active:
+                    dietary_properties.append({
+                        'id': prop.id,
+                        'name_he': prop.name_he,
+                        'name_en': prop.name_en,
+                        'icon': prop.icon,
+                        'color': prop.color,
+                        'description_he': prop.description_he,
+                        'description_en': prop.description_en
+                    })
+            
+            items.append({
+                'id': item.id,
+                'name_he': item.name_he,
+                'name_en': item.name_en,
+                'description_he': item.description_he,
+                'description_en': item.description_en,
+                'ingredients_he': item.ingredients_he,
+                'ingredients_en': item.ingredients_en,
+                'base_price': item.base_price or item.price,  # Fallback to old price column
+                'image_path': item.image_path,
+                'dietary_properties': dietary_properties,
+                'display_order': item.display_order
+            })
+        
+        result.append({
+            'id': cat.id,
+            'name_he': cat.name_he,
+            'name_en': cat.name_en,
+            'description_he': cat.description_he,
+            'description_en': cat.description_en,
+            'items': items,
+            'display_order': cat.display_order
+        })
+    
+    return jsonify(result)
+
+# Microservices Dashboard Routes
+@admin_bp.route('/microservices')
+@login_required
+def microservices_dashboard():
+    """Main microservices dashboard"""
+    from services.order.order_service import Order
+    from services.delivery.delivery_service import Driver
+    from services.kitchen.kitchen_service import KitchenQueue
+    
+    # Get stats
+    active_orders = Order.query.filter(Order.status.in_(['confirmed', 'preparing', 'ready'])).count()
+    available_drivers = Driver.query.filter_by(status='available', is_active=True).count()
+    kitchen_queue = KitchenQueue.query.filter(KitchenQueue.status.in_(['pending', 'preparing'])).count()
+    
+    # Calculate today's sales
+    from datetime import datetime, date
+    today = date.today()
+    today_orders = Order.query.filter(
+        db.func.date(Order.created_at) == today,
+        Order.payment_status == 'paid'
+    ).all()
+    today_sales = sum(order.total_amount for order in today_orders if order.total_amount)
+    
+    return render_template('admin/modern_dashboard.html',
+                         active_orders=active_orders,
+                         available_drivers=available_drivers,
+                         kitchen_queue=kitchen_queue,
+                         today_sales=today_sales)
+
+@admin_bp.route('/system-config')
+@login_required
+def system_config():
+    """System configuration page"""
+    return render_template('admin/system_config.html')
+
+# Role and Permission Management Routes
+@admin_bp.route('/roles')
+@login_required
+@require_permission('roles.view')
+def roles():
+    """List all roles"""
+    roles = Role.query.all()
+    return render_template('admin/roles.html', roles=roles)
+
+@admin_bp.route('/roles/create', methods=['GET', 'POST'])
+@login_required
+@require_permission('roles.create')
+def create_role():
+    """Create new role"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        display_name = request.form.get('display_name')
+        description = request.form.get('description')
+        permission_ids = request.form.getlist('permissions')
+        
+        if not name or not display_name:
+            flash('שם התפקיד ושם התצוגה נדרשים', 'error')
+            return redirect(url_for('admin.create_role'))
+        
+        # Check if role already exists
+        if Role.query.filter_by(name=name).first():
+            flash('תפקיד עם השם הזה כבר קיים', 'error')
+            return redirect(url_for('admin.create_role'))
+        
+        # Create new role
+        role = Role(
+            name=name,
+            display_name=display_name,
+            description=description
+        )
+        
+        # Add permissions
+        if permission_ids:
+            permissions = Permission.query.filter(Permission.id.in_(permission_ids)).all()
+            role.permissions = permissions
+        
+        db.session.add(role)
+        db.session.commit()
+        
+        flash(f'התפקיד "{display_name}" נוצר בהצלחה', 'success')
+        return redirect(url_for('admin.roles'))
+    
+    # Get all permissions grouped by category
+    permissions = Permission.query.order_by(Permission.category, Permission.display_name).all()
+    permissions_by_category = {}
+    for perm in permissions:
+        if perm.category not in permissions_by_category:
+            permissions_by_category[perm.category] = []
+        permissions_by_category[perm.category].append(perm)
+    
+    return render_template('admin/create_role.html', permissions_by_category=permissions_by_category)
+
+@admin_bp.route('/roles/<int:role_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('roles.edit')
+def edit_role(role_id):
+    """Edit existing role"""
+    role = Role.query.get_or_404(role_id)
+    
+    if request.method == 'POST':
+        display_name = request.form.get('display_name')
+        description = request.form.get('description')
+        permission_ids = request.form.getlist('permissions')
+        
+        if not display_name:
+            flash('שם התצוגה נדרש', 'error')
+            return redirect(url_for('admin.edit_role', role_id=role_id))
+        
+        role.display_name = display_name
+        role.description = description
+        
+        # Update permissions
+        if permission_ids:
+            permissions = Permission.query.filter(Permission.id.in_(permission_ids)).all()
+            role.permissions = permissions
+        else:
+            role.permissions = []
+        
+        db.session.commit()
+        
+        flash(f'התפקיד "{display_name}" עודכן בהצלחה', 'success')
+        return redirect(url_for('admin.roles'))
+    
+    # Get all permissions grouped by category
+    permissions = Permission.query.order_by(Permission.category, Permission.display_name).all()
+    permissions_by_category = {}
+    for perm in permissions:
+        if perm.category not in permissions_by_category:
+            permissions_by_category[perm.category] = []
+        permissions_by_category[perm.category].append(perm)
+    
+    return render_template('admin/edit_role.html', role=role, permissions_by_category=permissions_by_category)
+
+@admin_bp.route('/roles/<int:role_id>/delete', methods=['DELETE'])
+@login_required
+@require_permission('roles.delete')
+def delete_role(role_id):
+    """Delete role"""
+    role = Role.query.get_or_404(role_id)
+    
+    # Prevent deletion of system roles
+    if role.is_system_role:
+        return jsonify({'success': False, 'error': 'לא ניתן למחוק תפקיד מערכת'}), 400
+    
+    # Check if role has users
+    if role.users:
+        return jsonify({'success': False, 'error': f'לא ניתן למחוק תפקיד עם {len(role.users)} משתמשים'}), 400
+    
+    role_name = role.display_name
+    db.session.delete(role)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'התפקיד "{role_name}" נמחק בהצלחה'})
+
+@admin_bp.route('/permissions')
+@login_required
+@require_permission('roles.view')
+def permissions():
+    """List all permissions"""
+    permissions = Permission.query.order_by(Permission.category, Permission.display_name).all()
+    permissions_by_category = {}
+    for perm in permissions:
+        if perm.category not in permissions_by_category:
+            permissions_by_category[perm.category] = []
+        permissions_by_category[perm.category].append(perm)
+    
+    return render_template('admin/permissions.html', permissions_by_category=permissions_by_category)
+
+@admin_bp.route('/kitchen-config')
+@login_required
+def kitchen_config():
+    return redirect(url_for('admin.printers'))
+
+@admin_bp.route('/printers')
+@login_required
+@require_permission('kitchen.manage')
+def printers():
+    from models import Printer, Branch, PrintStation, PrintDevice
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    all_printers = Printer.query.order_by(Printer.branch_id, Printer.display_order).all()
+    printers_by_branch = {}
+    for p in all_printers:
+        printers_by_branch.setdefault(p.branch_id, []).append(p)
+    all_stations = PrintStation.query.order_by(PrintStation.name).all()
+    print_devices = PrintDevice.query.order_by(PrintDevice.branch_id, PrintDevice.device_name).all()
+    return render_template('admin/printers.html',
+                         branches=branches,
+                         printers_by_branch=printers_by_branch,
+                         all_stations=all_stations,
+                         print_devices=print_devices)
+
+@admin_bp.route('/printers/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('kitchen.manage')
+def add_printer():
+    from models import Printer, PrinterStation, PrintStation, Branch
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    all_stations = PrintStation.query.order_by(PrintStation.name).all()
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        printer_type = request.form.get('printer_type', 'snbc-btp-r880npv').strip()
+        branch_id = request.form.get('branch_id', type=int)
+        ip_address = request.form.get('ip_address', '').strip()
+        port = request.form.get('port', 9100, type=int)
+        encoding = request.form.get('encoding', 'iso-8859-8').strip()
+        codepage_num = request.form.get('codepage_num', 36, type=int)
+        cut_feed_lines = request.form.get('cut_feed_lines', 6, type=int)
+        checker_copies = request.form.get('checker_copies', 2, type=int)
+        payment_copies = request.form.get('payment_copies', 1, type=int)
+        is_default = request.form.get('is_default') == 'on'
+        selected_stations = request.form.getlist('station_ids')
+
+        if not name or not branch_id or not ip_address:
+            flash('יש למלא שם, סניף וכתובת IP', 'error')
+            return render_template('admin/edit_printer.html', printer=None, branches=branches, all_stations=all_stations)
+
+        existing_default = Printer.query.filter_by(branch_id=branch_id, is_default=True).first()
+        if not existing_default:
+            is_default = True
+
+        if is_default:
+            Printer.query.filter_by(branch_id=branch_id, is_default=True).update({'is_default': False})
+
+        printer = Printer(
+            name=name, printer_type=printer_type, branch_id=branch_id, ip_address=ip_address,
+            port=port, encoding=encoding, codepage_num=codepage_num,
+            cut_feed_lines=cut_feed_lines, checker_copies=checker_copies,
+            payment_copies=payment_copies, is_default=is_default, is_active=True,
+        )
+        db.session.add(printer)
+        db.session.flush()
+
+        for sid in selected_stations:
+            try:
+                station = PrintStation.query.get(int(sid))
+            except (ValueError, TypeError):
+                continue
+            if station:
+                db.session.add(PrinterStation(printer_id=printer.id, station_name=station.name))
+
+        db.session.commit()
+        flash(f'מדפסת "{name}" נוספה בהצלחה', 'success')
+        return redirect(url_for('admin.printers'))
+
+    return render_template('admin/edit_printer.html', printer=None, branches=branches, all_stations=all_stations)
+
+@admin_bp.route('/printers/edit/<int:printer_id>', methods=['GET', 'POST'])
+@login_required
+@require_permission('kitchen.manage')
+def edit_printer(printer_id):
+    from models import Printer, PrinterStation, PrintStation, Branch
+    printer = Printer.query.get_or_404(printer_id)
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    all_stations = PrintStation.query.order_by(PrintStation.name).all()
+
+    if request.method == 'POST':
+        printer.name = request.form.get('name', '').strip()
+        printer.printer_type = request.form.get('printer_type', 'snbc-btp-r880npv').strip()
+        printer.branch_id = request.form.get('branch_id', type=int)
+        printer.ip_address = request.form.get('ip_address', '').strip()
+        printer.port = request.form.get('port', 9100, type=int)
+        printer.encoding = request.form.get('encoding', 'iso-8859-8').strip()
+        printer.codepage_num = request.form.get('codepage_num', 36, type=int)
+        printer.cut_feed_lines = request.form.get('cut_feed_lines', 6, type=int)
+        printer.checker_copies = request.form.get('checker_copies', 2, type=int)
+        printer.payment_copies = request.form.get('payment_copies', 1, type=int)
+        is_default = request.form.get('is_default') == 'on'
+        selected_stations = request.form.getlist('station_ids')
+
+        if not printer.name or not printer.branch_id or not printer.ip_address:
+            flash('יש למלא שם, סניף וכתובת IP', 'error')
+            return render_template('admin/edit_printer.html', printer=printer, branches=branches, all_stations=all_stations)
+
+        if is_default:
+            Printer.query.filter(Printer.branch_id == printer.branch_id, Printer.id != printer.id, Printer.is_default == True).update({'is_default': False})
+        printer.is_default = is_default
+
+        PrinterStation.query.filter_by(printer_id=printer.id).delete()
+        for sid in selected_stations:
+            try:
+                station = PrintStation.query.get(int(sid))
+            except (ValueError, TypeError):
+                continue
+            if station:
+                db.session.add(PrinterStation(printer_id=printer.id, station_name=station.name))
+
+        db.session.commit()
+        flash(f'מדפסת "{printer.name}" עודכנה בהצלחה', 'success')
+        return redirect(url_for('admin.printers'))
+
+    return render_template('admin/edit_printer.html', printer=printer, branches=branches, all_stations=all_stations)
+
+@admin_bp.route('/printers/delete/<int:printer_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def delete_printer(printer_id):
+    from models import Printer
+    printer = Printer.query.get_or_404(printer_id)
+    name = printer.name
+    was_default = printer.is_default
+    branch_id = printer.branch_id
+    db.session.delete(printer)
+    db.session.flush()
+    if was_default:
+        next_printer = Printer.query.filter_by(branch_id=branch_id).first()
+        if next_printer:
+            next_printer.is_default = True
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'מדפסת "{name}" נמחקה'})
+
+@admin_bp.route('/printers/toggle/<int:printer_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def toggle_printer(printer_id):
+    from models import Printer
+    printer = Printer.query.get_or_404(printer_id)
+    printer.is_active = not printer.is_active
+    db.session.commit()
+    status = 'פעילה' if printer.is_active else 'כבויה'
+    return jsonify({'success': True, 'message': f'מדפסת "{printer.name}" - {status}'})
+
+@admin_bp.route('/printers/test/<int:printer_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def test_printer(printer_id):
+    import socket
+    from models import Printer
+    printer = Printer.query.get_or_404(printer_id)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(3)
+        s.connect((printer.ip_address, printer.port))
+        s.close()
+        return jsonify({'success': True, 'status': 'connected', 'message': f'חיבור תקין ל-{printer.name}'})
+    except socket.timeout:
+        return jsonify({'success': True, 'status': 'timeout', 'message': f'לא ניתן להתחבר ל-{printer.name} - timeout'})
+    except ConnectionRefusedError:
+        return jsonify({'success': True, 'status': 'refused', 'message': f'החיבור נדחה ע"י {printer.name}'})
+    except Exception as e:
+        return jsonify({'success': True, 'status': 'error', 'message': f'שגיאה: {str(e)}'})
+
+@admin_bp.route('/printers/test-all', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def test_all_printers():
+    import socket
+    from models import Printer
+    printers = Printer.query.filter_by(is_active=True).all()
+    results = []
+    for printer in printers:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(3)
+            s.connect((printer.ip_address, printer.port))
+            s.close()
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'connected'})
+        except socket.timeout:
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'timeout'})
+        except ConnectionRefusedError:
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'refused'})
+        except Exception as e:
+            results.append({'id': printer.id, 'name': printer.name, 'ip': printer.ip_address, 'port': printer.port, 'branch': printer.branch.name_he if printer.branch else '', 'status': 'error', 'error': str(e)})
+    return jsonify({'success': True, 'results': results})
+
+@admin_bp.route('/api-keys')
+@login_required
+@require_permission('kitchen.manage')
+def api_keys():
+    keys = ApiKey.query.order_by(ApiKey.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.display_order).all()
+    return render_template('admin/api_keys.html', keys=keys, branches=branches)
+
+
+@admin_bp.route('/api-keys/create', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def create_api_key():
+    import secrets as _secrets
+    name = request.form.get('name', '').strip()
+    branch_id = request.form.get('branch_id', '')
+    notes = request.form.get('notes', '').strip()
+    if not name:
+        flash('יש להזין שם למפתח', 'danger')
+        return redirect(url_for('admin.api_keys'))
+    raw_key = _secrets.token_urlsafe(32)
+    ak = ApiKey(
+        key=raw_key,
+        name=name,
+        branch_id=int(branch_id) if branch_id else None,
+        notes=notes or None,
+        created_by=current_user.username,
+    )
+    db.session.add(ak)
+    db.session.commit()
+    flash(f'מפתח API נוצר בהצלחה: {raw_key}', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/revoke', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def revoke_api_key(key_id):
+    ak = ApiKey.query.get_or_404(key_id)
+    ak.is_active = False
+    db.session.commit()
+    flash(f'מפתח "{ak.name}" בוטל בהצלחה', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/activate', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def activate_api_key(key_id):
+    ak = ApiKey.query.get_or_404(key_id)
+    ak.is_active = True
+    db.session.commit()
+    flash(f'מפתח "{ak.name}" הופעל מחדש', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/delete', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def delete_api_key(key_id):
+    ak = ApiKey.query.get_or_404(key_id)
+    db.session.delete(ak)
+    db.session.commit()
+    flash(f'מפתח "{ak.name}" נמחק', 'success')
+    return redirect(url_for('admin.api_keys'))
+
+
+@admin_bp.route('/stations/add', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def add_station():
+    from flask import session as flask_session
+    flask_session.pop('pending_delete_station', None)
+    from models import PrintStation
+    name = request.form.get('name', '').strip()
+    display_name = request.form.get('display_name', '').strip()
+    if not name:
+        flash('יש למלא שם תחנה', 'error')
+        return redirect(url_for('admin.printers'))
+    existing = PrintStation.query.filter_by(name=name).first()
+    if existing:
+        flash(f'תחנה "{name}" כבר קיימת', 'error')
+        return redirect(url_for('admin.printers'))
+    station = PrintStation(name=name, display_name=display_name or name)
+    db.session.add(station)
+    db.session.commit()
+    flash(f'תחנה "{name}" נוספה בהצלחה', 'success')
+    return redirect(url_for('admin.printers'))
+
+@admin_bp.route('/stations/edit/<int:station_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def edit_station(station_id):
+    from models import PrintStation, PrinterStation, MenuItem
+    station = PrintStation.query.get_or_404(station_id)
+    old_name = station.name
+    new_name = request.form.get('name', '').strip()
+    display_name = request.form.get('display_name', '').strip()
+    if not new_name:
+        flash('יש למלא שם תחנה', 'error')
+        return redirect(url_for('admin.printers'))
+    if new_name != old_name:
+        existing = PrintStation.query.filter_by(name=new_name).first()
+        if existing:
+            flash(f'תחנה "{new_name}" כבר קיימת', 'error')
+            return redirect(url_for('admin.printers'))
+        PrinterStation.query.filter_by(station_name=old_name).update({'station_name': new_name})
+        MenuItem.query.filter_by(print_station=old_name).update({'print_station': new_name})
+    station.name = new_name
+    station.display_name = display_name or new_name
+    db.session.commit()
+    flash(f'תחנה "{new_name}" עודכנה בהצלחה', 'success')
+    return redirect(url_for('admin.printers'))
+
+@admin_bp.route('/stations/delete/<int:station_id>', methods=['POST'])
+@login_required
+@require_permission('kitchen.manage')
+def delete_station(station_id):
+    from models import PrintStation, PrinterStation, MenuItem
+    station = PrintStation.query.get_or_404(station_id)
+    confirm = request.form.get('confirm_delete') == 'yes'
+    menu_count = MenuItem.query.filter_by(print_station=station.name).count()
+    printer_count = PrinterStation.query.filter_by(station_name=station.name).count()
+    if (menu_count > 0 or printer_count > 0) and not confirm:
+        from flask import session as flask_session
+        flask_session['pending_delete_station'] = station_id
+        flash(f'עמדה "{station.name}" משויכת ל-{menu_count} מנות ו-{printer_count} מדפסות. לחץ "אשר מחיקה" כדי למחוק.', 'warning')
+        return redirect(url_for('admin.printers') + '#stations-pane')
+    from flask import session as flask_session
+    flask_session.pop('pending_delete_station', None)
+    PrinterStation.query.filter_by(station_name=station.name).delete()
+    MenuItem.query.filter_by(print_station=station.name).update({'print_station': None})
+    db.session.delete(station)
+    db.session.commit()
+    flash(f'תחנה "{station.name}" נמחקה', 'success')
+    return redirect(url_for('admin.printers'))
+
+@admin_bp.route('/payment-config')
+@login_required
+def payment_config():
+    """Payment gateway configuration"""
+    from services.payment.payment_service import PaymentConfig
+    
+    configs = PaymentConfig.query.all()
+    return render_template('admin/system_config.html', configs=configs)
+
+@admin_bp.route('/drivers-management')
+@login_required
+def drivers_management():
+    """Driver management page"""
+    from services.delivery.delivery_service import Driver
+    
+    drivers = Driver.query.all()
+    return render_template('admin/system_config.html', drivers=drivers)
+
+@admin_bp.route('/orders-management')
+@login_required
+def orders_management():
+    """Orders management page (legacy)"""
+    from services.order.order_service import Order
+    
+    orders = Order.query.order_by(Order.created_at.desc()).limit(100).all()
+    return render_template('admin/system_config.html', orders=orders)
+
+@admin_bp.route('/food-orders')
+@login_required
+def food_orders_list():
+    """Food orders management page (standalone order service)"""
+    from models import FoodOrder
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', '')
+    search_q = request.args.get('q', '').strip()
+    query = FoodOrder.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if search_q:
+        search_term = f'%{search_q}%'
+        query = query.filter(
+            db.or_(
+                FoodOrder.customer_name.ilike(search_term),
+                FoodOrder.customer_phone.ilike(search_term),
+                FoodOrder.order_number.ilike(search_term),
+                FoodOrder.customer_email.ilike(search_term),
+            )
+        )
+    orders = query.order_by(FoodOrder.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    return render_template('admin/food_orders.html', orders=orders, status_filter=status_filter, search_q=search_q)
+
+@admin_bp.route('/food-orders/<int:order_id>')
+@login_required
+def food_order_detail(order_id):
+    """Food order detail page with activity log and SMS log"""
+    from models import FoodOrder, OrderActivityLog, SMSLog
+    order = FoodOrder.query.get_or_404(order_id)
+    activity_logs = OrderActivityLog.query.filter_by(order_id=order_id).order_by(OrderActivityLog.created_at.desc()).all()
+    sms_logs = SMSLog.query.filter_by(order_id=order_id).order_by(SMSLog.created_at.desc()).all()
+    items = order.get_items()
+    return render_template('admin/food_order_detail.html', order=order, items=items, activity_logs=activity_logs, sms_logs=sms_logs)
+
+@admin_bp.route('/food-orders/<int:order_id>/delete', methods=['POST'])
+@login_required
+def food_order_delete(order_id):
+    """Hard-delete a cash order after archiving it. Superadmin only."""
+    from models import FoodOrder, FoodOrderItem, ArchivedOrder
+    import json as _json
+
+    user = current_user
+    if not getattr(user, 'is_superadmin', False):
+        flash('אין הרשאה למחיקת הזמנות', 'danger')
+        return redirect(url_for('admin.food_orders_list'))
+
+    order = FoodOrder.query.get_or_404(order_id)
+
+    if order.payment_method not in ('cash', None, ''):
+        flash('ניתן למחוק רק הזמנות מזומן', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    reason = request.form.get('reason', '').strip()
+
+    items_list = order.get_items()
+    if not items_list:
+        items_list = []
+        for item in order.items:
+            items_list.append({
+                'item_name_he': item.item_name_he,
+                'item_name_en': item.item_name_en,
+                'quantity': item.quantity,
+                'unit_price': item.unit_price,
+                'total_price': item.total_price,
+                'special_instructions': item.special_instructions,
+                'options_json': item.options_json,
+            })
+
+    full_data = {
+        'id': order.id,
+        'order_number': order.order_number,
+        'branch_id': order.branch_id,
+        'branch_name': order.branch_name,
+        'order_type': order.order_type,
+        'status': order.status,
+        'customer_name': order.customer_name,
+        'customer_phone': order.customer_phone,
+        'customer_email': order.customer_email,
+        'delivery_address': order.delivery_address,
+        'delivery_city': order.delivery_city,
+        'delivery_notes': order.delivery_notes,
+        'pickup_time': order.pickup_time,
+        'subtotal': order.subtotal,
+        'delivery_fee': order.delivery_fee,
+        'discount_amount': order.discount_amount,
+        'total_amount': order.total_amount,
+        'payment_method': order.payment_method,
+        'payment_status': order.payment_status,
+        'coupon_code': order.coupon_code,
+        'coupon_discount': order.coupon_discount,
+        'customer_notes': order.customer_notes,
+        'admin_notes': order.admin_notes,
+        'created_at': order.created_at.isoformat() if order.created_at else None,
+        'items': items_list,
+    }
+
+    archived = ArchivedOrder(
+        original_order_id=order.id,
+        order_number=order.order_number,
+        branch_id=order.branch_id,
+        branch_name=order.branch_name,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        customer_email=order.customer_email,
+        order_type=order.order_type,
+        status=order.status,
+        payment_method=order.payment_method,
+        payment_status=order.payment_status,
+        total_amount=order.total_amount,
+        subtotal=order.subtotal,
+        delivery_fee=order.delivery_fee,
+        discount_amount=order.discount_amount,
+        coupon_code=order.coupon_code,
+        items_snapshot=_json.dumps(items_list, ensure_ascii=False),
+        full_order_json=_json.dumps(full_data, ensure_ascii=False),
+        deleted_by=user.username,
+        deletion_reason=reason or None,
+        original_created_at=order.created_at,
+    )
+
+    from models import ReleasedOrderNumber
+    released = ReleasedOrderNumber(order_number=order.order_number)
+    db.session.add(archived)
+    db.session.add(released)
+    from services.display_number import release_display_number
+    release_display_number(order)
+    for item in order.items:
+        db.session.delete(item)
+    db.session.delete(order)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Failed to delete order {order_id}: {e}")
+        flash('שגיאה במחיקת ההזמנה', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    flash(f'הזמנה #{order.order_number} נמחקה והועברה לארכיון', 'success')
+    return redirect(url_for('admin.food_orders_list'))
+
+
+@admin_bp.route('/food-orders/<int:order_id>/send-receipt', methods=['POST'])
+@login_required
+def food_order_send_receipt(order_id):
+    """Send an SMS receipt for a cash order."""
+    from models import FoodOrder, SMSLog
+    order = FoodOrder.query.get_or_404(order_id)
+
+    if order.payment_method not in ('cash', None, ''):
+        flash('קבלות SMS זמינות רק להזמנות מזומן', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    if not order.customer_phone:
+        flash('אין מספר טלפון ללקוח', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    items = order.get_items()
+    items_text = '\n'.join([
+        f"  {it.get('name_he', it.get('item_name_he', '?'))} x{it.get('qty', it.get('quantity', 1))} - ₪{(it.get('price', it.get('unit_price', 0)) * it.get('qty', it.get('quantity', 1))):.0f}"
+        for it in items
+    ])
+
+    branch_name = order.branch_name or 'SUMO'
+    msg = (
+        f"קבלה - {branch_name}\n"
+        f"הזמנה: {order.order_number}\n"
+        f"תאריך: {_to_il_full(order.created_at) if order.created_at else '-'}\n"
+        f"---\n"
+        f"{items_text}\n"
+        f"---\n"
+        f"סה\"כ: ₪{order.total_amount:.0f}\n"
+        f"תשלום: מזומן\n"
+        f"תודה רבה! 🙏"
+    )
+
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_sms = create_sender_from_env()
+    if not send_sms:
+        flash('ספק SMS לא מוגדר', 'danger')
+        return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+    success = send_sms(order.customer_phone, msg)
+
+    sms_log = SMSLog(
+        recipient_phone=order.customer_phone,
+        message_text=msg,
+        message_type='receipt',
+        status='sent' if success else 'failed',
+        order_id=order.id,
+        staff_name=current_user.username,
+    )
+    db.session.add(sms_log)
+    db.session.commit()
+
+    if success:
+        flash('קבלה נשלחה בהצלחה!', 'success')
+    else:
+        flash('שליחת קבלה נכשלה', 'danger')
+    return redirect(url_for('admin.food_order_detail', order_id=order_id))
+
+
+@admin_bp.route('/archived-orders')
+def archived_orders_dashboard():
+    """Hidden archive dashboard. Requires superadmin + enrolled device."""
+    from models import ArchivedOrder, FoodOrder, EnrolledDevice
+
+    if not current_user.is_authenticated or not getattr(current_user, 'is_superadmin', False):
+        abort(404)
+
+    device_token = request.cookies.get('ops_device_token')
+    if not device_token:
+        abort(404)
+    device = EnrolledDevice.query.filter_by(device_token=device_token, is_active=True).first()
+    if not device:
+        abort(404)
+
+    from sqlalchemy import func
+    from datetime import timedelta
+
+    try:
+        from zoneinfo import ZoneInfo
+        il_now = datetime.now(ZoneInfo('Asia/Jerusalem'))
+        il_midnight = il_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = il_midnight.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+        il_weekday = il_now.weekday()
+        il_day = il_now.day
+    except Exception:
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=3)
+        il_weekday = datetime.utcnow().weekday()
+        il_day = datetime.utcnow().day
+    week_start = today_start - timedelta(days=il_weekday)
+    month_start = today_start - timedelta(days=il_day - 1)
+
+    main_orders = FoodOrder.query.all()
+    archived_orders = ArchivedOrder.query.order_by(ArchivedOrder.deleted_at.desc()).all()
+
+    main_total = sum(o.total_amount or 0 for o in main_orders)
+    archived_total = sum(o.total_amount or 0 for o in archived_orders)
+    original_total = main_total + archived_total
+    reported_income = main_total
+
+    main_cash = sum(o.total_amount or 0 for o in main_orders if o.payment_method in ('cash', None, ''))
+    main_card = sum(o.total_amount or 0 for o in main_orders if o.payment_method not in ('cash', None, ''))
+
+    main_today = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= today_start)
+    main_week = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= week_start)
+    main_month = sum(o.total_amount or 0 for o in main_orders if o.created_at and o.created_at >= month_start)
+
+    stats = {
+        'total_orders': len(main_orders),
+        'main_count': len(main_orders),
+        'archived_count': len(archived_orders),
+        'original_total': original_total,
+        'reported_income': reported_income,
+        'deleted_amount': archived_total,
+        'cash_total': main_cash,
+        'card_total': main_card,
+        'today_total': main_today,
+        'week_total': main_week,
+        'month_total': main_month,
+    }
+
+    return render_template('admin/archived_orders.html',
+        stats=stats,
+        archived_orders=archived_orders,
+        main_orders=main_orders,
+    )
+
+
+@admin_bp.route('/archived-orders/<int:archive_id>/restore', methods=['POST'])
+def archived_order_restore(archive_id):
+    """Restore an archived order back to the main database."""
+    from models import ArchivedOrder, FoodOrder, FoodOrderItem, EnrolledDevice
+    import json as _json
+
+    if not current_user.is_authenticated or not getattr(current_user, 'is_superadmin', False):
+        abort(404)
+
+    device_token = request.cookies.get('ops_device_token')
+    if not device_token:
+        abort(404)
+    device = EnrolledDevice.query.filter_by(device_token=device_token, is_active=True).first()
+    if not device:
+        abort(404)
+
+    archived = ArchivedOrder.query.get_or_404(archive_id)
+    full_data = _json.loads(archived.full_order_json) if archived.full_order_json else {}
+
+    new_order = FoodOrder(
+        order_number=archived.order_number,
+        branch_id=archived.branch_id,
+        branch_name=archived.branch_name,
+        order_type=archived.order_type or 'pickup',
+        status=archived.status or 'pending',
+        customer_name=archived.customer_name or '',
+        customer_phone=archived.customer_phone or '',
+        customer_email=archived.customer_email,
+        delivery_address=full_data.get('delivery_address'),
+        delivery_city=full_data.get('delivery_city'),
+        delivery_notes=full_data.get('delivery_notes'),
+        pickup_time=full_data.get('pickup_time'),
+        subtotal=archived.subtotal,
+        delivery_fee=archived.delivery_fee,
+        discount_amount=archived.discount_amount,
+        total_amount=archived.total_amount,
+        payment_method=archived.payment_method,
+        payment_status=archived.payment_status,
+        coupon_code=archived.coupon_code,
+        customer_notes=full_data.get('customer_notes'),
+        admin_notes=full_data.get('admin_notes'),
+        created_at=archived.original_created_at,
+        items_json=archived.items_snapshot,
+    )
+
+    from models import ReleasedOrderNumber
+    existing = FoodOrder.query.filter_by(order_number=archived.order_number).first()
+    if existing:
+        import random
+        suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+        new_order.order_number = f"{archived.order_number}-R{suffix}"
+
+    released_num = ReleasedOrderNumber.query.filter_by(order_number=archived.order_number).first()
+    if released_num:
+        db.session.delete(released_num)
+
+    db.session.add(new_order)
+    db.session.flush()
+
+    items_data = _json.loads(archived.items_snapshot) if archived.items_snapshot else []
+    for it in items_data:
+        qty = it.get('quantity', it.get('qty', 1)) or 1
+        unit_p = it.get('unit_price', it.get('price', 0)) or 0
+        total_p = it.get('total_price') or (unit_p * qty)
+        oi = FoodOrderItem(
+            order_id=new_order.id,
+            menu_item_id=it.get('menu_item_id'),
+            item_name_he=it.get('item_name_he', it.get('name_he', '?')),
+            item_name_en=it.get('item_name_en', it.get('name_en', '')),
+            quantity=qty,
+            unit_price=unit_p,
+            total_price=total_p,
+            special_instructions=it.get('special_instructions', ''),
+            options_json=it.get('options_json'),
+        )
+        db.session.add(oi)
+
+    archived.restored_at = datetime.utcnow()
+    archived.restored_by = current_user.username
+    archived.restored_order_id = new_order.id
+    db.session.commit()
+
+    flash(f'הזמנה #{new_order.order_number} שוחזרה בהצלחה', 'success')
+    return redirect(url_for('admin.archived_orders_dashboard'))
+
+
+@admin_bp.route('/customers-management')
+@login_required
+def customers_management():
+    """Customer management page"""
+    from services.auth.auth_service import Customer
+    
+    customers = Customer.query.all()
+    return render_template('admin/system_config.html', customers=customers)
+
+@admin_bp.route('/printer-guide')
+@login_required
+def printer_guide():
+    """SNBC Printer setup guide"""
+    return render_template('admin/printer_setup_guide.html')
+
+# ===== STOCK MANAGEMENT MICROSERVICE ROUTES =====
+
+@admin_bp.route('/stock-management')
+@login_required
+@require_permission('stock.view')
+def stock_management():
+    """Simple mobile-first stock management interface"""
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info("=== Starting stock_management route ===")
+        from models import StockItem, Supplier, StockCategory
+        logger.info("Models imported successfully")
+        
+        # Get counts for dashboard
+        stock_count = StockItem.query.filter_by(is_active=True).count()
+        logger.info(f"Stock count: {stock_count}")
+        
+        supplier_count = Supplier.query.filter_by(is_active=True).count()
+        logger.info(f"Supplier count: {supplier_count}")
+        
+        category_count = StockCategory.query.filter_by(is_active=True).count()
+        logger.info(f"Category count: {category_count}")
+        
+        from models import Receipt
+        receipt_count = Receipt.query.count()
+        logger.info(f"Receipt count: {receipt_count}")
+        
+        # Get view parameters (default: items, card)
+        view = request.args.get('view', 'items')
+        view_mode = request.args.get('mode', 'card')  # 'card' or 'list'
+        supplier_filter = request.args.get('supplier_id', type=int)  # Supplier filter
+        logger.info(f"View: {view}, Mode: {view_mode}, Supplier filter: {supplier_filter}")
+        
+        items = []
+        suppliers = []
+        categories = []
+        
+        # Load all suppliers and categories for filter dropdown and bulk edit modal
+        all_suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+        all_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+        
+        if view == 'items':
+            from sqlalchemy import func
+            from models import StockLevel, Branch
+            
+            # Apply supplier filter if specified
+            if supplier_filter:
+                items_query = StockItem.query.filter_by(is_active=True, primary_supplier_id=supplier_filter)
+            else:
+                items_query = StockItem.query.filter_by(is_active=True)
+            
+            # Get items with aggregated stock levels
+            items_raw = items_query.order_by(StockItem.name_he).all()
+            logger.info(f"Loaded {len(items_raw)} items")
+            
+            # Enrich items with stock level totals
+            items = []
+            for item in items_raw:
+                # Aggregate stock across all branches
+                stock_aggregates = db.session.query(
+                    func.sum(StockLevel.current_quantity).label('total_current'),
+                    func.sum(StockLevel.reserved_quantity).label('total_reserved'),
+                    func.sum(StockLevel.available_quantity).label('total_available')
+                ).filter(StockLevel.item_id == item.id).first()
+                
+                # Create enriched item dict
+                item_data = {
+                    'item': item,
+                    'total_current': float(stock_aggregates.total_current or 0),
+                    'total_reserved': float(stock_aggregates.total_reserved or 0),
+                    'total_available': float(stock_aggregates.total_available or 0),
+                    'is_low_stock': (stock_aggregates.total_available or 0) < item.minimum_stock if item.minimum_stock else False,
+                    'branches': []
+                }
+                
+                # Get branch-level breakdown
+                branch_levels = db.session.query(StockLevel, Branch).join(
+                    Branch, StockLevel.branch_id == Branch.id
+                ).filter(
+                    StockLevel.item_id == item.id,
+                    Branch.is_active == True
+                ).all()
+                
+                for level, branch in branch_levels:
+                    item_data['branches'].append({
+                        'name': branch.name_he,
+                        'current': float(level.current_quantity),
+                        'reserved': float(level.reserved_quantity),
+                        'available': float(level.available_quantity)
+                    })
+                
+                items.append(item_data)
+        elif view == 'suppliers':
+            # Get suppliers with item counts
+            suppliers_raw = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+            
+            # Enrich with item counts
+            suppliers = []
+            for supplier in suppliers_raw:
+                item_count = StockItem.query.filter_by(primary_supplier_id=supplier.id, is_active=True).count()
+                suppliers.append({
+                    'supplier': supplier,
+                    'item_count': item_count
+                })
+            
+            logger.info(f"Loaded {len(suppliers)} suppliers with item counts")
+        elif view == 'categories':
+            categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+            logger.info(f"Loaded {len(categories)} categories")
+        elif view == 'receipts':
+            from sqlalchemy import func, case
+            
+            # Check if viewing receipts for specific supplier
+            receipt_supplier_id = request.args.get('supplier_id', type=int)
+            
+            if receipt_supplier_id is not None:
+                # Show individual receipts for this supplier (or None for no-supplier)
+                receipts_query = Receipt.query
+                if receipt_supplier_id == 0:
+                    # 0 means "no supplier"
+                    receipts_query = receipts_query.filter(Receipt.supplier_id.is_(None))
+                    selected_supplier_name = "ללא ספק"
+                else:
+                    receipts_query = receipts_query.filter(Receipt.supplier_id == receipt_supplier_id)
+                    selected_supplier = Supplier.query.get(receipt_supplier_id)
+                    selected_supplier_name = selected_supplier.name if selected_supplier else "Unknown"
+                
+                receipts = receipts_query.order_by(Receipt.receipt_date.desc()).all()
+                logger.info(f"Loaded {len(receipts)} receipts for supplier {receipt_supplier_id}")
+            else:
+                # Group receipts by supplier with aggregates - INCLUDE receipts without supplier
+                receipts = None
+                selected_supplier_name = None
+                receipt_groups_raw = db.session.query(
+                    Receipt.supplier_id.label('supplier_id'),
+                    case(
+                        (Receipt.supplier_id.isnot(None), Supplier.name),
+                        else_=None
+                    ).label('supplier_name'),
+                    func.count(Receipt.id).label('count'),
+                    func.sum(Receipt.total_amount).label('total_amount'),
+                    func.max(Receipt.receipt_date).label('latest_date')
+                ).outerjoin(Supplier, Receipt.supplier_id == Supplier.id
+                ).group_by(Receipt.supplier_id, Supplier.name
+                ).order_by(func.sum(Receipt.total_amount).desc()
+                ).all()
+                
+                receipt_groups = [{'supplier_id': g.supplier_id or 0, 'supplier_name': g.supplier_name, 
+                                  'count': g.count, 'total_amount': float(g.total_amount or 0), 
+                                  'latest_date': g.latest_date} for g in receipt_groups_raw]
+                logger.info(f"Loaded {len(receipt_groups)} receipt groups (including no-supplier)")
+        else:
+            receipt_groups = []
+            receipts = None
+            selected_supplier_name = None
+        
+        logger.info("Rendering template admin/stock_simple.html")
+        return render_template('admin/stock_simple.html',
+                             current_view=view,
+                             view_mode=view_mode,
+                             stock_count=stock_count,
+                             supplier_count=supplier_count,
+                             category_count=category_count,
+                             receipt_count=receipt_count,
+                             items=items,
+                             suppliers=suppliers,
+                             categories=categories,
+                             receipt_groups=receipt_groups if view == 'receipts' and 'receipt_groups' in locals() else [],
+                             receipts=receipts if view == 'receipts' and 'receipts' in locals() else None,
+                             selected_supplier_name=selected_supplier_name if 'selected_supplier_name' in locals() else None,
+                             all_suppliers=all_suppliers,
+                             all_categories=all_categories,
+                             selected_supplier=supplier_filter)
+    except Exception as e:
+        logger.error(f"ERROR in stock_management: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
+
+@admin_bp.route('/stock-management-old')
+@login_required
+@require_permission('stock.view')
+def stock_management_old():
+    """Legacy stock management dashboard"""
+    from models import StockItem, StockLevel, Branch, StockAlert, Supplier, StockCategory, StockTransaction
+    from sqlalchemy import func
+    
+    # Get current branch or default to first branch
+    branch_id = request.args.get('branch_id', type=int)
+    if not branch_id:
+        branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = branch.id if branch else None
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    # Get all stock items with last purchase dates
+    stock_items_query = db.session.query(
+        StockItem,
+        func.max(StockTransaction.transaction_date).label('last_purchase_date')
+    ).outerjoin(
+        StockTransaction,
+        (StockTransaction.item_id == StockItem.id) & 
+        (StockTransaction.transaction_type == 'delivery')
+    ).filter(
+        StockItem.is_active == True
+    ).group_by(StockItem.id).order_by(StockItem.name_he)
+    
+    # Process items to add last purchase date
+    stock_items = []
+    for item, last_date in stock_items_query:
+        item.last_purchase_date = last_date
+        stock_items.append(item)
+    
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    stock_categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+    
+    # Get stock statistics for the selected branch
+    stats = {}
+    if branch_id:
+        total_items = StockItem.query.filter_by(is_active=True).count()
+        low_stock_alerts = StockAlert.query.filter_by(
+            branch_id=branch_id, 
+            alert_type='low_stock', 
+            is_resolved=False
+        ).count()
+        out_of_stock = StockLevel.query.filter_by(
+            branch_id=branch_id
+        ).filter(StockLevel.current_quantity <= 0).count()
+        expiring_soon = StockAlert.query.filter_by(
+            branch_id=branch_id, 
+            alert_type='expiring_soon', 
+            is_resolved=False
+        ).count()
+        
+        stats = {
+            'total_items': total_items,
+            'low_stock_alerts': low_stock_alerts,
+            'out_of_stock': out_of_stock,
+            'expiring_soon': expiring_soon
+        }
+    
+    return render_template('admin/stock_management.html', 
+                         branches=branches, 
+                         current_branch_id=branch_id,
+                         stats=stats,
+                         stock_items=stock_items,
+                         suppliers=suppliers,
+                         stock_categories=stock_categories)
+
+@admin_bp.route('/stock/item/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def add_stock_item():
+    """Add new stock item"""
+    from models import StockItem, StockCategory, Supplier
+    
+    if request.method == 'GET':
+        # Show the add form
+        categories = StockCategory.query.order_by(StockCategory.name_he).all()
+        suppliers = Supplier.query.order_by(Supplier.name).all()
+        return render_template('admin/stock_item_form.html', 
+                             item=None,
+                             categories=categories,
+                             suppliers=suppliers,
+                             title='הוספת פריט חדש')
+    
+    # POST - Process the form
+    try:
+        name_he = request.form.get('name_he')
+        name_en = request.form.get('name_en', name_he)  # Use Hebrew name if English not provided
+        category_id = request.form.get('category_id', type=int)
+        supplier_id = request.form.get('supplier_id', type=int)
+        unit = request.form.get('unit', 'יחידות')
+        minimum_stock = request.form.get('minimum_stock', 0, type=float)
+        cost_per_unit = request.form.get('cost_per_unit', 0, type=float)
+        item_type = request.form.get('item_type', 'ingredient')
+        
+        item = StockItem(
+            name_he=name_he,
+            name_en=name_en,
+            category_id=category_id if category_id else None,
+            primary_supplier_id=supplier_id if supplier_id else None,
+            unit_he=unit,
+            unit_en=unit,
+            minimum_stock=minimum_stock,
+            cost_per_unit=cost_per_unit,
+            item_type=item_type,
+            is_active=True
+        )
+        
+        db.session.add(item)
+        db.session.commit()
+        
+        flash('פריט נוסף בהצלחה!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה בהוספת הפריט: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/item/<int:item_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def edit_stock_item(item_id):
+    """Edit stock item"""
+    from models import StockItem, StockCategory, Supplier
+    
+    item = StockItem.query.get_or_404(item_id)
+    categories = StockCategory.query.order_by(StockCategory.name_he).all()
+    suppliers = Supplier.query.order_by(Supplier.name).all()
+    
+    if request.method == 'GET':
+        # Show the edit form
+        return render_template('admin/stock_item_form.html', 
+                             item=item,
+                             categories=categories,
+                             suppliers=suppliers,
+                             title=f'עריכת פריט: {item.name_he}')
+    
+    # POST - Process the form
+    if request.method == 'POST':
+        try:
+            item.name_he = request.form['name_he'].strip()
+            item.name_en = request.form.get('name_en', item.name_he).strip()
+            
+            category_id = request.form.get('category_id', type=int)
+            item.category_id = category_id if category_id else None
+            
+            supplier_id = request.form.get('supplier_id', type=int)
+            item.primary_supplier_id = supplier_id if supplier_id else None
+            
+            item.unit_he = request.form.get('unit', 'יחידות').strip()
+            item.unit_en = request.form.get('unit', 'units').strip()
+            min_stock_val = request.form.get('minimum_stock', 0) or 0
+            item.minimum_stock = float(min_stock_val) if str(min_stock_val).lower() != 'nan' else 0
+            cost_val = request.form.get('cost_per_unit', 0) or 0
+            item.cost_per_unit = float(cost_val) if str(cost_val).lower() != 'nan' else 0
+            item.item_type = request.form.get('item_type', 'ingredient')
+            
+            # Flush changes to get dirty state, then record audit
+            db.session.flush()
+            
+            # Record audit log
+            from audit_logger import record_entity_audit
+            try:
+                record_entity_audit(item, 'update')
+            except Exception as audit_error:
+                current_app.logger.error(f"Audit logging failed: {audit_error}")
+            
+            # Commit both the item changes and audit log together
+            db.session.commit()
+            
+            flash('פריט עודכן בהצלחה', 'success')
+            # Preserve view and mode parameters
+            view = request.args.get('view', 'items')
+            mode = request.args.get('mode', 'card')
+            return redirect(url_for('admin.stock_management', view=view, mode=mode))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון פריט: {str(e)}', 'error')
+            return render_template('admin/stock_item_form.html', 
+                                 item=item,
+                                 categories=categories,
+                                 suppliers=suppliers,
+                                 title=f'עריכת פריט: {item.name_he}')
+
+@admin_bp.route('/stock/category/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def add_stock_category():
+    """Add new stock category"""
+    from models import StockCategory
+    
+    if request.method == 'GET':
+        # For now, redirect to stock management (we can add a form later)
+        flash('השתמש בדף ניהול המלאי להוספת קטגוריה', 'info')
+        return redirect(url_for('admin.stock_management', view='categories'))
+    
+    # POST - Process the form
+    try:
+        name_he = request.form.get('name_he')
+        name_en = request.form.get('name_en', '')
+        description = request.form.get('description', '')
+        
+        category = StockCategory(
+            name_he=name_he,
+            name_en=name_en,
+            description=description,
+            is_active=True
+        )
+        
+        db.session.add(category)
+        db.session.commit()
+        
+        flash('קטגוריה נוספה בהצלחה!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה בהוספת הקטגוריה: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/category/<int:category_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def edit_stock_category(category_id):
+    """Edit stock category"""
+    from models import StockCategory
+    
+    category = StockCategory.query.get_or_404(category_id)
+    
+    if request.method == 'POST':
+        try:
+            category.name_he = request.form['name_he'].strip()
+            category.name_en = request.form.get('name_en', '').strip()
+            category.description = request.form.get('description', '').strip()
+            
+            db.session.commit()
+            
+            flash('קטגוריה עודכנה בהצלחה', 'success')
+            # Preserve view and mode parameters
+            view = request.args.get('view', 'categories')
+            mode = request.args.get('mode', 'card')
+            return redirect(url_for('admin.stock_management', view=view, mode=mode))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון קטגוריה: {str(e)}', 'error')
+    
+    return render_template('admin/edit_stock_category.html', category=category)
+
+@admin_bp.route('/stock/category/<int:category_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_stock_category(category_id):
+    """Delete stock category"""
+    from models import StockCategory
+    
+    try:
+        category = StockCategory.query.get_or_404(category_id)
+        db.session.delete(category)
+        db.session.commit()
+        
+        flash('קטגוריה נמחקה בהצלחה!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה במחיקת הקטגוריה: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/items/bulk-delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def bulk_delete_stock_items():
+    """Bulk delete stock items"""
+    from models import StockItem
+    
+    try:
+        data = request.get_json()
+        item_ids = data.get('item_ids', [])
+        
+        if not item_ids:
+            return jsonify({'success': False, 'message': 'לא נבחרו פריטים'}), 400
+        
+        # Delete items
+        StockItem.query.filter(StockItem.id.in_(item_ids)).delete(synchronize_session='fetch')
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'{len(item_ids)} פריטים נמחקו בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/stock/items/bulk-edit', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def bulk_edit_stock_items():
+    """Bulk edit stock items"""
+    from models import StockItem
+    
+    try:
+        data = request.get_json()
+        item_ids = data.get('item_ids', [])
+        field = data.get('field')
+        value = data.get('value')
+        
+        if not item_ids:
+            return jsonify({'success': False, 'message': 'לא נבחרו פריטים'}), 400
+        
+        # Map field numbers to actual fields
+        field_map = {
+            '1': 'category_id',
+            '2': 'primary_supplier_id',
+            '3': 'unit_he'
+        }
+        
+        actual_field = field_map.get(field, field)
+        
+        # Update items
+        items = StockItem.query.filter(StockItem.id.in_(item_ids)).all()
+        for item in items:
+            setattr(item, actual_field, value)
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'{len(items)} פריטים עודכנו בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/stock/items/export', methods=['GET'])
+@login_required
+@require_permission('stock.view')
+def export_stock_items():
+    """Export stock items to CSV"""
+    from models import StockItem
+    import csv
+    from io import StringIO
+    from flask import Response
+    
+    try:
+        # Get selected IDs or all items
+        ids = request.args.get('ids', '')
+        
+        if ids:
+            item_ids = [int(id) for id in ids.split(',')]
+            items = StockItem.query.filter(StockItem.id.in_(item_ids)).all()
+        else:
+            items = StockItem.query.all()
+        
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['ID', 'שם עברית', 'שם אנגלית', 'קטגוריה', 'יחידה', 'ספק', 'עלות', 'מינימום', 'מקסימום'])
+        
+        # Write data
+        for item in items:
+            writer.writerow([
+                item.id,
+                item.name_he,
+                item.name_en or '',
+                item.category.name_he if item.category else '',
+                item.unit_he or item.unit_en or '',
+                item.primary_supplier.name if item.primary_supplier else '',
+                item.cost_per_unit or 0,
+                item.min_stock_level or 0,
+                item.max_stock_level or 0
+            ])
+        
+        # Create response
+        response = Response(output.getvalue(), mimetype='text/csv')
+        response.headers['Content-Disposition'] = 'attachment; filename=stock_items.csv'
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8-sig'
+        
+        # Add BOM for Hebrew support in Excel
+        return '\ufeff' + output.getvalue(), 200, response.headers
+        
+    except Exception as e:
+        flash(f'שגיאה בייצוא: {str(e)}', 'danger')
+        return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/item/update-field', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def update_stock_item_field():
+    """Update single stock item field (for Excel-like editing)"""
+    from models import StockItem
+    
+    try:
+        data = request.get_json()
+        item_id = data.get('item_id')
+        field = data.get('field')
+        value = data.get('value')
+        
+        item = StockItem.query.get_or_404(item_id)
+        
+        # Handle numeric fields
+        if field in ['cost_per_unit', 'min_stock_level', 'max_stock_level']:
+            value = float(value) if value else 0
+        elif field in ['category_id', 'primary_supplier_id']:
+            value = int(value) if value else None
+        
+        setattr(item, field, value)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'עודכן בהצלחה'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ===== UNIFIED EXPORT ROUTES =====
+
+@admin_bp.route('/stock/export/suppliers')
+@login_required
+@require_permission('stock.view')
+def export_suppliers():
+    """Export suppliers to Excel/CSV"""
+    from models import Supplier
+    
+    format_type = request.args.get('format', 'excel')
+    suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
+    
+    columns = [
+        {'field': 'id', 'header': 'ID'},
+        {'field': 'name', 'header': 'שם הספק'},
+        {'field': 'contact_person', 'header': 'איש קשר'},
+        {'field': 'phone', 'header': 'טלפון'},
+        {'field': 'email', 'header': 'אימייל'},
+        {'field': 'address', 'header': 'כתובת'},
+        {'field': 'created_at', 'header': 'תאריך יצירה'}
+    ]
+    
+    return build_export_response(suppliers, columns, format_type, 'suppliers')
+
+@admin_bp.route('/stock/export/categories')
+@login_required
+@require_permission('stock.view')
+def export_categories():
+    """Export categories to Excel/CSV"""
+    from models import StockCategory
+    
+    format_type = request.args.get('format', 'excel')
+    categories = StockCategory.query.filter_by(is_active=True).order_by(StockCategory.name_he).all()
+    
+    columns = [
+        {'field': 'id', 'header': 'ID'},
+        {'field': 'name_he', 'header': 'שם עברית'},
+        {'field': 'name_en', 'header': 'שם אנגלית'},
+        {'field': 'description', 'header': 'תיאור'}
+    ]
+    
+    return build_export_response(categories, columns, format_type, 'categories')
+
+@admin_bp.route('/stock/export/items')
+@login_required
+@require_permission('stock.view')
+def export_items():
+    """Export stock items to Excel/CSV using unified export"""
+    from models import StockItem
+    
+    format_type = request.args.get('format', 'excel')
+    items = StockItem.query.filter_by(is_active=True).order_by(StockItem.name_he).all()
+    
+    columns = [
+        {'field': 'id', 'header': 'ID'},
+        {'field': 'name_he', 'header': 'שם עברית'},
+        {'field': 'name_en', 'header': 'שם אנגלית'},
+        {'field': 'category', 'header': 'קטגוריה', 'formatter': lambda x: x.name_he if x else ''},
+        {'field': 'unit_he', 'header': 'יחידה'},
+        {'field': 'primary_supplier', 'header': 'ספק', 'formatter': lambda x: x.name if x else ''},
+        {'field': 'cost_per_unit', 'header': 'עלות/יח\''},
+        {'field': 'min_stock_level', 'header': 'מינימום'},
+        {'field': 'max_stock_level', 'header': 'מקסימום'}
+    ]
+    
+    return build_export_response(items, columns, format_type, 'stock_items')
+
+@admin_bp.route('/stock/item/<int:item_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_stock_item(item_id):
+    """Delete single stock item"""
+    from models import StockItem
+    
+    try:
+        # Handle both JSON and form data
+        if request.is_json:
+            item_id = request.get_json().get('item_id', item_id)
+        
+        item = StockItem.query.get_or_404(item_id)
+        
+        # Record audit log before deletion
+        from audit_logger import record_entity_audit
+        try:
+            record_entity_audit(item, 'delete')
+        except Exception as audit_error:
+            current_app.logger.error(f"Audit logging failed: {audit_error}")
+        
+        db.session.delete(item)
+        db.session.commit()
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'פריט נמחק בהצלחה'})
+        else:
+            flash('פריט נמחק בהצלחה', 'success')
+            return redirect(url_for('admin.stock_management'))
+            
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({'success': False, 'message': str(e)}), 500
+        else:
+            flash(f'שגיאה במחיקת הפריט: {str(e)}', 'danger')
+            return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/item/<int:item_id>/details')
+@login_required
+@require_permission('stock.view')
+def item_details(item_id):
+    """Detailed item management with price history, profit analysis, etc."""
+    from models import StockItem, StockTransaction, MenuItem, MenuItemIngredient
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    
+    item = StockItem.query.get_or_404(item_id)
+    
+    # Get last purchase date
+    last_purchase = db.session.query(func.max(StockTransaction.transaction_date)).filter(
+        StockTransaction.item_id == item_id,
+        StockTransaction.transaction_type == 'delivery'
+    ).scalar()
+    
+    # Get price history (last 12 months)
+    price_history = db.session.query(
+        StockTransaction.transaction_date,
+        StockTransaction.unit_cost
+    ).filter(
+        StockTransaction.item_id == item_id,
+        StockTransaction.transaction_type == 'delivery',
+        StockTransaction.unit_cost.isnot(None),
+        StockTransaction.transaction_date >= datetime.now() - timedelta(days=365)
+    ).order_by(StockTransaction.transaction_date.desc()).limit(50).all()
+    
+    # Get dishes using this ingredient
+    dishes_using = db.session.query(
+        MenuItem.id,
+        MenuItem.name_he,
+        MenuItem.base_price,
+        MenuItemIngredient.quantity
+    ).join(
+        MenuItemIngredient, MenuItem.id == MenuItemIngredient.menu_item_id
+    ).filter(
+        MenuItemIngredient.stock_item_id == item_id
+    ).all()
+    
+    # Calculate profit margins for each dish
+    dish_analysis = []
+    for dish in dishes_using:
+        ingredient_cost = (item.cost_per_unit or 0) * dish.quantity
+        dish_profit = (dish.base_price or 0) - ingredient_cost
+        profit_margin = (dish_profit / dish.base_price * 100) if dish.base_price else 0
+        
+        dish_analysis.append({
+            'id': dish.id,
+            'name': dish.name_he,
+            'price': dish.base_price,
+            'quantity_used': dish.quantity,
+            'ingredient_cost': ingredient_cost,
+            'profit': dish_profit,
+            'margin': profit_margin
+        })
+    
+    return render_template('admin/item_details.html',
+                         item=item,
+                         last_purchase=last_purchase,
+                         price_history=price_history,
+                         dish_analysis=dish_analysis,
+                         now=datetime.now())
+
+@admin_bp.route('/stock/reports/monthly-costs')
+@login_required
+@require_permission('stock.view')
+def monthly_cost_reports():
+    """Monthly cost and expense reports"""
+    from models import StockTransaction, StockItem
+    from sqlalchemy import func, extract
+    from datetime import datetime, timedelta
+    import calendar
+    
+    # Get year and month from query params or default to current
+    year = request.args.get('year', datetime.now().year, type=int)
+    month = request.args.get('month', datetime.now().month, type=int)
+    
+    # Calculate date range for the selected month
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+    
+    # Get transactions for the month
+    transactions = db.session.query(
+        StockTransaction.transaction_type,
+        StockItem.name_he,
+        StockItem.category_id,
+        func.sum(StockTransaction.quantity).label('total_quantity'),
+        func.sum(StockTransaction.total_cost).label('total_cost')
+    ).join(
+        StockItem, StockTransaction.item_id == StockItem.id
+    ).filter(
+        StockTransaction.transaction_date >= start_date,
+        StockTransaction.transaction_date < end_date
+    ).group_by(
+        StockTransaction.transaction_type,
+        StockItem.name_he,
+        StockItem.category_id
+    ).all()
+    
+    # Calculate summary
+    purchases = sum(t.total_cost or 0 for t in transactions if t.transaction_type == 'delivery')
+    usage = sum(t.total_cost or 0 for t in transactions if t.transaction_type == 'usage')
+    waste = sum(t.total_cost or 0 for t in transactions if t.transaction_type == 'waste')
+    total_expenses = purchases + usage + waste
+    
+    # Get monthly comparison (last 6 months)
+    monthly_data = []
+    for i in range(5, -1, -1):
+        target_date = datetime.now() - timedelta(days=30*i)
+        target_month = target_date.month
+        target_year = target_date.year
+        
+        month_start = datetime(target_year, target_month, 1)
+        if target_month == 12:
+            month_end = datetime(target_year + 1, 1, 1)
+        else:
+            month_end = datetime(target_year, target_month + 1, 1)
+        
+        month_total = db.session.query(
+            func.sum(StockTransaction.total_cost)
+        ).filter(
+            StockTransaction.transaction_date >= month_start,
+            StockTransaction.transaction_date < month_end
+        ).scalar() or 0
+        
+        monthly_data.append({
+            'month': calendar.month_name[target_month],
+            'year': target_year,
+            'total': month_total
+        })
+    
+    return render_template('admin/monthly_cost_reports.html',
+                         year=year,
+                         month=month,
+                         month_name=calendar.month_name[month],
+                         transactions=transactions,
+                         summary={
+                             'purchases': purchases,
+                             'usage': usage,
+                             'waste': waste,
+                             'total': total_expenses
+                         },
+                         monthly_data=monthly_data)
+
+@admin_bp.route('/stock-items')
+@login_required
+@require_permission('stock.view')
+def stock_items():
+    """Stock items management"""
+    from models import StockItem, StockCategory, Supplier
+    
+    # Get filter parameters
+    category_id = request.args.get('category_id', type=int)
+    item_type = request.args.get('item_type')
+    search_query = request.args.get('search', '')
+    
+    # Build query
+    query = StockItem.query.filter_by(is_active=True)
+    
+    if category_id:
+        query = query.filter_by(category_id=category_id)
+    if item_type:
+        query = query.filter_by(item_type=item_type)
+    if search_query:
+        query = query.filter(
+            db.or_(
+                StockItem.name_he.contains(search_query),
+                StockItem.name_en.contains(search_query),
+                StockItem.sku.contains(search_query)
+            )
+        )
+    
+    items = query.order_by(StockItem.name_he).all()
+    categories = StockCategory.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_items.html', 
+                         items=items, 
+                         categories=categories,
+                         suppliers=suppliers,
+                         filters={
+                             'category_id': category_id,
+                             'item_type': item_type,
+                             'search': search_query
+                         })
+
+@admin_bp.route('/stock-levels')
+@login_required
+@require_permission('stock.view')
+def stock_levels():
+    """Stock levels by branch"""
+    from models import StockLevel, Branch, StockItem
+    
+    branch_id = request.args.get('branch_id', type=int)
+    if not branch_id:
+        branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = branch.id if branch else None
+    
+    if branch_id:
+        levels = StockLevel.query.join(StockItem).filter(
+            StockLevel.branch_id == branch_id,
+            StockItem.is_active == True
+        ).order_by(StockItem.name_he).all()
+    else:
+        levels = []
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_levels.html', 
+                         levels=levels, 
+                         branches=branches,
+                         current_branch_id=branch_id)
+
+@admin_bp.route('/stock-transactions')
+@login_required
+@require_permission('stock.view')
+def stock_transactions():
+    """Stock transaction history"""
+    from models import StockTransaction, Branch, StockItem
+    
+    branch_id = request.args.get('branch_id', type=int)
+    transaction_type = request.args.get('type')
+    page = request.args.get('page', 1, type=int)
+    
+    query = StockTransaction.query.join(StockItem)
+    
+    if branch_id:
+        query = query.filter(StockTransaction.branch_id == branch_id)
+    if transaction_type:
+        query = query.filter(StockTransaction.transaction_type == transaction_type)
+    
+    transactions = query.order_by(StockTransaction.created_at.desc()).limit(50).all()
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_transactions.html', 
+                         transactions=transactions, 
+                         branches=branches,
+                         current_branch_id=branch_id,
+                         current_type=transaction_type)
+
+@admin_bp.route('/shopping-lists')
+@login_required
+@require_permission('stock.view')
+def shopping_lists():
+    """Shopping lists management"""
+    from models import ShoppingList, Branch, Supplier
+    
+    branch_id = request.args.get('branch_id', type=int)
+    status = request.args.get('status')
+    
+    query = ShoppingList.query
+    
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    if status:
+        query = query.filter_by(status=status)
+    
+    lists = query.order_by(ShoppingList.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/shopping_lists.html', 
+                         shopping_lists=lists, 
+                         branches=branches,
+                         suppliers=suppliers,
+                         current_branch_id=branch_id,
+                         current_status=status)
+
+@admin_bp.route('/stock-alerts')
+@login_required
+@require_permission('stock.view')
+def stock_alerts():
+    """Stock alerts dashboard"""
+    from models import StockAlert, Branch, StockItem
+    
+    branch_id = request.args.get('branch_id', type=int)
+    alert_type = request.args.get('type')
+    show_resolved = request.args.get('resolved', False, type=bool)
+    
+    query = StockAlert.query.join(StockItem)
+    
+    if branch_id:
+        query = query.filter(StockAlert.branch_id == branch_id)
+    if alert_type:
+        query = query.filter(StockAlert.alert_type == alert_type)
+    if not show_resolved:
+        query = query.filter(StockAlert.is_resolved == False)
+    
+    alerts = query.order_by(StockAlert.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    # Calculate alert statistics
+    alert_stats = {
+        'critical': StockAlert.query.filter_by(severity='critical', is_resolved=False).count(),
+        'medium': StockAlert.query.filter_by(severity='medium', is_resolved=False).count(), 
+        'low': StockAlert.query.filter_by(severity='low', is_resolved=False).count(),
+        'resolved': StockAlert.query.filter_by(is_resolved=True).count()
+    }
+    
+    return render_template('admin/stock_alerts.html', 
+                         alerts=alerts, 
+                         branches=branches,
+                         current_branch_id=branch_id,
+                         current_type=alert_type,
+                         show_resolved=show_resolved,
+                         alert_stats=alert_stats)
+
+@admin_bp.route('/stock-suppliers')
+@login_required
+@require_permission('stock.manage')
+def stock_suppliers():
+    """Suppliers management"""
+    from models import Supplier
+    
+    suppliers = Supplier.query.order_by(Supplier.name).all()
+    
+    return render_template('admin/stock_suppliers.html', suppliers=suppliers)
+
+@admin_bp.route('/stock-suppliers/add', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def add_supplier():
+    """Add new supplier"""
+    if request.method == 'POST':
+        from models import Supplier
+        
+        try:
+            min_order_val = request.form.get('minimum_order', 0) or 0
+            supplier = Supplier(
+                name=request.form['name'].strip(),
+                contact_person=request.form.get('contact_person', '').strip(),
+                phone=request.form.get('phone', '').strip(),
+                email=request.form.get('email', '').strip(),
+                address=request.form.get('address', '').strip(),
+                delivery_days=request.form.get('delivery_days', '1111111'),
+                delivery_time=request.form.get('delivery_time', '').strip(),
+                minimum_order=float(min_order_val) if str(min_order_val).lower() != 'nan' else 0,
+                payment_terms=request.form.get('payment_terms', '').strip(),
+                notes=request.form.get('notes', '').strip()
+            )
+            
+            db.session.add(supplier)
+            db.session.commit()
+            
+            flash('ספק חדש נוסף בהצלחה', 'success')
+            return redirect(url_for('admin.stock_suppliers'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בהוספת ספק: {str(e)}', 'error')
+    
+    return render_template('admin/add_supplier.html')
+
+@admin_bp.route('/suppliers/quick-create', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+@csrf.exempt
+def quick_create_supplier():
+    """Quick supplier creation for receipt review (AJAX endpoint)"""
+    from models import Supplier
+    import json
+    
+    try:
+        # Get JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'לא התקבל מידע'}), 400
+        
+        # Validate required field
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'שם הספק הוא שדה חובה'}), 400
+        
+        # Check for duplicate (case-insensitive)
+        existing = Supplier.query.filter(
+            db.func.lower(Supplier.name) == db.func.lower(name)
+        ).first()
+        
+        if existing:
+            return jsonify({
+                'success': False,
+                'error': f'ספק עם השם "{name}" כבר קיים במערכת',
+                'existing_id': existing.id
+            }), 409  # Conflict
+        
+        # Create new supplier with minimal required fields
+        supplier = Supplier(
+            name=name,
+            contact_person=data.get('contact_name', '').strip(),
+            phone=data.get('phone', '').strip(),
+            email=data.get('email', '').strip(),
+            address=data.get('address', '').strip(),
+            is_active=True
+        )
+        
+        db.session.add(supplier)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'supplier': {
+                'id': supplier.id,
+                'name': supplier.name
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        import logging
+        logging.error(f"Error in quick_create_supplier: {str(e)}")
+        return jsonify({'success': False, 'error': 'שגיאה ביצירת הספק'}), 500
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def edit_supplier(supplier_id):
+    """Edit supplier"""
+    from models import Supplier
+    
+    supplier = Supplier.query.get_or_404(supplier_id)
+    
+    if request.method == 'POST':
+        try:
+            supplier.name = request.form['name'].strip()
+            supplier.contact_person = request.form.get('contact_person', '').strip()
+            supplier.phone = request.form.get('phone', '').strip()
+            supplier.email = request.form.get('email', '').strip()
+            supplier.address = request.form.get('address', '').strip()
+            supplier.delivery_days = request.form.get('delivery_days', '1111111')
+            supplier.delivery_time = request.form.get('delivery_time', '').strip()
+            min_order_val = request.form.get('minimum_order', 0) or 0
+            supplier.minimum_order = float(min_order_val) if str(min_order_val).lower() != 'nan' else 0
+            supplier.payment_terms = request.form.get('payment_terms', '').strip()
+            supplier.notes = request.form.get('notes', '').strip()
+            
+            # Flush changes to get dirty state
+            db.session.flush()
+            
+            # Record audit log
+            from audit_logger import record_entity_audit
+            try:
+                record_entity_audit(supplier, 'update')
+            except Exception as audit_error:
+                current_app.logger.error(f"Audit logging failed: {audit_error}")
+            
+            # Commit both changes together
+            db.session.commit()
+            
+            flash('פרטי ספק עודכנו בהצלחה', 'success')
+            return redirect(url_for('admin.stock_suppliers'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בעדכון ספק: {str(e)}', 'error')
+    
+    return render_template('admin/edit_supplier.html', supplier=supplier)
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/toggle', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def toggle_supplier(supplier_id):
+    """Toggle supplier active status"""
+    from models import Supplier
+    
+    try:
+        supplier = Supplier.query.get_or_404(supplier_id)
+        supplier.is_active = not supplier.is_active
+        
+        db.session.commit()
+        
+        status = 'הופעל' if supplier.is_active else 'הושבת'
+        flash(f'ספק {supplier.name} {status} בהצלחה', 'success')
+        
+        return redirect(url_for('admin.stock_suppliers'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה בשינוי סטטוס ספק: {str(e)}', 'error')
+        return redirect(url_for('admin.stock_suppliers'))
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/items')
+@login_required
+@require_permission('stock.view')
+def supplier_items(supplier_id):
+    """View items from specific supplier"""
+    from models import Supplier, SupplierItem, StockItem
+    
+    supplier = Supplier.query.get_or_404(supplier_id)
+    
+    # Get items associated with this supplier
+    supplier_items = db.session.query(SupplierItem, StockItem).join(
+        StockItem, SupplierItem.item_id == StockItem.id
+    ).filter(SupplierItem.supplier_id == supplier_id).all()
+    
+    return render_template('admin/supplier_items.html', 
+                         supplier=supplier, 
+                         supplier_items=supplier_items)
+
+@admin_bp.route('/stock-suppliers/<int:supplier_id>/delete', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def delete_supplier(supplier_id):
+    """Delete supplier (soft delete by setting is_active=False)"""
+    from models import Supplier
+    
+    try:
+        supplier = Supplier.query.get_or_404(supplier_id)
+        
+        # Check if supplier has any associated items or receipts
+        from models import SupplierItem, Receipt
+        has_items = SupplierItem.query.filter_by(supplier_id=supplier_id).first() is not None
+        has_receipts = Receipt.query.filter_by(supplier_id=supplier_id).first() is not None
+        
+        if has_items or has_receipts:
+            # Soft delete - just deactivate
+            supplier.is_active = False
+            flash(f'ספק {supplier.name} הושבת (יש לו נתונים משויכים)', 'warning')
+        else:
+            # Hard delete if no associated data
+            db.session.delete(supplier)
+            flash(f'ספק {supplier.name} נמחק לחלוטין', 'success')
+        
+        db.session.commit()
+        return redirect(url_for('admin.stock_suppliers'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה במחיקת ספק: {str(e)}', 'error')
+        return redirect(url_for('admin.stock_suppliers'))
+
+@admin_bp.route('/stock-settings')
+@login_required
+@require_permission('stock.settings')
+def stock_settings():
+    """Stock management settings"""
+    from models import StockSettings, Branch
+    
+    branch_id = request.args.get('branch_id', type=int)
+    
+    # Get or create settings for the branch
+    if branch_id:
+        settings = StockSettings.query.filter_by(branch_id=branch_id).first()
+        if not settings:
+            settings = StockSettings(branch_id=branch_id)
+            db.session.add(settings)
+            db.session.commit()
+    else:
+        # Global settings
+        settings = StockSettings.query.filter_by(branch_id=None).first()
+        if not settings:
+            settings = StockSettings()
+            db.session.add(settings)
+            db.session.commit()
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_settings.html', 
+                         settings=settings, 
+                         branches=branches,
+                         current_branch_id=branch_id)
+
+@admin_bp.route('/stock-analytics')
+@login_required
+@require_permission('stock.view')
+def stock_analytics():
+    """Stock analytics and reports"""
+    from models import StockTransaction, StockLevel, Branch, StockItem
+    from datetime import datetime, timedelta
+    
+    branch_id = request.args.get('branch_id', type=int)
+    period = request.args.get('period', '30')  # days
+    
+    if not branch_id:
+        branch = Branch.query.filter_by(is_active=True).first()
+        branch_id = branch.id if branch else None
+    
+    analytics_data = {}
+    
+    if branch_id:
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=int(period))
+        
+        # Get transaction data for charts
+        transactions = StockTransaction.query.filter(
+            StockTransaction.branch_id == branch_id,
+            StockTransaction.created_at >= start_date
+        ).all()
+        
+        # Get current stock levels
+        stock_levels = StockLevel.query.join(StockItem).filter(StockLevel.branch_id == branch_id).all()
+        
+        # Calculate additional analytics
+        total_items = StockItem.query.filter_by(is_active=True).count()
+        low_stock_items = len([level for level in stock_levels if level.available_quantity <= level.item.minimum_stock])
+        out_of_stock_items = len([level for level in stock_levels if level.available_quantity <= 0])
+        full_stock_items = len([level for level in stock_levels if level.available_quantity >= level.item.maximum_stock])
+        total_value = sum([level.available_quantity * level.item.cost_per_unit for level in stock_levels])
+        
+        analytics_data = {
+            'total_transactions': len(transactions),
+            'transactions': transactions,
+            'stock_levels': stock_levels[:10],  # Limit for display
+            'period': period,
+            'start_date': start_date,
+            'end_date': end_date,
+            'active_items': total_items,
+            'low_stock_items': low_stock_items,
+            'out_of_stock_items': out_of_stock_items,
+            'full_stock_items': full_stock_items,
+            'total_value': total_value
+        }
+    
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/stock_analytics.html', 
+                         analytics=analytics_data, 
+                         branches=branches,
+                         current_branch_id=branch_id,
+                         period=period)
+
+# ===== RECEIPT MANAGEMENT & OCR PROCESSING =====
+
+@admin_bp.route('/receipts')
+@login_required
+@require_permission('stock.manage')
+def receipts():
+    """Receipt management dashboard"""
+    from models import Receipt, Branch, Supplier
+    
+    branch_id = request.args.get('branch_id', type=int)
+    status = request.args.get('status')
+    supplier_id = request.args.get('supplier_id', type=int)
+    
+    query = Receipt.query
+    
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    if status:
+        query = query.filter_by(ocr_status=status)
+    if supplier_id:
+        query = query.filter_by(supplier_id=supplier_id)
+    
+    receipts = query.order_by(Receipt.created_at.desc()).limit(50).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/receipts.html',
+                         receipts=receipts,
+                         branches=branches,
+                         suppliers=suppliers,
+                         current_branch_id=branch_id,
+                         current_status=status,
+                         current_supplier_id=supplier_id)
+
+@admin_bp.route('/receipts/upload', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def upload_receipt():
+    """Upload and process receipt image"""
+    if request.method == 'POST':
+        from models import Receipt, Branch, Supplier
+        from ocr_service import ReceiptOCRService
+        import os
+        from werkzeug.utils import secure_filename
+        from datetime import datetime
+        
+        try:
+            # Get form data
+            file = request.files.get('receipt_image')
+            branch_id = request.form.get('branch_id', type=int)
+            supplier_id = request.form.get('supplier_id', type=int) if request.form.get('supplier_id') else None
+            
+            if not file or file.filename == '':
+                flash('לא נבחר קובץ', 'error')
+                return redirect(url_for('admin.upload_receipt'))
+            
+            if not branch_id:
+                flash('חובה לבחור סניף', 'error')
+                return redirect(url_for('admin.upload_receipt'))
+            
+            # Validate file type
+            allowed_extensions = {'jpg', 'jpeg', 'png', 'pdf'}
+            filename = secure_filename(file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                flash('סוג קובץ לא נתמך. אנא העלה JPG, PNG או PDF', 'error')
+                return redirect(url_for('admin.upload_receipt'))
+            
+            # Create upload directory if it doesn't exist
+            upload_dir = os.path.join('static', 'uploads', 'receipts')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Generate unique filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            new_filename = f"{timestamp}_{filename}"
+            file_path = os.path.join(upload_dir, new_filename)
+            
+            # Save file
+            file.save(file_path)
+            
+            # Create receipt record
+            receipt = Receipt(
+                image_path=file_path,
+                original_filename=filename,
+                file_size=os.path.getsize(file_path),
+                branch_id=branch_id,
+                supplier_id=supplier_id,
+                ocr_status='pending'
+            )
+            
+            db.session.add(receipt)
+            db.session.commit()
+            
+            # Process OCR in background (for now, process immediately)
+            try:
+                ocr_service = ReceiptOCRService()
+                result = ocr_service.process_receipt_image(file_path)
+                
+                # Update receipt with OCR results
+                receipt.ocr_status = result['status'] if result['status'] == 'success' else 'failed'
+                receipt.ocr_data = result.get('data', {})
+                receipt.ocr_confidence = result.get('confidence', 0.0)
+                receipt.processed_at = datetime.utcnow()
+                
+                # Extract basic information
+                if result['status'] == 'success' and result.get('data'):
+                    data = result['data']
+                    if 'total_amount' in data:
+                        receipt.total_amount = data['total_amount']
+                    if 'tax_amount' in data:
+                        receipt.tax_amount = data['tax_amount']
+                    if 'receipt_number' in data:
+                        receipt.receipt_number = data['receipt_number']
+                    if 'receipt_date' in data:
+                        receipt.receipt_date = datetime.fromisoformat(data['receipt_date']).date()
+                
+                db.session.commit()
+                
+                if result['status'] == 'success':
+                    flash(f'קבלה הועלתה בהצלחה! נמצאו {len(result.get("data", {}).get("items", []))} פריטים', 'success')
+                else:
+                    flash('קבלה הועלתה אך עיבוד OCR נכשל', 'warning')
+                    
+            except Exception as ocr_error:
+                receipt.ocr_status = 'failed'
+                receipt.processing_errors = str(ocr_error)
+                db.session.commit()
+                flash('קבלה הועלתה אך עיבוד הטקסט נכשל', 'warning')
+            
+            return redirect(url_for('admin.receipts'))
+            
+        except Exception as e:
+            flash(f'שגיאה בהעלאת הקבלה: {str(e)}', 'error')
+            return redirect(url_for('admin.upload_receipt'))
+    
+    # GET request - show upload form
+    from models import Branch, Supplier
+    branches = Branch.query.filter_by(is_active=True).all()
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/upload_receipt.html',
+                         branches=branches,
+                         suppliers=suppliers)
+
+# ===== AI RECEIPT SCANNER =====
+
+@admin_bp.route('/receipt-scanner')
+@login_required
+@require_permission('stock.manage')
+def receipt_scanner():
+    """AI-powered receipt scanner upload page"""
+    from models import Branch
+    branches = Branch.query.filter_by(is_active=True).all()
+    return render_template('admin/receipt_scanner.html', branches=branches)
+
+@admin_bp.route('/receipt-scanner/process', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def process_receipt_upload():
+    """Process uploaded receipt with AI"""
+    import os
+    import json
+    from werkzeug.utils import secure_filename
+    from datetime import datetime
+    from models import Receipt, ReceiptImport, ReceiptImportItem, Branch, Supplier, StockItem
+    import openai
+    import base64
+    
+    try:
+        # Get uploaded file and branch
+        receipt_image = request.files.get('receipt_image')
+        branch_id = request.form.get('branch_id', type=int)
+        
+        if not receipt_image:
+            return jsonify({'success': False, 'error': 'לא הועלתה תמונה'})
+        
+        if not branch_id:
+            return jsonify({'success': False, 'error': 'לא נבחר סניף'})
+        
+        branch = Branch.query.get(branch_id)
+        if not branch:
+            return jsonify({'success': False, 'error': 'סניף לא נמצא'})
+        
+        # Validate file type (MIME validation)
+        allowed_mimes = {'image/jpeg', 'image/png', 'image/jpg', 'image/heic', 'image/webp'}
+        allowed_extensions = {'jpg', 'jpeg', 'png', 'heic', 'webp'}
+        
+        # Check MIME type
+        if receipt_image.content_type not in allowed_mimes:
+            return jsonify({'success': False, 'error': 'סוג קובץ לא נתמך. רק תמונות מותרות'})
+        
+        # Check file extension
+        filename = secure_filename(receipt_image.filename)
+        if '.' not in filename:
+            return jsonify({'success': False, 'error': 'קובץ לא תקין'})
+        
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        if file_extension not in allowed_extensions:
+            return jsonify({'success': False, 'error': 'סיומת קובץ לא נתמכת'})
+        
+        # Check file size (max 10MB)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        receipt_image.seek(0, os.SEEK_END)
+        file_size = receipt_image.tell()
+        receipt_image.seek(0)
+        
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({'success': False, 'error': 'הקובץ גדול מדי (מקסימום 10MB)'})
+        
+        if file_size == 0:
+            return jsonify({'success': False, 'error': 'הקובץ ריק'})
+        
+        # Save receipt image
+        upload_dir = os.path.join('static', 'uploads', 'receipts')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(upload_dir, unique_filename)
+        receipt_image.save(filepath)
+        
+        # Create Receipt record
+        receipt = Receipt(
+            image_path=filepath,
+            original_filename=filename,
+            file_size=file_size,
+            branch_id=branch_id,
+            ocr_status='processing'
+        )
+        db.session.add(receipt)
+        db.session.flush()
+        
+        # Prepare image for OpenAI Vision API
+        with open(filepath, 'rb') as image_file:
+            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Get OpenAI API key
+        openai_api_key = os.environ.get('OPENAI_API_KEY')
+        if not openai_api_key:
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = 'OpenAI API key not configured'
+            db.session.commit()
+            return jsonify({'success': False, 'error': 'מפתח OpenAI לא מוגדר'})
+        
+        # Call OpenAI Vision API
+        client = openai.OpenAI(api_key=openai_api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert receipt OCR system specializing in Hebrew and English receipts.
+
+CRITICAL RULES:
+1. Extract text in the ORIGINAL language (Hebrew if Hebrew, English if English)
+2. For Hebrew receipts, read right-to-left
+3. Parse numbers correctly regardless of language
+4. Handle Israeli currency (₪, NIS, ILS)
+5. Return ONLY valid JSON with no markdown formatting
+
+Required JSON structure:
+{
+  "supplier_name": "exact supplier name from receipt",
+  "supplier_phone": "phone number if found on receipt (format: 03-1234567 or 050-1234567)",
+  "supplier_email": "email if found on receipt",
+  "supplier_address": "full address if found on receipt (in original language)",
+  "supplier_contact_person": "contact person name if found",
+  "receipt_date": "YYYY-MM-DD",
+  "total_amount": 0.00,
+  "items": [
+    {
+      "product_name": "product name in original language",
+      "quantity": 1.0,
+      "unit_price": 0.00,
+      "total_price": 0.00,
+      "unit": "ק״ג/kg/יחידות/pieces/ליטר/liters"
+    }
+  ]
+}
+
+Supplier details extraction:
+- Look for phone numbers (Israeli format: 02-xxx, 03-xxx, 04-xxx, 050-xxx, 052-xxx, etc.)
+- Look for email addresses (any valid email format)
+- Look for addresses (street, city, postal code)
+- Look for contact person names (usually near "איש קשר", "ליצירת קשר", "Contact")
+- If not found, set to null
+
+Number parsing:
+- Israeli decimal separator: both . and , are valid
+- Parse quantities accurately (e.g., 2.5, 0.75)
+- Extract unit prices and totals separately
+- If unit price missing, calculate from total/quantity
+
+Units (use Hebrew for Hebrew receipts):
+- ק״ג (kilograms), גרם (grams), ליטר (liters), מ״ל (milliliters)
+- יחידות (units/pieces), קרטון (carton), שק (sack), בקבוק (bottle)
+
+Return ONLY the JSON object, no explanation."""
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Extract all data from this receipt image. Return valid JSON only."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_data}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=2000,
+            temperature=0.1
+        )
+        
+        # Parse AI response
+        ai_response = response.choices[0].message.content
+        
+        # Clean response (remove markdown code blocks if present)
+        if '```json' in ai_response:
+            ai_response = ai_response.split('```json')[1].split('```')[0].strip()
+        elif '```' in ai_response:
+            ai_response = ai_response.split('```')[1].split('```')[0].strip()
+        
+        extracted_data = json.loads(ai_response)
+        
+        # Update receipt with extracted data
+        receipt.ocr_status = 'completed'
+        receipt.ocr_data = extracted_data
+        
+        if extracted_data.get('receipt_date'):
+            try:
+                from datetime import date
+                receipt.receipt_date = datetime.strptime(extracted_data['receipt_date'], '%Y-%m-%d').date()
+            except:
+                pass
+        
+        if extracted_data.get('total_amount'):
+            receipt.total_amount = float(extracted_data['total_amount'])
+        
+        # Try to match supplier
+        suggested_supplier = None
+        supplier_confidence = 0.0
+        candidate_supplier_ids = []
+        
+        if extracted_data.get('supplier_name'):
+            supplier_name = extracted_data['supplier_name'].strip()
+            
+            # Try exact match
+            suppliers = Supplier.query.filter_by(is_active=True).all()
+            for supplier in suppliers:
+                if supplier.name and supplier_name.lower() in supplier.name.lower():
+                    suggested_supplier = supplier
+                    supplier_confidence = 0.9
+                    candidate_supplier_ids.append(supplier.id)
+                    break
+                elif supplier.name and supplier.name.lower() in supplier_name.lower():
+                    if not suggested_supplier:
+                        suggested_supplier = supplier
+                        supplier_confidence = 0.7
+                    candidate_supplier_ids.append(supplier.id)
+        
+        # Create ReceiptImport record
+        receipt_import = ReceiptImport(
+            receipt_id=receipt.id,
+            branch_id=branch_id,
+            status='needs_review',
+            suggested_supplier_id=suggested_supplier.id if suggested_supplier else None,
+            supplier_confidence=supplier_confidence,
+            candidate_supplier_ids=candidate_supplier_ids,
+            receipt_date=receipt.receipt_date,
+            total_amount=receipt.total_amount,
+            ai_raw_response=extracted_data,
+            created_by=current_user.id
+        )
+        db.session.add(receipt_import)
+        db.session.flush()
+        
+        # Create ReceiptImportItem records for each line item
+        items = extracted_data.get('items', [])
+        for idx, item_data in enumerate(items):
+            # Try to match to existing stock items using fuzzy matching
+            from rapidfuzz import fuzz
+            product_name = item_data.get('product_name', '').strip()
+            suggested_stock_item = None
+            match_confidence = 0.0
+            
+            if product_name:
+                # Get all active stock items
+                stock_items = StockItem.query.filter_by(is_active=True).all()
+                best_match = None
+                best_score = 0.0
+                
+                for stock_item in stock_items:
+                    # Check Hebrew name
+                    if stock_item.name_he:
+                        score_he = fuzz.ratio(product_name.lower(), stock_item.name_he.lower()) / 100.0
+                        if score_he > best_score:
+                            best_score = score_he
+                            best_match = stock_item
+                    
+                    # Check English name
+                    if stock_item.name_en:
+                        score_en = fuzz.ratio(product_name.lower(), stock_item.name_en.lower()) / 100.0
+                        if score_en > best_score:
+                            best_score = score_en
+                            best_match = stock_item
+                
+                # Only suggest if confidence is above threshold (60%)
+                if best_score >= 0.6:
+                    suggested_stock_item = best_match
+                    match_confidence = best_score
+            
+            receipt_item = ReceiptImportItem(
+                receipt_import_id=receipt_import.id,
+                extracted_text=product_name,
+                product_name=product_name,
+                quantity=float(item_data.get('quantity', 1.0)),
+                unit_price=float(item_data.get('unit_price', 0.0)) if item_data.get('unit_price') else None,
+                total_price=float(item_data.get('total_price', 0.0)) if item_data.get('total_price') else None,
+                unit_of_measure=item_data.get('unit', 'יחידות'),
+                suggested_stock_item_id=suggested_stock_item.id if suggested_stock_item else None,
+                match_confidence=match_confidence,
+                is_new_item=(suggested_stock_item is None),
+                line_number=idx + 1
+            )
+            db.session.add(receipt_item)
+        
+        db.session.commit()
+        
+        # Return success with redirect URL
+        return jsonify({
+            'success': True,
+            'redirect_url': url_for('admin.review_receipt_import', import_id=receipt_import.id)
+        })
+        
+    except json.JSONDecodeError as e:
+        db.session.rollback()
+        import uuid
+        import logging
+        
+        # Generate unique error ID for tracking
+        error_id = f"ERR-{uuid.uuid4().hex[:8].upper()}"
+        error_msg = f'Failed to parse AI response: {str(e)}'
+        
+        # Log with structured data
+        logging.error(f"[{error_id}] Receipt processing failed - JSON decode error", extra={
+            'error_id': error_id,
+            'error_type': 'JSONDecodeError',
+            'user_id': current_user.id,
+            'branch_id': branch_id if 'branch_id' in locals() else None
+        })
+        
+        if 'receipt' in locals():
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = f'{error_id}: {error_msg}'
+            receipt.ai_errors = ai_response if 'ai_response' in locals() else None
+            db.session.commit()
+        
+        return jsonify({
+            'success': False, 
+            'error': 'לא ניתן לפענח את תשובת הבינה המלאכותית',
+            'error_id': error_id,
+            'error_type': 'JSONDecodeError',
+            'technical_error': 'AI returned invalid JSON format'
+        })
+    
+    except openai.RateLimitError as e:
+        db.session.rollback()
+        import uuid
+        import logging
+        
+        # Generate unique error ID
+        error_id = f"ERR-{uuid.uuid4().hex[:8].upper()}"
+        
+        # Log error
+        logging.error(f"[{error_id}] Receipt processing failed - OpenAI quota exceeded", extra={
+            'error_id': error_id,
+            'error_type': 'RateLimitError',
+            'user_id': current_user.id
+        })
+        
+        if 'receipt' in locals():
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = f'{error_id}: OpenAI quota exceeded'
+            db.session.commit()
+        
+        return jsonify({
+            'success': False, 
+            'error': 'מכסת OpenAI נגמרה. יש לבדוק את התוכנית ופרטי החיוב',
+            'error_id': error_id,
+            'error_type': 'RateLimitError',
+            'technical_error': 'OpenAI API quota exceeded - check billing'
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        import uuid
+        import logging
+        import traceback
+        
+        # Generate unique error ID
+        error_id = f"ERR-{uuid.uuid4().hex[:8].upper()}"
+        error_type = type(e).__name__
+        
+        # Redact sensitive information from error message
+        error_msg = str(e)
+        if 'DATABASE_URL' in error_msg:
+            error_msg = error_msg.replace(os.environ.get('DATABASE_URL', ''), '[REDACTED]')
+        if 'OPENAI_API_KEY' in error_msg:
+            error_msg = error_msg.replace(os.environ.get('OPENAI_API_KEY', ''), '[REDACTED]')
+        
+        # Log full error with stack trace
+        logging.error(f"[{error_id}] Receipt processing failed - {error_type}: {error_msg}", extra={
+            'error_id': error_id,
+            'error_type': error_type,
+            'user_id': current_user.id,
+            'traceback': traceback.format_exc()
+        })
+        
+        if 'receipt' in locals():
+            receipt.ocr_status = 'failed'
+            receipt.processing_errors = f'{error_id}: {error_type}'
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+        
+        # Return error with safe technical details
+        return jsonify({
+            'success': False, 
+            'error': 'שגיאה בעיבוד הקבלה',
+            'error_id': error_id,
+            'error_type': error_type,
+            'technical_error': error_msg[:200]  # Limit length
+        })
+
+@admin_bp.route('/receipt-scanner/review/<int:import_id>')
+@login_required
+@require_permission('stock.manage')
+def review_receipt_import(import_id):
+    """Review and edit receipt import before approval"""
+    from models import ReceiptImport, Supplier, StockItem
+    
+    receipt_import = ReceiptImport.query.get_or_404(import_id)
+    suppliers = Supplier.query.filter_by(is_active=True).all()
+    
+    # Get all stock items, but prioritize items from suggested supplier
+    all_stock_items = StockItem.query.filter_by(is_active=True).all()
+    
+    # If supplier is suggested, show supplier items first
+    if receipt_import.suggested_supplier_id:
+        supplier_items = [item for item in all_stock_items if item.primary_supplier_id == receipt_import.suggested_supplier_id]
+        other_items = [item for item in all_stock_items if item.primary_supplier_id != receipt_import.suggested_supplier_id]
+        stock_items = supplier_items + other_items
+    else:
+        stock_items = all_stock_items
+    
+    # Extract supplier details from OCR for auto-fill
+    suggested_supplier_details = None
+    if receipt_import.ai_raw_response and not receipt_import.suggested_supplier_id:
+        # Only suggest if supplier wasn't matched
+        ai_data = receipt_import.ai_raw_response
+        suggested_supplier_details = {
+            'name': ai_data.get('supplier_name', ''),
+            'phone': ai_data.get('supplier_phone', ''),
+            'email': ai_data.get('supplier_email', ''),
+            'address': ai_data.get('supplier_address', ''),
+            'contact_person': ai_data.get('supplier_contact_person', '')
+        }
+    
+    return render_template('admin/review_receipt_import.html',
+                         receipt_import=receipt_import,
+                         suppliers=suppliers,
+                         stock_items=stock_items,
+                         suggested_supplier_details=suggested_supplier_details)
+
+@admin_bp.route('/receipt-scanner/approve/<int:import_id>', methods=['POST'])
+@login_required
+@require_permission('stock.manage')
+def approve_receipt_import(import_id):
+    """Approve receipt import and update inventory"""
+    from models import (ReceiptImport, ReceiptImportItem, StockItem, StockTransaction, 
+                       ShoppingList, ShoppingListItem, Supplier)
+    from datetime import datetime
+    import uuid
+    
+    receipt_import = ReceiptImport.query.get_or_404(import_id)
+    action = request.form.get('action')
+    
+    if action == 'reject':
+        # Reject the import
+        receipt_import.status = 'rejected'
+        receipt_import.rejection_reason = request.form.get('rejection_reason', '')
+        receipt_import.approved_by = current_user.id
+        receipt_import.approved_at = datetime.utcnow()
+        db.session.commit()
+        flash('הקבלה נדחתה', 'warning')
+        return redirect(url_for('admin.receipt_scanner'))
+    
+    # Validate inputs first
+    supplier_id = request.form.get('supplier_id', type=int)
+    receipt_date_str = request.form.get('receipt_date')
+    total_amount = request.form.get('total_amount', type=float)
+    
+    if not supplier_id:
+        flash('חובה לבחור ספק', 'error')
+        return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+    
+    supplier = Supplier.query.get(supplier_id)
+    if not supplier:
+        flash('ספק לא נמצא', 'error')
+        return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+    
+    try:
+        # Begin atomic transaction
+        with db.session.begin_nested():
+            # Update receipt import
+            receipt_import.supplier_id = supplier_id
+            receipt_import.status = 'approved'
+            receipt_import.approved_by = current_user.id
+            receipt_import.approved_at = datetime.utcnow()
+            
+            if receipt_date_str:
+                receipt_import.receipt_date = datetime.strptime(receipt_date_str, '%Y-%m-%d').date()
+            
+            if total_amount:
+                receipt_import.total_amount = total_amount
+            
+            # Update the original receipt with supplier info
+            receipt_import.receipt.supplier_id = supplier_id
+            if receipt_date_str:
+                receipt_import.receipt.receipt_date = datetime.strptime(receipt_date_str, '%Y-%m-%d').date()
+            if total_amount:
+                receipt_import.receipt.total_amount = total_amount
+            
+            # Create purchase order (shopping list)
+            shopping_list = ShoppingList(
+                branch_id=receipt_import.branch_id,
+                supplier_id=supplier_id,
+                name=f"קבלה {receipt_import.id} - {supplier.name}",
+                description=f"נוצר אוטומטית מקבלה סרוקה #{receipt_import.id}",
+                status='received',
+                order_date=receipt_import.receipt_date,
+                total_estimated_cost=total_amount or 0,
+                created_by=current_user.id,
+                sent_by=current_user.id,
+                created_at=datetime.utcnow(),
+                sent_at=datetime.utcnow()
+            )
+            db.session.add(shopping_list)
+            db.session.flush()
+            
+            receipt_import.shopping_list_id = shopping_list.id
+            
+            # Generate unique batch ID for transactions
+            batch_id = f"RECEIPT_{receipt_import.id}_{uuid.uuid4().hex[:8]}"
+            receipt_import.stock_transaction_batch = batch_id
+            
+            # Process each line item
+            items_count = 0
+            new_items_count = 0
+            
+            for key in request.form.keys():
+                if not key.startswith('items[') or not key.endswith('][id]'):
+                    continue
+                
+                idx = key.split('[')[1].split(']')[0]
+                item_id = request.form.get(f'items[{idx}][id]', type=int)
+                
+                if not item_id:
+                    continue
+                
+                receipt_item = ReceiptImportItem.query.get(item_id)
+                if not receipt_item:
+                    continue
+                
+                # Update item data from form
+                product_name = request.form.get(f'items[{idx}][product_name]')
+                quantity = request.form.get(f'items[{idx}][quantity]', type=float)
+                unit_price = request.form.get(f'items[{idx}][unit_price]', type=float)
+                total_price = request.form.get(f'items[{idx}][total_price]', type=float)
+                stock_item_id = request.form.get(f'items[{idx}][stock_item_id]', type=int)
+                
+                if not product_name or not quantity:
+                    continue
+                
+                # Update receipt item
+                receipt_item.product_name = product_name
+                receipt_item.quantity = quantity
+                receipt_item.unit_price = unit_price
+                receipt_item.total_price = total_price
+                receipt_item.is_verified = True
+                
+                # Handle stock item matching
+                stock_item = None
+                if stock_item_id:
+                    stock_item = StockItem.query.get(stock_item_id)
+                    if not stock_item:
+                        raise ValueError(f'פריט מלאי {stock_item_id} לא נמצא')
+                    receipt_item.stock_item_id = stock_item_id
+                    receipt_item.is_new_item = False
+                else:
+                    # Create new stock item linked to supplier
+                    stock_item = StockItem(
+                        name_he=product_name,
+                        name_en=product_name,
+                        unit_he=receipt_item.unit_of_measure or 'יחידות',
+                        unit_en=receipt_item.unit_of_measure or 'units',
+                        cost_per_unit=unit_price or 0,
+                        primary_supplier_id=supplier_id,  # Link to supplier
+                        item_type='ingredient',  # Default type for scanned items
+                        is_active=True
+                    )
+                    db.session.add(stock_item)
+                    db.session.flush()
+                    
+                    receipt_item.stock_item_id = stock_item.id
+                    receipt_item.is_new_item = True
+                    new_items_count += 1
+                
+                # Add to shopping list
+                shopping_list_item = ShoppingListItem(
+                    shopping_list_id=shopping_list.id,
+                    item_id=stock_item.id,
+                    requested_quantity=quantity,
+                    estimated_unit_cost=unit_price or 0,
+                    estimated_total_cost=total_price or 0,
+                    received_quantity=quantity,
+                    actual_unit_cost=unit_price or 0,
+                    actual_total_cost=total_price or 0,
+                    status='received'
+                )
+                db.session.add(shopping_list_item)
+                
+                # Create stock transaction (delivery)
+                transaction = StockTransaction(
+                    item_id=stock_item.id,
+                    branch_id=receipt_import.branch_id,
+                    transaction_type='delivery',
+                    quantity=quantity,
+                    unit_cost=unit_price or 0,
+                    total_cost=total_price or 0,
+                    supplier_id=supplier_id,
+                    reference_number=f"RECEIPT_{receipt_import.id}",
+                    user_id=current_user.id,
+                    transaction_date=receipt_import.receipt_date or datetime.utcnow(),
+                    notes=f"קבלה סרוקה #{receipt_import.id} - {batch_id}"
+                )
+                db.session.add(transaction)
+                
+                # Update stock level
+                from models import StockLevel
+                stock_level = StockLevel.query.filter_by(
+                    item_id=stock_item.id,
+                    branch_id=receipt_import.branch_id
+                ).first()
+                
+                if stock_level:
+                    stock_level.current_quantity += quantity
+                    stock_level.available_quantity = stock_level.current_quantity - stock_level.reserved_quantity
+                else:
+                    stock_level = StockLevel(
+                        item_id=stock_item.id,
+                        branch_id=receipt_import.branch_id,
+                        current_quantity=quantity,
+                        reserved_quantity=0,
+                        available_quantity=quantity
+                    )
+                    db.session.add(stock_level)
+                
+                items_count += 1
+        
+        # Commit the entire transaction atomically
+        db.session.commit()
+        
+        flash(f'קבלה אושרה בהצלחה! {items_count} פריטים נוספו למלאי ({new_items_count} פריטים חדשים)', 'success')
+        return redirect(url_for('admin.stock_management'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'שגיאה באישור הקבלה: {str(e)}', 'error')
+        return redirect(url_for('admin.review_receipt_import', import_id=import_id))
+
+# ===== FILE IMPORT/EXPORT SYSTEM =====
+
+@admin_bp.route('/stock/import', methods=['GET', 'POST'])
+@login_required
+@require_permission('stock.manage')
+def import_stock_data():
+    """Import stock data from Excel/CSV files"""
+    if request.method == 'POST':
+        import pandas as pd
+        import os
+        from werkzeug.utils import secure_filename
+        from datetime import datetime
+        from models import StockItem, Supplier, Category, Branch, StockLevel
+        
+        try:
+            # Get form data
+            file = request.files.get('import_file')
+            branch_id = request.form.get('branch_id', type=int)
+            import_type = request.form.get('import_type')  # 'items', 'stock_levels', 'suppliers'
+            
+            if not file or file.filename == '':
+                flash('לא נבחר קובץ', 'error')
+                return redirect(url_for('admin.import_stock_data'))
+            
+            if not branch_id and import_type in ['stock_levels']:
+                flash('חובה לבחור סניף עבור יבוא רמות מלאי', 'error')
+                return redirect(url_for('admin.import_stock_data'))
+            
+            # Validate file type
+            allowed_extensions = {'csv', 'xlsx', 'xls'}
+            filename = secure_filename(file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                flash('סוג קובץ לא נתמך. אנא העלה CSV או Excel', 'error')
+                return redirect(url_for('admin.import_stock_data'))
+            
+            # Save file temporarily
+            upload_dir = os.path.join('static', 'uploads', 'import')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            temp_filename = f"{timestamp}_{filename}"
+            temp_path = os.path.join(upload_dir, temp_filename)
+            file.save(temp_path)
+            
+            # Read file
+            try:
+                if file_extension == 'csv':
+                    df = pd.read_csv(temp_path)
+                else:
+                    df = pd.read_excel(temp_path)
+            except Exception as e:
+                os.remove(temp_path)
+                flash(f'שגיאה בקריאת הקובץ: {str(e)}', 'error')
+                return redirect(url_for('admin.import_stock_data'))
+            
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            if import_type == 'items':
+                # Import stock items
+                for index, row in df.iterrows():
+                    try:
+                        # Get or create category
+                        category = None
+                        if pd.notna(row.get('category')):
+                            category = Category.query.filter_by(name=str(row['category'])).first()
+                            if not category:
+                                category = Category(name=str(row['category']), description='Imported category')
+                                db.session.add(category)
+                                db.session.flush()
+                        
+                        # Get or create supplier
+                        supplier = None
+                        if pd.notna(row.get('supplier')):
+                            supplier = Supplier.query.filter_by(name=str(row['supplier'])).first()
+                            if not supplier:
+                                supplier = Supplier(name=str(row['supplier']), contact_info='Imported supplier')
+                                db.session.add(supplier)
+                                db.session.flush()
+                        
+                        # Create stock item
+                        item = StockItem(
+                            name=str(row['name']),
+                            description=str(row.get('description', '')),
+                            sku=str(row.get('sku', '')),
+                            unit_of_measure=str(row.get('unit', 'יחידה')),
+                            cost_per_unit=float(row.get('cost', 0)),
+                            minimum_stock=int(row.get('min_stock', 0)),
+                            maximum_stock=int(row.get('max_stock', 100)),
+                            category_id=category.id if category else None
+                        )
+                        
+                        db.session.add(item)
+                        db.session.flush()
+                        
+                        # Add supplier relationship if exists
+                        if supplier:
+                            from models import SupplierItem
+                            supplier_item = SupplierItem(
+                                supplier_id=supplier.id,
+                                item_id=item.id,
+                                supplier_sku=str(row.get('supplier_sku', '')),
+                                cost_per_unit=float(row.get('supplier_cost', row.get('cost', 0)))
+                            )
+                            db.session.add(supplier_item)
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"שורה {index + 2}: {str(e)}")
+                        
+            elif import_type == 'stock_levels':
+                # Import stock levels
+                for index, row in df.iterrows():
+                    try:
+                        # Find item by name or SKU
+                        item = None
+                        if pd.notna(row.get('sku')):
+                            item = StockItem.query.filter_by(sku=str(row['sku'])).first()
+                        if not item and pd.notna(row.get('name')):
+                            item = StockItem.query.filter_by(name=str(row['name'])).first()
+                        
+                        if not item:
+                            error_count += 1
+                            errors.append(f"שורה {index + 2}: פריט לא נמצא")
+                            continue
+                        
+                        # Update or create stock level
+                        stock_level = StockLevel.query.filter_by(
+                            item_id=item.id,
+                            branch_id=branch_id
+                        ).first()
+                        
+                        quantity = int(row.get('quantity', 0))
+                        
+                        if stock_level:
+                            stock_level.current_quantity = quantity
+                            stock_level.available_quantity = quantity - stock_level.reserved_quantity
+                            stock_level.last_updated = datetime.utcnow()
+                        else:
+                            stock_level = StockLevel(
+                                item_id=item.id,
+                                branch_id=branch_id,
+                                current_quantity=quantity,
+                                reserved_quantity=0,
+                                available_quantity=quantity
+                            )
+                            db.session.add(stock_level)
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"שורה {index + 2}: {str(e)}")
+            
+            elif import_type == 'suppliers':
+                # Import suppliers
+                for index, row in df.iterrows():
+                    try:
+                        # Check if supplier already exists
+                        existing = Supplier.query.filter_by(name=str(row['name'])).first()
+                        if existing:
+                            error_count += 1
+                            errors.append(f"שורה {index + 2}: ספק כבר קיים")
+                            continue
+                        
+                        supplier = Supplier(
+                            name=str(row['name']),
+                            contact_info=str(row.get('contact', '')),
+                            email=str(row.get('email', '')),
+                            phone=str(row.get('phone', '')),
+                            address=str(row.get('address', ''))
+                        )
+                        
+                        db.session.add(supplier)
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        errors.append(f"שורה {index + 2}: {str(e)}")
+            
+            # Commit changes
+            db.session.commit()
+            
+            # Clean up temp file
+            os.remove(temp_path)
+            
+            # Show results
+            if success_count > 0:
+                flash(f'יובאו בהצלחה {success_count} רשומות', 'success')
+            if error_count > 0:
+                flash(f'{error_count} שגיאות בייבוא. ראה פרטים למטה.', 'warning')
+                for error in errors[:10]:  # Show first 10 errors
+                    flash(error, 'error')
+            
+            return redirect(url_for('admin.stock_management'))
+            
+        except Exception as e:
+            flash(f'שגיאה בייבוא: {str(e)}', 'error')
+            return redirect(url_for('admin.import_stock_data'))
+    
+    # GET request - show import form
+    from models import Branch
+    branches = Branch.query.filter_by(is_active=True).all()
+    
+    return render_template('admin/import_stock.html', branches=branches)
+
+@admin_bp.route('/stock/export')
+@login_required
+@require_permission('stock.view')
+def export_stock_data():
+    """Export stock data to Excel"""
+    import pandas as pd
+    from io import BytesIO
+    from flask import send_file
+    from models import StockItem, StockLevel, Supplier, Category, Branch
+    from datetime import datetime
+    
+    try:
+        export_type = request.args.get('type', 'items')
+        branch_id = request.args.get('branch_id', type=int)
+        
+        # Create Excel writer
+        output = BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            if export_type == 'items' or export_type == 'all':
+                # Export stock items
+                items_query = db.session.query(
+                    StockItem.id,
+                    StockItem.name,
+                    StockItem.description,
+                    StockItem.sku,
+                    StockItem.unit_of_measure.label('unit'),
+                    StockItem.cost_per_unit.label('cost'),
+                    StockItem.minimum_stock.label('min_stock'),
+                    StockItem.maximum_stock.label('max_stock'),
+                    Category.name.label('category')
+                ).outerjoin(Category).filter(StockItem.is_active == True)
+                
+                items_df = pd.read_sql(items_query.statement, db.engine)
+                items_df.to_excel(writer, sheet_name='Stock Items', index=False)
+            
+            if export_type == 'levels' or export_type == 'all':
+                # Export stock levels
+                levels_query = db.session.query(
+                    StockItem.name,
+                    StockItem.sku,
+                    StockLevel.current_quantity.label('quantity'),
+                    StockLevel.available_quantity.label('available'),
+                    StockLevel.reserved_quantity.label('reserved'),
+                    Branch.name_he.label('branch'),
+                    StockLevel.last_updated
+                ).join(StockItem).join(Branch)
+                
+                if branch_id:
+                    levels_query = levels_query.filter(StockLevel.branch_id == branch_id)
+                
+                levels_df = pd.read_sql(levels_query.statement, db.engine)
+                levels_df.to_excel(writer, sheet_name='Stock Levels', index=False)
+            
+            if export_type == 'suppliers' or export_type == 'all':
+                # Export suppliers
+                suppliers_query = db.session.query(
+                    Supplier.name,
+                    Supplier.contact_info.label('contact'),
+                    Supplier.email,
+                    Supplier.phone,
+                    Supplier.address
+                ).filter(Supplier.is_active == True)
+                
+                suppliers_df = pd.read_sql(suppliers_query.statement, db.engine)
+                suppliers_df.to_excel(writer, sheet_name='Suppliers', index=False)
+        
+        output.seek(0)
+        
+        # Generate filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"stock_export_{export_type}_{timestamp}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        flash(f'שגיאה בייצוא: {str(e)}', 'error')
+        return redirect(url_for('admin.stock_management'))
+
+@admin_bp.route('/stock/template/<template_type>')
+@login_required
+@require_permission('stock.view')
+def download_import_template(template_type):
+    """Download import template files"""
+    import pandas as pd
+    from io import BytesIO
+    from flask import send_file
+    
+    try:
+        # Create template based on type
+        if template_type == 'items':
+            data = {
+                'name': ['פריט דוגמה 1', 'פריט דוגמה 2'],
+                'description': ['תיאור פריט 1', 'תיאור פריט 2'],
+                'sku': ['SKU001', 'SKU002'],
+                'unit': ['יחידה', 'ק"ג'],
+                'cost': [10.50, 25.00],
+                'min_stock': [5, 2],
+                'max_stock': [100, 50],
+                'category': ['קטגוריה א', 'קטגוריה ב'],
+                'supplier': ['ספק א', 'ספק ב'],
+                'supplier_sku': ['SUP_SKU001', 'SUP_SKU002'],
+                'supplier_cost': [9.50, 23.00]
+            }
+        elif template_type == 'levels':
+            data = {
+                'name': ['פריט דוגמה 1', 'פריט דוגמה 2'],
+                'sku': ['SKU001', 'SKU002'],
+                'quantity': [50, 25]
+            }
+        elif template_type == 'suppliers':
+            data = {
+                'name': ['ספק דוגמה 1', 'ספק דוגמה 2'],
+                'contact': ['איש קשר 1', 'איש קשר 2'],
+                'email': ['supplier1@example.com', 'supplier2@example.com'],
+                'phone': ['050-1234567', '050-7654321'],
+                'address': ['כתובת 1', 'כתובת 2']
+            }
+        else:
+            flash('סוג תבנית לא ידוע', 'error')
+            return redirect(url_for('admin.import_stock_data'))
+        
+        # Create DataFrame and Excel file
+        df = pd.DataFrame(data)
+        output = BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Template', index=False)
+        
+        output.seek(0)
+        
+        filename = f"import_template_{template_type}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        flash(f'שגיאה ביצירת תבנית: {str(e)}', 'error')
+        return redirect(url_for('admin.import_stock_data'))
+
+# ===== PRINT TEMPLATE MANAGEMENT ROUTES =====
+
+@admin_bp.route('/api/print-templates', methods=['GET'])
+@login_required
+@require_permission('checklist.manage')
+def get_print_templates():
+    """Get all print templates"""
+    from models import PrintTemplate
+    
+    templates = PrintTemplate.query.order_by(PrintTemplate.is_default.desc(), PrintTemplate.name).all()
+    
+    return jsonify([{
+        'id': t.id,
+        'name': t.name,
+        'description': t.description,
+        'branch_id': t.branch_id,
+        'shift_type': t.shift_type,
+        'is_default': t.is_default,
+        'config': t.config,
+        'created_at': t.created_at.isoformat() if t.created_at else None,
+        'updated_at': t.updated_at.isoformat() if t.updated_at else None
+    } for t in templates])
+
+@admin_bp.route('/api/print-templates/<int:template_id>', methods=['GET'])
+@login_required
+@require_permission('checklist.manage')
+def get_print_template(template_id):
+    """Get a specific print template"""
+    from models import PrintTemplate
+    
+    template = PrintTemplate.query.get_or_404(template_id)
+    
+    return jsonify({
+        'id': template.id,
+        'name': template.name,
+        'description': template.description,
+        'branch_id': template.branch_id,
+        'shift_type': template.shift_type,
+        'is_default': template.is_default,
+        'config': template.config,
+        'created_at': template.created_at.isoformat() if template.created_at else None,
+        'updated_at': template.updated_at.isoformat() if template.updated_at else None
+    })
+
+@admin_bp.route('/api/print-templates', methods=['POST'])
+@login_required
+@require_permission('checklist.manage')
+def create_print_template():
+    """Create a new print template"""
+    from models import PrintTemplate
+    
+    data = request.get_json()
+    if not data or not data.get('name'):
+        return jsonify({'error': 'שם התבנית חובה'}), 400
+    
+    # Check if name already exists
+    existing = PrintTemplate.query.filter_by(name=data['name']).first()
+    if existing:
+        return jsonify({'error': 'תבנית עם שם זה כבר קיימת'}), 400
+    
+    # Validate config structure
+    config = data.get('config', {})
+    if not config.get('page') or not config.get('columns'):
+        return jsonify({'error': 'תצורת תבנית לא תקינה'}), 400
+    
+    template = PrintTemplate(
+        name=data['name'],
+        description=data.get('description'),
+        branch_id=data.get('branch_id'),
+        shift_type=data.get('shift_type'),
+        is_default=data.get('is_default', False),
+        created_by=current_user.id,
+        config=config
+    )
+    
+    # If setting as default, unset other defaults
+    if template.is_default:
+        PrintTemplate.query.update({'is_default': False})
+    
+    db.session.add(template)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'id': template.id,
+        'message': 'התבנית נוצרה בהצלחה'
+    }), 201
+
+@admin_bp.route('/api/print-templates/<int:template_id>', methods=['PUT'])
+@login_required
+@require_permission('checklist.manage')
+def update_print_template(template_id):
+    """Update a print template"""
+    from models import PrintTemplate
+    
+    template = PrintTemplate.query.get_or_404(template_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'נתונים חסרים'}), 400
+    
+    # Check if renaming to existing name
+    if 'name' in data and data['name'] != template.name:
+        existing = PrintTemplate.query.filter_by(name=data['name']).first()
+        if existing:
+            return jsonify({'error': 'תבנית עם שם זה כבר קיימת'}), 400
+    
+    # Update fields
+    if 'name' in data:
+        template.name = data['name']
+    if 'description' in data:
+        template.description = data['description']
+    if 'branch_id' in data:
+        template.branch_id = data['branch_id']
+    if 'shift_type' in data:
+        template.shift_type = data['shift_type']
+    if 'config' in data:
+        template.config = data['config']
+    
+    # Handle default setting
+    if 'is_default' in data:
+        if data['is_default'] and not template.is_default:
+            # Unset other defaults
+            PrintTemplate.query.filter(PrintTemplate.id != template_id).update({'is_default': False})
+        template.is_default = data['is_default']
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'התבנית עודכנה בהצלחה'
+    })
+
+@admin_bp.route('/api/print-templates/<int:template_id>', methods=['DELETE'])
+@login_required
+@require_permission('checklist.manage')
+def delete_print_template(template_id):
+    """Delete a print template"""
+    from models import PrintTemplate
+    
+    template = PrintTemplate.query.get_or_404(template_id)
+    
+    # Don't delete the default template
+    if template.is_default:
+        return jsonify({'error': 'לא ניתן למחוק תבנית ברירת מחדל'}), 400
+    
+    db.session.delete(template)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'התבנית נמחקה בהצלחה'
+    })
+
+@admin_bp.route('/api/print-templates/<int:template_id>/duplicate', methods=['POST'])
+@login_required
+@require_permission('checklist.manage')
+def duplicate_print_template(template_id):
+    """Duplicate a print template"""
+    from models import PrintTemplate
+    import copy
+    
+    original = PrintTemplate.query.get_or_404(template_id)
+    
+    # Find unique name
+    base_name = f"{original.name} - העתק"
+    name = base_name
+    counter = 1
+    while PrintTemplate.query.filter_by(name=name).first():
+        counter += 1
+        name = f"{base_name} {counter}"
+    
+    # Create duplicate
+    duplicate = PrintTemplate(
+        name=name,
+        description=original.description,
+        branch_id=original.branch_id,
+        shift_type=original.shift_type,
+        is_default=False,
+        created_by=current_user.id,
+        config=copy.deepcopy(original.config)
+    )
+    
+    db.session.add(duplicate)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'id': duplicate.id,
+        'message': 'התבנית שוכפלה בהצלחה'
+    }), 201
+
+
+
+# =============================================================================
+# Careers Management Routes
+# =============================================================================
+
+@admin_bp.route('/careers')
+@login_required
+def careers():
+    """Careers management page"""
+    from models import CareerPosition
+    
+    positions = CareerPosition.query.order_by(CareerPosition.display_order).all()
+    
+    # Add to_json method for each position
+    for position in positions:
+        position.to_json = lambda self=position: {
+            'id': self.id,
+            'title_he': self.title_he,
+            'title_en': self.title_en,
+            'description_he': self.description_he,
+            'description_en': self.description_en,
+            'requirements_he': self.requirements_he,
+            'requirements_en': self.requirements_en,
+            'location_he': self.location_he,
+            'location_en': self.location_en,
+            'employment_type_he': self.employment_type_he,
+            'employment_type_en': self.employment_type_en,
+            'is_active': self.is_active,
+            'display_order': self.display_order
+        }
+    
+    message = request.args.get('message')
+    message_type = request.args.get('type', 'info')
+    
+    return render_template('admin/careers.html', 
+                         positions=positions,
+                         message=message,
+                         message_type=message_type)
+
+@admin_bp.route('/careers/add', methods=['POST'])
+@login_required
+def careers_add():
+    """Add new career position"""
+    try:
+        from models import CareerPosition
+        
+        position = CareerPosition(
+            title_he=request.form.get('title_he', ''),
+            title_en=request.form.get('title_en', ''),
+            description_he=sanitize_html(request.form.get('description_he', '')),
+            description_en=sanitize_html(request.form.get('description_en', '')),
+            requirements_he=sanitize_html(request.form.get('requirements_he', '')),
+            requirements_en=sanitize_html(request.form.get('requirements_en', '')),
+            location_he=request.form.get('location_he', ''),
+            location_en=request.form.get('location_en', ''),
+            employment_type_he=request.form.get('employment_type_he', ''),
+            employment_type_en=request.form.get('employment_type_en', ''),
+            display_order=int(request.form.get('display_order', 0)),
+            is_active=request.form.get('is_active') == '1'
+        )
+        
+        db.session.add(position)
+        db.session.commit()
+        
+        return redirect(url_for('admin.careers', message='Position added successfully', type='success'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error adding career position: {str(e)}")
+        return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+@admin_bp.route('/careers/edit', methods=['POST'])
+@login_required
+def careers_edit():
+    """Edit career position"""
+    try:
+        from models import CareerPosition
+        
+        position_id = int(request.form.get('position_id'))
+        position = CareerPosition.query.get_or_404(position_id)
+        
+        position.title_he = request.form.get('title_he', '')
+        position.title_en = request.form.get('title_en', '')
+        position.description_he = sanitize_html(request.form.get('description_he', ''))
+        position.description_en = sanitize_html(request.form.get('description_en', ''))
+        position.requirements_he = sanitize_html(request.form.get('requirements_he', ''))
+        position.requirements_en = sanitize_html(request.form.get('requirements_en', ''))
+        position.location_he = request.form.get('location_he', '')
+        position.location_en = request.form.get('location_en', '')
+        position.employment_type_he = request.form.get('employment_type_he', '')
+        position.employment_type_en = request.form.get('employment_type_en', '')
+        position.display_order = int(request.form.get('display_order', 0))
+        position.is_active = request.form.get('is_active') == '1'
+        
+        db.session.commit()
+        
+        return redirect(url_for('admin.careers', message='Position updated successfully', type='success'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating career position: {str(e)}")
+        return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+@admin_bp.route('/careers/delete', methods=['POST'])
+@login_required
+def careers_delete():
+    """Delete career position"""
+    try:
+        from models import CareerPosition
+        
+        position_id = int(request.form.get('position_id'))
+        position = CareerPosition.query.get_or_404(position_id)
+        
+        db.session.delete(position)
+        db.session.commit()
+        
+        return redirect(url_for('admin.careers', message='Position deleted successfully', type='success'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting career position: {str(e)}")
+        return redirect(url_for('admin.careers', message=f'Error: {str(e)}', type='danger'))
+
+# ===== BULK OPERATIONS =====
+
+@admin_bp.route('/menu/bulk-update', methods=['POST'])
+@login_required
+@csrf.exempt
+def bulk_update_menu_items():
+    import json
+    try:
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
+        action = request.form.get('action', '')
+
+        if not ids:
+            return jsonify({'success': False, 'message': 'לא נבחרו פריטים'}), 400
+        if len(ids) > 200:
+            return jsonify({'success': False, 'message': 'מקסימום 200 פריטים'}), 400
+
+        items = MenuItem.query.filter(MenuItem.id.in_(ids)).all()
+        if not items:
+            return jsonify({'success': False, 'message': 'לא נמצאו פריטים'}), 404
+
+        updated = 0
+        if action == 'set_station':
+            station = request.form.get('print_station', '').strip() or None
+            for item in items:
+                item.print_station = station
+                updated += 1
+        elif action == 'set_availability':
+            avail = request.form.get('is_available') == '1'
+            for item in items:
+                item.is_available = avail
+                updated += 1
+        elif action == 'set_category':
+            cat_id = request.form.get('category_id')
+            if cat_id:
+                cat_id = int(cat_id)
+                cat = MenuCategory.query.get(cat_id)
+                if not cat:
+                    return jsonify({'success': False, 'message': 'קטגוריה לא נמצאה'}), 404
+                for item in items:
+                    item.category_id = cat_id
+                    updated += 1
+        else:
+            return jsonify({'success': False, 'message': 'פעולה לא תקינה'}), 400
+
+        db.session.commit()
+        return jsonify({'success': True, 'updated_count': updated})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk update menu items error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@admin_bp.route('/bulk-delete-items', methods=['POST'])
+@login_required
+@require_permission('stock.delete')
+@csrf.exempt
+def bulk_delete_items():
+    """Bulk delete stock items"""
+    try:
+        from models import StockItem, StockLevel
+        import json
+        
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No items selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 items per batch'}), 400
+        
+        # Get items to delete
+        items = StockItem.query.filter(StockItem.id.in_(ids)).all()
+        
+        if not items:
+            return jsonify({'success': False, 'message': 'No items found'}), 404
+        
+        # Delete in transaction
+        deleted_count = 0
+        for item in items:
+            # Delete associated stock alerts
+            from models import StockAlert
+            StockAlert.query.filter_by(item_id=item.id).delete()
+            # Delete associated stock levels
+            StockLevel.query.filter_by(item_id=item.id).delete()
+            db.session.delete(item)
+            deleted_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk delete items error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/bulk-delete-suppliers', methods=['POST'])
+@login_required
+@require_permission('stock.delete')
+@csrf.exempt
+def bulk_delete_suppliers():
+    """Bulk delete suppliers"""
+    try:
+        from models import Supplier, StockItem
+        import json
+        
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No suppliers selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 suppliers per batch'}), 400
+        
+        # Check for dependencies
+        items_count = StockItem.query.filter(StockItem.primary_supplier_id.in_(ids)).count()
+        if items_count > 0:
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete suppliers: {items_count} items are linked to these suppliers'
+            }), 400
+        
+        # Get suppliers to delete
+        suppliers = Supplier.query.filter(Supplier.id.in_(ids)).all()
+        
+        if not suppliers:
+            return jsonify({'success': False, 'message': 'No suppliers found'}), 404
+        
+        # Delete in transaction
+        deleted_count = 0
+        for supplier in suppliers:
+            db.session.delete(supplier)
+            deleted_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk delete suppliers error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/bulk-delete-categories', methods=['POST'])
+@login_required
+@require_permission('stock.delete')
+@csrf.exempt
+def bulk_delete_categories():
+    """Bulk delete categories"""
+    try:
+        from models import StockCategory, StockItem
+        import json
+        
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        ids = json.loads(ids_str)
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No categories selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 categories per batch'}), 400
+        
+        # Check for dependencies
+        items_count = StockItem.query.filter(StockItem.category_id.in_(ids)).count()
+        if items_count > 0:
+            return jsonify({
+                'success': False, 
+                'message': f'Cannot delete categories: {items_count} items are linked to these categories'
+            }), 400
+        
+        # Get categories to delete
+        categories = StockCategory.query.filter(StockCategory.id.in_(ids)).all()
+        
+        if not categories:
+            return jsonify({'success': False, 'message': 'No categories found'}), 404
+        
+        # Delete in transaction
+        deleted_count = 0
+        for category in categories:
+            db.session.delete(category)
+            deleted_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk delete categories error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/bulk-edit-items', methods=['POST'])
+@login_required
+@require_permission('stock.edit')
+@csrf.exempt
+def bulk_edit_items():
+    """Bulk edit stock items"""
+    try:
+        from models import StockItem
+        from audit_logger import log_item_update
+        import json
+        
+        # Read from form data (not JSON) for CSRF compatibility
+        ids_str = request.form.get('ids', '[]')
+        updates_str = request.form.get('updates', '{}')
+        ids = json.loads(ids_str)
+        updates = json.loads(updates_str)
+        
+        if not ids:
+            return jsonify({'success': False, 'message': 'No items selected'}), 400
+        
+        if len(ids) > 100:
+            return jsonify({'success': False, 'message': 'Maximum 100 items per batch'}), 400
+        
+        if not updates:
+            return jsonify({'success': False, 'message': 'No updates specified'}), 400
+        
+        # Get items to update
+        items = StockItem.query.filter(StockItem.id.in_(ids)).all()
+        
+        if not items:
+            return jsonify({'success': False, 'message': 'No items found'}), 404
+        
+        # Update in transaction
+        updated_count = 0
+        for item in items:
+            # Store old values for audit
+            old_values = {}
+            
+            # Update only specified fields
+            if 'category_id' in updates:
+                old_values['category_id'] = item.category_id
+                item.category_id = updates['category_id']
+            
+            if 'primary_supplier_id' in updates:
+                old_values['primary_supplier_id'] = item.primary_supplier_id
+                item.primary_supplier_id = updates['primary_supplier_id']
+            
+            if 'minimum_stock' in updates:
+                old_values['minimum_stock'] = item.minimum_stock
+                item.minimum_stock = updates['minimum_stock']
+            
+            # Flush to get updated values
+            db.session.flush()
+            
+            # Log audit for each item
+            log_item_update(item.id, old_values, current_user.id)
+            
+            updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'updated_count': updated_count})
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk edit items error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ===== AUDIT LOG API =====
+
+@admin_bp.route('/api/audit/<entity_type>/<int:entity_id>')
+@login_required
+def get_audit_history_api(entity_type, entity_id):
+    """
+    API endpoint to fetch audit history for a specific entity.
+    Returns paginated JSON with audit log entries.
+    """
+    try:
+        from audit_logger import get_audit_history
+        
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Fetch audit history
+        history = get_audit_history(entity_type, entity_id, page, per_page)
+        
+        return jsonify({
+            'success': True,
+            'data': history
+        })
+    
+    except Exception as e:
+        current_app.logger.error(f"Error fetching audit history: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ===== POPUP MANAGEMENT =====
+
+@admin_bp.route('/popups')
+@login_required
+def popups():
+    """List all popups"""
+    popups = Popup.query.order_by(Popup.priority.desc(), Popup.created_at.desc()).all()
+    total_leads = PopupLead.query.count()
+    return render_template('admin/popups.html', popups=popups, total_leads=total_leads)
+
+
+@admin_bp.route('/popups/leads')
+@login_required
+def popup_leads():
+    """View all popup leads (submitted contact details)"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+    
+    leads_query = PopupLead.query.order_by(PopupLead.created_at.desc())
+    leads = leads_query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    # Get popup names for display
+    popup_names = {p.id: p.name for p in Popup.query.all()}
+    
+    # Get consent data for each lead
+    lead_consents = {}
+    for lead in leads.items:
+        consents = CustomerConsent.query.filter_by(lead_id=lead.id).all()
+        lead_consents[lead.id] = {c.consent_type: c.is_granted for c in consents}
+    
+    return render_template('admin/popup_leads.html', 
+                          leads=leads, 
+                          popup_names=popup_names,
+                          lead_consents=lead_consents)
+
+
+@admin_bp.route('/popups/leads/export')
+@login_required
+def export_popup_leads():
+    """Export all popup leads to Excel file"""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    
+    # Get all leads
+    leads = PopupLead.query.order_by(PopupLead.created_at.desc()).all()
+    popup_names = {p.id: p.name for p in Popup.query.all()}
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "לידים מפופאפים"
+    ws.sheet_view.rightToLeft = True
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1B2951", end_color="1B2951", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Headers
+    headers = ['שם', 'אימייל', 'טלפון', 'מקור (פופאפ)', 'אישור תנאים', 'אישור קידום מכירות', 'ניוזלטר', 'מכשיר', 'תאריך']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    # Data rows
+    for row_num, lead in enumerate(leads, 2):
+        consents = CustomerConsent.query.filter_by(lead_id=lead.id).all()
+        consent_dict = {c.consent_type: c.is_granted for c in consents}
+        
+        popup_name = popup_names.get(lead.popup_id, 'לא ידוע') if lead.popup_id else 'לא ידוע'
+        terms_accepted = 'כן' if consent_dict.get('terms_of_use') else 'לא'
+        marketing_accepted = 'כן' if (consent_dict.get('marketing_email') or consent_dict.get('marketing_sms')) else 'לא'
+        newsletter = 'כן' if lead.is_subscribed else 'לא'
+        device = {'mobile': 'נייד', 'tablet': 'טאבלט', 'desktop': 'מחשב'}.get(lead.device_type, 'מחשב')
+        date_str = lead.created_at.strftime('%d/%m/%Y %H:%M') if lead.created_at else ''
+        
+        row_data = [
+            lead.name or '',
+            lead.email,
+            lead.phone or '',
+            popup_name,
+            terms_accepted,
+            marketing_accepted,
+            newsletter,
+            device,
+            date_str
+        ]
+        
+        for col, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_num, column=col, value=value)
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="right")
+    
+    # Adjust column widths
+    column_widths = [15, 30, 15, 20, 12, 18, 10, 10, 18]
+    for i, width in enumerate(column_widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = width
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    from flask import send_file
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'popup_leads_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    )
+
+
+@admin_bp.route('/popups/create', methods=['GET', 'POST'])
+@login_required
+def create_popup():
+    """Create a new popup"""
+    if request.method == 'POST':
+        popup = Popup(
+            name=request.form.get('name'),
+            title_he=request.form.get('title_he'),
+            title_en=request.form.get('title_en'),
+            content_he=request.form.get('content_he'),
+            content_en=request.form.get('content_en'),
+            button_text_he=request.form.get('button_text_he'),
+            button_text_en=request.form.get('button_text_en'),
+            button_url=request.form.get('button_url'),
+            button_action=request.form.get('button_action', 'link'),
+            popup_type=request.form.get('popup_type', 'modal'),
+            popup_size=request.form.get('popup_size', 'medium'),
+            popup_position=request.form.get('popup_position', 'center'),
+            background_color=request.form.get('background_color', '#ffffff'),
+            title_color=request.form.get('title_color', '#1B2951'),
+            text_color=request.form.get('text_color', '#333333'),
+            text_bg_color=request.form.get('text_bg_color', '#000000'),
+            text_bg_opacity=int(request.form.get('text_bg_opacity', 0)),
+            title_bg_color=request.form.get('title_bg_color', '#000000'),
+            title_bg_opacity=int(request.form.get('title_bg_opacity', 0)),
+            button_bg_color=request.form.get('button_bg_color', '#C75450'),
+            button_bg_opacity=int(request.form.get('button_bg_opacity', 100)),
+            button_text_color=request.form.get('button_text_color', '#ffffff'),
+            overlay_color=request.form.get('overlay_color', 'rgba(0,0,0,0.5)'),
+            title_font_size=int(request.form.get('title_font_size', 24)),
+            content_font_size=int(request.form.get('content_font_size', 16)),
+            border_radius=int(request.form.get('border_radius', 12)),
+            has_shadow=request.form.get('has_shadow') == 'on',
+            border_color=request.form.get('border_color'),
+            border_width=int(request.form.get('border_width', 0)),
+            show_delay_seconds=int(request.form.get('show_delay_seconds', 3)),
+            show_frequency=request.form.get('show_frequency', 'once_per_session'),
+            show_every_x_days=int(request.form.get('show_every_x_days', 1)),
+            trigger_type=request.form.get('trigger_type', 'time_delay'),
+            scroll_percentage=int(request.form.get('scroll_percentage', 50)),
+            exit_intent=request.form.get('exit_intent') == 'on',
+            show_on_all_pages=request.form.get('show_on_all_pages') == 'on',
+            show_on_desktop=request.form.get('show_on_desktop') == 'on',
+            show_on_mobile=request.form.get('show_on_mobile') == 'on',
+            show_on_tablet=request.form.get('show_on_tablet') == 'on',
+            animation_in=request.form.get('animation_in', 'fadeIn'),
+            animation_out=request.form.get('animation_out', 'fadeOut'),
+            animation_duration=int(request.form.get('animation_duration', 300)),
+            show_close_button=request.form.get('show_close_button') == 'on',
+            close_button_position=request.form.get('close_button_position', 'top-right'),
+            allow_backdrop_close=request.form.get('allow_backdrop_close') == 'on',
+            priority=int(request.form.get('priority', 0)),
+            is_active=request.form.get('is_active') == 'on',
+            created_by=current_user.id
+        )
+        
+        # Handle dates
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        if start_date:
+            popup.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M')
+        if end_date:
+            popup.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M')
+        
+        auto_close = request.form.get('auto_close_seconds')
+        if auto_close:
+            popup.auto_close_seconds = int(auto_close)
+        
+        max_impressions = request.form.get('max_impressions_per_user')
+        if max_impressions:
+            popup.max_impressions_per_user = int(max_impressions)
+        
+        # Handle image display type
+        popup.image_display_type = request.form.get('image_display_type', 'inline')
+        
+        # Form Collection Settings
+        popup.enable_form = request.form.get('enable_form') == 'on'
+        popup.form_submit_text_he = request.form.get('form_submit_text_he', 'שלח')
+        popup.form_submit_text_en = request.form.get('form_submit_text_en', 'Submit')
+        popup.form_success_message_he = request.form.get('form_success_message_he', 'תודה! קיבלנו את הפרטים שלך')
+        popup.form_success_message_en = request.form.get('form_success_message_en', 'Thank you! We received your details')
+        
+        # Form Fields Configuration
+        popup.collect_email = request.form.get('collect_email') == 'on'
+        popup.email_required = request.form.get('email_required') == 'on'
+        popup.email_placeholder_he = request.form.get('email_placeholder_he', 'הזן את האימייל שלך')
+        popup.email_placeholder_en = request.form.get('email_placeholder_en', 'Enter your email')
+        
+        popup.collect_name = request.form.get('collect_name') == 'on'
+        popup.name_required = request.form.get('name_required') == 'on'
+        popup.name_placeholder_he = request.form.get('name_placeholder_he', 'הזן את שמך')
+        popup.name_placeholder_en = request.form.get('name_placeholder_en', 'Enter your name')
+        
+        popup.collect_phone = request.form.get('collect_phone') == 'on'
+        popup.phone_required = request.form.get('phone_required') == 'on'
+        popup.phone_placeholder_he = request.form.get('phone_placeholder_he', 'הזן מספר טלפון')
+        popup.phone_placeholder_en = request.form.get('phone_placeholder_en', 'Enter your phone number')
+        
+        # Consent Checkboxes
+        popup.show_newsletter_consent = request.form.get('show_newsletter_consent') == 'on'
+        popup.newsletter_consent_text_he = request.form.get('newsletter_consent_text_he', 'אני מסכים/ה לקבל עדכונים ומבצעים במייל')
+        popup.newsletter_consent_text_en = request.form.get('newsletter_consent_text_en', 'I agree to receive updates and promotions by email')
+        popup.newsletter_default_checked = request.form.get('newsletter_default_checked') == 'on'
+        
+        popup.show_terms_consent = request.form.get('show_terms_consent') == 'on'
+        popup.terms_consent_text_he = request.form.get('terms_consent_text_he', 'אני מסכים/ה לתנאי השימוש')
+        popup.terms_consent_text_en = request.form.get('terms_consent_text_en', 'I agree to the terms of service')
+        popup.terms_consent_required = request.form.get('terms_consent_required') == 'on'
+        popup.terms_link = request.form.get('terms_link')
+        
+        popup.show_marketing_consent = request.form.get('show_marketing_consent') == 'on'
+        popup.marketing_consent_text_he = request.form.get('marketing_consent_text_he', 'אני מסכים/ה לקבל הודעות שיווקיות')
+        popup.marketing_consent_text_en = request.form.get('marketing_consent_text_en', 'I agree to receive marketing messages')
+        popup.marketing_default_checked = request.form.get('marketing_default_checked') == 'on'
+        
+        # Coupon Integration
+        associated_coupon_id = request.form.get('associated_coupon_id')
+        popup.associated_coupon_id = int(associated_coupon_id) if associated_coupon_id else None
+        popup.send_coupon_on_submit = request.form.get('send_coupon_on_submit') == 'on'
+        popup.coupon_email_subject_he = request.form.get('coupon_email_subject_he', 'הקופון שלך מגיע!')
+        popup.coupon_email_subject_en = request.form.get('coupon_email_subject_en', 'Your coupon has arrived!')
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                try:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"popup_{timestamp}_{filename}"
+                    upload_folder = 'static/uploads'
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    popup.image_path = f"/static/uploads/{filename}"
+                    print(f"Popup image saved: {filepath}")
+                except Exception as e:
+                    print(f"Error saving popup image: {e}")
+                    flash('שגיאה בשמירת התמונה', 'error')
+        
+        db.session.add(popup)
+        db.session.commit()
+        
+        flash('הפופאפ נוצר בהצלחה', 'success')
+        return redirect(url_for('admin.popups'))
+    
+    # Get coupons for dropdown
+    coupons = Coupon.query.filter_by(is_active=True).order_by(Coupon.name).all()
+    return render_template('admin/popup_form.html', popup=None, coupons=coupons)
+
+
+@admin_bp.route('/popups/<int:popup_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_popup(popup_id):
+    """Edit an existing popup"""
+    popup = Popup.query.get_or_404(popup_id)
+    
+    if request.method == 'POST':
+        popup.name = request.form.get('name')
+        popup.title_he = request.form.get('title_he')
+        popup.title_en = request.form.get('title_en')
+        popup.content_he = request.form.get('content_he')
+        popup.content_en = request.form.get('content_en')
+        popup.button_text_he = request.form.get('button_text_he')
+        popup.button_text_en = request.form.get('button_text_en')
+        popup.button_url = request.form.get('button_url')
+        popup.button_action = request.form.get('button_action', 'link')
+        popup.popup_type = request.form.get('popup_type', 'modal')
+        popup.popup_size = request.form.get('popup_size', 'medium')
+        popup.popup_position = request.form.get('popup_position', 'center')
+        popup.background_color = request.form.get('background_color', '#ffffff')
+        popup.title_color = request.form.get('title_color', '#1B2951')
+        popup.text_color = request.form.get('text_color', '#333333')
+        popup.text_bg_color = request.form.get('text_bg_color', '#000000')
+        popup.text_bg_opacity = int(request.form.get('text_bg_opacity', 0))
+        popup.title_bg_color = request.form.get('title_bg_color', '#000000')
+        popup.title_bg_opacity = int(request.form.get('title_bg_opacity', 0))
+        popup.button_bg_color = request.form.get('button_bg_color', '#C75450')
+        popup.button_bg_opacity = int(request.form.get('button_bg_opacity', 100))
+        popup.button_text_color = request.form.get('button_text_color', '#ffffff')
+        popup.overlay_color = request.form.get('overlay_color', 'rgba(0,0,0,0.5)')
+        popup.title_font_size = int(request.form.get('title_font_size', 24))
+        popup.content_font_size = int(request.form.get('content_font_size', 16))
+        popup.border_radius = int(request.form.get('border_radius', 12))
+        popup.has_shadow = request.form.get('has_shadow') == 'on'
+        popup.border_color = request.form.get('border_color')
+        popup.border_width = int(request.form.get('border_width', 0))
+        popup.show_delay_seconds = int(request.form.get('show_delay_seconds', 3))
+        popup.show_frequency = request.form.get('show_frequency', 'once_per_session')
+        popup.show_every_x_days = int(request.form.get('show_every_x_days', 1))
+        popup.trigger_type = request.form.get('trigger_type', 'time_delay')
+        popup.scroll_percentage = int(request.form.get('scroll_percentage', 50))
+        popup.exit_intent = request.form.get('exit_intent') == 'on'
+        popup.show_on_all_pages = request.form.get('show_on_all_pages') == 'on'
+        popup.show_on_desktop = request.form.get('show_on_desktop') == 'on'
+        popup.show_on_mobile = request.form.get('show_on_mobile') == 'on'
+        popup.show_on_tablet = request.form.get('show_on_tablet') == 'on'
+        popup.animation_in = request.form.get('animation_in', 'fadeIn')
+        popup.animation_out = request.form.get('animation_out', 'fadeOut')
+        popup.animation_duration = int(request.form.get('animation_duration', 300))
+        popup.show_close_button = request.form.get('show_close_button') == 'on'
+        popup.close_button_position = request.form.get('close_button_position', 'top-right')
+        popup.allow_backdrop_close = request.form.get('allow_backdrop_close') == 'on'
+        popup.priority = int(request.form.get('priority', 0))
+        popup.is_active = request.form.get('is_active') == 'on'
+        
+        # Handle dates
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        popup.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M') if start_date else None
+        popup.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M') if end_date else None
+        
+        auto_close = request.form.get('auto_close_seconds')
+        popup.auto_close_seconds = int(auto_close) if auto_close else None
+        
+        max_impressions = request.form.get('max_impressions_per_user')
+        popup.max_impressions_per_user = int(max_impressions) if max_impressions else None
+        
+        # Handle image display type
+        popup.image_display_type = request.form.get('image_display_type', 'inline')
+        
+        # Form Collection Settings
+        popup.enable_form = request.form.get('enable_form') == 'on'
+        popup.form_submit_text_he = request.form.get('form_submit_text_he', 'שלח')
+        popup.form_submit_text_en = request.form.get('form_submit_text_en', 'Submit')
+        popup.form_success_message_he = request.form.get('form_success_message_he', 'תודה! קיבלנו את הפרטים שלך')
+        popup.form_success_message_en = request.form.get('form_success_message_en', 'Thank you! We received your details')
+        
+        # Form Fields Configuration
+        popup.collect_email = request.form.get('collect_email') == 'on'
+        popup.email_required = request.form.get('email_required') == 'on'
+        popup.email_placeholder_he = request.form.get('email_placeholder_he', 'הזן את האימייל שלך')
+        popup.email_placeholder_en = request.form.get('email_placeholder_en', 'Enter your email')
+        
+        popup.collect_name = request.form.get('collect_name') == 'on'
+        popup.name_required = request.form.get('name_required') == 'on'
+        popup.name_placeholder_he = request.form.get('name_placeholder_he', 'הזן את שמך')
+        popup.name_placeholder_en = request.form.get('name_placeholder_en', 'Enter your name')
+        
+        popup.collect_phone = request.form.get('collect_phone') == 'on'
+        popup.phone_required = request.form.get('phone_required') == 'on'
+        popup.phone_placeholder_he = request.form.get('phone_placeholder_he', 'הזן מספר טלפון')
+        popup.phone_placeholder_en = request.form.get('phone_placeholder_en', 'Enter your phone number')
+        
+        # Consent Checkboxes
+        popup.show_newsletter_consent = request.form.get('show_newsletter_consent') == 'on'
+        popup.newsletter_consent_text_he = request.form.get('newsletter_consent_text_he', 'אני מסכים/ה לקבל עדכונים ומבצעים במייל')
+        popup.newsletter_consent_text_en = request.form.get('newsletter_consent_text_en', 'I agree to receive updates and promotions by email')
+        popup.newsletter_default_checked = request.form.get('newsletter_default_checked') == 'on'
+        
+        popup.show_terms_consent = request.form.get('show_terms_consent') == 'on'
+        popup.terms_consent_text_he = request.form.get('terms_consent_text_he', 'אני מסכים/ה לתנאי השימוש')
+        popup.terms_consent_text_en = request.form.get('terms_consent_text_en', 'I agree to the terms of service')
+        popup.terms_consent_required = request.form.get('terms_consent_required') == 'on'
+        popup.terms_link = request.form.get('terms_link')
+        
+        popup.show_marketing_consent = request.form.get('show_marketing_consent') == 'on'
+        popup.marketing_consent_text_he = request.form.get('marketing_consent_text_he', 'אני מסכים/ה לקבל הודעות שיווקיות')
+        popup.marketing_consent_text_en = request.form.get('marketing_consent_text_en', 'I agree to receive marketing messages')
+        popup.marketing_default_checked = request.form.get('marketing_default_checked') == 'on'
+        
+        # Coupon Integration
+        associated_coupon_id = request.form.get('associated_coupon_id')
+        popup.associated_coupon_id = int(associated_coupon_id) if associated_coupon_id else None
+        popup.send_coupon_on_submit = request.form.get('send_coupon_on_submit') == 'on'
+        popup.coupon_email_subject_he = request.form.get('coupon_email_subject_he', 'הקופון שלך מגיע!')
+        popup.coupon_email_subject_en = request.form.get('coupon_email_subject_en', 'Your coupon has arrived!')
+        
+        # Handle image upload
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                try:
+                    filename = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"popup_{timestamp}_{filename}"
+                    upload_folder = 'static/uploads'
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, filename)
+                    file.save(filepath)
+                    popup.image_path = f"/static/uploads/{filename}"
+                    print(f"Popup image saved: {filepath}")
+                except Exception as e:
+                    print(f"Error saving popup image: {e}")
+                    flash('שגיאה בשמירת התמונה', 'error')
+        
+        db.session.commit()
+        
+        flash('הפופאפ עודכן בהצלחה', 'success')
+        return redirect(url_for('admin.popups'))
+    
+    # Get coupons for dropdown
+    coupons = Coupon.query.filter_by(is_active=True).order_by(Coupon.name).all()
+    return render_template('admin/popup_form.html', popup=popup, coupons=coupons)
+
+
+@admin_bp.route('/popups/<int:popup_id>/delete', methods=['POST'])
+@login_required
+def delete_popup(popup_id):
+    """Delete a popup"""
+    popup = Popup.query.get_or_404(popup_id)
+    db.session.delete(popup)
+    db.session.commit()
+    flash('הפופאפ נמחק בהצלחה', 'success')
+    return redirect(url_for('admin.popups'))
+
+
+@admin_bp.route('/popups/<int:popup_id>/toggle', methods=['POST'])
+@login_required
+def toggle_popup(popup_id):
+    """Toggle popup active status"""
+    popup = Popup.query.get_or_404(popup_id)
+    popup.is_active = not popup.is_active
+    db.session.commit()
+    status = 'פעיל' if popup.is_active else 'מושבת'
+    flash(f'הפופאפ כעת {status}', 'success')
+    return redirect(url_for('admin.popups'))
+
+
+@admin_bp.route('/popups/<int:popup_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_popup(popup_id):
+    """Duplicate a popup"""
+    original = Popup.query.get_or_404(popup_id)
+    
+    new_popup = Popup(
+        name=f"{original.name} (העתק)",
+        title_he=original.title_he,
+        title_en=original.title_en,
+        content_he=original.content_he,
+        content_en=original.content_en,
+        button_text_he=original.button_text_he,
+        button_text_en=original.button_text_en,
+        button_url=original.button_url,
+        button_action=original.button_action,
+        image_path=original.image_path,
+        image_display_type=original.image_display_type,
+        video_url=original.video_url,
+        popup_type=original.popup_type,
+        popup_size=original.popup_size,
+        popup_position=original.popup_position,
+        background_color=original.background_color,
+        title_color=original.title_color,
+        text_color=original.text_color,
+        button_bg_color=original.button_bg_color,
+        button_text_color=original.button_text_color,
+        overlay_color=original.overlay_color,
+        title_font_size=original.title_font_size,
+        content_font_size=original.content_font_size,
+        border_radius=original.border_radius,
+        has_shadow=original.has_shadow,
+        border_color=original.border_color,
+        border_width=original.border_width,
+        show_delay_seconds=original.show_delay_seconds,
+        show_frequency=original.show_frequency,
+        show_every_x_days=original.show_every_x_days,
+        max_impressions_per_user=original.max_impressions_per_user,
+        trigger_type=original.trigger_type,
+        scroll_percentage=original.scroll_percentage,
+        exit_intent=original.exit_intent,
+        show_on_all_pages=original.show_on_all_pages,
+        target_pages=original.target_pages,
+        exclude_pages=original.exclude_pages,
+        show_on_desktop=original.show_on_desktop,
+        show_on_mobile=original.show_on_mobile,
+        show_on_tablet=original.show_on_tablet,
+        animation_in=original.animation_in,
+        animation_out=original.animation_out,
+        animation_duration=original.animation_duration,
+        show_close_button=original.show_close_button,
+        close_button_position=original.close_button_position,
+        allow_backdrop_close=original.allow_backdrop_close,
+        auto_close_seconds=original.auto_close_seconds,
+        enable_form=original.enable_form,
+        form_submit_text_he=original.form_submit_text_he,
+        form_submit_text_en=original.form_submit_text_en,
+        form_success_message_he=original.form_success_message_he,
+        form_success_message_en=original.form_success_message_en,
+        collect_email=original.collect_email,
+        email_required=original.email_required,
+        email_placeholder_he=original.email_placeholder_he,
+        email_placeholder_en=original.email_placeholder_en,
+        collect_name=original.collect_name,
+        name_required=original.name_required,
+        name_placeholder_he=original.name_placeholder_he,
+        name_placeholder_en=original.name_placeholder_en,
+        collect_phone=original.collect_phone,
+        phone_required=original.phone_required,
+        phone_placeholder_he=original.phone_placeholder_he,
+        phone_placeholder_en=original.phone_placeholder_en,
+        show_newsletter_consent=original.show_newsletter_consent,
+        newsletter_consent_text_he=original.newsletter_consent_text_he,
+        newsletter_consent_text_en=original.newsletter_consent_text_en,
+        newsletter_default_checked=original.newsletter_default_checked,
+        show_terms_consent=original.show_terms_consent,
+        terms_consent_text_he=original.terms_consent_text_he,
+        terms_consent_text_en=original.terms_consent_text_en,
+        terms_consent_required=original.terms_consent_required,
+        terms_link=original.terms_link,
+        show_marketing_consent=original.show_marketing_consent,
+        marketing_consent_text_he=original.marketing_consent_text_he,
+        marketing_consent_text_en=original.marketing_consent_text_en,
+        marketing_default_checked=original.marketing_default_checked,
+        associated_coupon_id=original.associated_coupon_id,
+        send_coupon_on_submit=original.send_coupon_on_submit,
+        coupon_email_subject_he=original.coupon_email_subject_he,
+        coupon_email_subject_en=original.coupon_email_subject_en,
+        is_active=False,
+        priority=original.priority,
+        created_by=current_user.id
+    )
+    
+    db.session.add(new_popup)
+    db.session.commit()
+    
+    flash('הפופאפ שוכפל בהצלחה', 'success')
+    return redirect(url_for('admin.edit_popup', popup_id=new_popup.id))
+
+
+@admin_bp.route('/popups/<int:popup_id>/analytics')
+@login_required
+def popup_analytics(popup_id):
+    """View popup analytics"""
+    popup = Popup.query.get_or_404(popup_id)
+    return render_template('admin/popup_analytics.html', popup=popup)
+
+
+# ===== COUPON MANAGEMENT =====
+
+@admin_bp.route('/coupons')
+@login_required
+def coupons():
+    """List all coupons"""
+    coupons = Coupon.query.order_by(Coupon.created_at.desc()).all()
+    return render_template('admin/coupons.html', coupons=coupons)
+
+
+def safe_float(value, default=0.0):
+    """Safely convert value to float, returning default for empty/invalid values"""
+    if value is None or value == '':
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+def safe_int(value, default=None):
+    """Safely convert value to int, returning default for empty/invalid values"""
+    if value is None or value == '':
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+@admin_bp.route('/coupons/create', methods=['GET', 'POST'])
+@login_required
+def create_coupon():
+    """Create a new coupon"""
+    if request.method == 'POST':
+        import secrets
+        
+        code = request.form.get('code', '').strip().upper()
+        if not code:
+            code = secrets.token_hex(4).upper()
+        
+        name = request.form.get('name', '').strip()
+        discount_value = safe_float(request.form.get('discount_value'), 0)
+        
+        if not name:
+            flash('שם הקופון הוא שדה חובה', 'error')
+            popups = Popup.query.filter_by(is_active=True).all()
+            return render_template('admin/coupon_form.html', coupon=None, popups=popups)
+        
+        if discount_value <= 0:
+            flash('יש להזין ערך הנחה חיובי', 'error')
+            popups = Popup.query.filter_by(is_active=True).all()
+            return render_template('admin/coupon_form.html', coupon=None, popups=popups)
+        
+        coupon = Coupon(
+            name=name,
+            code=code,
+            description_he=request.form.get('description_he'),
+            description_en=request.form.get('description_en'),
+            discount_type=request.form.get('discount_type', 'percentage'),
+            discount_value=discount_value,
+            minimum_order_amount=safe_float(request.form.get('minimum_order_amount'), 0),
+            max_uses_per_email=safe_int(request.form.get('max_uses_per_email')),
+            is_active=request.form.get('is_active') == 'on',
+            created_by=current_user.id
+        )
+        
+        coupon.max_total_uses = safe_int(request.form.get('max_total_uses'))
+        coupon.maximum_discount_amount = safe_float(request.form.get('maximum_discount_amount'), None) if request.form.get('maximum_discount_amount') else None
+        
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        if start_date:
+            try:
+                coupon.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                coupon.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        
+        popup_id = request.form.get('popup_id')
+        if popup_id:
+            coupon.popup_id = safe_int(popup_id)
+        
+        db.session.add(coupon)
+        db.session.commit()
+        
+        flash('הקופון נוצר בהצלחה', 'success')
+        return redirect(url_for('admin.coupons'))
+    
+    popups = Popup.query.filter_by(is_active=True).all()
+    return render_template('admin/coupon_form.html', coupon=None, popups=popups)
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_coupon(coupon_id):
+    """Edit an existing coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        discount_value = safe_float(request.form.get('discount_value'), 0)
+        
+        if not name:
+            flash('שם הקופון הוא שדה חובה', 'error')
+            popups = Popup.query.all()
+            return render_template('admin/coupon_form.html', coupon=coupon, popups=popups)
+        
+        if discount_value <= 0:
+            flash('יש להזין ערך הנחה חיובי', 'error')
+            popups = Popup.query.all()
+            return render_template('admin/coupon_form.html', coupon=coupon, popups=popups)
+        
+        coupon.name = name
+        coupon.code = request.form.get('code', '').strip().upper()
+        coupon.description_he = request.form.get('description_he')
+        coupon.description_en = request.form.get('description_en')
+        coupon.discount_type = request.form.get('discount_type', 'percentage')
+        coupon.discount_value = discount_value
+        coupon.minimum_order_amount = safe_float(request.form.get('minimum_order_amount'), 0)
+        coupon.max_uses_per_email = safe_int(request.form.get('max_uses_per_email'))
+        coupon.is_active = request.form.get('is_active') == 'on'
+        
+        coupon.max_total_uses = safe_int(request.form.get('max_total_uses'))
+        coupon.maximum_discount_amount = safe_float(request.form.get('maximum_discount_amount'), None) if request.form.get('maximum_discount_amount') else None
+        
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        try:
+            coupon.start_date = datetime.strptime(start_date, '%Y-%m-%dT%H:%M') if start_date else None
+        except ValueError:
+            coupon.start_date = None
+        try:
+            coupon.end_date = datetime.strptime(end_date, '%Y-%m-%dT%H:%M') if end_date else None
+        except ValueError:
+            coupon.end_date = None
+        
+        coupon.popup_id = safe_int(request.form.get('popup_id'))
+        
+        db.session.commit()
+        
+        flash('הקופון עודכן בהצלחה', 'success')
+        return redirect(url_for('admin.coupons'))
+    
+    popups = Popup.query.all()
+    return render_template('admin/coupon_form.html', coupon=coupon, popups=popups)
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/delete', methods=['POST'])
+@login_required
+def delete_coupon(coupon_id):
+    """Delete a coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    db.session.delete(coupon)
+    db.session.commit()
+    flash('הקופון נמחק בהצלחה', 'success')
+    return redirect(url_for('admin.coupons'))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/toggle', methods=['POST'])
+@login_required
+def toggle_coupon(coupon_id):
+    """Toggle coupon active status"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    coupon.is_active = not coupon.is_active
+    db.session.commit()
+    status = 'פעיל' if coupon.is_active else 'מושבת'
+    flash(f'הקופון כעת {status}', 'success')
+    return redirect(url_for('admin.coupons'))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_coupon(coupon_id):
+    """Duplicate a coupon"""
+    import secrets
+    original = Coupon.query.get_or_404(coupon_id)
+    
+    new_coupon = Coupon(
+        name=f"{original.name} (העתק)",
+        code=secrets.token_hex(4).upper(),
+        description_he=original.description_he,
+        description_en=original.description_en,
+        discount_type=original.discount_type,
+        discount_value=original.discount_value,
+        minimum_order_amount=original.minimum_order_amount,
+        maximum_discount_amount=original.maximum_discount_amount,
+        max_total_uses=original.max_total_uses,
+        max_uses_per_email=original.max_uses_per_email,
+        start_date=original.start_date,
+        end_date=original.end_date,
+        popup_id=original.popup_id,
+        is_active=False,
+        created_by=current_user.id
+    )
+    
+    db.session.add(new_coupon)
+    db.session.commit()
+    
+    flash('הקופון שוכפל בהצלחה', 'success')
+    return redirect(url_for('admin.edit_coupon', coupon_id=new_coupon.id))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/generate-qr', methods=['POST'])
+@login_required
+@require_permission('settings.edit')
+def generate_coupon_qr(coupon_id):
+    """Generate QR code for a coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    
+    try:
+        coupon.generate_qr_code()
+        db.session.commit()
+        flash('קוד QR נוצר בהצלחה', 'success')
+    except Exception as e:
+        flash(f'שגיאה ביצירת קוד QR: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.edit_coupon', coupon_id=coupon_id))
+
+
+@admin_bp.route('/coupons/<int:coupon_id>/regenerate-qr', methods=['POST'])
+@login_required
+@require_permission('settings.edit')
+def regenerate_coupon_qr(coupon_id):
+    """Regenerate QR code for a coupon"""
+    coupon = Coupon.query.get_or_404(coupon_id)
+    
+    try:
+        import os
+        if coupon.qr_code_path:
+            old_path = coupon.qr_code_path.lstrip('/')
+            if os.path.exists(old_path):
+                os.remove(old_path)
+        
+        coupon.generate_qr_code()
+        db.session.commit()
+        flash('קוד QR נוצר מחדש בהצלחה', 'success')
+    except Exception as e:
+        flash(f'שגיאה ביצירת קוד QR: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.edit_coupon', coupon_id=coupon_id))
+
+
+@admin_bp.route('/deals')
+@login_required
+def deals():
+    all_deals = Deal.query.order_by(Deal.display_order, Deal.created_at.desc()).all()
+    return render_template('admin/deals.html', deals=all_deals)
+
+
+def _build_category_items_map(categories):
+    cat_map = {}
+    for cat in categories:
+        items = MenuItem.query.filter_by(category_id=cat.id, is_available=True).order_by(MenuItem.display_order).all()
+        cat_map[str(cat.id)] = [{'name': i.name_he, 'price': int(i.base_price)} for i in items]
+    return cat_map
+
+
+@admin_bp.route('/deals/create', methods=['GET', 'POST'])
+@login_required
+def create_deal():
+    if request.method == 'POST':
+        try:
+            deal_price = float(request.form.get('deal_price', 0))
+        except (ValueError, TypeError):
+            deal_price = 0.0
+        try:
+            original_price = float(request.form.get('original_price', 0)) if request.form.get('original_price') else None
+        except (ValueError, TypeError):
+            original_price = None
+        try:
+            display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            display_order = 0
+        deal_type = request.form.get('deal_type', 'fixed')
+        deal = Deal(
+            name_he=request.form.get('name_he', '').strip(),
+            name_en=request.form.get('name_en', '').strip(),
+            description_he=request.form.get('description_he', '').strip(),
+            description_en=request.form.get('description_en', '').strip(),
+            deal_price=deal_price,
+            original_price=original_price,
+            deal_type=deal_type,
+            is_active=request.form.get('is_active') == 'on',
+            display_order=display_order,
+        )
+        if deal_type == 'customer_picks':
+            cat_ids_raw = request.form.getlist('source_category_ids')
+            cat_ids = []
+            for v in cat_ids_raw:
+                try:
+                    cat_ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            deal.source_category_ids = cat_ids
+            deal.source_category_id = cat_ids[0] if cat_ids else None
+            try:
+                deal.pick_count = int(request.form.get('pick_count', 0))
+            except (ValueError, TypeError):
+                deal.pick_count = 0
+            if not cat_ids or deal.pick_count < 1:
+                flash('עבור מבצע "הלקוח בוחר" חובה לבחור לפחות קטגוריה אחת ולהגדיר כמות פריטים (לפחות 1)', 'danger')
+                categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+                menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+                category_items_map = _build_category_items_map(categories)
+                return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
+        start = request.form.get('start_date', '').strip()
+        end = request.form.get('end_date', '').strip()
+        if start:
+            try:
+                deal.start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        if end:
+            try:
+                deal.end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                pass
+        if deal_type == 'fixed':
+            item_ids = request.form.getlist('item_ids')
+            item_qtys = request.form.getlist('item_qtys')
+            included = []
+            for i, iid in enumerate(item_ids):
+                if iid:
+                    qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
+                    included.append({'item_id': int(iid), 'qty': qty})
+            deal.included_items = included
+
+        img = request.files.get('image')
+        if img and img.filename and allowed_image_file(img.filename):
+            fname = secure_filename(f"deal_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{img.filename}")
+            img.save(os.path.join(UPLOAD_FOLDER, fname))
+            deal.image_path = f'/static/uploads/{fname}'
+
+        db.session.add(deal)
+        db.session.commit()
+        flash('המבצע נוצר בהצלחה!', 'success')
+        return redirect(url_for('admin.deals'))
+
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    category_items_map = _build_category_items_map(categories)
+    return render_template('admin/deal_form.html', deal=None, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
+
+
+@admin_bp.route('/deals/edit/<int:deal_id>', methods=['GET', 'POST'])
+@login_required
+def edit_deal(deal_id):
+    deal = Deal.query.get_or_404(deal_id)
+    if request.method == 'POST':
+        deal.name_he = request.form.get('name_he', '').strip()
+        deal.name_en = request.form.get('name_en', '').strip()
+        deal.description_he = request.form.get('description_he', '').strip()
+        deal.description_en = request.form.get('description_en', '').strip()
+        try:
+            deal.deal_price = float(request.form.get('deal_price', 0))
+        except (ValueError, TypeError):
+            deal.deal_price = 0.0
+        try:
+            deal.original_price = float(request.form.get('original_price', 0)) if request.form.get('original_price') else None
+        except (ValueError, TypeError):
+            deal.original_price = None
+        deal.is_active = request.form.get('is_active') == 'on'
+        try:
+            deal.display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            deal.display_order = 0
+
+        deal_type = request.form.get('deal_type', 'fixed')
+        deal.deal_type = deal_type
+        if deal_type == 'customer_picks':
+            cat_ids_raw = request.form.getlist('source_category_ids')
+            cat_ids = []
+            for v in cat_ids_raw:
+                try:
+                    cat_ids.append(int(v))
+                except (ValueError, TypeError):
+                    pass
+            deal.source_category_ids = cat_ids
+            deal.source_category_id = cat_ids[0] if cat_ids else None
+            try:
+                deal.pick_count = int(request.form.get('pick_count', 0))
+            except (ValueError, TypeError):
+                deal.pick_count = 0
+            if not cat_ids or deal.pick_count < 1:
+                flash('עבור מבצע "הלקוח בוחר" חובה לבחור לפחות קטגוריה אחת ולהגדיר כמות פריטים (לפחות 1)', 'danger')
+                categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+                menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+                category_items_map = _build_category_items_map(categories)
+                return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
+            deal.included_items = []
+        else:
+            deal.source_category_ids = []
+            deal.source_category_id = None
+            deal.pick_count = 0
+
+        start = request.form.get('start_date', '').strip()
+        end = request.form.get('end_date', '').strip()
+        deal.start_date = datetime.strptime(start, '%Y-%m-%dT%H:%M') if start else None
+        deal.end_date = datetime.strptime(end, '%Y-%m-%dT%H:%M') if end else None
+
+        if deal_type == 'fixed':
+            item_ids = request.form.getlist('item_ids')
+            item_qtys = request.form.getlist('item_qtys')
+            included = []
+            for i, iid in enumerate(item_ids):
+                if iid:
+                    qty = int(item_qtys[i]) if i < len(item_qtys) and item_qtys[i] else 1
+                    included.append({'item_id': int(iid), 'qty': qty})
+            deal.included_items = included
+
+        img = request.files.get('image')
+        if img and img.filename and allowed_image_file(img.filename):
+            fname = secure_filename(f"deal_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{img.filename}")
+            img.save(os.path.join(UPLOAD_FOLDER, fname))
+            deal.image_path = f'/static/uploads/{fname}'
+        if request.form.get('remove_image') == '1':
+            deal.image_path = None
+
+        db.session.commit()
+        flash('המבצע עודכן בהצלחה!', 'success')
+        return redirect(url_for('admin.deals'))
+
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    category_items_map = _build_category_items_map(categories)
+    return render_template('admin/deal_form.html', deal=deal, categories=categories, menu_items=menu_items, category_items_map=category_items_map)
+
+
+@admin_bp.route('/deals/delete/<int:deal_id>', methods=['POST'])
+@login_required
+def delete_deal(deal_id):
+    deal = Deal.query.get_or_404(deal_id)
+    db.session.delete(deal)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'המבצע נמחק'})
+
+
+@admin_bp.route('/deals/toggle/<int:deal_id>', methods=['POST'])
+@login_required
+def toggle_deal(deal_id):
+    deal = Deal.query.get_or_404(deal_id)
+    deal.is_active = not deal.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': deal.is_active})
+
+
+@admin_bp.route('/global-options')
+@login_required
+def global_options():
+    groups = GlobalOptionGroup.query.order_by(GlobalOptionGroup.id.desc()).all()
+    return render_template('admin/global_options.html', groups=groups)
+
+
+@admin_bp.route('/global-options/create', methods=['GET', 'POST'])
+@login_required
+def create_global_option_group():
+    if request.method == 'POST':
+        group = GlobalOptionGroup(
+            name_he=request.form.get('name_he', '').strip(),
+            name_en=request.form.get('name_en', '').strip() or request.form.get('name_he', '').strip(),
+            selection_type=request.form.get('selection_type', 'single'),
+            is_required=request.form.get('is_required') == 'on',
+            min_selections=max(0, int(request.form.get('min_selections', 0) or 0)),
+            max_selections=max(0, int(request.form.get('max_selections', 0) or 0)),
+            is_active=True,
+        )
+        db.session.add(group)
+        db.session.flush()
+        choice_names_he = request.form.getlist('choice_name_he')
+        choice_names_en = request.form.getlist('choice_name_en')
+        choice_prices = request.form.getlist('choice_price')
+        for i, name_he in enumerate(choice_names_he):
+            if not name_he.strip():
+                continue
+            gc = GlobalOptionChoice(
+                global_group_id=group.id,
+                name_he=name_he.strip(),
+                name_en=(choice_names_en[i].strip() if i < len(choice_names_en) and choice_names_en[i].strip() else name_he.strip()),
+                price_modifier=float(choice_prices[i]) if i < len(choice_prices) and choice_prices[i] else 0,
+                display_order=i,
+            )
+            db.session.add(gc)
+        db.session.commit()
+        flash('תבנית אפשרויות נוצרה בהצלחה!', 'success')
+        return redirect(url_for('admin.global_options'))
+    return render_template('admin/global_option_form.html', group=None)
+
+
+@admin_bp.route('/global-options/edit/<int:group_id>', methods=['GET', 'POST'])
+@login_required
+def edit_global_option_group(group_id):
+    group = GlobalOptionGroup.query.get_or_404(group_id)
+    if request.method == 'POST':
+        group.name_he = request.form.get('name_he', '').strip()
+        group.name_en = request.form.get('name_en', '').strip() or group.name_he
+        group.selection_type = request.form.get('selection_type', 'single')
+        group.is_required = request.form.get('is_required') == 'on'
+        group.min_selections = max(0, int(request.form.get('min_selections', 0) or 0))
+        group.max_selections = max(0, int(request.form.get('max_selections', 0) or 0))
+
+        GlobalOptionChoice.query.filter_by(global_group_id=group.id).delete()
+        choice_names_he = request.form.getlist('choice_name_he')
+        choice_names_en = request.form.getlist('choice_name_en')
+        choice_prices = request.form.getlist('choice_price')
+        for i, name_he in enumerate(choice_names_he):
+            if not name_he.strip():
+                continue
+            gc = GlobalOptionChoice(
+                global_group_id=group.id,
+                name_he=name_he.strip(),
+                name_en=(choice_names_en[i].strip() if i < len(choice_names_en) and choice_names_en[i].strip() else name_he.strip()),
+                price_modifier=float(choice_prices[i]) if i < len(choice_prices) and choice_prices[i] else 0,
+                display_order=i,
+            )
+            db.session.add(gc)
+
+        _sync_global_option_group_to_dishes(group)
+        db.session.commit()
+        flash('תבנית אפשרויות עודכנה בהצלחה!', 'success')
+        return redirect(url_for('admin.global_options'))
+    return render_template('admin/global_option_form.html', group=group)
+
+
+@admin_bp.route('/global-options/delete/<int:group_id>', methods=['POST'])
+@login_required
+def delete_global_option_group(group_id):
+    group = GlobalOptionGroup.query.get_or_404(group_id)
+    for link in group.linked_items:
+        if link.linked_option_group_id:
+            og = MenuItemOptionGroup.query.get(link.linked_option_group_id)
+            if og:
+                db.session.delete(og)
+    db.session.delete(group)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'התבנית נמחקה'})
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/attach-global-group', methods=['POST'])
+@login_required
+def attach_global_option_group(item_id):
+    item = MenuItem.query.get_or_404(item_id)
+    data = request.get_json(force=True)
+    global_group_id = data.get('global_group_id')
+    if not global_group_id:
+        return jsonify({'ok': False, 'error': 'Missing global_group_id'}), 400
+    global_group = GlobalOptionGroup.query.get(global_group_id)
+    if not global_group:
+        return jsonify({'ok': False, 'error': 'Global group not found'}), 404
+    existing_link = GlobalOptionGroupLink.query.filter_by(
+        global_group_id=global_group_id, menu_item_id=item_id
+    ).first()
+    if existing_link:
+        return jsonify({'ok': False, 'error': 'Already attached'}), 400
+    max_order = db.session.query(db.func.max(MenuItemOptionGroup.display_order)).filter_by(menu_item_id=item_id).scalar() or 0
+    og = MenuItemOptionGroup(
+        menu_item_id=item_id,
+        name_he=global_group.name_he,
+        name_en=global_group.name_en,
+        selection_type=global_group.selection_type,
+        is_required=global_group.is_required,
+        min_selections=global_group.min_selections,
+        max_selections=global_group.max_selections,
+        display_order=max_order + 1,
+        is_active=True,
+    )
+    db.session.add(og)
+    db.session.flush()
+    link = GlobalOptionGroupLink(
+        global_group_id=global_group_id,
+        menu_item_id=item_id,
+        linked_option_group_id=og.id,
+    )
+    db.session.add(link)
+    for gc in global_group.choices:
+        c = MenuItemOptionChoice(
+            option_group_id=og.id,
+            name_he=gc.name_he,
+            name_en=gc.name_en,
+            price_modifier=gc.price_modifier,
+            is_default=gc.is_default,
+            is_available=gc.is_available,
+            display_order=gc.display_order,
+        )
+        db.session.add(c)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Global option group attached'})
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/detach-global-group/<int:global_group_id>', methods=['POST'])
+@login_required
+def detach_global_option_group(item_id, global_group_id):
+    link = GlobalOptionGroupLink.query.filter_by(
+        global_group_id=global_group_id, menu_item_id=item_id
+    ).first()
+    if not link:
+        return jsonify({'ok': False, 'error': 'Link not found'}), 404
+    if link.linked_option_group_id:
+        og = MenuItemOptionGroup.query.get(link.linked_option_group_id)
+        if og:
+            db.session.delete(og)
+    db.session.delete(link)
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Global option group detached'})
+
+
+@admin_bp.route('/menu/bulk-attach-global-group', methods=['POST'])
+@login_required
+@require_permission('menu.edit')
+def bulk_attach_global_group():
+    import json
+    try:
+        ids_str = request.form.get('ids')
+        global_group_id = request.form.get('global_group_id')
+        ids = json.loads(ids_str) if ids_str else []
+        if not ids:
+            return jsonify({'ok': False, 'error': 'לא נבחרו מנות'}), 400
+        if not global_group_id:
+            return jsonify({'ok': False, 'error': 'לא נבחרה תבנית אפשרויות'}), 400
+        global_group = GlobalOptionGroup.query.get(int(global_group_id))
+        if not global_group:
+            return jsonify({'ok': False, 'error': 'התבנית לא נמצאה'}), 404
+        items = MenuItem.query.filter(MenuItem.id.in_([int(i) for i in ids])).all()
+        attached = 0
+        skipped = 0
+        for item in items:
+            existing_link = GlobalOptionGroupLink.query.filter_by(
+                global_group_id=global_group.id, menu_item_id=item.id
+            ).first()
+            if existing_link:
+                skipped += 1
+                continue
+            max_order = db.session.query(db.func.max(MenuItemOptionGroup.display_order)).filter_by(
+                menu_item_id=item.id
+            ).scalar() or 0
+            og = MenuItemOptionGroup(
+                menu_item_id=item.id,
+                name_he=global_group.name_he,
+                name_en=global_group.name_en,
+                selection_type=global_group.selection_type,
+                is_required=global_group.is_required,
+                min_selections=global_group.min_selections,
+                max_selections=global_group.max_selections,
+                display_order=max_order + 1,
+                is_active=True,
+            )
+            db.session.add(og)
+            db.session.flush()
+            link = GlobalOptionGroupLink(
+                global_group_id=global_group.id,
+                menu_item_id=item.id,
+                linked_option_group_id=og.id,
+            )
+            db.session.add(link)
+            for gc in global_group.choices:
+                c = MenuItemOptionChoice(
+                    option_group_id=og.id,
+                    name_he=gc.name_he,
+                    name_en=gc.name_en,
+                    price_modifier=gc.price_modifier,
+                    is_default=gc.is_default,
+                    is_available=gc.is_available,
+                    display_order=gc.display_order,
+                )
+                db.session.add(c)
+            attached += 1
+        db.session.commit()
+        return jsonify({'ok': True, 'attached': attached, 'skipped': skipped})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Bulk attach global group error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/api/global-option-groups', methods=['GET'])
+@login_required
+def api_global_option_groups():
+    groups = GlobalOptionGroup.query.filter_by(is_active=True).order_by(GlobalOptionGroup.name_he).all()
+    result = []
+    for g in groups:
+        result.append({
+            'id': g.id,
+            'name_he': g.name_he,
+            'name_en': g.name_en,
+            'selection_type': g.selection_type,
+            'choices_count': len(g.choices),
+        })
+    return jsonify({'ok': True, 'groups': result})
+
+
+@admin_bp.route('/api/menu-item/<int:item_id>/global-group-links', methods=['GET'])
+@login_required
+def api_menu_item_global_links(item_id):
+    links = GlobalOptionGroupLink.query.filter_by(menu_item_id=item_id).all()
+    result = []
+    for link in links:
+        g = GlobalOptionGroup.query.get(link.global_group_id)
+        if g:
+            result.append({
+                'global_group_id': g.id,
+                'name_he': g.name_he,
+                'name_en': g.name_en,
+                'choices_count': len(g.choices),
+            })
+    return jsonify({'ok': True, 'links': result})
+
+
+def _sync_global_option_group_to_dishes(group):
+    for link in group.linked_items:
+        if not link.linked_option_group_id:
+            continue
+        matched = MenuItemOptionGroup.query.get(link.linked_option_group_id)
+        if not matched:
+            continue
+        matched.name_he = group.name_he
+        matched.name_en = group.name_en
+        matched.selection_type = group.selection_type
+        matched.is_required = group.is_required
+        matched.min_selections = group.min_selections
+        matched.max_selections = group.max_selections
+        MenuItemOptionChoice.query.filter_by(option_group_id=matched.id).delete()
+        for gc in group.choices:
+            c = MenuItemOptionChoice(
+                option_group_id=matched.id,
+                name_he=gc.name_he,
+                name_en=gc.name_en,
+                price_modifier=gc.price_modifier,
+                is_default=gc.is_default,
+                is_available=gc.is_available,
+                display_order=gc.display_order,
+            )
+            db.session.add(c)
+
+
+@admin_bp.route('/upsell-rules')
+@login_required
+def upsell_rules():
+    rules = UpsellRule.query.order_by(UpsellRule.display_order).all()
+    return render_template('admin/upsell_rules.html', rules=rules)
+
+
+@admin_bp.route('/upsell-rules/create', methods=['GET', 'POST'])
+@login_required
+def create_upsell_rule():
+    if request.method == 'POST':
+        try:
+            trigger_id = int(request.form.get('trigger_id', 0))
+        except (ValueError, TypeError):
+            trigger_id = 0
+        try:
+            suggested_item_id = int(request.form.get('suggested_item_id', 0))
+        except (ValueError, TypeError):
+            suggested_item_id = 0
+        try:
+            discounted_price = float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None
+        except (ValueError, TypeError):
+            discounted_price = None
+        try:
+            display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            display_order = 0
+        rule = UpsellRule(
+            trigger_type=request.form.get('trigger_type', 'category'),
+            trigger_id=trigger_id,
+            suggested_item_id=suggested_item_id,
+            message_he=request.form.get('message_he', '').strip(),
+            message_en=request.form.get('message_en', '').strip(),
+            discounted_price=discounted_price,
+            is_active=request.form.get('is_active') == 'on',
+            display_order=display_order,
+        )
+        db.session.add(rule)
+        db.session.commit()
+        flash('כלל אפסל נוצר בהצלחה!', 'success')
+        return redirect(url_for('admin.upsell_rules'))
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    return render_template('admin/upsell_rule_form.html', rule=None, categories=categories, menu_items=menu_items)
+
+
+@admin_bp.route('/upsell-rules/edit/<int:rule_id>', methods=['GET', 'POST'])
+@login_required
+def edit_upsell_rule(rule_id):
+    rule = UpsellRule.query.get_or_404(rule_id)
+    if request.method == 'POST':
+        rule.trigger_type = request.form.get('trigger_type', 'category')
+        try:
+            rule.trigger_id = int(request.form.get('trigger_id', 0))
+        except (ValueError, TypeError):
+            rule.trigger_id = 0
+        try:
+            rule.suggested_item_id = int(request.form.get('suggested_item_id', 0))
+        except (ValueError, TypeError):
+            rule.suggested_item_id = 0
+        rule.message_he = request.form.get('message_he', '').strip()
+        rule.message_en = request.form.get('message_en', '').strip()
+        try:
+            rule.discounted_price = float(request.form.get('discounted_price')) if request.form.get('discounted_price') else None
+        except (ValueError, TypeError):
+            rule.discounted_price = None
+        rule.is_active = request.form.get('is_active') == 'on'
+        try:
+            rule.display_order = int(request.form.get('display_order', 0))
+        except (ValueError, TypeError):
+            rule.display_order = 0
+        db.session.commit()
+        flash('כלל אפסל עודכן בהצלחה!', 'success')
+        return redirect(url_for('admin.upsell_rules'))
+    categories = MenuCategory.query.filter_by(is_active=True).order_by(MenuCategory.display_order).all()
+    menu_items = MenuItem.query.order_by(MenuItem.display_order).all()
+    return render_template('admin/upsell_rule_form.html', rule=rule, categories=categories, menu_items=menu_items)
+
+
+@admin_bp.route('/upsell-rules/delete/<int:rule_id>', methods=['POST'])
+@login_required
+def delete_upsell_rule(rule_id):
+    rule = UpsellRule.query.get_or_404(rule_id)
+    db.session.delete(rule)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'כלל האפסל נמחק'})
+
+
+@admin_bp.route('/upsell-rules/toggle/<int:rule_id>', methods=['POST'])
+@login_required
+def toggle_upsell_rule(rule_id):
+    rule = UpsellRule.query.get_or_404(rule_id)
+    rule.is_active = not rule.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': rule.is_active})
+
+
+@admin_bp.route('/enrolled-devices')
+@login_required
+def enrolled_devices():
+    devices = EnrolledDevice.query.order_by(EnrolledDevice.created_at.desc()).all()
+    pending = [d for d in devices if d.pending_request_token and not d.enrolled_at and not d.is_active]
+    enrolled = [d for d in devices if d not in pending]
+    pins = ManagerPIN.query.order_by(ManagerPIN.created_at.desc()).all()
+    branches = Branch.query.filter_by(is_active=True).all()
+    return render_template('admin/enrolled_devices.html', devices=enrolled, pending_devices=pending, pins=pins, branches=branches)
+
+
+@admin_bp.route('/enrolled-devices/create', methods=['POST'])
+@login_required
+def create_enrolled_device():
+    import secrets
+    device_name = request.form.get('device_name', 'iPad').strip()
+    branch_id = request.form.get('branch_id')
+    device = EnrolledDevice(
+        device_name=device_name,
+        device_token=secrets.token_urlsafe(64),
+        enrollment_code=secrets.token_urlsafe(16),
+        branch_id=int(branch_id) if branch_id else None,
+        enrolled_by=current_user.id,
+    )
+    db.session.add(device)
+    db.session.commit()
+    flash(f'מכשיר "{device_name}" נוצר. קוד הרשמה: {device.enrollment_code}', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/revoke/<int:device_id>', methods=['POST'])
+@login_required
+def revoke_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    device.is_active = False
+    db.session.commit()
+    flash(f'מכשיר "{device.device_name}" הושבת', 'warning')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/activate/<int:device_id>', methods=['POST'])
+@login_required
+def activate_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    device.is_active = True
+    db.session.commit()
+    flash(f'מכשיר "{device.device_name}" הופעל', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/approve/<int:device_id>', methods=['POST'])
+@login_required
+def approve_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    branch_id = request.form.get('branch_id')
+    device.is_active = True
+    device.enrolled_at = datetime.utcnow()
+    device.enrolled_by = current_user.id
+    if branch_id:
+        device.branch_id = int(branch_id)
+    db.session.commit()
+    flash(f'מכשיר "{device.device_name}" אושר בהצלחה', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/regenerate/<int:device_id>', methods=['POST'])
+@login_required
+def regenerate_enrollment(device_id):
+    import secrets
+    device = EnrolledDevice.query.get_or_404(device_id)
+    device.enrollment_code = secrets.token_urlsafe(16)
+    device.device_token = secrets.token_urlsafe(64)
+    device.enrolled_at = None
+    device.is_active = True
+    db.session.commit()
+    flash(f'קוד הרשמה חדש נוצר עבור "{device.device_name}". הטוקן הישן בוטל.', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/enrolled-devices/delete/<int:device_id>', methods=['POST'])
+@login_required
+def delete_enrolled_device(device_id):
+    device = EnrolledDevice.query.get_or_404(device_id)
+    db.session.delete(device)
+    db.session.commit()
+    flash('המכשיר נמחק', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/manager-pins/create', methods=['POST'])
+@login_required
+def create_manager_pin():
+    name = request.form.get('name', '').strip()
+    pin = request.form.get('pin', '').strip()
+    description = request.form.get('description', '').strip()
+    is_ops_superadmin = request.form.get('is_ops_superadmin') == 'on'
+    ops_permissions = request.form.getlist('ops_permissions')
+    branch_id_str = request.form.get('branch_id', '').strip()
+    if not name or not pin or len(pin) < 4:
+        flash('שם וקוד PIN (לפחות 4 ספרות) נדרשים', 'error')
+        return redirect(url_for('admin.enrolled_devices'))
+    mp = ManagerPIN(name=name, description=description, is_ops_superadmin=is_ops_superadmin, ops_permissions=ops_permissions)
+    if branch_id_str:
+        try:
+            mp.branch_id = int(branch_id_str)
+        except (ValueError, TypeError):
+            pass
+    mp.set_pin(pin)
+    db.session.add(mp)
+    db.session.commit()
+    flash(f'PIN עבור "{name}" נוצר', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/manager-pins/edit/<int:pin_id>', methods=['POST'])
+@login_required
+def edit_manager_pin(pin_id):
+    mp = ManagerPIN.query.get_or_404(pin_id)
+    mp.name = request.form.get('name', mp.name).strip()
+    mp.description = request.form.get('description', '').strip()
+    mp.is_ops_superadmin = request.form.get('is_ops_superadmin') == 'on'
+    mp.ops_permissions = request.form.getlist('ops_permissions')
+    branch_id_str = request.form.get('branch_id', '').strip()
+    if branch_id_str:
+        try:
+            mp.branch_id = int(branch_id_str)
+        except (ValueError, TypeError):
+            mp.branch_id = None
+    else:
+        mp.branch_id = None
+    new_pin = request.form.get('pin', '').strip()
+    if new_pin and len(new_pin) >= 4:
+        mp.set_pin(new_pin)
+    mp.is_active = request.form.get('is_active') == 'on'
+    db.session.commit()
+    flash(f'PIN עבור "{mp.name}" עודכן', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+@admin_bp.route('/manager-pins/delete/<int:pin_id>', methods=['POST'])
+@login_required
+def delete_manager_pin(pin_id):
+    mp = ManagerPIN.query.get_or_404(pin_id)
+    db.session.delete(mp)
+    db.session.commit()
+    flash('ה-PIN נמחק', 'success')
+    return redirect(url_for('admin.enrolled_devices'))
+
+
+def _build_time_logs_query():
+    from datetime import timedelta as td
+    worker_id = request.args.get('worker_id', type=int)
+    branch_id = request.args.get('branch_id', type=int)
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    query = TimeLog.query
+    if worker_id:
+        query = query.filter_by(worker_id=worker_id)
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(TimeLog.clock_in >= df)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt_end = datetime.strptime(date_to, '%Y-%m-%d') + td(days=1)
+            query = query.filter(TimeLog.clock_in < dt_end)
+        except ValueError:
+            pass
+    return query, worker_id, branch_id, date_from, date_to
+
+
+def _compute_time_totals(all_logs):
+    from datetime import timedelta as td
+    from utilities.israeli_labor import calc_overtime_for_day, weighted_hours, format_hours
+    worker_totals = {}
+    daily_totals = {}
+    weekly_totals = {}
+    for log in all_logs:
+        wid = log.worker_id
+        wname = log.worker.name if log.worker else f'#{wid}'
+        dur = log.duration_seconds
+        if wid not in worker_totals:
+            worker_totals[wid] = {'name': wname, 'seconds': 0, 'shifts': 0}
+        worker_totals[wid]['seconds'] += dur
+        worker_totals[wid]['shifts'] += 1
+        day_key = log.clock_in.strftime('%Y-%m-%d')
+        dt_key = (wid, day_key)
+        if dt_key not in daily_totals:
+            daily_totals[dt_key] = {'name': wname, 'date': day_key, 'seconds': 0, 'shifts': 0,
+                                    'branch': log.branch.name_he if log.branch else '', 'worker_id': wid}
+        daily_totals[dt_key]['seconds'] += dur
+        daily_totals[dt_key]['shifts'] += 1
+        iso_year, iso_week, _ = log.clock_in.isocalendar()
+        wk_key = (wid, iso_year, iso_week)
+        if wk_key not in weekly_totals:
+            week_start = log.clock_in - td(days=log.clock_in.weekday())
+            weekly_totals[wk_key] = {
+                'name': wname,
+                'week_label': f'{week_start.strftime("%d/%m")}–{(week_start + td(days=6)).strftime("%d/%m/%Y")}',
+                'seconds': 0, 'shifts': 0,
+            }
+        weekly_totals[wk_key]['seconds'] += dur
+        weekly_totals[wk_key]['shifts'] += 1
+    for dt_val in daily_totals.values():
+        total_h = dt_val['seconds'] / 3600
+        reg, ot125, ot150 = calc_overtime_for_day(total_h, dt_val['date'])
+        dt_val['total_hours'] = total_h
+        dt_val['regular'] = reg
+        dt_val['ot_125'] = ot125
+        dt_val['ot_150'] = ot150
+        dt_val['weighted'] = weighted_hours(reg, ot125, ot150)
+        dt_val['display'] = format_hours(total_h)
+        dt_val['regular_display'] = format_hours(reg)
+        dt_val['ot_125_display'] = format_hours(ot125)
+        dt_val['ot_150_display'] = format_hours(ot150)
+        dt_val['weighted_display'] = format_hours(dt_val['weighted'])
+    for wid, wt in worker_totals.items():
+        h, remainder = divmod(wt['seconds'], 3600)
+        m, _ = divmod(remainder, 60)
+        wt['display'] = f'{h}:{m:02d}'
+        w_reg = w_125 = w_150 = w_weighted = 0.0
+        for (dwid, _), dv in daily_totals.items():
+            if dwid == wid:
+                w_reg += dv['regular']
+                w_125 += dv['ot_125']
+                w_150 += dv['ot_150']
+                w_weighted += dv['weighted']
+        wt['regular'] = round(w_reg, 2)
+        wt['ot_125'] = round(w_125, 2)
+        wt['ot_150'] = round(w_150, 2)
+        wt['weighted'] = round(w_weighted, 2)
+        wt['regular_display'] = format_hours(w_reg)
+        wt['ot_125_display'] = format_hours(w_125)
+        wt['ot_150_display'] = format_hours(w_150)
+        wt['weighted_display'] = format_hours(w_weighted)
+    daily_list = sorted(daily_totals.values(), key=lambda x: (x['date'], x['name']), reverse=True)
+    for wt in weekly_totals.values():
+        h, remainder = divmod(wt['seconds'], 3600)
+        m, _ = divmod(remainder, 60)
+        wt['display'] = f'{h}:{m:02d}'
+    weekly_list = sorted(weekly_totals.values(), key=lambda x: x['week_label'], reverse=True)
+    return worker_totals, daily_list, weekly_list
+
+
+@admin_bp.route('/time-logs')
+@login_required
+def time_logs():
+    query, worker_id, branch_id, date_from, date_to = _build_time_logs_query()
+    all_logs = query.order_by(TimeLog.clock_in.desc()).all()
+    logs = all_logs[:500]
+    worker_totals, daily_list, weekly_list = _compute_time_totals(all_logs)
+    workers = ManagerPIN.query.filter_by(is_active=True).order_by(ManagerPIN.name).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    open_shifts = TimeLog.query.filter(TimeLog.clock_out.is_(None)).all()
+    auto_close_hours = TimeLog.get_auto_close_hours()
+    return render_template('admin/time_logs.html',
+        logs=logs,
+        workers=workers,
+        branches=branches,
+        open_shifts=open_shifts,
+        worker_totals=worker_totals,
+        daily_totals=daily_list,
+        weekly_totals=weekly_list,
+        auto_close_hours=auto_close_hours,
+        filter_worker_id=worker_id,
+        filter_branch_id=branch_id,
+        filter_date_from=date_from,
+        filter_date_to=date_to,
+    )
+
+
+@admin_bp.route('/time-logs/export')
+@login_required
+def time_logs_export():
+    from utilities.exporting import export_to_excel_multi_sheet
+    from utilities.israeli_labor import calc_overtime_for_day, weighted_hours
+    query, worker_id, branch_id, date_from, date_to = _build_time_logs_query()
+    all_logs = query.order_by(TimeLog.clock_in.asc()).all()
+    day_groups = {}
+    for log in all_logs:
+        wid = log.worker_id
+        day_key = log.clock_in.strftime('%Y-%m-%d')
+        key = (wid, day_key)
+        if key not in day_groups:
+            day_groups[key] = []
+        day_groups[key].append(log)
+    daily_rows = []
+    for (wid, day_key), logs_group in sorted(day_groups.items(), key=lambda x: (x[0][1], x[0][0]), reverse=True):
+        first_log = logs_group[0]
+        last_log = logs_group[-1]
+        wname = first_log.worker.name if first_log.worker else f'#{wid}'
+        branch_name = first_log.branch.name_he if first_log.branch else ''
+        clock_in_str = first_log.clock_in.strftime('%d/%m/%Y %H:%M')
+        clock_out_str = last_log.clock_out.strftime('%d/%m/%Y %H:%M') if last_log.clock_out else ''
+        raw_seconds = sum(l.duration_seconds for l in logs_group)
+        raw_hours_exact = raw_seconds / 3600
+        reg, ot125, ot150 = calc_overtime_for_day(raw_hours_exact, day_key)
+        wt = weighted_hours(reg, ot125, ot150)
+        daily_rows.append({
+            'date': day_key, 'worker': wname, 'branch': branch_name,
+            'clock_in': clock_in_str, 'clock_out': clock_out_str,
+            'raw_hours': round(raw_hours_exact, 2),
+            'regular': round(reg, 2), 'ot_125': round(ot125, 2),
+            'ot_150': round(ot150, 2), 'weighted': round(wt, 2),
+        })
+    worker_totals, _, _ = _compute_time_totals(all_logs)
+    summary_rows = []
+    for wid, wt in worker_totals.items():
+        summary_rows.append({
+            'worker': wt['name'], 'shifts': wt['shifts'],
+            'raw_hours': round(wt['seconds'] / 3600, 2),
+            'regular': wt['regular'], 'ot_125': wt['ot_125'],
+            'ot_150': wt['ot_150'], 'weighted': wt['weighted'],
+        })
+    sheet1_columns = [
+        {'field': 'date', 'header': 'תאריך'},
+        {'field': 'worker', 'header': 'עובד'},
+        {'field': 'branch', 'header': 'סניף'},
+        {'field': 'clock_in', 'header': 'כניסה'},
+        {'field': 'clock_out', 'header': 'יציאה'},
+        {'field': 'raw_hours', 'header': 'שעות גולמיות'},
+        {'field': 'regular', 'header': 'שעות רגילות'},
+        {'field': 'ot_125', 'header': 'שעות 125%'},
+        {'field': 'ot_150', 'header': 'שעות 150%'},
+        {'field': 'weighted', 'header': 'סה"כ משוקלל'},
+    ]
+    sheet2_columns = [
+        {'field': 'worker', 'header': 'עובד'},
+        {'field': 'shifts', 'header': 'משמרות'},
+        {'field': 'raw_hours', 'header': 'שעות גולמיות'},
+        {'field': 'regular', 'header': 'שעות רגילות'},
+        {'field': 'ot_125', 'header': 'שעות 125%'},
+        {'field': 'ot_150', 'header': 'שעות 150%'},
+        {'field': 'weighted', 'header': 'סה"כ משוקלל'},
+    ]
+    fname = 'time_logs'
+    if date_from:
+        fname += f'_{date_from}'
+    if date_to:
+        fname += f'_to_{date_to}'
+    fname += '.xlsx'
+    return export_to_excel_multi_sheet([
+        {'title': 'פירוט יומי', 'columns': sheet1_columns, 'data': daily_rows, 'rtl': True},
+        {'title': 'סיכום עובדים', 'columns': sheet2_columns, 'data': summary_rows, 'rtl': True},
+    ], filename=fname)
+
+
+@admin_bp.route('/time-logs/clock-out/<int:log_id>', methods=['POST'])
+@login_required
+def time_log_clock_out(log_id):
+    tl = TimeLog.query.get_or_404(log_id)
+    if tl.is_open:
+        tl.close_shift()
+        db.session.commit()
+        flash(f'המשמרת של {tl.worker.name if tl.worker else "עובד"} נסגרה', 'success')
+    else:
+        flash('המשמרת כבר סגורה', 'info')
+    return redirect(url_for('admin.time_logs'))
+
+
+@admin_bp.route('/time-logs/auto-close', methods=['POST'])
+@login_required
+def time_log_auto_close():
+    count = TimeLog.auto_close_stale()
+    db.session.commit()
+    flash(f'{count} משמרות ישנות נסגרו אוטומטית', 'success')
+    return redirect(url_for('admin.time_logs'))
+
+
+@admin_bp.route('/api/cities')
+@login_required
+def api_cities():
+    from city_autocomplete import fetch_cities
+    q = request.args.get('q', '').strip()
+    cities = fetch_cities(q)
+    return jsonify({'cities': cities, 'count': len(cities)})
+
+
+@admin_bp.route('/delivery-zones')
+@login_required
+def delivery_zones():
+    from services.order.order_service import DeliveryZone
+    branch_id = request.args.get('branch_id', type=int)
+    query = DeliveryZone.query
+    if branch_id:
+        query = query.filter_by(branch_id=branch_id)
+    zones = query.order_by(DeliveryZone.display_order, DeliveryZone.city_name).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    return render_template('admin/delivery_zones.html',
+        zones=zones,
+        branches=branches,
+        filter_branch_id=branch_id,
+    )
+
+
+@admin_bp.route('/delivery-zones/edit/<int:zone_id>', methods=['GET', 'POST'])
+@admin_bp.route('/delivery-zones/add', methods=['GET', 'POST'], defaults={'zone_id': 0})
+@login_required
+def edit_delivery_zone(zone_id):
+    from services.order.order_service import DeliveryZone
+    form = FlaskForm()
+
+    if zone_id:
+        zone = DeliveryZone.query.get_or_404(zone_id)
+    else:
+        zone = DeliveryZone()
+
+    if request.method == 'POST' and form.validate_on_submit():
+        zone.branch_id = request.form.get('branch_id', type=int) or None
+        zone.city_name = request.form.get('city_name', '').strip()
+        zone.name = request.form.get('name', '').strip() or None
+        zone.description = request.form.get('description', '').strip() or None
+        fee_val = request.form.get('delivery_fee', '0')
+        zone.delivery_fee = float(fee_val) if fee_val and str(fee_val).lower() != 'nan' else 0
+        min_val = request.form.get('minimum_order', '0')
+        zone.minimum_order = float(min_val) if min_val and str(min_val).lower() != 'nan' else 0
+        free_val = request.form.get('free_delivery_above', '')
+        zone.free_delivery_above = float(free_val) if free_val and str(free_val).lower() != 'nan' else None
+        est_val = request.form.get('estimated_minutes', '30')
+        zone.estimated_minutes = int(est_val) if est_val else 30
+        zone.estimated_delivery_time = request.form.get('estimated_delivery_time', '').strip() or None
+        zone.is_active = request.form.get('is_active') == 'on'
+        order_val = request.form.get('display_order', '0')
+        zone.display_order = int(order_val) if order_val else 0
+
+        if not zone.city_name:
+            flash('יש להזין שם עיר', 'error')
+            branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+            return render_template('admin/edit_delivery_zone.html', form=form, zone=zone, branches=branches)
+
+        if not zone_id:
+            db.session.add(zone)
+        db.session.commit()
+        flash('אזור משלוח נשמר בהצלחה! ✓', 'success')
+        return redirect(url_for('admin.delivery_zones'))
+
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+    return render_template('admin/edit_delivery_zone.html', form=form, zone=zone, branches=branches)
+
+
+@admin_bp.route('/delivery-zones/delete/<int:zone_id>', methods=['POST'])
+@login_required
+def delete_delivery_zone(zone_id):
+    from services.order.order_service import DeliveryZone
+    zone = DeliveryZone.query.get_or_404(zone_id)
+    db.session.delete(zone)
+    db.session.commit()
+    flash('אזור משלוח נמחק', 'success')
+    return redirect(url_for('admin.delivery_zones'))
+
+
+@admin_bp.route('/delivery-zones/toggle/<int:zone_id>', methods=['POST'])
+@login_required
+def toggle_delivery_zone(zone_id):
+    from services.order.order_service import DeliveryZone
+    zone = DeliveryZone.query.get_or_404(zone_id)
+    zone.is_active = not zone.is_active
+    db.session.commit()
+    status = 'פעיל' if zone.is_active else 'מושבת'
+    flash(f'{zone.city_name}: {status}', 'success')
+    return redirect(url_for('admin.delivery_zones'))
+
+
+@admin_bp.route('/sms-templates')
+@login_required
+def sms_templates():
+    return redirect(url_for('admin.sms_center'))
+
+
+@admin_bp.route('/sms-logs')
+@login_required
+def sms_logs():
+    return redirect(url_for('admin.sms_center', tab='logs'))
+
+
+@admin_bp.route('/sms-center')
+@login_required
+def sms_center():
+    from models import SMSTemplate, SMSAutoTrigger, SMSLog, Branch
+    templates = SMSTemplate.query.order_by(SMSTemplate.id).all()
+    triggers = SMSAutoTrigger.query.order_by(SMSAutoTrigger.id).all()
+    branches = Branch.query.filter_by(is_active=True).order_by(Branch.name_he).all()
+
+    template_data = {}
+    for t in templates:
+        template_data[t.id] = {
+            'name_he': t.name_he,
+            'name_en': t.name_en or '',
+            'content_he': t.content_he,
+            'template_type': t.template_type,
+            'branch_id': t.branch_id or '',
+        }
+
+    active_tab = request.args.get('tab', 'templates')
+    log_page = request.args.get('page', 1, type=int)
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    log_status = request.args.get('log_status', '')
+    phone_search = request.args.get('phone_search', '')
+
+    logs_query = SMSLog.query.order_by(SMSLog.created_at.desc())
+    if date_from:
+        try:
+            from datetime import datetime as dt
+            logs_query = logs_query.filter(SMSLog.created_at >= dt.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime as dt, timedelta
+            logs_query = logs_query.filter(SMSLog.created_at < dt.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
+    if log_status:
+        logs_query = logs_query.filter(SMSLog.status == log_status)
+    message_type = request.args.get('message_type', '')
+    if message_type:
+        logs_query = logs_query.filter(SMSLog.message_type == message_type)
+    if phone_search:
+        logs_query = logs_query.filter(SMSLog.recipient_phone.contains(phone_search))
+
+    per_page = 50
+    total_logs = logs_query.count()
+    total_log_pages = max(1, (total_logs + per_page - 1) // per_page)
+    sms_logs = logs_query.offset((log_page - 1) * per_page).limit(per_page).all()
+
+    return render_template('admin/sms_center.html',
+        templates=templates,
+        triggers=triggers,
+        branches=branches,
+        template_data=template_data,
+        categories=SMSTemplate.CATEGORIES,
+        placeholders=SMSTemplate.PLACEHOLDERS,
+        order_statuses=SMSAutoTrigger.ORDER_STATUSES,
+        sms_logs=sms_logs,
+        log_page=log_page,
+        total_log_pages=total_log_pages,
+        active_tab=active_tab,
+        date_from=date_from,
+        date_to=date_to,
+        log_status=log_status,
+        message_type=message_type,
+        phone_search=phone_search,
+    )
+
+
+@admin_bp.route('/sms-center/template/save', methods=['POST'])
+@login_required
+def sms_template_save():
+    from models import SMSTemplate
+    data = request.get_json(force=True)
+    tpl_id = data.get('id')
+    if tpl_id:
+        tpl = SMSTemplate.query.get_or_404(int(tpl_id))
+    else:
+        tpl = SMSTemplate()
+    tpl.name_he = data.get('name_he', '').strip()
+    tpl.name_en = data.get('name_en', '').strip() or None
+    tpl.content_he = data.get('content_he', '').strip()
+    tpl.template_type = data.get('template_type', 'order_update')
+    tpl.available_variables = ','.join([v for v, _ in SMSTemplate.PLACEHOLDERS])
+    branch_id = data.get('branch_id')
+    tpl.branch_id = int(branch_id) if branch_id else None
+    if not tpl.name_he or not tpl.content_he:
+        return jsonify(ok=False, error='נא למלא שם ותוכן')
+    if not tpl_id:
+        db.session.add(tpl)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/template/toggle', methods=['POST'])
+@login_required
+def sms_template_toggle():
+    from models import SMSTemplate
+    data = request.get_json(force=True)
+    tpl = SMSTemplate.query.get_or_404(data['id'])
+    tpl.is_active = bool(data.get('is_active', True))
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/template/delete', methods=['POST'])
+@login_required
+def sms_template_delete():
+    from models import SMSTemplate
+    data = request.get_json(force=True)
+    tpl = SMSTemplate.query.get_or_404(data['id'])
+    db.session.delete(tpl)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/trigger/save', methods=['POST'])
+@login_required
+def sms_trigger_save():
+    from models import SMSAutoTrigger, SMSTemplate
+    data = request.get_json(force=True)
+    order_status = data.get('order_status', '').strip()
+    valid_statuses = [s for s, _ in SMSAutoTrigger.ORDER_STATUSES]
+    if order_status not in valid_statuses:
+        return jsonify(ok=False, error='סטטוס לא תקין')
+    try:
+        template_id = int(data.get('template_id'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='תבנית לא תקינה')
+    if not SMSTemplate.query.get(template_id):
+        return jsonify(ok=False, error='תבנית לא נמצאה')
+    branch_id = None
+    if data.get('branch_id'):
+        try:
+            branch_id = int(data['branch_id'])
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error='סניף לא תקין')
+    existing = SMSAutoTrigger.query.filter_by(order_status=order_status, branch_id=branch_id).first()
+    if existing:
+        return jsonify(ok=False, error='כבר קיים טריגר לסטטוס זה בסניף זה. ערוך או מחק את הקיים.')
+    trigger = SMSAutoTrigger()
+    trigger.order_status = order_status
+    trigger.template_id = template_id
+    trigger.branch_id = branch_id
+    trigger.is_active = True
+    db.session.add(trigger)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/trigger/toggle', methods=['POST'])
+@login_required
+def sms_trigger_toggle():
+    from models import SMSAutoTrigger
+    data = request.get_json(force=True)
+    try:
+        trigger_id = int(data.get('id'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='מזהה לא תקין')
+    trigger = SMSAutoTrigger.query.get_or_404(trigger_id)
+    trigger.is_active = bool(data.get('is_active', True))
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/trigger/delete', methods=['POST'])
+@login_required
+def sms_trigger_delete():
+    from models import SMSAutoTrigger
+    data = request.get_json(force=True)
+    try:
+        trigger_id = int(data.get('id'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='מזהה לא תקין')
+    trigger = SMSAutoTrigger.query.get_or_404(trigger_id)
+    db.session.delete(trigger)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@admin_bp.route('/sms-center/quick-send', methods=['POST'])
+@login_required
+def sms_quick_send():
+    from models import SMSLog
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    data = request.get_json(force=True)
+    phone = data.get('phone', '').strip()
+    message = data.get('message', '').strip()
+    if not phone or not message:
+        return jsonify(ok=False, error='נא למלא טלפון והודעה')
+
+    order_id = data.get('order_id')
+    order_id_val = None
+    if order_id:
+        try:
+            order_id_val = int(order_id)
+        except (TypeError, ValueError):
+            pass
+
+    send_fn = create_sender_from_env()
+    if not send_fn:
+        log = SMSLog(
+            recipient_phone=phone,
+            message_type='quick_send',
+            message_text=message,
+            order_id=order_id_val,
+            status='failed',
+            error_message='SMS provider not configured',
+            staff_name=current_user.username,
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(ok=False, error='ספק SMS לא מוגדר. הודעה נשמרה בלוג.')
+
+    try:
+        result = send_fn(phone, message)
+        log = SMSLog(
+            recipient_phone=phone,
+            message_type='quick_send',
+            message_text=message,
+            order_id=order_id_val,
+            status='sent',
+            staff_name=current_user.username,
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(ok=True, message='SMS נשלח בהצלחה!')
+    except Exception as e:
+        log = SMSLog(
+            recipient_phone=phone,
+            message_type='quick_send',
+            message_text=message,
+            order_id=order_id_val,
+            status='failed',
+            error_message=str(e),
+            staff_name=current_user.username,
+        )
+        db.session.add(log)
+        db.session.commit()
+        return jsonify(ok=False, error=f'שליחה נכשלה: {str(e)}')
+
+
+@admin_bp.route('/sms-center/health-check')
+@login_required
+def sms_health_check():
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_fn = create_sender_from_env()
+    return jsonify(configured=send_fn is not None)

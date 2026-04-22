@@ -1,0 +1,131 @@
+{% extends "admin/base.html" %}
+
+{% block title %}תוצאות יבוא{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-check-circle me-2"></i>תוצאות יבוא</h2>
+                <div>
+                    <a href="{{ url_for('admin.menu') }}" class="btn btn-primary">
+                        <i class="fas fa-utensils me-2"></i>צפה בתפריט
+                    </a>
+                    <a href="{{ url_for('admin.menu_import') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-file-upload me-2"></i>יבוא נוסף
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Success Summary -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h3 class="text-success">{{ success_count }}</h3>
+                            <p class="card-text">מנות יובאו בהצלחה</p>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if error_count > 0 %}
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                            <h3 class="text-warning">{{ error_count }}</h3>
+                            <p class="card-text">מנות עם שגיאות (דולגו)</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if success_count > 0 %}
+            <div class="alert alert-success">
+                <i class="fas fa-thumbs-up me-2"></i>
+                <strong>יבוא הושלם בהצלחה!</strong> 
+                {{ success_count }} מנות נוספו לתפריט. ניתן לערוך, לסדר ולהוסיף תכונות תזונתיות למנות החדשות.
+            </div>
+            {% endif %}
+            
+            <!-- Error Details -->
+            {% if errors %}
+            <div class="card mt-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>פרטי שגיאות</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        השגיאות הבאות מנעו יבוא של חלק מהמנות. ניתן לתקן את הקובץ ולנסות שוב:
+                    </div>
+                    
+                    <ul class="list-group list-group-flush">
+                        {% for error in errors %}
+                        <li class="list-group-item">
+                            <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                            {{ error }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-tasks me-2"></i>השלב הבא</h6>
+                </div>
+                <div class="card-body">
+                    <h6>מה אפשר לעשות עכשיו:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <a href="{{ url_for('admin.menu') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fas fa-list me-2"></i>צפה במנות שיובאו
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{{ url_for('admin.dietary_properties') }}" class="btn btn-outline-info btn-sm w-100">
+                                <i class="fas fa-tags me-2"></i>הוסף תכונות תזונתיות
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{{ url_for('admin.menu_reorder') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="fas fa-sort me-2"></i>סדר את המנות
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{{ url_for('admin.edit_menu_item') }}" class="btn btn-outline-success btn-sm w-100">
+                                <i class="fas fa-plus me-2"></i>הוסף מנה ידנית
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            {% if success_count > 0 %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle me-2"></i>מידע שימושי</h6>
+                </div>
+                <div class="card-body">
+                    <small>
+                        <strong>המנות שיובאו:</strong><br>
+                        • מוגדרות כזמינות<br>
+                        • ללא תכונות תזונתיות (יש להוסיף ידנית)<br>
+                        • ללא תמונות (ניתן להוסיף בעריכה)<br>
+                        • סדר לפי סדר השורות בקובץ<br><br>
+                        
+                        <strong>המלצה:</strong> עבור על המנות ועדכן תמונות, תכונות תזונתיות ופרטים נוספים.
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

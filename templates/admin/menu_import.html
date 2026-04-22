@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block title %}יבוא תפריט מקובץ CSV/Excel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-file-upload me-2"></i>יבוא תפריט מקובץ CSV/Excel</h2>
+                <a href="{{ url_for('admin.menu') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>חזור לתפריט
+                </a>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>יבוא מנות:</strong> העלה קובץ CSV או Excel עם נתוני המנות. 
+                בשלב הבא תוכל למפות את העמודות לשדות במערכת.
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-upload me-2"></i>העלאת קובץ</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('admin.upload_csv') }}" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="mb-4">
+                            <label for="file" class="form-label">בחר קובץ CSV או Excel</label>
+                            <input class="form-control" type="file" id="file" name="file" 
+                                   accept=".csv,.xlsx,.xls" required>
+                            <small class="form-text text-muted">
+                                קבצים נתמכים: CSV (.csv), Excel (.xlsx, .xls)
+                            </small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-upload me-2"></i>העלה וצפה בתצוגה מקדימה
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-lightbulb me-2"></i>הנחיות ליבוא</h6>
+                </div>
+                <div class="card-body">
+                    <h6>הכנת הקובץ:</h6>
+                    <ul class="small">
+                        <li>השורה הראשונה צריכה להכיל כותרות עמודות</li>
+                        <li>כל שורה = מנה אחת</li>
+                        <li>מומלץ לכלול לפחות: שם בעברית, מחיר</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">עמודות מומלצות:</h6>
+                    <ul class="small">
+                        <li><strong>שם בעברית</strong> - חובה</li>
+                        <li><strong>שם באנגלית</strong> - מומלץ</li>
+                        <li><strong>תיאור בעברית</strong></li>
+                        <li><strong>תיאור באנגלית</strong></li>
+                        <li><strong>מחיר</strong> - בשקלים</li>
+                        <li><strong>קטגוריה</strong> - שם הקטגוריה</li>
+                        <li><strong>רכיבים בעברית</strong></li>
+                        <li><strong>רכיבים באנגלית</strong></li>
+                    </ul>
+                    
+                    <h6 class="mt-3">דוגמה לקובץ CSV:</h6>
+                    <pre class="small bg-light p-2 rounded">שם_בעברית,שם_באנגלית,מחיר,קטגוריה
+סושי סלמון,Salmon Sushi,35,סושי
+רמן חריף,Spicy Ramen,42,רמן</pre>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-download me-2"></i>דוגמה להורדה</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small">הורד קובץ דוגמה עם העמודות הנכונות:</p>
+                    <button class="btn btn-outline-primary btn-sm" onclick="downloadSample()">
+                        <i class="fas fa-download me-1"></i>הורד דוגמה (CSV)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function downloadSample() {
+    const csvContent = `שם_בעברית,שם_באנגלית,תיאור_בעברית,תיאור_באנגלית,מחיר,קטגוריה,רכיבים_בעברית,רכיבים_באנגלית
+סושי סלמון,Salmon Sushi,סושי טרי עם סלמון נורווגי,Fresh sushi with Norwegian salmon,35,סושי,"אורז סושי, סלמון, נורי","Sushi rice, salmon, nori"
+רמן חריף,Spicy Ramen,מרק רמן יפני עם ירקות ובשר,Japanese ramen soup with vegetables and meat,42,רמן,"נודלס, מרק, בשר, ירקות","Noodles, broth, meat, vegetables"
+פאד תאי,Pad Thai,מנה תאילנדית מסורתית עם נודלס,Traditional Thai dish with noodles,38,תאילנדי,"נודלס אורז, ירקות, רוטב תאילנדי","Rice noodles, vegetables, Thai sauce"`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "menu_template.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

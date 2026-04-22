@@ -1,0 +1,138 @@
+{% extends "ops/base.html" %}
+{% block header_title %}מלאי{% endblock %}
+{% block title %}מלאי - לוח בקרה{% endblock %}
+
+{% block content %}
+{% if low_items %}
+<div class="ops-section-title"><i class="fas fa-exclamation-triangle" style="color: var(--ops-red);"></i> התראות מלאי נמוך</div>
+<div class="ops-grid ops-grid-3">
+    {% for item, lvl in low_items %}
+    <div class="ops-card" style="border-color: var(--ops-red);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-weight:700;">{{ item.name_he }}</div>
+                <div style="font-size:12px; color:var(--ops-text-dim);">{{ item.unit_he or 'יחידה' }}</div>
+            </div>
+            <span class="ops-badge ops-badge-red">{{ lvl.current_quantity|round(1) }} / {{ item.minimum_stock }}</span>
+        </div>
+        <div class="ops-stock-bar">
+            {% set pct = ((lvl.current_quantity / item.minimum_stock * 100) if item.minimum_stock and item.minimum_stock > 0 else 0)|round %}
+            <div class="ops-stock-fill red" style="width: {{ [pct, 100]|min }}%;"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="ops-section-title" style="justify-content:space-between;">
+    <span><i class="fas fa-boxes-stacked"></i> פריטי מלאי</span>
+    <button class="ops-btn ops-btn-primary ops-btn-sm" onclick="document.getElementById('addTxnModal').classList.add('show')">
+        <i class="fas fa-plus"></i> רשום קבלה
+    </button>
+</div>
+
+{% if items %}
+<div class="ops-grid ops-grid-3">
+    {% for item in items %}
+    {% set lvl = levels.get(item.id) %}
+    {% set qty = lvl.current_quantity if lvl else 0 %}
+    {% set min_s = item.minimum_stock or 0 %}
+    {% set max_s = item.maximum_stock or (min_s * 5) or 100 %}
+    {% set pct = ((qty / max_s * 100) if max_s > 0 else 0)|round %}
+    {% set status = 'red' if qty <= min_s else ('orange' if qty <= min_s * 2 else 'green') %}
+    <div class="ops-card">
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div>
+                <div style="font-weight:700;">{{ item.name_he }}</div>
+                <div style="font-size:12px; color:var(--ops-text-dim);">{{ item.unit_he or 'יחידה' }}</div>
+            </div>
+            <span class="ops-badge ops-badge-{{ status }}">{{ qty|round(1) }}</span>
+        </div>
+        <div class="ops-stock-bar">
+            <div class="ops-stock-fill {{ status }}" style="width: {{ [pct, 100]|min }}%;"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--ops-text-dim); margin-top:4px;">
+            <span>מינ: {{ min_s }}</span>
+            <span>מקס: {{ max_s }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="ops-empty">
+    <i class="fas fa-boxes-stacked"></i>
+    <div>אין פריטי מלאי</div>
+</div>
+{% endif %}
+
+{% if recent_txns %}
+<div class="ops-section-title"><i class="fas fa-history"></i> תנועות אחרונות</div>
+{% for txn in recent_txns %}
+<div class="ops-item-row">
+    <div class="ops-item-info">
+        <div class="ops-item-name">{{ txn.item.name_he if txn.item else '?' }}</div>
+        <div class="ops-item-sub">
+            {% if txn.transaction_type == 'delivery' %}קבלה{% elif txn.transaction_type == 'usage' %}שימוש{% elif txn.transaction_type == 'waste' %}פחת{% elif txn.transaction_type == 'adjustment' %}התאמה{% else %}{{ txn.transaction_type }}{% endif %}
+            · {{ txn.transaction_date|il_time_short if txn.transaction_date else '' }}
+        </div>
+    </div>
+    <span class="ops-badge {% if txn.quantity > 0 %}ops-badge-green{% else %}ops-badge-red{% endif %}">
+        {% if txn.quantity > 0 %}+{% endif %}{{ txn.quantity|round(1) }}
+    </span>
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="ops-modal-overlay" id="addTxnModal">
+    <div class="ops-modal">
+        <div class="ops-modal-title">רשום קבלת סחורה</div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">פריט</label>
+            <select class="ops-select" id="txnItemId">
+                {% for item in items %}
+                <option value="{{ item.id }}">{{ item.name_he }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">כמות</label>
+            <input type="number" class="ops-input" id="txnQty" step="0.5" min="0.5" value="1" inputmode="decimal">
+        </div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">סוג</label>
+            <select class="ops-select" id="txnType">
+                <option value="delivery">קבלה</option>
+                <option value="adjustment">התאמה</option>
+                <option value="waste">פחת</option>
+            </select>
+        </div>
+        <div class="ops-form-group">
+            <label class="ops-form-label">הערות</label>
+            <input type="text" class="ops-input" id="txnNotes" placeholder="אופציונלי">
+        </div>
+        <div class="ops-form-actions">
+            <button class="ops-btn ops-btn-primary" onclick="submitTxn()">שמור</button>
+            <button class="ops-btn ops-btn-secondary" onclick="document.getElementById('addTxnModal').classList.remove('show')">ביטול</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function submitTxn() {
+    var qty = parseFloat(document.getElementById('txnQty').value);
+    var txnType = document.getElementById('txnType').value;
+    if (txnType === 'waste') qty = -Math.abs(qty);
+    opsPost('{{ url_for('ops.stock_transaction') }}', {
+        item_id: parseInt(document.getElementById('txnItemId').value),
+        quantity: qty,
+        type: txnType,
+        notes: document.getElementById('txnNotes').value
+    }, function() {
+        document.getElementById('addTxnModal').classList.remove('show');
+        setTimeout(function() { location.reload(); }, 500);
+    });
+}
+</script>
+{% endblock %}

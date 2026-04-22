@@ -1,0 +1,395 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Archive{% endblock %}
+
+{% block extra_css %}
+<style>
+.archive-header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: rgba(255,255,255,.1);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+.stat-card .stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.stat-card .stat-label {
+    font-size: .8rem;
+    opacity: .8;
+    margin-top: 4px;
+}
+.archive-table th { font-size: .85rem; }
+.archive-table td { font-size: .9rem; vertical-align: middle; }
+.restore-btn {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s;
+}
+.restore-btn:hover { background: #16a34a; }
+.archive-detail-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.archive-detail-modal.show { display: flex; }
+.archive-detail-content {
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 650px;
+    width: 95%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,.3);
+}
+.detail-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-weight: 600; color: #6b7280; font-size: .9rem; }
+.detail-value { font-weight: 700; color: #1f2937; font-size: .9rem; }
+.item-row { display: flex; justify-content: space-between; padding: 5px 8px; background: #f9fafb; border-radius: 6px; margin-bottom: 4px; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f8f9fa; }
+.section-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #374151;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="archive-header">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h3 class="mb-1"><i class="fas fa-vault me-2"></i>מרכז ארכיון</h3>
+                <p class="mb-0 opacity-75" style="font-size:.9rem;">תמונה מלאה — כל ההזמנות כולל נמחקות</p>
+            </div>
+            <a href="{{ url_for('admin.food_orders_list') }}" class="btn btn-sm btn-outline-light">
+                <i class="fas fa-arrow-right me-1"></i>חזרה
+            </a>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">₪{{ '%.0f' % stats.reported_income }}</div>
+                    <div class="stat-label">הכנסה מדווחת (אחרי מחיקות)</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color:#ef4444;">-₪{{ '%.0f' % stats.deleted_amount }}</div>
+                    <div class="stat-label">סכום שהופחת ({{ stats.archived_count }} הזמנות)</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="color:#94a3b8;">₪{{ '%.0f' % stats.original_total }}</div>
+                    <div class="stat-label">סה"כ מקורי (לפני מחיקות)</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_orders }}</div>
+                    <div class="stat-label">הזמנות פעילות</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-4 col-md-2">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;">₪{{ '%.0f' % stats.today_total }}</div>
+                    <div class="stat-label">היום</div>
+                </div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;">₪{{ '%.0f' % stats.week_total }}</div>
+                    <div class="stat-label">השבוע</div>
+                </div>
+            </div>
+            <div class="col-4 col-md-2">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;">₪{{ '%.0f' % stats.month_total }}</div>
+                    <div class="stat-label">החודש</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;color:#22c55e;">₪{{ '%.0f' % stats.cash_total }}</div>
+                    <div class="stat-label">מזומן (מדווח)</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" style="font-size:1.3rem;color:#3b82f6;">₪{{ '%.0f' % stats.card_total }}</div>
+                    <div class="stat-label">כרטיס (מדווח)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if archived_orders %}
+    <div class="section-title"><i class="fas fa-trash-alt me-2 text-danger"></i>הזמנות שנמחקו ({{ archived_orders|length }})</div>
+    <div class="card mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 archive-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>לקוח</th>
+                        <th>טלפון</th>
+                        <th>סכום</th>
+                        <th>תשלום</th>
+                        <th>נמחק ע"י</th>
+                        <th>תאריך מחיקה</th>
+                        <th>סיבה</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in archived_orders %}
+                    <tr class="clickable-row" onclick="showArchiveDetail({{ a.id }})">
+                        <td><strong>{{ a.order_number }}</strong></td>
+                        <td>{{ a.customer_name or '-' }}</td>
+                        <td>{{ a.customer_phone or '-' }}</td>
+                        <td><strong>₪{{ '%.0f' % (a.total_amount or 0) }}</strong></td>
+                        <td>
+                            {% if a.payment_method in ('cash', none, '') %}
+                                <span class="badge bg-success">מזומן</span>
+                            {% else %}
+                                <span class="badge bg-primary">כרטיס</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-dark">{{ a.deleted_by or '-' }}</span></td>
+                        <td>{{ a.deleted_at|il_time }}</td>
+                        <td class="text-muted">{{ a.deletion_reason or '-' }}</td>
+                        <td onclick="event.stopPropagation()">
+                            {% if not a.restored_at %}
+                            <form action="{{ url_for('admin.archived_order_restore', archive_id=a.id) }}" method="post" style="display:inline" onsubmit="return confirm('לשחזר הזמנה זו למסד הנתונים?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="restore-btn"><i class="fas fa-undo me-1"></i>שחזר</button>
+                            </form>
+                            {% else %}
+                            <span class="badge bg-success"><i class="fas fa-check me-1"></i>שוחזר</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card mb-4">
+        <div class="card-body text-center py-4 text-muted">
+            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+            <p class="mb-0">אין הזמנות שנמחקו</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="section-title"><i class="fas fa-database me-2 text-primary"></i>הזמנות פעילות ({{ main_orders|length }})</div>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 archive-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>לקוח</th>
+                        <th>סוג</th>
+                        <th>סכום</th>
+                        <th>תשלום</th>
+                        <th>סטטוס</th>
+                        <th>תאריך</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set status_colors = {'pending': 'warning', 'confirmed': 'info', 'preparing': 'primary', 'ready': 'success', 'delivered': 'secondary', 'pickedup': 'secondary', 'cancelled': 'danger'} %}
+                    {% set status_labels = {'pending': 'ממתינה', 'confirmed': 'אושרה', 'preparing': 'בהכנה', 'ready': 'מוכנה', 'delivered': 'נמסרה', 'pickedup': 'נאספה', 'cancelled': 'בוטלה'} %}
+                    {% for o in main_orders %}
+                    <tr>
+                        <td><strong>{{ o.order_number }}</strong></td>
+                        <td>{{ o.customer_name or '-' }}</td>
+                        <td>
+                            {% if o.order_type == 'delivery' %}
+                                <span class="badge bg-info">משלוח</span>
+                            {% else %}
+                                <span class="badge bg-secondary">איסוף</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>₪{{ '%.0f' % (o.total_amount or 0) }}</strong></td>
+                        <td>
+                            {% if o.payment_method in ('cash', none, '') %}
+                                <span class="badge bg-success">מזומן</span>
+                            {% else %}
+                                <span class="badge bg-primary">כרטיס</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-{{ status_colors.get(o.status, 'secondary') }}">{{ status_labels.get(o.status, o.status) }}</span></td>
+                        <td>{{ o.created_at|il_time }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="archive-detail-modal" id="archiveDetailModal" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="archive-detail-content" id="archiveDetailContent"></div>
+</div>
+
+<script>
+var archiveData = {};
+{% for a in archived_orders %}
+archiveData[{{ a.id }}] = {
+    order_number: {{ a.order_number|tojson }},
+    customer_name: {{ (a.customer_name or '-')|tojson }},
+    customer_phone: {{ (a.customer_phone or '-')|tojson }},
+    customer_email: {{ (a.customer_email or '')|tojson }},
+    order_type: {{ (a.order_type or '-')|tojson }},
+    status: {{ (a.status or '-')|tojson }},
+    payment_method: {{ (a.payment_method or '-')|tojson }},
+    payment_status: {{ (a.payment_status or '-')|tojson }},
+    total_amount: {{ a.total_amount or 0 }},
+    subtotal: {{ a.subtotal or 0 }},
+    delivery_fee: {{ a.delivery_fee or 0 }},
+    discount_amount: {{ a.discount_amount or 0 }},
+    branch_name: {{ (a.branch_name or '-')|tojson }},
+    deleted_by: {{ (a.deleted_by or '-')|tojson }},
+    deleted_at: {{ (a.deleted_at|il_time)|tojson }},
+    original_created_at: {{ (a.original_created_at|il_time)|tojson }},
+    deletion_reason: {{ (a.deletion_reason or '-')|tojson }},
+    items: JSON.parse({{ (a.items_snapshot or '[]')|tojson }}),
+    full_data: JSON.parse({{ (a.full_order_json or '{}')|tojson }})
+};
+{% endfor %}
+
+function esc(s) {
+    if (s == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+}
+
+function makeRow(label, value) {
+    var row = document.createElement('div');
+    row.className = 'detail-row';
+    var lbl = document.createElement('span');
+    lbl.className = 'detail-label';
+    lbl.textContent = label;
+    var val = document.createElement('span');
+    val.className = 'detail-value';
+    val.textContent = value;
+    row.appendChild(lbl);
+    row.appendChild(val);
+    return row;
+}
+
+function showArchiveDetail(id) {
+    var a = archiveData[id];
+    if (!a) return;
+    var container = document.getElementById('archiveDetailContent');
+    container.innerHTML = '';
+
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;';
+    var h4 = document.createElement('h4');
+    h4.style.cssText = 'margin:0;font-weight:800;';
+    h4.textContent = 'הזמנה #' + a.order_number;
+    var closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9ca3af;';
+    closeBtn.textContent = '\u00D7';
+    closeBtn.onclick = function() { document.getElementById('archiveDetailModal').classList.remove('show'); };
+    header.appendChild(h4);
+    header.appendChild(closeBtn);
+    container.appendChild(header);
+
+    container.appendChild(makeRow('לקוח', a.customer_name));
+    container.appendChild(makeRow('טלפון', a.customer_phone));
+    if (a.customer_email) container.appendChild(makeRow('אימייל', a.customer_email));
+    container.appendChild(makeRow('סניף', a.branch_name));
+    container.appendChild(makeRow('סוג', a.order_type === 'delivery' ? 'משלוח' : 'איסוף'));
+    container.appendChild(makeRow('סטטוס', a.status));
+    container.appendChild(makeRow('תשלום', a.payment_method === 'cash' ? 'מזומן' : a.payment_method));
+    container.appendChild(makeRow('תאריך הזמנה', a.original_created_at));
+
+    if (a.full_data.delivery_address) container.appendChild(makeRow('כתובת', a.full_data.delivery_address));
+    if (a.full_data.customer_notes) container.appendChild(makeRow('הערות', a.full_data.customer_notes));
+
+    var itemsTitle = document.createElement('h5');
+    itemsTitle.style.cssText = 'margin:20px 0 10px;font-weight:700;color:#374151;';
+    itemsTitle.textContent = 'פריטים';
+    container.appendChild(itemsTitle);
+
+    if (a.items && a.items.length) {
+        for (var i = 0; i < a.items.length; i++) {
+            var it = a.items[i];
+            var name = it.item_name_he || it.name_he || '?';
+            var qty = it.quantity || it.qty || 1;
+            var price = it.total_price || it.price || (it.unit_price || 0) * qty;
+            var itemRow = document.createElement('div');
+            itemRow.className = 'item-row';
+            var nameSpan = document.createElement('span');
+            nameSpan.textContent = name + ' x' + qty;
+            var priceSpan = document.createElement('span');
+            priceSpan.style.fontWeight = '700';
+            priceSpan.textContent = '₪' + Math.round(price);
+            itemRow.appendChild(nameSpan);
+            itemRow.appendChild(priceSpan);
+            container.appendChild(itemRow);
+            if (it.special_instructions) {
+                var instrDiv = document.createElement('div');
+                instrDiv.style.cssText = 'font-size:.8rem;color:#6b7280;padding:0 8px 4px;';
+                instrDiv.textContent = it.special_instructions;
+                container.appendChild(instrDiv);
+            }
+        }
+    }
+
+    var totalsDiv = document.createElement('div');
+    totalsDiv.style.cssText = 'border-top:2px solid #e5e7eb;margin-top:16px;padding-top:12px;';
+    if (a.subtotal) totalsDiv.appendChild(makeRow('סיכום ביניים', '₪' + Math.round(a.subtotal)));
+    if (a.delivery_fee) totalsDiv.appendChild(makeRow('דמי משלוח', '₪' + Math.round(a.delivery_fee)));
+    if (a.discount_amount) totalsDiv.appendChild(makeRow('הנחה', '-₪' + Math.round(a.discount_amount)));
+    var totalRow = makeRow('סה"כ', '₪' + Math.round(a.total_amount));
+    totalRow.querySelector('.detail-label').style.cssText = 'font-size:1rem;font-weight:800;';
+    totalRow.querySelector('.detail-value').style.cssText = 'font-size:1.1rem;font-weight:900;color:#059669;';
+    totalsDiv.appendChild(totalRow);
+    container.appendChild(totalsDiv);
+
+    var footerDiv = document.createElement('div');
+    footerDiv.style.cssText = 'border-top:1px solid #e5e7eb;margin-top:16px;padding-top:12px;color:#9ca3af;font-size:.8rem;';
+    footerDiv.textContent = 'נמחק ע"י: ' + a.deleted_by + ' | תאריך: ' + a.deleted_at + ' | סיבה: ' + a.deletion_reason;
+    container.appendChild(footerDiv);
+
+    document.getElementById('archiveDetailModal').classList.add('show');
+}
+</script>
+{% endblock %}

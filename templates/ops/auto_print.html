@@ -1,0 +1,546 @@
+{% extends "ops/base.html" %}
+
+{% block title %}הדפסה אוטומטית{% endblock %}
+{% block header_title %}🖨 הדפסה אוטומטית{% endblock %}
+
+{% block head %}
+<style>
+    .auto-print-container {
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .ap-status-card {
+        background: var(--ops-card-bg, #1e1e2e);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .ap-status-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+    }
+    .ap-status-text {
+        font-size: 20px;
+        color: #ccc;
+        margin-bottom: 8px;
+    }
+    .ap-status-count {
+        font-size: 36px;
+        font-weight: bold;
+        color: var(--ops-accent, #4fc3f7);
+    }
+    .ap-controls {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .ap-btn {
+        flex: 1;
+        padding: 16px;
+        border: none;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .ap-btn-start {
+        background: #4caf50;
+        color: #fff;
+    }
+    .ap-btn-stop {
+        background: #f44336;
+        color: #fff;
+    }
+    .ap-btn-disabled {
+        background: #555;
+        color: #999;
+        cursor: not-allowed;
+    }
+    .ap-log {
+        background: var(--ops-card-bg, #1e1e2e);
+        border-radius: 16px;
+        padding: 16px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: #aaa;
+        direction: ltr;
+        text-align: left;
+    }
+    .ap-log-entry {
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .ap-log-entry.success { color: #4caf50; }
+    .ap-log-entry.error { color: #f44336; }
+    .ap-log-entry.info { color: #4fc3f7; }
+    .ap-log-entry.warn { color: #ff9800; }
+
+    .ap-settings {
+        background: var(--ops-card-bg, #1e1e2e);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .ap-settings h3 {
+        margin: 0 0 16px;
+        color: #ccc;
+        font-size: 16px;
+    }
+    .ap-setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .ap-setting-label {
+        color: #aaa;
+        font-size: 15px;
+    }
+    .ap-setting-value {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .ap-setting-value input[type="number"] {
+        width: 60px;
+        background: #2a2a3e;
+        border: 1px solid #444;
+        border-radius: 8px;
+        color: #fff;
+        padding: 8px;
+        font-size: 16px;
+        text-align: center;
+    }
+    .ap-setting-value select {
+        background: #2a2a3e;
+        border: 1px solid #444;
+        border-radius: 8px;
+        color: #fff;
+        padding: 8px 12px;
+        font-size: 16px;
+    }
+    .ap-toggle {
+        position: relative;
+        width: 52px;
+        height: 28px;
+    }
+    .ap-toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .ap-toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #555;
+        border-radius: 28px;
+        transition: 0.3s;
+    }
+    .ap-toggle-slider::before {
+        content: '';
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        left: 3px;
+        bottom: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: 0.3s;
+    }
+    .ap-toggle input:checked + .ap-toggle-slider {
+        background: #4caf50;
+    }
+    .ap-toggle input:checked + .ap-toggle-slider::before {
+        transform: translateX(24px);
+    }
+    .ap-pulse {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-left: 8px;
+    }
+    .ap-pulse.active {
+        background: #4caf50;
+        animation: pulse-glow 1.5s infinite;
+    }
+    .ap-pulse.inactive {
+        background: #666;
+    }
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+    }
+    .ap-bon-preview {
+        display: none;
+    }
+
+    @media print {
+        body * { visibility: hidden !important; }
+        .ap-bon-preview,
+        .ap-bon-preview * { visibility: visible !important; }
+        .ap-bon-preview {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 80mm;
+        }
+        .bon-page {
+            font-family: 'Courier New', monospace;
+            font-size: 10pt;
+            width: 80mm;
+            page-break-after: always;
+            direction: rtl;
+        }
+        .bon-page .bon-header {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+        }
+        .bon-page .bon-type {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+        }
+        .bon-page .bon-order-num {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+        }
+        .bon-page .bon-customer {
+            font-size: 14pt;
+            font-weight: bold;
+        }
+        .bon-page .bon-item {
+            font-size: 13pt;
+            font-weight: bold;
+        }
+        .bon-page .bon-total {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: right;
+        }
+        .bon-page .bon-divider {
+            border-top: 1px dashed #000;
+            margin: 4px 0;
+        }
+        .bon-page .bon-thick {
+            border-top: 2px solid #000;
+            margin: 4px 0;
+        }
+        .bon-page .bon-footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+        }
+        @page {
+            size: 80mm auto;
+            margin: 6mm;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auto-print-container">
+    <div class="ap-status-card">
+        <div class="ap-status-icon" id="statusIcon">🖨</div>
+        <div class="ap-status-text" id="statusText">הדפסה אוטומטית מושבתת</div>
+        <div class="ap-status-count" id="statusCount">0 הזמנות הודפסו</div>
+        <span class="ap-pulse inactive" id="statusPulse"></span>
+    </div>
+
+    <div class="ap-controls">
+        <button class="ap-btn ap-btn-start" id="btnStart" onclick="startAutoPrint()">
+            <i class="fas fa-play"></i> הפעל
+        </button>
+        <button class="ap-btn ap-btn-disabled" id="btnStop" onclick="stopAutoPrint()" disabled>
+            <i class="fas fa-stop"></i> עצור
+        </button>
+    </div>
+
+    <div class="ap-settings">
+        <h3><i class="fas fa-cog"></i> הגדרות</h3>
+        <div class="ap-setting-row">
+            <span class="ap-setting-label">מרווח בדיקה (שניות)</span>
+            <div class="ap-setting-value">
+                <input type="number" id="pollInterval" value="8" min="3" max="60">
+            </div>
+        </div>
+        <div class="ap-setting-row">
+            <span class="ap-setting-label">עותקי צ'קר</span>
+            <div class="ap-setting-value">
+                <input type="number" id="checkerCopies" value="2" min="0" max="5">
+            </div>
+        </div>
+        <div class="ap-setting-row">
+            <span class="ap-setting-label">עותקי בון תשלום</span>
+            <div class="ap-setting-value">
+                <input type="number" id="paymentCopies" value="1" min="0" max="3">
+            </div>
+        </div>
+        <div class="ap-setting-row">
+            <span class="ap-setting-label">בונים לעמדות</span>
+            <div class="ap-setting-value">
+                <label class="ap-toggle">
+                    <input type="checkbox" id="stationBons" checked>
+                    <span class="ap-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+        <div class="ap-setting-row">
+            <span class="ap-setting-label">צליל התראה</span>
+            <div class="ap-setting-value">
+                <label class="ap-toggle">
+                    <input type="checkbox" id="alertSound" checked>
+                    <span class="ap-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="ap-log" id="logContainer">
+        <div class="ap-log-entry info">מוכן להפעלה...</div>
+    </div>
+</div>
+
+<div class="ap-bon-preview" id="bonPreview"></div>
+
+<script>
+let pollTimer = null;
+let printedCount = 0;
+let isRunning = false;
+
+function loadSettings() {
+    const saved = localStorage.getItem('auto_print_settings');
+    if (saved) {
+        try {
+            const s = JSON.parse(saved);
+            if (s.pollInterval) document.getElementById('pollInterval').value = s.pollInterval;
+            if (s.checkerCopies !== undefined) document.getElementById('checkerCopies').value = s.checkerCopies;
+            if (s.paymentCopies !== undefined) document.getElementById('paymentCopies').value = s.paymentCopies;
+            if (s.stationBons !== undefined) document.getElementById('stationBons').checked = s.stationBons;
+            if (s.alertSound !== undefined) document.getElementById('alertSound').checked = s.alertSound;
+        } catch(e) {}
+    }
+}
+
+function saveSettings() {
+    const s = {
+        pollInterval: parseInt(document.getElementById('pollInterval').value),
+        checkerCopies: parseInt(document.getElementById('checkerCopies').value),
+        paymentCopies: parseInt(document.getElementById('paymentCopies').value),
+        stationBons: document.getElementById('stationBons').checked,
+        alertSound: document.getElementById('alertSound').checked,
+    };
+    localStorage.setItem('auto_print_settings', JSON.stringify(s));
+}
+
+function addLog(msg, cls) {
+    const log = document.getElementById('logContainer');
+    const ts = new Date().toLocaleTimeString('he-IL');
+    const entry = document.createElement('div');
+    entry.className = 'ap-log-entry ' + (cls || '');
+    entry.textContent = `[${ts}] ${msg}`;
+    log.insertBefore(entry, log.firstChild);
+    if (log.children.length > 100) log.removeChild(log.lastChild);
+}
+
+function playAlert() {
+    if (!document.getElementById('alertSound').checked) return;
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.value = 0.3;
+        osc.start();
+        setTimeout(() => { osc.frequency.value = 1100; }, 150);
+        setTimeout(() => { osc.frequency.value = 880; }, 300);
+        setTimeout(() => { osc.stop(); ctx.close(); }, 450);
+    } catch(e) {}
+}
+
+function buildBonHTML(order) {
+    const checkerCopies = parseInt(document.getElementById('checkerCopies').value);
+    const paymentCopies = parseInt(document.getElementById('paymentCopies').value);
+    const stationBons = document.getElementById('stationBons').checked;
+    let html = '';
+    const typeHe = order.order_type === 'delivery' ? 'משלוח' : 'איסוף עצמי';
+
+    function itemsHTML(items) {
+        return items.map(item => {
+            const name = item.name_he || item.item_name_he || item.name || '';
+            const qty = item.qty || item.quantity || 1;
+            let s = `<div class="bon-item">${qty}× ${name}</div>`;
+            if (item.options) {
+                item.options.forEach(op => {
+                    const opName = typeof op === 'object' ? (op.choice_name_he || op.name || '') : op;
+                    s += `<div style="font-size:10pt; padding-right:10px;">+ ${opName}</div>`;
+                });
+            }
+            if (item.excluded_ingredients && Array.isArray(item.excluded_ingredients) && item.excluded_ingredients.length) {
+                item.excluded_ingredients.forEach(ing => {
+                    const safe = String(ing).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                    s += `<div style="font-size:10pt; padding-right:10px; color:#c00; font-weight:bold;">ללא ${safe}</div>`;
+                });
+            }
+            return s;
+        }).join('');
+    }
+
+    for (let i = 0; i < checkerCopies; i++) {
+        html += `<div class="bon-page">
+            <div class="bon-header">SUMO</div>
+            <div class="bon-type">${typeHe}</div>
+            <div class="bon-order-num">#${order.display_number || order.order_number}</div>
+            <div style="text-align:center; font-size:9pt;">${order.created_at || ''}</div>
+            <div class="bon-thick"></div>`;
+        if (order.customer_notes) html += `<div class="bon-item">⚠ ${order.customer_notes}</div>`;
+        if (order.delivery_notes) html += `<div class="bon-item">🚗 ${order.delivery_notes}</div>`;
+        html += `<div class="bon-customer">${order.customer_name || ''}</div>
+            <div>${order.customer_phone || ''}</div>`;
+        if (order.delivery_address) {
+            let addr = order.delivery_address;
+            if (order.delivery_city) addr += ', ' + order.delivery_city;
+            html += `<div>${addr}</div>`;
+        }
+        html += `<div class="bon-divider"></div>
+            ${itemsHTML(order.items || [])}
+            <div class="bon-thick"></div>
+            <div class="bon-total">סה"כ: ₪${Math.round(order.total_amount)}</div>
+            <div class="bon-footer">צ׳קר</div>
+        </div>`;
+    }
+
+    for (let i = 0; i < paymentCopies; i++) {
+        html += `<div class="bon-page">
+            <div class="bon-header">SUMO</div>
+            <div class="bon-type">בון תשלום</div>
+            <div class="bon-order-num">#${order.display_number || order.order_number}</div>
+            <div style="text-align:center; font-size:9pt;">${typeHe} | ${order.created_at || ''}</div>
+            <div class="bon-thick"></div>
+            <div class="bon-customer">${order.customer_name || ''}</div>
+            <div class="bon-divider"></div>`;
+        (order.items || []).forEach(item => {
+            const name = item.name_he || item.item_name_he || item.name || '';
+            const qty = item.qty || item.quantity || 1;
+            const price = item.price || item.unit_price || 0;
+            html += `<div class="bon-item">${qty}× ${name}  ₪${Math.round(qty * price)}</div>`;
+        });
+        html += `<div class="bon-divider"></div>
+            <div>סכום: ₪${Math.round(order.subtotal)}</div>`;
+        if (order.delivery_fee > 0) html += `<div>משלוח: ₪${Math.round(order.delivery_fee)}</div>`;
+        if (order.discount_amount > 0) html += `<div>הנחה: -₪${Math.round(order.discount_amount)}</div>`;
+        html += `<div class="bon-thick"></div>
+            <div class="bon-total">לתשלום: ₪${Math.round(order.total_amount)}</div>
+            <div class="bon-footer">תשלום: ${order.payment_method || '—'}</div>
+        </div>`;
+    }
+
+    if (stationBons && order.items_by_station) {
+        Object.entries(order.items_by_station).forEach(([station, items]) => {
+            html += `<div class="bon-page">
+                <div class="bon-header">${station}</div>
+                <div class="bon-order-num">#${order.display_number || order.order_number}</div>
+                <div style="text-align:center; font-size:9pt;">${typeHe} | ${order.created_at || ''}</div>
+                <div class="bon-thick"></div>`;
+            if (order.customer_notes) html += `<div class="bon-item">⚠ ${order.customer_notes}</div>`;
+            html += itemsHTML(items);
+            html += `<div class="bon-divider"></div>
+                <div class="bon-footer">#${order.display_number || order.order_number} | ${station}</div>
+            </div>`;
+        });
+    }
+
+    return html;
+}
+
+async function checkAndPrint() {
+    if (!isRunning) return;
+    try {
+        const resp = await fetch('/ops/api/orders/unprinted');
+        const data = await resp.json();
+        if (data.ok && data.orders.length > 0) {
+            addLog(`נמצאו ${data.orders.length} הזמנות חדשות`, 'info');
+            playAlert();
+
+            let allBonsHTML = '';
+            const orderIds = [];
+            for (const order of data.orders) {
+                addLog(`🖨 #${order.display_number || order.order_number} | ${order.customer_name} | ₪${Math.round(order.total_amount)}`, 'success');
+                allBonsHTML += buildBonHTML(order);
+                orderIds.push(order.id);
+            }
+
+            document.getElementById('bonPreview').innerHTML = allBonsHTML;
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+            window.print();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            const markResp = await fetch('/ops/api/orders/mark-printed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_ids: orderIds })
+            });
+            const markData = await markResp.json();
+            if (markData.ok) {
+                printedCount += orderIds.length;
+                document.getElementById('statusCount').textContent = `${printedCount} הזמנות הודפסו`;
+                addLog(`✅ ${orderIds.length} הזמנות סומנו כהודפסו`, 'success');
+            }
+        }
+    } catch (e) {
+        addLog(`שגיאה: ${e.message}`, 'error');
+    }
+}
+
+function startAutoPrint() {
+    if (isRunning) return;
+    saveSettings();
+    isRunning = true;
+    document.getElementById('btnStart').className = 'ap-btn ap-btn-disabled';
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').className = 'ap-btn ap-btn-stop';
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('statusIcon').textContent = '🟢';
+    document.getElementById('statusText').textContent = 'הדפסה אוטומטית פעילה';
+    document.getElementById('statusPulse').className = 'ap-pulse active';
+    addLog('הדפסה אוטומטית הופעלה', 'success');
+
+    const interval = parseInt(document.getElementById('pollInterval').value) * 1000;
+    checkAndPrint();
+    pollTimer = setInterval(checkAndPrint, interval);
+}
+
+function stopAutoPrint() {
+    isRunning = false;
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    document.getElementById('btnStart').className = 'ap-btn ap-btn-start';
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').className = 'ap-btn ap-btn-disabled';
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('statusIcon').textContent = '🖨';
+    document.getElementById('statusText').textContent = 'הדפסה אוטומטית מושבתת';
+    document.getElementById('statusPulse').className = 'ap-pulse inactive';
+    addLog('הדפסה אוטומטית הופסקה', 'warn');
+}
+
+loadSettings();
+</script>
+{% endblock %}

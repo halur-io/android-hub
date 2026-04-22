@@ -1,0 +1,456 @@
+{% extends "admin/base.html" %}
+{% block title %}בחירת פריטי תפריט{% endblock %}
+
+{% block extra_css %}
+<style>
+.selection-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    direction: rtl;
+    font-family: 'Heebo', sans-serif;
+}
+
+.selection-header {
+    background: linear-gradient(135deg, #1B2951 0%, #2a3f73 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.selection-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.selection-header p {
+    margin: 0.5rem 0 0 0;
+    opacity: 0.9;
+}
+
+.controls-panel {
+    background: white;
+    border: 2px solid #e3f2fd;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn-control {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-select-all {
+    background: #28a745;
+    color: white;
+}
+
+.btn-select-none {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-import {
+    background: #007bff;
+    color: white;
+    font-size: 1.1rem;
+    padding: 1rem 2rem;
+}
+
+.btn-control:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.item-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 15px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.item-card.selected {
+    border-color: #007bff;
+    background: #f8f9ff;
+    box-shadow: 0 5px 20px rgba(0,123,255,0.2);
+}
+
+.item-checkbox {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.item-content {
+    position: relative;
+    padding-right: 40px;
+}
+
+.item-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1B2951;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.item-price {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #dc3545;
+    margin-bottom: 1rem;
+}
+
+.item-price::after {
+    content: "₪";
+    margin-right: 5px;
+}
+
+.item-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.edit-input {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Heebo', sans-serif;
+    direction: rtl;
+}
+
+.edit-input.name {
+    flex: 1;
+    min-width: 200px;
+}
+
+.edit-input.price {
+    width: 80px;
+    text-align: center;
+}
+
+.category-select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Heebo', sans-serif;
+    direction: rtl;
+    background: white;
+    min-width: 150px;
+}
+
+.selection-summary {
+    background: #e8f5e8;
+    border: 2px solid #28a745;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.summary-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #155724;
+    margin: 0;
+}
+
+.drag-handle {
+    cursor: move;
+    color: #6c757d;
+    margin-left: 10px;
+    font-size: 1.2rem;
+}
+
+.drag-handle:hover {
+    color: #007bff;
+}
+
+@media (max-width: 768px) {
+    .items-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .control-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .control-group {
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="selection-container">
+    <!-- Header -->
+    <div class="selection-header">
+        <h1>🔍 בחירת פריטי תפריט</h1>
+        <p>נמצאו {{ items|length }} פריטים אפשריים. בחר אילו לייבא ועדכן לפי הצורך</p>
+    </div>
+
+    <!-- Controls Panel -->
+    <div class="controls-panel">
+        <div class="control-row">
+            <div class="control-group">
+                <button type="button" class="btn-control btn-select-all" onclick="selectAll()">
+                    ✅ בחר הכל
+                </button>
+                <button type="button" class="btn-control btn-select-none" onclick="selectNone()">
+                    ❌ בטל הכל
+                </button>
+            </div>
+            
+            <div class="selection-summary">
+                <p class="summary-text" id="selectionCount">0 פריטים נבחרו</p>
+            </div>
+            
+            <div class="control-group">
+                <button type="button" class="btn-control btn-import" onclick="importSelected()">
+                    📥 ייבא פריטים נבחרים
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Grid -->
+    <div class="items-grid" id="itemsGrid">
+        {% for item in items %}
+        <div class="item-card" data-index="{{ loop.index0 }}" onclick="toggleItem({{ loop.index0 }})">
+            <input type="checkbox" class="item-checkbox" id="item-{{ loop.index0 }}" 
+                   onchange="updateSelection()" onclick="event.stopPropagation()">
+            
+            <div class="item-content">
+                <div class="drag-handle" title="גרור לסידור מחדש">⋮⋮</div>
+                
+                <div class="item-name">{{ item.name_he }}</div>
+                <div class="item-price">{{ item.price }}</div>
+                
+                <div class="item-controls">
+                    <input type="text" class="edit-input name" placeholder="שם המנה" 
+                           value="{{ item.name_he }}" 
+                           onclick="event.stopPropagation()"
+                           onchange="updateItemData({{ loop.index0 }}, 'name', this.value)">
+                    
+                    <input type="number" class="edit-input price" placeholder="מחיר" 
+                           value="{{ item.price }}" min="1" max="500"
+                           onclick="event.stopPropagation()"
+                           onchange="updateItemData({{ loop.index0 }}, 'price', this.value)">
+                    
+                    <select class="category-select" 
+                            onclick="event.stopPropagation()"
+                            onchange="updateItemData({{ loop.index0 }}, 'category', this.value)">
+                        <option value="">בחר קטגוריה</option>
+                        {% for category in categories %}
+                        <option value="{{ category.name_he }}">{{ category.name_he }}</option>
+                        {% endfor %}
+                        <option value="חדש">➕ קטגוריה חדשה</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Hidden form for submission -->
+<form id="selectionForm" method="POST" action="{{ url_for('admin.process_menu_selection') }}" style="display: none;">
+    <input type="hidden" name="branch_id" value="{{ branch_id }}">
+    <input type="hidden" name="selected_items" id="selectedItemsInput">
+</form>
+
+<script>
+// Store items data
+let itemsData = {{ items|tojson }};
+
+// Update selection counter
+function updateSelection() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+    document.getElementById('selectionCount').textContent = `${selectedCount} פריטים נבחרו`;
+    
+    // Update card appearance
+    checkboxes.forEach((checkbox, index) => {
+        const card = checkbox.closest('.item-card');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+}
+
+// Select all items
+function selectAll() {
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        cb.checked = true;
+    });
+    updateSelection();
+}
+
+// Select no items
+function selectNone() {
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateSelection();
+}
+
+// Toggle individual item
+function toggleItem(index) {
+    const checkbox = document.getElementById(`item-${index}`);
+    checkbox.checked = !checkbox.checked;
+    updateSelection();
+}
+
+// Update item data
+function updateItemData(index, field, value) {
+    if (field === 'name') {
+        itemsData[index].name_he = value;
+    } else if (field === 'price') {
+        itemsData[index].price = parseInt(value) || 0;
+        // Update display
+        const card = document.querySelector(`[data-index="${index}"]`);
+        card.querySelector('.item-price').textContent = value;
+    } else if (field === 'category') {
+        if (value === 'חדש') {
+            const newCategory = prompt('שם הקטגוריה החדשה:');
+            if (newCategory) {
+                itemsData[index].category = newCategory;
+                // Add to select options for future use
+                document.querySelectorAll('.category-select').forEach(select => {
+                    if (!Array.from(select.options).some(opt => opt.value === newCategory)) {
+                        const option = document.createElement('option');
+                        option.value = newCategory;
+                        option.textContent = newCategory;
+                        select.insertBefore(option, select.lastElementChild);
+                    }
+                });
+                // Set the new value
+                const select = document.querySelector(`[data-index="${index}"] .category-select`);
+                select.value = newCategory;
+            }
+        } else {
+            itemsData[index].category = value;
+        }
+    }
+}
+
+// Import selected items
+function importSelected() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const selectedItems = [];
+    
+    checkboxes.forEach((checkbox, index) => {
+        if (checkbox.checked) {
+            const item = { ...itemsData[index] };
+            item.selected = true;
+            item.order = selectedItems.length;
+            selectedItems.push(item);
+        }
+    });
+    
+    if (selectedItems.length === 0) {
+        alert('אנא בחר לפחות פריט אחד לייבוא');
+        return;
+    }
+    
+    // Check if all selected items have categories
+    const missingCategories = selectedItems.filter(item => !item.category);
+    if (missingCategories.length > 0) {
+        alert(`יש לבחור קטגוריה עבור כל הפריטים הנבחרים. חסרות קטגוריות ל-${missingCategories.length} פריטים.`);
+        return;
+    }
+    
+    // Submit form
+    document.getElementById('selectedItemsInput').value = JSON.stringify(selectedItems);
+    document.getElementById('selectionForm').submit();
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelection();
+    
+    // Add drag and drop functionality (simplified)
+    const grid = document.getElementById('itemsGrid');
+    let draggedElement = null;
+    
+    grid.addEventListener('dragstart', function(e) {
+        if (e.target.classList.contains('drag-handle')) {
+            draggedElement = e.target.closest('.item-card');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    });
+    
+    grid.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+    
+    grid.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (draggedElement) {
+            const dropTarget = e.target.closest('.item-card');
+            if (dropTarget && dropTarget !== draggedElement) {
+                const rect = dropTarget.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                if (e.clientY < midpoint) {
+                    grid.insertBefore(draggedElement, dropTarget);
+                } else {
+                    grid.insertBefore(draggedElement, dropTarget.nextSibling);
+                }
+            }
+            draggedElement = null;
+        }
+    });
+    
+    // Make drag handles draggable
+    document.querySelectorAll('.drag-handle').forEach(handle => {
+        handle.setAttribute('draggable', 'true');
+    });
+});
+</script>
+{% endblock %}

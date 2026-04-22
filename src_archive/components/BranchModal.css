@@ -1,0 +1,269 @@
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+  padding: 1rem;
+}
+
+/* Modal Content */
+.modal-content {
+  background: #1a1a1a;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slideUp 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Close Button */
+.modal-close {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: rotate(90deg);
+}
+
+/* Modal Header */
+.modal-header {
+  padding: 3rem 2rem 2rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h2 {
+  color: #f0f0f0;
+  font-size: 2rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.modal-action-type {
+  color: rgba(239, 91, 91, 0.8);
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 300;
+}
+
+/* Branches Selection */
+.branches-selection {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Branch Option */
+.branch-option {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.branch-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(239, 91, 91, 0.1) 50%, 
+    transparent 100%);
+  transition: left 0.5s ease;
+}
+
+.branch-option:hover::before {
+  left: 100%;
+}
+
+.branch-option:hover {
+  transform: translateX(10px);
+  border-color: rgba(239, 91, 91, 0.3);
+  background: rgba(239, 91, 91, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Branch Option Header */
+.branch-option-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 0 0 auto;
+}
+
+.branch-option-header i {
+  font-size: 1.5rem;
+  color: rgba(239, 91, 91, 0.7);
+}
+
+.branch-option-header h3 {
+  color: #f0f0f0;
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+/* Branch Option Details */
+.branch-option-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.branch-address {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.branch-phone {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.branch-phone i {
+  font-size: 0.8rem;
+  color: rgba(239, 91, 91, 0.5);
+}
+
+/* Branch Option Arrow */
+.branch-option-arrow {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+.branch-option:hover .branch-option-arrow {
+  color: rgba(239, 91, 91, 0.8);
+  transform: translateX(5px);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* RTL Support */
+[dir="rtl"] .branch-option:hover {
+  transform: translateX(-10px);
+}
+
+[dir="rtl"] .branch-option-arrow {
+  transform: rotate(180deg);
+}
+
+[dir="rtl"] .branch-option:hover .branch-option-arrow {
+  transform: rotate(180deg) translateX(-5px);
+}
+
+[dir="rtl"] .modal-close {
+  left: 1.5rem;
+  right: auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 1rem;
+    max-height: 85vh;
+  }
+  
+  .modal-header {
+    padding: 2.5rem 1.5rem 1.5rem;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .branches-selection {
+    padding: 1.5rem;
+  }
+  
+  .branch-option {
+    padding: 1.2rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .branch-option-header h3 {
+    font-size: 1.3rem;
+  }
+  
+  .branch-option-arrow {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+  }
+  
+  [dir="rtl"] .branch-option-arrow {
+    left: 1rem;
+    right: auto;
+  }
+}

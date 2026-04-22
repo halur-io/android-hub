@@ -1,0 +1,635 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מדפסות{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-print me-2"></i>ניהול מדפסות</h2>
+        <a href="{{ url_for('admin.add_printer') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> הוספת מדפסת
+        </a>
+    </div>
+
+    <ul class="nav nav-tabs mb-4" id="printerTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-pane" type="button" role="tab">
+                <i class="fas fa-cogs me-1"></i>ניהול
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="stations-tab" data-bs-toggle="tab" data-bs-target="#stations-pane" type="button" role="tab">
+                <i class="fas fa-map-marker-alt me-1"></i>עמדות הדפסה
+                <span class="badge bg-secondary ms-1">{{ all_stations|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="test-tab" data-bs-toggle="tab" data-bs-target="#test-pane" type="button" role="tab">
+                <i class="fas fa-network-wired me-1"></i>בדיקת חיבור
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="printerTabsContent">
+
+        <div class="tab-pane fade show active" id="manage-pane" role="tabpanel">
+            {% if not branches %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                אין סניפים פעילים. יש להוסיף סניף לפני הוספת מדפסת.
+            </div>
+            {% else %}
+                {% for branch in branches %}
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-store me-2"></i>{{ branch.name_he }}
+                            {% if branch.name_en %}<small class="text-muted ms-2">({{ branch.name_en }})</small>{% endif %}
+                        </h5>
+                        <span class="badge bg-light text-dark">
+                            {{ (printers_by_branch.get(branch.id, [])|length) }} מדפסות
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        {% set branch_printers = printers_by_branch.get(branch.id, []) %}
+                        {% if branch_printers %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>שם</th>
+                                        <th>דגם</th>
+                                        <th>כתובת IP</th>
+                                        <th>פורט</th>
+                                        <th>קידוד</th>
+                                        <th>עמדות</th>
+                                        <th>ברירת מחדל</th>
+                                        <th>סטטוס</th>
+                                        <th style="width: 50px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for printer in branch_printers %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ printer.name }}</strong>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ printer.printer_type or 'escpos' }}</small>
+                                        </td>
+                                        <td><code>{{ printer.ip_address }}</code></td>
+                                        <td>{{ printer.port }}</td>
+                                        <td>
+                                            <small>{{ printer.encoding }} (CP{{ printer.codepage_num }})</small>
+                                        </td>
+                                        <td>
+                                            {% for station in printer.stations %}
+                                            <span class="badge bg-info text-dark me-1">{{ station.station_name }}</span>
+                                            {% endfor %}
+                                            {% if not printer.stations %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if printer.is_default %}
+                                            <span class="badge bg-success"><i class="fas fa-star me-1"></i>ברירת מחדל</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if printer.is_active %}
+                                            <span class="badge bg-success">פעילה</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">כבויה</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ url_for('admin.edit_printer', printer_id=printer.id) }}">
+                                                            <i class="fas fa-edit me-2"></i>עריכה
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" onclick="togglePrinter({{ printer.id }}, '{{ printer.name }}'); return false;">
+                                                            <i class="fas fa-power-off me-2"></i>{{ 'כיבוי' if printer.is_active else 'הפעלה' }}
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" onclick="deletePrinter({{ printer.id }}, '{{ printer.name }}'); return false;">
+                                                            <i class="fas fa-trash me-2"></i>מחיקה
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-print fa-3x mb-3 d-block opacity-25"></i>
+                            <p>לא הוגדרו מדפסות לסניף זה</p>
+                            <a href="{{ url_for('admin.add_printer') }}?branch_id={{ branch.id }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-plus me-1"></i> הוסף מדפסת
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>מידע על Print Agent</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        ה-Print Agent רץ על מחשב Mac ברשת המקומית של המסעדה ומושך את הגדרות המדפסות מהשרת.
+                    </p>
+                    <p class="mb-2">
+                        <strong>דגם מדפסת:</strong> SNBC BTP-R880NPV (80mm, ESC/POS, Hebrew1 codepage)
+                    </p>
+                    <p class="mb-2">
+                        <strong>API Endpoint:</strong>
+                        <code>GET /ops/api/branch/&lt;branch_id&gt;/printers</code>
+                    </p>
+                    <p class="mb-0">
+                        <strong>הפעלה:</strong>
+                        <code>python3 print_agent.py --branch &lt;BRANCH_ID&gt;</code>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="stations-pane" role="tabpanel">
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>עמדות הדפסה</h5>
+                    <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#addStationForm">
+                        <i class="fas fa-plus me-1"></i>הוסף עמדה
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="collapse mb-3" id="addStationForm">
+                        <form method="POST" action="{{ url_for('admin.add_station') }}" class="card card-body bg-light">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label">שם מזהה (באנגלית/עברית)</label>
+                                    <input type="text" class="form-control" name="name" required placeholder="kitchen">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">שם תצוגה</label>
+                                    <input type="text" class="form-control" name="display_name" placeholder="מטבח">
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-plus me-1"></i>הוסף
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% if all_stations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>שם מזהה</th>
+                                    <th>שם תצוגה</th>
+                                    <th>מדפסות משויכות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for station in all_stations %}
+                                <tr>
+                                    <td><strong>{{ station.name }}</strong></td>
+                                    <td>{{ station.display_name or station.name }}</td>
+                                    <td>
+                                        {% for branch in branches %}
+                                        {% for p in printers_by_branch.get(branch.id, []) %}
+                                        {% for ps in p.stations %}
+                                        {% if ps.station_name == station.name %}
+                                        <span class="badge bg-info me-1">{{ p.name }} ({{ p.ip_address }})</span>
+                                        {% endif %}
+                                        {% endfor %}
+                                        {% endfor %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editStationModal{{ station.id }}">
+                                                        <i class="fas fa-edit me-2"></i>עריכה
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    {% if session.get('pending_delete_station') == station.id %}
+                                                    <form method="POST" action="{{ url_for('admin.delete_station', station_id=station.id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <input type="hidden" name="confirm_delete" value="yes">
+                                                        <button type="submit" class="dropdown-item text-danger fw-bold">
+                                                            <i class="fas fa-exclamation-triangle me-2"></i>אשר מחיקה
+                                                        </button>
+                                                    </form>
+                                                    {% else %}
+                                                    <form method="POST" action="{{ url_for('admin.delete_station', station_id=station.id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="fas fa-trash me-2"></i>מחיקה
+                                                        </button>
+                                                    </form>
+                                                    {% endif %}
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="modal fade" id="editStationModal{{ station.id }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <form method="POST" action="{{ url_for('admin.edit_station', station_id=station.id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">עריכת עמדה: {{ station.name }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="mb-3">
+                                                                <label class="form-label">שם מזהה</label>
+                                                                <input type="text" class="form-control" name="name" value="{{ station.name }}" required>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label">שם תצוגה</label>
+                                                                <input type="text" class="form-control" name="display_name" value="{{ station.display_name or '' }}">
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                                            <button type="submit" class="btn btn-primary">שמירה</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-map-marker-alt fa-3x mb-3 d-block"></i>
+                        <p>אין עמדות הדפסה מוגדרות עדיין.</p>
+                        <p>הוסף עמדות כדי שתוכל לשייך אותן למדפסות ולמנות בתפריט.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="test-pane" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-network-wired me-2"></i>בדיקת חיבור מדפסות</h5>
+                    <button class="btn btn-sm btn-outline-light" onclick="testAllPrinters()" id="testAllBtn">
+                        <i class="fas fa-play me-1"></i>בדוק הכל
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    {% set all_printers_list = [] %}
+                    {% for branch in branches %}
+                        {% for p in printers_by_branch.get(branch.id, []) %}
+                            {% if all_printers_list.append(p) %}{% endif %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    {% if all_printers_list %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>סטטוס</th>
+                                    <th>שם מדפסת</th>
+                                    <th>דגם</th>
+                                    <th>סניף</th>
+                                    <th>כתובת IP</th>
+                                    <th>פורט</th>
+                                    <th>עמדות</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody id="testResultsBody">
+                                {% for printer in all_printers_list %}
+                                <tr id="printer-row-{{ printer.id }}" class="{{ '' if printer.is_active else 'table-secondary' }}">
+                                    <td>
+                                        <span class="badge bg-secondary" id="status-{{ printer.id }}">
+                                            <i class="fas fa-question-circle me-1"></i>ממתין
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ printer.name }}</strong>
+                                        {% if printer.is_default %}
+                                        <span class="badge bg-warning text-dark ms-1"><i class="fas fa-star"></i></span>
+                                        {% endif %}
+                                        {% if not printer.is_active %}
+                                        <span class="badge bg-secondary ms-1">כבויה</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small class="text-muted">{{ printer.printer_type or 'escpos' }}</small></td>
+                                    <td>{{ printer.branch.name_he if printer.branch else '-' }}</td>
+                                    <td><code>{{ printer.ip_address }}</code></td>
+                                    <td>{{ printer.port }}</td>
+                                    <td>
+                                        {% for station in printer.stations %}
+                                        <span class="badge bg-info text-dark me-1">{{ station.station_name }}</span>
+                                        {% endfor %}
+                                        {% if not printer.stations %}-{% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="testSinglePrinter({{ printer.id }})" id="testBtn-{{ printer.id }}" {% if not printer.is_active %}disabled{% endif %}>
+                                            <i class="fas fa-plug me-1"></i>בדוק
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-print fa-3x mb-3 d-block opacity-25"></i>
+                        <p>אין מדפסות מוגדרות</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-tablet-alt me-2"></i>אפליקציות הדפסה (Print Hub)</h6>
+                </div>
+                <div class="card-body">
+                    {% if print_devices %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>סטטוס</th>
+                                    <th>שם המכשיר</th>
+                                    <th>סניף</th>
+                                    <th>פעילות אחרונה</th>
+                                    <th>פעולות</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for d in print_devices %}
+                                <tr>
+                                    <td>
+                                        {% if d.is_online %}
+                                        <span class="badge bg-success"><i class="fas fa-circle me-1"></i>מחובר</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary"><i class="far fa-circle me-1"></i>מנותק</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ d.device_name }}</strong><br><small class="text-muted"><code>{{ d.device_id[:16] }}…</code></small></td>
+                                    <td>{{ d.branch.name_he if d.branch else '-' }}</td>
+                                    <td><small class="text-muted">{{ d.last_heartbeat.strftime('%d/%m %H:%M:%S') if d.last_heartbeat else '—' }}</small></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="testDevicePrint({{ d.id }}, '{{ d.device_name }}')" id="devTestBtn-{{ d.id }}">
+                                            <i class="fas fa-paper-plane me-1"></i>שלח בון בדיקה
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        בון הבדיקה נבנה לחלוטין בשרת (RTL, codepage, encoding) ונשלח כ-bytes גולמיים דרך האפליקציה למדפסות.
+                    </p>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-tablet-alt fa-2x mb-2 d-block opacity-25"></i>
+                        <p class="mb-0">אין מכשירי הדפסה רשומים. התקן את אפליקציית SUMO Print Hub במכשיר Android וסיים רישום.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-4" id="testSummaryCard" style="display: none;">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>סיכום בדיקה</h6>
+                </div>
+                <div class="card-body" id="testSummaryBody">
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+function deletePrinter(id, name) {
+    if (!confirm('למחוק את המדפסת "' + name + '"?')) return;
+    fetch('/admin/printers/delete/' + id, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה');
+        }
+    });
+}
+
+function togglePrinter(id, name) {
+    fetch('/admin/printers/toggle/' + id, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'שגיאה');
+        }
+    });
+}
+
+function setStatus(id, status) {
+    var el = document.getElementById('status-' + id);
+    if (!el) return;
+    if (status === 'testing') {
+        el.className = 'badge bg-warning text-dark';
+        el.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>בודק...';
+    } else if (status === 'connected') {
+        el.className = 'badge bg-success';
+        el.innerHTML = '<i class="fas fa-check-circle me-1"></i>מחובר';
+    } else if (status === 'timeout') {
+        el.className = 'badge bg-danger';
+        el.innerHTML = '<i class="fas fa-clock me-1"></i>Timeout';
+    } else if (status === 'refused') {
+        el.className = 'badge bg-danger';
+        el.innerHTML = '<i class="fas fa-times-circle me-1"></i>נדחה';
+    } else if (status === 'error') {
+        el.className = 'badge bg-danger';
+        el.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>שגיאה';
+    } else {
+        el.className = 'badge bg-secondary';
+        el.innerHTML = '<i class="fas fa-question-circle me-1"></i>ממתין';
+    }
+}
+
+function testDevicePrint(id, name) {
+    var btn = document.getElementById('devTestBtn-' + id);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>שולח...'; }
+    fetch('/ops/api/devices/' + id + '/test-print', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        },
+        body: '{}'
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            alert('בון בדיקה נשלח ל-' + name + '\n' + (data.message || ''));
+        } else {
+            alert('שגיאה: ' + (data.error || 'לא ידוע'));
+        }
+    })
+    .catch(function(err) {
+        alert('שגיאת רשת: ' + err);
+    })
+    .finally(function() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>שלח בון בדיקה'; }
+    });
+}
+
+function testSinglePrinter(id) {
+    var btn = document.getElementById('testBtn-' + id);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>בודק...'; }
+    setStatus(id, 'testing');
+
+    fetch('/admin/printers/test/' + id, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        setStatus(id, data.status);
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plug me-1"></i>בדוק'; }
+    })
+    .catch(function() {
+        setStatus(id, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plug me-1"></i>בדוק'; }
+    });
+}
+
+function testAllPrinters() {
+    var testAllBtn = document.getElementById('testAllBtn');
+    if (testAllBtn) { testAllBtn.disabled = true; testAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>בודק...'; }
+
+    var rows = document.querySelectorAll('#testResultsBody tr');
+    rows.forEach(function(row) {
+        var id = row.id.replace('printer-row-', '');
+        if (id && !row.classList.contains('table-secondary')) {
+            setStatus(id, 'testing');
+        }
+    });
+
+    fetch('/admin/printers/test-all', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.results) {
+            var connected = 0, failed = 0;
+            data.results.forEach(function(r) {
+                setStatus(r.id, r.status);
+                if (r.status === 'connected') connected++;
+                else failed++;
+            });
+            showSummary(connected, failed, data.results.length);
+        }
+        if (testAllBtn) { testAllBtn.disabled = false; testAllBtn.innerHTML = '<i class="fas fa-play me-1"></i>בדוק הכל'; }
+    })
+    .catch(function() {
+        if (testAllBtn) { testAllBtn.disabled = false; testAllBtn.innerHTML = '<i class="fas fa-play me-1"></i>בדוק הכל'; }
+    });
+}
+
+function showSummary(connected, failed, total) {
+    var card = document.getElementById('testSummaryCard');
+    var body = document.getElementById('testSummaryBody');
+    if (!card || !body) return;
+    card.style.display = 'block';
+    var html = '<div class="row text-center">';
+    html += '<div class="col-md-4"><div class="p-3"><h3 class="mb-1">' + total + '</h3><small class="text-muted">סה"כ מדפסות</small></div></div>';
+    html += '<div class="col-md-4"><div class="p-3"><h3 class="mb-1 text-success">' + connected + '</h3><small class="text-muted">מחוברות</small></div></div>';
+    html += '<div class="col-md-4"><div class="p-3"><h3 class="mb-1 text-danger">' + failed + '</h3><small class="text-muted">לא זמינות</small></div></div>';
+    html += '</div>';
+    if (failed === 0 && total > 0) {
+        html += '<div class="alert alert-success mt-3 mb-0 text-center"><i class="fas fa-check-circle me-2"></i>כל המדפסות מחוברות ותקינות!</div>';
+    } else if (failed > 0) {
+        html += '<div class="alert alert-warning mt-3 mb-0 text-center"><i class="fas fa-exclamation-triangle me-2"></i>' + failed + ' מדפסות לא זמינות. בדוק חיבור רשת וכתובת IP.</div>';
+    }
+    body.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var hash = window.location.hash;
+    if (hash) {
+        var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + hash + '"]');
+        if (tabEl && typeof bootstrap !== 'undefined') { new bootstrap.Tab(tabEl).show(); }
+    } else {
+        var savedTab = localStorage.getItem('printerTab');
+        if (savedTab) {
+            var tabEl = document.querySelector('#printerTabs button[data-bs-target="' + savedTab + '"]');
+            if (tabEl && typeof bootstrap !== 'undefined') { new bootstrap.Tab(tabEl).show(); }
+        }
+    }
+    document.querySelectorAll('#printerTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            localStorage.setItem('printerTab', e.target.getAttribute('data-bs-target'));
+        });
+    });
+});
+</script>
+{% endblock %}

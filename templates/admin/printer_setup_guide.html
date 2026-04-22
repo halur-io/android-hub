@@ -1,0 +1,296 @@
+{% extends "admin/base.html" %}
+
+{% block title %}מדריך חיבור מדפסת SNBC{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/modern-style.css') }}">
+<style>
+    .guide-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .step-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-right: 5px solid #10b981;
+    }
+    
+    .step-number {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 40px;
+        font-weight: bold;
+        margin-left: 1rem;
+    }
+    
+    .code-block {
+        background: #1f2937;
+        color: #10b981;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        margin: 1rem 0;
+        overflow-x: auto;
+    }
+    
+    .warning-box {
+        background: #fef3c7;
+        border: 2px solid #f59e0b;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .success-box {
+        background: #d1fae5;
+        border: 2px solid #10b981;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .network-diagram {
+        background: #f3f4f6;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        margin: 2rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guide-container">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">
+            <i class="fas fa-print"></i>
+            מדריך מלא לחיבור מדפסת SNBC BTP-R880NP
+        </h1>
+    </div>
+
+    <!-- Overview -->
+    <div class="glass-card">
+        <h2><i class="fas fa-info-circle"></i> סקירה כללית</h2>
+        <p>מדפסת SNBC BTP-R880NP היא מדפסת תרמית מקצועית למטבחים ומסעדות. המערכת תומכת בהדפסה אוטומטית של הזמנות ישירות למדפסת.</p>
+        
+        <div class="success-box">
+            <i class="fas fa-check-circle"></i> <strong>תכונות נתמכות:</strong>
+            <ul>
+                <li>הדפסה בעברית (RTL)</li>
+                <li>חיתוך אוטומטי</li>
+                <li>רוחב נייר 80mm או 58mm</li>
+                <li>חיבור רשת Ethernet</li>
+                <li>פרוטוקול ESC/POS</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Step 1: Physical Setup -->
+    <div class="step-card">
+        <h3><span class="step-number">1</span> הכנת המדפסת</h3>
+        
+        <h4>חיבור פיזי:</h4>
+        <ol>
+            <li><strong>חבר את המדפסת לחשמל</strong> - וודא שהמדפסת דולקת (נורית ירוקה)</li>
+            <li><strong>חבר כבל רשת (Ethernet)</strong> - מהמדפסת לראוטר/סוויץ' ברשת</li>
+            <li><strong>הכנס גליל נייר תרמי</strong> - 80mm או 58mm לפי הדגם</li>
+        </ol>
+        
+        <div class="network-diagram">
+            <h4>דיאגרמת חיבור:</h4>
+            <pre>
+[אתר אינטרנט] ←→ [שרת] ←→ [רשת מקומית] ←→ [מדפסת SNBC]
+                              ↑
+                           [ראוטר]
+            </pre>
+        </div>
+    </div>
+
+    <!-- Step 2: Network Configuration -->
+    <div class="step-card">
+        <h3><span class="step-number">2</span> הגדרת רשת במדפסת</h3>
+        
+        <h4>קבלת כתובת IP:</h4>
+        <ol>
+            <li>לחץ והחזק את כפתור <strong>FEED</strong> כשהמדפסת כבויה</li>
+            <li>הדלק את המדפסת תוך כדי לחיצה</li>
+            <li>המדפסת תדפיס דף הגדרות עם כתובת ה-IP</li>
+        </ol>
+        
+        <div class="code-block">
+דוגמה לכתובת IP שתקבל:
+IP Address: 192.168.1.100
+Port: 9100
+MAC: 00:11:22:33:44:55
+        </div>
+        
+        <h4>שינוי כתובת IP (אם נדרש):</h4>
+        <ol>
+            <li>גש לממשק הניהול של המדפסת דרך הדפדפן: <code>http://192.168.1.100</code></li>
+            <li>היכנס עם: Username: <strong>admin</strong>, Password: <strong>admin</strong></li>
+            <li>עבור ל-<strong>Network Settings</strong></li>
+            <li>הגדר IP סטטי או DHCP לפי הצורך</li>
+        </ol>
+        
+        <div class="warning-box">
+            <i class="fas fa-exclamation-triangle"></i> <strong>חשוב:</strong> רשום את כתובת ה-IP - תצטרך אותה בהמשך!
+        </div>
+    </div>
+
+    <!-- Step 3: Firewall Configuration -->
+    <div class="step-card">
+        <h3><span class="step-number">3</span> הגדרת חומת אש (Firewall)</h3>
+        
+        <h4>פתיחת פורט 9100:</h4>
+        <p>המדפסת משתמשת בפורט 9100 לקבלת פקודות הדפסה. יש לוודא שהפורט פתוח:</p>
+        
+        <h4>בראוטר/חומת אש:</h4>
+        <div class="code-block">
+Protocol: TCP
+Port: 9100
+Direction: Inbound (כניסה)
+Source: IP של השרת/אתר
+Destination: IP של המדפסת
+        </div>
+        
+        <h4>בדיקת חיבור:</h4>
+        <div class="code-block">
+# בדיקה מהשרת
+ping 192.168.1.100
+
+# בדיקת פורט
+telnet 192.168.1.100 9100
+        </div>
+    </div>
+
+    <!-- Step 4: System Configuration -->
+    <div class="step-card">
+        <h3><span class="step-number">4</span> הגדרה במערכת</h3>
+        
+        <ol>
+            <li>היכנס לפאנל הניהול: <strong>/admin</strong></li>
+            <li>עבור ל-<strong>"מדפסות SNBC"</strong></li>
+            <li>לחץ על <strong>"הוסף מדפסת חדשה"</strong></li>
+            <li>מלא את הפרטים:</li>
+        </ol>
+        
+        <div class="code-block">
+שם המדפסת: מטבח ראשי
+כתובת IP: 192.168.1.100
+פורט: 9100
+דגם: SNBC BTP-R880NP
+רוחב נייר: 80mm
+תמיכה בעברית: ✓
+חיתוך אוטומטי: ✓
+        </div>
+        
+        <h4>בדיקת חיבור:</h4>
+        <ol>
+            <li>הכנס את כתובת ה-IP</li>
+            <li>לחץ על <strong>"הדפס עמוד בדיקה"</strong></li>
+            <li>וודא שהמדפסת הדפיסה את עמוד הבדיקה</li>
+        </ol>
+    </div>
+
+    <!-- Step 5: Automatic Printing -->
+    <div class="step-card">
+        <h3><span class="step-number">5</span> הגדרת הדפסה אוטומטית</h3>
+        
+        <h4>הפעלת הדפסה אוטומטית:</h4>
+        <ol>
+            <li>עבור ל-<strong>"הגדרות מערכת"</strong></li>
+            <li>בחר בלשונית <strong>"מטבח"</strong></li>
+            <li>סמן <strong>"הדפסה אוטומטית של הזמנות"</strong></li>
+            <li>בחר את המדפסת שהגדרת</li>
+        </ol>
+        
+        <div class="success-box">
+            <i class="fas fa-check-circle"></i> <strong>כעת כל הזמנה חדשה תודפס אוטומטית!</strong>
+        </div>
+    </div>
+
+    <!-- Troubleshooting -->
+    <div class="step-card">
+        <h3><i class="fas fa-tools"></i> פתרון בעיות</h3>
+        
+        <h4>המדפסת לא מדפיסה:</h4>
+        <ul>
+            <li>✓ וודא שהמדפסת דולקת ומחוברת לרשת</li>
+            <li>✓ בדוק שכתובת ה-IP נכונה</li>
+            <li>✓ וודא שפורט 9100 פתוח</li>
+            <li>✓ בדוק שיש נייר במדפסת</li>
+        </ul>
+        
+        <h4>הדפסה לא קריאה:</h4>
+        <ul>
+            <li>✓ נקה את ראש ההדפסה</li>
+            <li>✓ החלף גליל נייר (נייר תרמי בלבד!)</li>
+            <li>✓ בדוק הגדרות חום בממשק המדפסת</li>
+        </ul>
+        
+        <h4>עברית לא מודפסת נכון:</h4>
+        <ul>
+            <li>✓ וודא שתמיכת RTL מופעלת בהגדרות</li>
+            <li>✓ בדוק קידוד UTF-8</li>
+        </ul>
+    </div>
+
+    <!-- Technical Details -->
+    <div class="glass-card">
+        <h3><i class="fas fa-code"></i> פרטים טכניים</h3>
+        
+        <h4>פקודות ESC/POS נתמכות:</h4>
+        <div class="code-block">
+ESC @ - Initialize printer
+ESC a - Text alignment (0=left, 1=center, 2=right)
+ESC ! - Font size
+GS V - Paper cut
+GS k - Barcode printing
+ESC t - Character code table (Hebrew: CP1255)
+        </div>
+        
+        <h4>מפרט טכני:</h4>
+        <ul>
+            <li>מהירות הדפסה: 300mm/sec</li>
+            <li>רזולוציה: 203 DPI</li>
+            <li>רוחב הדפסה: 72mm (80mm paper) / 48mm (58mm paper)</li>
+            <li>חיבורים: Ethernet, USB, Serial</li>
+            <li>פרוטוקול: ESC/POS compatible</li>
+        </ul>
+    </div>
+
+    <!-- Contact Support -->
+    <div class="glass-card">
+        <h3><i class="fas fa-headset"></i> תמיכה</h3>
+        
+        <div class="warning-box">
+            <p><strong>זקוק לעזרה נוספת?</strong></p>
+            <ul>
+                <li>📞 תמיכת SNBC ישראל: 03-1234567</li>
+                <li>📧 support@snbc.co.il</li>
+                <li>🌐 מדריך מקוון: www.snbc.co.il/support</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-scroll to section if hash in URL
+if (window.location.hash) {
+    const element = document.querySelector(window.location.hash);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+</script>
+{% endblock %}

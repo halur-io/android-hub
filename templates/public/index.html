@@ -1,0 +1,443 @@
+{% extends "public/base.html" %}
+
+{% block content %}
+<!-- Hero Section - Desktop: Luxury Image Background / Mobile: Video -->
+<section class="hero-section" id="heroSection">
+    <!-- Desktop Hero: Luxury Restaurant Image with Dramatic Overlay -->
+    <div class="hero-desktop-bg">
+        <!-- Parallax Background Image -->
+        <div class="hero-image-layer" id="heroImageLayer">
+            {% if settings.hero_desktop_image %}
+            <img src="{{ url_for('static', filename='uploads/' + settings.hero_desktop_image) }}" alt="Restaurant Hero" class="hero-bg-image" fetchpriority="high" loading="eager">
+            {% else %}
+            <!-- Default: Use first gallery image or placeholder -->
+            <img src="{{ url_for('static', filename='uploads/gallery_20251030_233453_686688_136.jpg') }}" alt="Restaurant Hero" class="hero-bg-image" fetchpriority="high" loading="eager">
+            {% endif %}
+        </div>
+        
+        <!-- Dramatic Gradient Overlays -->
+        <div class="hero-gradient-overlay-1"></div>
+        <div class="hero-gradient-overlay-2"></div>
+        <div class="hero-vignette"></div>
+        
+        <!-- Animated Light Rays -->
+        <div class="hero-light-rays">
+            <div class="light-ray light-ray-1"></div>
+            <div class="light-ray light-ray-2"></div>
+            <div class="light-ray light-ray-3"></div>
+        </div>
+        
+        <!-- Premium Particles -->
+        <div class="hero-particles">
+            <div class="particle particle-1"></div>
+            <div class="particle particle-2"></div>
+            <div class="particle particle-3"></div>
+            <div class="particle particle-4"></div>
+            <div class="particle particle-5"></div>
+        </div>
+    </div>
+    
+    <!-- Mobile Hero: Video deferred for LCP optimization -->
+    <video 
+        class="hero-video hero-mobile-only" 
+        loop 
+        muted 
+        playsinline
+        poster="{{ url_for('static', filename='images/hero-poster.jpg') }}"
+        preload="none"
+        data-mobile-src="{{ url_for('static', filename='videos/hero-mobile.mp4') }}"
+        {% if hero_video %}
+        data-custom-src="{{ url_for('static', filename='uploads/' + hero_video.filename) }}"
+        {% endif %}>
+        <!-- Source will be set by JavaScript after LCP -->
+    </video>
+    
+    <div class="hero-overlay"></div>
+    
+    <div class="hero-content">
+        <h1 class="hero-title animate-fade-in">{{ settings.hero_title_he if language == 'he' else settings.hero_title_en }}</h1>
+        <p class="hero-subtitle animate-fade-in-delay">{{ settings.hero_subtitle_he if language == 'he' else settings.hero_subtitle_en }}</p>
+        <div class="hero-buttons animate-fade-in-delay-2">
+            {% if settings.enable_online_ordering %}
+            <a href="{{ url_for('legacy_order_redirect') }}" class="btn-hero btn-primary-hero">
+                <i class="fas fa-shopping-bag"></i> {{ 'הזמן עכשיו' if language == 'he' else 'Order Now' }}
+            </a>
+            {% endif %}
+            <a href="{{ url_for('menu_page') }}" class="btn-hero btn-outline-hero">
+                <i class="fas fa-utensils"></i> {{ 'צפה בתפריט' if language == 'he' else 'View Menu' }}
+            </a>
+            {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.reservation_system_url %}
+            <a href="{{ reservation_settings.reservation_system_url }}" class="btn-hero btn-outline-hero" target="_blank">
+                <i class="fas fa-calendar-check"></i> {{ 'הזמנת מקום' if language == 'he' else 'Reserve Table' }}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Wave Divider -->
+<div class="wave-divider wave-divider-1">
+    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+        <path d="M0,0 C150,100 350,0 600,50 C850,100 1050,0 1200,50 L1200,120 L0,120 Z" fill="#f8f9fa"></path>
+    </svg>
+</div>
+
+<!-- Our Story Section (About + Reservation + App Download Combined) -->
+{% if settings.about_content_he or settings.about_content_en %}
+<section class="section story-section">
+    <div class="story-bg-image"></div>
+    <div class="container">
+        <div class="story-content text-center">
+            <h2 class="story-title">{{ settings.about_title_he if language == 'he' else settings.about_title_en }}</h2>
+            <div class="story-text">
+                {{ settings.about_content_he if language == 'he' else settings.about_content_en }}
+            </div>
+            
+            <div class="story-cta">
+                <div class="cta-container">
+                    <div class="cta-header">
+                        <h3 class="cta-title">{{ 'בחרו את חווית האוכל שלכם' if language == 'he' else 'Choose Your Dining Experience' }}</h3>
+                        <div class="cta-divider"></div>
+                    </div>
+                    
+                    <div class="cta-options">
+                        {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage and reservation_settings.reservation_system_url %}
+                        <div class="cta-option">
+                            <div class="option-icon">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                            <h4 class="option-heading">{{ 'הזמנת שולחן' if language == 'he' else 'Dine In' }}</h4>
+                            <p class="option-desc">{{ 'חוו את האווירה שלנו' if language == 'he' else 'Experience our atmosphere' }}</p>
+                            <a href="{{ reservation_settings.reservation_system_url }}" target="_blank" class="btn-cta-action">
+                                {{ reservation_settings.reservation_button_text_he if language == 'he' else reservation_settings.reservation_button_text_en }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if settings.enable_app_download and (settings.app_store_url or settings.google_play_url) %}
+                        {% if reservation_settings and reservation_settings.enable_reservations and reservation_settings.show_on_homepage and reservation_settings.reservation_system_url %}
+                        <div class="option-divider"></div>
+                        {% endif %}
+                        
+                        <div class="cta-option">
+                            <div class="option-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <h4 class="option-heading">{{ 'למשלוחים ו-TA ניתן להזמין באפליקציה' if language == 'he' else 'Delivery & Takeaway' }}</h4>
+                            <p class="option-desc">{{ 'הזמינו דרך האפליקציה' if language == 'he' else 'Order via our app' }}</p>
+                            <div class="app-badges">
+                                {% if settings.app_store_url %}
+                                <a href="{{ settings.app_store_url }}" class="app-badge" target="_blank">
+                                    <i class="fab fa-apple"></i>
+                                    <span>iOS</span>
+                                </a>
+                                {% endif %}
+                                {% if settings.google_play_url %}
+                                <a href="{{ settings.google_play_url }}" class="app-badge" target="_blank">
+                                    <i class="fab fa-google-play"></i>
+                                    <span>Android</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Catering & Special Events Section -->
+{% if settings.enable_catering_section %}
+<section id="catering" class="catering-clean-section">
+    <a href="{{ url_for('catering_page') if settings.enable_catering_page else url_for('contact_page') }}" class="catering-link">
+        <div class="catering-bg-image" {% if settings.catering_image %}style="background-image: url('{{ url_for('static', filename='uploads/' + settings.catering_image) }}');"{% endif %}></div>
+        <div class="catering-textbox">
+            <span class="catering-textbox-text">{{ 'קייטרינג ואירועים' if language == 'he' else 'Catering & Events' }}</span>
+            <i class="fas fa-arrow-{{ 'left' if language == 'he' else 'right' }} catering-arrow"></i>
+        </div>
+    </a>
+</section>
+{% endif %}
+
+<!-- SAVED STATE - Previous catering design (commented out)
+<section id="catering" class="catering-modern-section">
+    <div class="catering-bg-image" style="background-image: url('...')"></div>
+    <div class="catering-overlay"></div>
+    <div class="container">
+        <div class="catering-modern-content">
+            <h2 class="catering-modern-title">Title</h2>
+            <p class="catering-modern-subtitle">Subtitle</p>
+            <a href="#" class="btn-catering-modern">Learn More</a>
+        </div>
+    </div>
+</section>
+-->
+
+<!-- Branches Section -->
+{% if branches %}
+<section class="section bg-light section-with-pattern">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">{{ 'הסניפים שלנו' if language == 'he' else 'Our Branches' }}</h2>
+            <p class="section-subtitle">{{ 'בקרו אותנו באחד מסניפינו' if language == 'he' else 'Visit us at one of our locations' }}</p>
+        </div>
+        
+        <div class="accordion branches-accordion" id="branchesAccordion">
+            {% for branch in branches %}
+            <div class="accordion-item branch-accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button branch-accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#branch{{ loop.index }}" aria-expanded="false">
+                        <i class="fas fa-map-marker-alt me-3"></i>
+                        <strong>{{ branch.name_he if language == 'he' else branch.name_en }}</strong>
+                    </button>
+                </h2>
+                <div id="branch{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#branchesAccordion">
+                    <div class="accordion-body branch-accordion-body">
+                        {% if branch.address_he or branch.address_en %}
+                        <p class="branch-detail-accordion">
+                            <i class="fas fa-location-dot me-2"></i>
+                            {{ branch.address_he if language == 'he' else branch.address_en }}
+                        </p>
+                        {% endif %}
+                        {% if branch.phone %}
+                        <p class="branch-detail-accordion">
+                            <i class="fas fa-phone me-2"></i>
+                            <a href="tel:{{ branch.phone }}" class="branch-link">{{ branch.phone }}</a>
+                        </p>
+                        {% endif %}
+                        {% if branch.working_hours %}
+                        <div class="working-hours-accordion mt-3">
+                            <h6 class="hours-title-accordion">{{ 'שעות פעילות' if language == 'he' else 'Working Hours' }}</h6>
+                            <div class="hours-list-accordion">
+                                {% for hours in branch.working_hours %}
+                                {% if not hours.is_closed %}
+                                <div class="hours-item-accordion">
+                                    <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
+                                    <span class="time-range">{{ hours.open_time }} - {{ hours.close_time }}</span>
+                                </div>
+                                {% else %}
+                                <div class="hours-item-accordion">
+                                    <span class="day-name">{{ hours.day_name_he if language == 'he' else hours.day_name_en }}:</span>
+                                    <span class="time-range text-muted">{{ 'סגור' if language == 'he' else 'Closed' }}</span>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if branch.waze_link or branch.google_maps_link %}
+                        <div class="branch-actions-accordion mt-3">
+                            {% if branch.waze_link %}
+                            <a href="{{ branch.waze_link }}" target="_blank" class="btn btn-sm btn-primary me-2">
+                                <i class="fab fa-waze"></i> Waze
+                            </a>
+                            {% endif %}
+                            {% if branch.google_maps_link %}
+                            <a href="{{ branch.google_maps_link }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-map"></i> Google Maps
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Dynamic Custom Sections -->
+{% for section in custom_sections %}
+<section class="section custom-section" style="background-color: {{ section.background_color }}; color: {{ section.text_color }};">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 class="section-title">{{ section.title_he if language == 'he' else section.title_en }}</h2>
+        </div>
+        {% if section.section_type == 'text' %}
+        <div class="section-content">
+            <p>{{ section.content_he if language == 'he' else section.content_en }}</p>
+        </div>
+        {% elif section.section_type == 'html' %}
+        <div class="section-content">
+            {{ (section.content_he if language == 'he' else section.content_en) | sanitize_html | safe }}
+        </div>
+        {% elif section.section_type == 'embed' and section.embed_code %}
+        <div class="section-content embed-content">
+            {{ section.embed_code | sanitize_html | safe }}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endfor %}
+
+<!-- Careers Section -->
+{% if settings.enable_careers_section %}
+<section id="careers" class="careers-professional">
+    <div class="careers-bg-image" {% if settings.careers_image %}style="background-image: url('{{ url_for('static', filename='uploads/' + settings.careers_image) }}');"{% endif %}></div>
+    <div class="careers-overlay"></div>
+    <div class="container">
+        <div class="careers-content-pro">
+            <h2 class="careers-heading">{{ settings.careers_title_he if language == 'he' else settings.careers_title_en }}</h2>
+            <p class="careers-description">
+                {{ settings.careers_subtitle_he if language == 'he' else settings.careers_subtitle_en }}
+            </p>
+            <a href="{{ url_for('careers_page') }}" class="btn-careers-pro">
+                {{ 'צפו במשרות פתוחות' if language == 'he' else 'View Open Positions' }}
+                <i class="fas fa-arrow-{{ 'left' if language == 'he' else 'right' }} ms-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Floating Action Buttons -->
+<div class="floating-actions">
+    {% if settings.enable_online_ordering %}
+    <a href="{{ url_for('legacy_order_redirect') }}" 
+       class="fab-button fab-table-order" 
+       title="{{ 'הזמנת שולחן' if language == 'he' else 'Table Order' }}">
+        <i class="fas fa-utensils"></i>
+    </a>
+    {% endif %}
+    {% if settings.enable_delivery %}
+    <a href="{{ url_for('legacy_order_redirect') }}" 
+       class="fab-button fab-delivery" 
+       title="{{ 'משלוח TA' if language == 'he' else 'TA Delivery' }}">
+        <i class="fas fa-motorcycle"></i>
+    </a>
+    {% endif %}
+    {% if branches and branches[0].phone %}
+    <a href="tel:{{ branches[0].phone }}" 
+       class="fab-button fab-call" 
+       title="{{ 'התקשר אלינו' if language == 'he' else 'Call us' }}">
+        <i class="fas fa-phone"></i>
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Smart Video Loading - Deferred for LCP optimization
+document.addEventListener('DOMContentLoaded', function() {
+    const heroVideo = document.querySelector('.hero-video');
+    
+    if (heroVideo) {
+        // Check if user prefers reduced motion
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        // Check connection speed if available
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const slowConnection = connection && (
+            connection.effectiveType === 'slow-2g' || 
+            connection.effectiveType === '2g' ||
+            connection.saveData === true
+        );
+        
+        // Select appropriate video source
+        function loadVideoSource() {
+            const isMobile = window.innerWidth <= 768;
+            const customSrc = heroVideo.dataset.customSrc;
+            const mobileSrc = heroVideo.dataset.mobileSrc;
+            const desktopSrc = heroVideo.dataset.desktopSrc;
+            
+            // Priority: 1. Custom uploaded video, 2. Responsive default
+            let selectedSrc;
+            if (customSrc) {
+                selectedSrc = customSrc;
+            } else {
+                selectedSrc = isMobile ? mobileSrc : desktopSrc;
+            }
+            
+            // Only load if not on slow connection
+            if (!slowConnection && !prefersReducedMotion && selectedSrc) {
+                heroVideo.src = selectedSrc;
+                heroVideo.load();
+                heroVideo.play().catch(function() {});
+                console.log('Hero video loaded after LCP:', isMobile ? 'mobile' : 'desktop');
+            } else {
+                console.log('Hero video disabled for performance');
+            }
+        }
+        
+        // DEFER video loading until after LCP (wait 1.5s for poster to paint first)
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(function() {
+                setTimeout(loadVideoSource, 500);
+            }, { timeout: 2000 });
+        } else {
+            setTimeout(loadVideoSource, 1500);
+        }
+        
+        // Handle window resize for responsive switching
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                const currentSrc = heroVideo.src;
+                const isMobile = window.innerWidth <= 768;
+                const expectedSrc = isMobile ? heroVideo.dataset.mobileSrc : heroVideo.dataset.desktopSrc;
+                
+                // Only reload if source should change (and no custom video)
+                if (!heroVideo.dataset.customSrc && currentSrc && !currentSrc.includes(expectedSrc)) {
+                    heroVideo.src = expectedSrc;
+                    heroVideo.load();
+                }
+            }, 500);
+        });
+    }
+});
+
+function addToCart(itemId, itemName, price) {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItem = cart.find(item => item.id === itemId);
+    
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+        cart.push({
+            id: itemId,
+            name: itemName,
+            price: price,
+            quantity: 1
+        });
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartCount();
+    
+    // Show notification
+    alert('{{ "נוסף להזמנה!" if language == "he" else "Added to cart!" }}');
+}
+
+// Luxury Parallax Effect for Desktop Hero
+document.addEventListener('DOMContentLoaded', function() {
+    const heroImageLayer = document.getElementById('heroImageLayer');
+    
+    if (heroImageLayer && window.innerWidth > 991) {
+        let ticking = false;
+        
+        window.addEventListener('scroll', function() {
+            if (!ticking) {
+                window.requestAnimationFrame(function() {
+                    const scrolled = window.pageYOffset;
+                    const parallaxSpeed = 0.5;
+                    
+                    // Move image slower than scroll for parallax effect
+                    heroImageLayer.style.transform = `translateY(${scrolled * parallaxSpeed}px) scale(1)`;
+                    
+                    ticking = false;
+                });
+                
+                ticking = true;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

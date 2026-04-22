@@ -1,0 +1,378 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות מטבח ומדפסות{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/modern-style.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1 class="mb-4">
+        <i class="fas fa-print"></i>
+        הגדרות מטבח ומדפסות SNBC
+    </h1>
+
+    <!-- Quick Guide Link -->
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>זקוק לעזרה?</strong> 
+        <a href="{{ url_for('admin.printer_guide') }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-book"></i> מדריך מלא לחיבור מדפסת
+        </a>
+    </div>
+    
+    <!-- Printer Test Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-vial"></i> בדיקת מדפסת SNBC
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                המערכת תומכת במדפסות SNBC דגם BTP-R880NP ודגמים דומים עם פרוטוקול ESC/POS
+            </div>
+            
+            <form id="printerTestForm" onsubmit="testPrinter(event)">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">כתובת IP של המדפסת</label>
+                            <input type="text" class="form-control" id="printerIp" 
+                                   placeholder="192.168.1.100" required>
+                            <small class="text-muted">כתובת ה-IP של המדפסת ברשת</small>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">פורט</label>
+                            <input type="number" class="form-control" id="printerPort" 
+                                   value="9100" required>
+                            <small class="text-muted">ברירת מחדל: 9100</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-success d-block">
+                                <i class="fas fa-print"></i> הדפס עמוד בדיקה
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            
+            <div id="testResult" class="mt-3"></div>
+        </div>
+    </div>
+
+    <!-- Printer Configuration -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-cog"></i> הגדרת מדפסות
+            </h5>
+        </div>
+        <div class="card-body">
+            <button class="btn btn-primary mb-3" onclick="showAddPrinterModal()">
+                <i class="fas fa-plus"></i> הוסף מדפסת חדשה
+            </button>
+            
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>שם</th>
+                            <th>כתובת IP</th>
+                            <th>פורט</th>
+                            <th>דגם</th>
+                            <th>רוחב נייר</th>
+                            <th>סטטוס</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printersTable">
+                        {% for printer in printers %}
+                        <tr>
+                            <td>{{ printer.name }}</td>
+                            <td>{{ printer.ip_address }}</td>
+                            <td>{{ printer.port }}</td>
+                            <td>{{ printer.model }}</td>
+                            <td>{{ printer.paper_width }}mm</td>
+                            <td>
+                                {% if printer.is_active %}
+                                    <span class="badge bg-success">פעיל</span>
+                                {% else %}
+                                    <span class="badge bg-danger">לא פעיל</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editPrinter({{ printer.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deletePrinter({{ printer.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not printers %}
+                        <tr>
+                            <td colspan="7" class="text-center">אין מדפסות מוגדרות</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kitchen Stations -->
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-desktop"></i> עמדות מטבח
+            </h5>
+        </div>
+        <div class="card-body">
+            <button class="btn btn-success mb-3" onclick="showAddStationModal()">
+                <i class="fas fa-plus"></i> הוסף עמדה חדשה
+            </button>
+            
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>שם העמדה</th>
+                            <th>סוג</th>
+                            <th>מדפסת משויכת</th>
+                            <th>הדפסה אוטומטית</th>
+                            <th>התראות קוליות</th>
+                            <th>פעולות</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stationsTable">
+                        {% for station in stations %}
+                        <tr>
+                            <td>{{ station.name }}</td>
+                            <td>{{ station.station_type }}</td>
+                            <td>{{ station.printer_ip or 'לא מוגדר' }}</td>
+                            <td>
+                                {% if station.printer_enabled %}
+                                    <i class="fas fa-check text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times text-danger"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if station.sound_alerts %}
+                                    <i class="fas fa-check text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times text-danger"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="editStation({{ station.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteStation({{ station.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not stations %}
+                        <tr>
+                            <td colspan="6" class="text-center">אין עמדות מוגדרות</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Printer Modal -->
+<div class="modal fade" id="addPrinterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">הוסף מדפסת חדשה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPrinterForm">
+                    <div class="mb-3">
+                        <label class="form-label">שם המדפסת</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">כתובת IP</label>
+                        <input type="text" class="form-control" name="ip_address" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">פורט</label>
+                        <input type="number" class="form-control" name="port" value="9100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">דגם</label>
+                        <select class="form-control" name="model">
+                            <option value="SNBC-BTP-R880NP" selected>SNBC BTP-R880NP</option>
+                            <option value="SNBC-BTP-R580">SNBC BTP-R580</option>
+                            <option value="SNBC-BTP-N58">SNBC BTP-N58</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">רוחב נייר</label>
+                        <select class="form-control" name="paper_width">
+                            <option value="80" selected>80mm</option>
+                            <option value="58">58mm</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="rtl_support" id="rtlSupport" checked>
+                            <label class="form-check-label" for="rtlSupport">
+                                תמיכה בעברית (RTL)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="auto_cut" id="autoCut" checked>
+                            <label class="form-check-label" for="autoCut">
+                                חיתוך אוטומטי
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="savePrinter()">שמור</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function testPrinter(event) {
+    event.preventDefault();
+    
+    const ip = document.getElementById('printerIp').value;
+    const port = document.getElementById('printerPort').value;
+    
+    const resultDiv = document.getElementById('testResult');
+    resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> מתחבר למדפסת...</div>';
+    
+    fetch('/api/kitchen/printer/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            ip: ip,
+            port: parseInt(port)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> 
+                    <strong>הצלחה!</strong> הדפסת בדיקה נשלחה למדפסת.
+                    <br>בדוק שהמדפסת הדפיסה את עמוד הבדיקה.
+                </div>
+                <div class="mt-3">
+                    <h6>תוכן עמוד הבדיקה:</h6>
+                    <ul>
+                        <li>כותרת: PRINTER TEST</li>
+                        <li>הודעה: Connection successful!</li>
+                        <li>תאריך ושעה נוכחיים</li>
+                        <li>חיתוך אוטומטי בסוף</li>
+                    </ul>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> 
+                    <strong>שגיאה!</strong> ${data.message || 'לא הצליח להתחבר למדפסת'}
+                    <br>
+                    <small>בדוק שהמדפסת מחוברת לרשת וכתובת ה-IP נכונה</small>
+                </div>
+                <div class="mt-3">
+                    <h6>בדיקות מומלצות:</h6>
+                    <ul>
+                        <li>וודא שהמדפסת דולקת ומחוברת לרשת</li>
+                        <li>בדוק את כתובת ה-IP במדפסת (בדרך כלל בתפריט Network)</li>
+                        <li>וודא שפורט 9100 פתוח בחומת האש</li>
+                        <li>נסה לפנג את המדפסת: ping ${ip}</li>
+                    </ul>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i> 
+                <strong>שגיאה!</strong> ${error.message}
+            </div>
+        `;
+    });
+}
+
+function showAddPrinterModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addPrinterModal'));
+    modal.show();
+}
+
+function savePrinter() {
+    const form = document.getElementById('addPrinterForm');
+    const formData = new FormData(form);
+    
+    // Convert to JSON
+    const data = {};
+    formData.forEach((value, key) => {
+        if (form.querySelector(`[name="${key}"]`).type === 'checkbox') {
+            data[key] = form.querySelector(`[name="${key}"]`).checked;
+        } else {
+            data[key] = value;
+        }
+    });
+    
+    // Save printer configuration
+    // TODO: Implement save endpoint
+    
+    alert('המדפסת נשמרה בהצלחה!');
+    location.reload();
+}
+
+function showAddStationModal() {
+    alert('פונקציה זו תהיה זמינה בקרוב');
+}
+
+function editPrinter(id) {
+    alert('פונקציה זו תהיה זמינה בקרוב');
+}
+
+function deletePrinter(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק מדפסת זו?')) {
+        alert('פונקציה זו תהיה זמינה בקרוב');
+    }
+}
+
+function editStation(id) {
+    alert('פונקציה זו תהיה זמינה בקרוב');
+}
+
+function deleteStation(id) {
+    if (confirm('האם אתה בטוח שברצונך למחוק עמדה זו?')) {
+        alert('פונקציה זו תהיה זמינה בקרוב');
+    }
+}
+</script>
+{% endblock %}

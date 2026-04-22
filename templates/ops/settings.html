@@ -1,0 +1,523 @@
+{% extends "ops/base.html" %}
+{% block header_title %}הגדרות{% endblock %}
+{% block title %}הגדרות - לוח בקרה{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 16px;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:12px;"><i class="fas fa-calendar-day" style="color:var(--ops-accent);"></i> יום פעילות</div>
+    <div class="ops-card" id="opDayCard" style="padding:14px 16px;">
+        <div id="opDayBody" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="color:#888;">טוען…</div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="opDayCloseBtn" class="ops-btn ops-btn-sm" style="background:#dc2626;color:#fff;border:none;font-weight:700;padding:10px 14px;border-radius:8px;display:none;">
+                <i class="fas fa-lock"></i> סגור יום
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="closeDayModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#1a1a2e;color:#fff;border-radius:14px;padding:18px;max-width:360px;width:100%;direction:rtl;">
+        <div style="font-size:18px;font-weight:800;margin-bottom:6px;">סגירת יום פעילות</div>
+        <div id="closeDaySummary" style="background:#0f0f1f;border-radius:8px;padding:10px;font-size:13px;margin:8px 0;line-height:1.7;"></div>
+        <div style="font-size:13px;color:#bbb;margin-bottom:6px;">הזן את קוד ה-PIN שלך לאישור:</div>
+        <input id="closeDayPin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" style="width:100%;padding:12px;border-radius:8px;border:1px solid #333;background:#0f0f1f;color:#fff;font-size:18px;text-align:center;letter-spacing:6px;" />
+        <div id="closeDayError" style="color:#ef4444;font-size:13px;min-height:18px;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+            <button id="closeDayCancel" class="ops-btn ops-btn-sm" style="flex:1;background:#333;color:#fff;border:none;padding:10px;border-radius:8px;">ביטול</button>
+            <button id="closeDayConfirm" class="ops-btn ops-btn-sm" style="flex:2;background:#dc2626;color:#fff;border:none;font-weight:700;padding:10px;border-radius:8px;">סגור יום</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    function fmtDate(iso){
+        if(!iso) return '';
+        try { var d = new Date(iso); return d.toLocaleString('he-IL',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}); } catch(e){ return iso; }
+    }
+    function loadDay(){
+        fetch('/ops/api/operating-day/status').then(r=>r.json()).then(function(j){
+            var body = document.getElementById('opDayBody');
+            var btn = document.getElementById('opDayCloseBtn');
+            if(!j || !j.open){
+                body.innerHTML = '<div style="color:#888;">אין יום פעיל. יום חדש ייפתח אוטומטית עם ההזמנה הבאה.</div>';
+                btn.style.display = 'none';
+                return;
+            }
+            body.innerHTML =
+                '<div><b>נפתח:</b> ' + fmtDate(j.opened_at) + (j.opened_by ? ' ע״י ' + j.opened_by : '') + '</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;text-align:center;">' +
+                  '<div style="background:#0f0f1f;border-radius:6px;padding:6px;"><div style="font-size:11px;color:#888;">איסוף (T)</div><div style="font-size:18px;font-weight:800;">' + (j.pickup||0) + '</div></div>' +
+                  '<div style="background:#0f0f1f;border-radius:6px;padding:6px;"><div style="font-size:11px;color:#888;">משלוח (D)</div><div style="font-size:18px;font-weight:800;">' + (j.delivery||0) + '</div></div>' +
+                  '<div style="background:#0f0f1f;border-radius:6px;padding:6px;"><div style="font-size:11px;color:#888;">ישיבה (TB)</div><div style="font-size:18px;font-weight:800;">' + (j.dine_in||0) + '</div></div>' +
+                '</div>' +
+                '<div style="margin-top:8px;display:flex;justify-content:space-between;font-weight:700;"><span>סה״כ הכנסות</span><span>₪' + (j.revenue||0).toFixed(0) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;color:#888;font-size:13px;"><span>מזומן</span><span>₪' + (j.cash||0).toFixed(0) + '</span></div>';
+            btn.style.display = 'inline-flex';
+            btn.dataset.summary = JSON.stringify(j);
+        }).catch(function(){
+            document.getElementById('opDayBody').innerHTML = '<div style="color:#ef4444;">שגיאה בטעינה</div>';
+        });
+    }
+    function openModal(){
+        var raw = document.getElementById('opDayCloseBtn').dataset.summary || '{}';
+        var j = {}; try { j = JSON.parse(raw); } catch(e){}
+        document.getElementById('closeDaySummary').innerHTML =
+            'איסוף: <b>' + (j.pickup||0) + '</b> · משלוח: <b>' + (j.delivery||0) + '</b> · ישיבה: <b>' + (j.dine_in||0) + '</b><br>' +
+            'סה״כ הכנסות: <b>₪' + (j.revenue||0).toFixed(0) + '</b> · מזומן: <b>₪' + (j.cash||0).toFixed(0) + '</b>';
+        document.getElementById('closeDayPin').value = '';
+        document.getElementById('closeDayError').textContent = '';
+        document.getElementById('closeDayModal').style.display = 'flex';
+        setTimeout(function(){ document.getElementById('closeDayPin').focus(); }, 80);
+    }
+    function closeModal(){ document.getElementById('closeDayModal').style.display = 'none'; }
+    function confirmClose(){
+        var pin = (document.getElementById('closeDayPin').value || '').trim();
+        var err = document.getElementById('closeDayError');
+        err.textContent = '';
+        if(!pin){ err.textContent = 'נא להזין PIN'; return; }
+        var btn = document.getElementById('closeDayConfirm');
+        btn.disabled = true; btn.textContent = 'סוגר…';
+        fetch('/ops/api/operating-day/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pin})})
+            .then(r=>r.json()).then(function(j){
+                btn.disabled = false; btn.textContent = 'סגור יום';
+                if(!j.ok){ err.textContent = j.error || 'שגיאה'; return; }
+                closeModal();
+                loadDay();
+                if(window.alert) alert('היום נסגר. סה״כ הזמנות: ' + (j.closed.orders_total||0) + ' · הכנסות: ₪' + (j.closed.revenue||0).toFixed(0));
+            }).catch(function(){
+                btn.disabled = false; btn.textContent = 'סגור יום';
+                err.textContent = 'שגיאת רשת';
+            });
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        loadDay();
+        document.getElementById('opDayCloseBtn').addEventListener('click', openModal);
+        document.getElementById('closeDayCancel').addEventListener('click', closeModal);
+        document.getElementById('closeDayConfirm').addEventListener('click', confirmClose);
+    });
+})();
+</script>
+
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-power-off" style="color: var(--ops-accent);"></i> מצב מערכת</div>
+    <div class="ops-card">
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">הזמנות אונליין</div>
+                <div class="ops-toggle-sublabel">הפעלה/השבתה של מערכת ההזמנות</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.enable_online_ordering %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_online_ordering', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">
+                    השהיית הזמנות
+                    {% if settings and settings.ordering_paused %}
+                    <span class="ops-badge ops-badge-red" style="margin-right: 8px;">מושהה</span>
+                    {% endif %}
+                </div>
+                <div class="ops-toggle-sublabel">השהיה זמנית של קבלת הזמנות חדשות</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.ordering_paused %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'ordering_paused', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">משלוחים</div>
+                <div class="ops-toggle-sublabel">אפשר/השבת משלוחים</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.enable_delivery %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_delivery', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">איסוף עצמי</div>
+                <div class="ops-toggle-sublabel">אפשר/השבת איסוף עצמי</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" {% if settings and settings.enable_pickup %}checked{% endif %}
+                       onchange="opsPost('{{ url_for('ops.toggle_setting') }}', {field:'enable_pickup', value:this.checked})">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row" style="border-bottom: none;">
+            <div>
+                <div class="ops-toggle-label">זמן משלוח משוער</div>
+                <div class="ops-toggle-sublabel">דקות (לדוגמה: 30-45)</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input type="text" class="ops-input" style="width:100px; min-height:38px; text-align:center; direction:ltr;"
+                       id="deliveryTimeInput"
+                       value="{{ settings.estimated_delivery_time if settings else '45-60' }}">
+                <button class="ops-btn ops-btn-secondary ops-btn-sm"
+                        onclick="opsPost('{{ url_for('ops.update_delivery_time') }}', {value:document.getElementById('deliveryTimeInput').value})">
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <a href="{{ url_for('ops.healthcheck') }}" class="ops-card" style="display:flex; align-items:center; gap:14px; padding:14px 16px; text-decoration:none; color:inherit;">
+        <div style="width:42px; height:42px; border-radius:12px; background:rgba(34,197,94,.12); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i class="fas fa-heartbeat" style="color:#22c55e; font-size:1.2rem;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; font-size:.95rem;">בדיקת חיבוריות</div>
+            <div style="font-size:.78rem; color:#9ca3af; margin-top:2px;">בדיקת מצב שרת, מסד נתונים, SMS, תשלומים ומדפסות</div>
+        </div>
+        <i class="fas fa-chevron-left" style="color:#6b7280; font-size:.8rem;"></i>
+    </a>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <a href="{{ url_for('ops.table_layout') }}" class="ops-card" style="display:flex; align-items:center; gap:14px; padding:14px 16px; text-decoration:none; color:inherit;">
+        <div style="width:42px; height:42px; border-radius:12px; background:rgba(124,58,237,.12); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i class="fas fa-drafting-compass" style="color:#7c3aed; font-size:1.2rem;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; font-size:.95rem;">עיצוב פריסת שולחנות</div>
+            <div style="font-size:.78rem; color:#9ca3af; margin-top:2px;">עריכת מיקום, צורה וגודל שולחנות בתצוגת מפה</div>
+        </div>
+        <i class="fas fa-chevron-left" style="color:#6b7280; font-size:.8rem;"></i>
+    </a>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; display:flex; align-items:center; justify-content:space-between;">
+        <span><i class="fas fa-print" style="color: var(--ops-accent);"></i> הגדרות הדפסה</span>
+        <a href="{{ url_for('ops.print_devices_page') }}" style="font-size:13px; color:var(--ops-accent); text-decoration:none;">📱 מכשירי הדפסה &larr;</a>
+    </div>
+    <div class="ops-card">
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">עותקי בון צ׳קר</div>
+                <div class="ops-toggle-sublabel">כמה עותקים להדפיס בלחיצת "הדפס הכל"</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('checker_copies', -1)" style="min-width:36px;">−</button>
+                <span id="printCheckerCopies" style="font-size:18px; font-weight:800; min-width:24px; text-align:center;">2</span>
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('checker_copies', 1)" style="min-width:36px;">+</button>
+            </div>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">עותקי בון תשלום</div>
+                <div class="ops-toggle-sublabel">כמה עותקים להדפיס בלחיצת "הדפס הכל"</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('payment_copies', -1)" style="min-width:36px;">−</button>
+                <span id="printPaymentCopies" style="font-size:18px; font-weight:800; min-width:24px; text-align:center;">1</span>
+                <button class="ops-btn ops-btn-secondary ops-btn-sm" onclick="changePrintSetting('payment_copies', 1)" style="min-width:36px;">+</button>
+            </div>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">בוני עמדות</div>
+                <div class="ops-toggle-sublabel">הדפס בוני עמדות (מטבח, בר, וכו׳)</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" id="printStationBons" checked onchange="togglePrintStation(this.checked)">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+        <div class="ops-toggle-row">
+            <div>
+                <div class="ops-toggle-label">מצב הדפסה</div>
+                <div class="ops-toggle-sublabel">דפדפן = דיאלוג הדפסה אחד | שרת = שקט לחלוטין (שרת מקומי)</div>
+            </div>
+            <select id="printMode" onchange="savePrintMode(this.value)"
+                    style="padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;">
+                <option value="browser">דפדפן</option>
+                <option value="server">שרת (ישיר)</option>
+            </select>
+        </div>
+        <div id="serverPrinterSettings" style="display:none;">
+            <div class="ops-toggle-row">
+                <div style="flex:1">
+                    <div class="ops-toggle-label">כתובת IP מדפסת</div>
+                    <div class="ops-toggle-sublabel">כתובת ברשת המקומית (לדוגמה: 192.168.1.100)</div>
+                </div>
+                <input type="text" id="printerIp" placeholder="192.168.1.100" 
+                       style="width:160px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
+                       onchange="savePrinterIp(this.value)">
+            </div>
+            <div class="ops-toggle-row" style="border-bottom: none;">
+                <div style="flex:1">
+                    <div class="ops-toggle-label">פורט מדפסת</div>
+                    <div class="ops-toggle-sublabel">ברירת מחדל: 9100</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <input type="number" id="printerPort" value="9100" 
+                           style="width:80px;padding:8px 12px;border:1px solid var(--ops-border);border-radius:8px;background:var(--ops-card);color:var(--ops-text);font-size:14px;text-align:left;direction:ltr;"
+                           onchange="savePrinterPort(this.value)">
+                    <button class="ops-btn ops-btn-sm" style="background:var(--ops-accent);color:#fff;white-space:nowrap;" onclick="testPrinter()">בדיקה</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-rotate" style="color: var(--ops-accent);"></i> רשת ורענון</div>
+    <div class="ops-card">
+        <div class="ops-toggle-row" style="border-bottom: none;">
+            <div style="flex:1; min-width:0;">
+                <div class="ops-toggle-label">רענון אוטומטי בחזרה לרשת</div>
+                <div class="ops-toggle-sublabel">כשהחיבור חוזר, הדף יתרענן אוטומטית לאחר 5 שניות</div>
+            </div>
+            <label class="ops-switch">
+                <input type="checkbox" id="autoRefreshOnReconnect" onchange="toggleAutoRefreshOnReconnect(this.checked)">
+                <span class="ops-switch-slider"></span>
+            </label>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-bell" style="color: var(--ops-accent);"></i> התראות PUSH</div>
+    <div class="ops-card">
+        <div class="ops-toggle-row">
+            <div style="flex:1; min-width:0;">
+                <div class="ops-toggle-label">התראות על הזמנות חדשות</div>
+                <div class="ops-toggle-sublabel" id="notifStatusText">בודק סטטוס…</div>
+            </div>
+            <span id="notifStatusBadge" class="ops-badge" style="margin-right:8px;">—</span>
+        </div>
+        <div id="notifBlockedHelp" style="display:none; padding:12px 4px; font-size:12px; color:var(--ops-text-dim); line-height:1.6;">
+            <i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i>
+            ההרשאה נחסמה. כדי לאפשר שוב: לחץ על סמל המנעול/האתר שליד כתובת האתר בדפדפן ← הרשאות ← אפשר התראות. לאחר מכן רענן את הדף.
+        </div>
+        <div id="notifIosHelp" style="display:none; padding:12px 4px; font-size:12px; color:var(--ops-text-dim); line-height:1.6;">
+            <i class="fas fa-mobile-alt" style="color:var(--ops-blue);"></i>
+            ב‑iPhone/iPad: יש להוסיף תחילה את האפליקציה למסך הבית (כפתור שיתוף ← "הוסף למסך הבית"). פתח את האפליקציה מהמסך הראשי ולאחר מכן הפעל את ההתראות.
+        </div>
+        <div id="notifUnsupportedHelp" style="display:none; padding:12px 4px; font-size:12px; color:var(--ops-text-dim); line-height:1.6;">
+            <i class="fas fa-info-circle"></i>
+            הדפדפן הנוכחי אינו תומך בהתראות PUSH. נסה דפדפן אחר (Chrome/Edge/Firefox/Safari עדכני).
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+            <button id="notifEnableBtn" class="ops-btn" style="background:var(--ops-accent); color:#fff; flex:1; min-width:140px; display:none;" onclick="opsSettingsEnableNotifs()">
+                <i class="fas fa-bell"></i> הפעל התראות
+            </button>
+            <button id="notifTestBtn" class="ops-btn ops-btn-secondary" style="flex:1; min-width:140px; display:none;" onclick="opsSettingsTestNotif(this)">
+                <i class="fas fa-paper-plane"></i> שלח התראת בדיקה
+            </button>
+        </div>
+    </div>
+</div>
+
+<div style="margin-bottom: 16px;">
+    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;"><i class="fas fa-info-circle" style="color: var(--ops-blue);"></i> מידע מכשיר</div>
+    <div class="ops-card" style="font-size: 13px; color: var(--ops-text-dim);">
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--ops-border);">
+            <strong>משתמש:</strong> {{ session.get('ops_user_name', '—') }}
+        </div>
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--ops-border);">
+            <strong>תפקיד:</strong> {{ session.get('ops_role', '—') }}
+        </div>
+        <div style="padding: 8px 0;">
+            <strong>סניף:</strong> {{ branch_name or 'כל הסניפים' }}
+        </div>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 24px;">
+    <a href="{{ url_for('ops.logout') }}" class="ops-btn" style="background: #fdecea; color: #c62828; border: none; width: 100%;">
+        <i class="fas fa-sign-out-alt"></i> התנתק
+    </a>
+</div>
+
+<script>
+var ps = JSON.parse(localStorage.getItem('ops_print_settings') || '{}');
+if (ps.checker_copies === undefined) ps.checker_copies = 2;
+if (ps.payment_copies === undefined) ps.payment_copies = 1;
+if (ps.station_bons === undefined) ps.station_bons = true;
+if (ps.printer_ip === undefined) ps.printer_ip = '';
+if (ps.printer_port === undefined) ps.printer_port = 9100;
+if (ps.print_mode === undefined) ps.print_mode = 'browser';
+
+function updatePrintUI() {
+    document.getElementById('printCheckerCopies').textContent = ps.checker_copies;
+    document.getElementById('printPaymentCopies').textContent = ps.payment_copies;
+    document.getElementById('printStationBons').checked = ps.station_bons;
+    document.getElementById('printMode').value = ps.print_mode || 'browser';
+    document.getElementById('printerIp').value = ps.printer_ip || '';
+    document.getElementById('printerPort').value = ps.printer_port || 9100;
+    document.getElementById('serverPrinterSettings').style.display = ps.print_mode === 'server' ? 'block' : 'none';
+}
+updatePrintUI();
+
+function changePrintSetting(key, delta) {
+    ps[key] = Math.max(0, Math.min(5, (ps[key]||0) + delta));
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+    updatePrintUI();
+}
+
+function togglePrintStation(val) {
+    ps.station_bons = val;
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function savePrintMode(val) {
+    ps.print_mode = val;
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+    updatePrintUI();
+}
+
+function savePrinterIp(val) {
+    ps.printer_ip = val.trim();
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function savePrinterPort(val) {
+    ps.printer_port = parseInt(val) || 9100;
+    localStorage.setItem('ops_print_settings', JSON.stringify(ps));
+}
+
+function toggleAutoRefreshOnReconnect(val) {
+    try {
+        localStorage.setItem('ops_auto_refresh_on_reconnect', val ? '1' : '0');
+        showToast(val ? 'רענון אוטומטי הופעל' : 'רענון אוטומטי בוטל');
+    } catch (e) {}
+}
+
+(function initAutoRefreshToggle() {
+    try {
+        var el = document.getElementById('autoRefreshOnReconnect');
+        if (el) el.checked = localStorage.getItem('ops_auto_refresh_on_reconnect') === '1';
+    } catch (e) {}
+})();
+
+function opsNotifsRefresh() {
+    var statusText = document.getElementById('notifStatusText');
+    var badge = document.getElementById('notifStatusBadge');
+    var enableBtn = document.getElementById('notifEnableBtn');
+    var testBtn = document.getElementById('notifTestBtn');
+    var blockedHelp = document.getElementById('notifBlockedHelp');
+    var iosHelp = document.getElementById('notifIosHelp');
+    var unsupportedHelp = document.getElementById('notifUnsupportedHelp');
+
+    blockedHelp.style.display = 'none';
+    iosHelp.style.display = 'none';
+    unsupportedHelp.style.display = 'none';
+    enableBtn.style.display = 'none';
+    testBtn.style.display = 'none';
+
+    var hasNotif = ('Notification' in window);
+    var hasPush = ('serviceWorker' in navigator) && ('PushManager' in window);
+    var ua = navigator.userAgent || '';
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (!hasNotif || !hasPush) {
+        if (isIOS && !isStandalone) {
+            statusText.textContent = 'נדרש להוסיף את האפליקציה למסך הבית';
+            badge.textContent = 'לא זמין';
+            badge.className = 'ops-badge ops-badge-red';
+            iosHelp.style.display = 'block';
+        } else {
+            statusText.textContent = 'הדפדפן אינו תומך בהתראות';
+            badge.textContent = 'לא נתמך';
+            badge.className = 'ops-badge ops-badge-red';
+            unsupportedHelp.style.display = 'block';
+        }
+        return;
+    }
+
+    var perm = Notification.permission;
+    if (perm === 'granted') {
+        statusText.textContent = 'התראות פעילות במכשיר זה';
+        badge.textContent = 'מופעל';
+        badge.className = 'ops-badge';
+        badge.style.background = 'rgba(34,197,94,.15)';
+        badge.style.color = '#16a34a';
+        testBtn.style.display = 'inline-flex';
+    } else if (perm === 'denied') {
+        statusText.textContent = 'ההרשאה נחסמה בדפדפן';
+        badge.textContent = 'חסום';
+        badge.className = 'ops-badge ops-badge-red';
+        badge.style.background = '';
+        badge.style.color = '';
+        blockedHelp.style.display = 'block';
+    } else {
+        statusText.textContent = 'עדיין לא הופעלו';
+        badge.textContent = 'מבוטל';
+        badge.className = 'ops-badge';
+        badge.style.background = 'rgba(245,158,11,.15)';
+        badge.style.color = '#b45309';
+        enableBtn.style.display = 'inline-flex';
+        if (isIOS && !isStandalone) iosHelp.style.display = 'block';
+    }
+}
+
+function opsSettingsEnableNotifs() {
+    if (typeof window.opsEnableNotifications !== 'function') {
+        showToast('פונקציית ההתראות לא זמינה', true);
+        return;
+    }
+    window.opsEnableNotifications().then(function() {
+        setTimeout(opsNotifsRefresh, 300);
+    });
+}
+
+function opsSettingsTestNotif(btn) {
+    btn.disabled = true;
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שולח…';
+    fetch('/ops/api/push/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        credentials: 'same-origin',
+        body: '{}'
+    })
+    .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+    .then(function(res) {
+        if (res.d && res.d.ok) {
+            showToast('נשלחה התראת בדיקה (' + (res.d.sent || 0) + '/' + (res.d.total || 0) + ')');
+        } else {
+            var err = (res.d && (res.d.error || res.d.message)) || 'שגיאה';
+            if (err === 'no active subscriptions') err = 'אין מנוי פעיל במכשיר זה — הפעל מחדש את ההתראות';
+            showToast(err, true);
+        }
+    })
+    .catch(function() { showToast('שגיאת תקשורת', true); })
+    .finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    });
+}
+
+opsNotifsRefresh();
+
+function testPrinter() {
+    var ip = document.getElementById('printerIp').value.trim();
+    var port = parseInt(document.getElementById('printerPort').value) || 9100;
+    if (!ip) { showToast('יש להזין כתובת IP', true); return; }
+    savePrinterIp(ip);
+    savePrinterPort(port);
+    fetch('/ops/api/print/test', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({printer_ip: ip, printer_port: port})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { showToast(d.ok ? d.message : (d.error || 'שגיאה'), !d.ok); })
+    .catch(function() { showToast('שגיאת חיבור לשרת', true); });
+}
+</script>
+{% endblock %}

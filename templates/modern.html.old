@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סומו - חוויה אסייתית מודרנית</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Modern CSS -->
+    <link href="{{ url_for('static', filename='css/modern.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="loader"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="#home" class="navbar-brand">
+                <span class="logo">סומו</span>
+            </a>
+            
+            <ul class="navbar-nav" id="navMenu">
+                <li><a href="#home" class="nav-link">בית</a></li>
+                <li><a href="#cuisines" class="nav-link">המטבחים שלנו</a></li>
+                <li><a href="#menu" class="nav-link">תפריט</a></li>
+                <li><a href="#gallery" class="nav-link">גלריה</a></li>
+                <li><a href="#contact" class="nav-link">צור קשר</a></li>
+                <li><a href="#reservation" class="nav-link nav-cta">הזמן שולחן</a></li>
+            </ul>
+            
+            <button class="navbar-toggler" id="navToggler">
+                <div class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-bg"></div>
+        <div class="floating-element">🍜</div>
+        <div class="floating-element">🥢</div>
+        <div class="floating-element">🍱</div>
+        
+        <div class="hero-content">
+            <h1 class="hero-title">ברוכים הבאים לסומו</h1>
+            <p class="hero-subtitle">מסע קולינרי בלב אסיה</p>
+            <div class="hero-buttons">
+                <a href="#menu" class="btn btn-primary">גלה את התפריט</a>
+                <a href="#reservation" class="btn btn-outline">הזמן שולחן</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cuisines Section -->
+    <section id="cuisines" class="cuisines">
+        <div class="section-header">
+            <h2 class="section-title">5 מטבחים תחת קורת גג אחת</h2>
+            <p class="section-subtitle">חווית טעמים אסייתית אותנטית מיפן, תאילנד, קוריאה, וייטנאם והודו</p>
+        </div>
+        
+        <div class="cuisine-grid">
+            <div class="cuisine-card">
+                <div class="cuisine-icon">🇯🇵</div>
+                <h3 class="cuisine-name">יפני</h3>
+                <p class="cuisine-description">סושי טרי וראמן חם</p>
+            </div>
+            
+            <div class="cuisine-card">
+                <div class="cuisine-icon">🇹🇭</div>
+                <h3 class="cuisine-name">תאילנדי</h3>
+                <p class="cuisine-description">חריף, חמוץ ומתוק</p>
+            </div>
+            
+            <div class="cuisine-card">
+                <div class="cuisine-icon">🇰🇷</div>
+                <h3 class="cuisine-name">קוריאני</h3>
+                <p class="cuisine-description">ביביבמב וקימצ'י</p>
+            </div>
+            
+            <div class="cuisine-card">
+                <div class="cuisine-icon">🇻🇳</div>
+                <h3 class="cuisine-name">וייטנאמי</h3>
+                <p class="cuisine-description">פו ובאן מי</p>
+            </div>
+            
+            <div class="cuisine-card">
+                <div class="cuisine-icon">🇮🇳</div>
+                <h3 class="cuisine-name">הודי</h3>
+                <p class="cuisine-description">קארי ותבלינים</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Menu Preview -->
+    <section id="menu" class="menu-preview">
+        <div class="section-header">
+            <h2 class="section-title">מהתפריט שלנו</h2>
+            <p class="section-subtitle">מבחר מנות מכל המטבחים</p>
+        </div>
+        
+        <div class="menu-tabs">
+            <button class="tab-btn active" data-tab="japanese">יפני</button>
+            <button class="tab-btn" data-tab="thai">תאילנדי</button>
+            <button class="tab-btn" data-tab="korean">קוריאני</button>
+            <button class="tab-btn" data-tab="vietnamese">וייטנאמי</button>
+            <button class="tab-btn" data-tab="indian">הודי</button>
+        </div>
+        
+        <div class="menu-content active" id="japanese">
+            <div class="dishes-grid">
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400" alt="סושי" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">קומבינציית סושי</h3>
+                        <p class="dish-description">12 יחידות סושי מובחרות</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪89</span>
+                            <span class="dish-badge">פופולרי</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400" alt="ראמן" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">ראמן טונקוצו</h3>
+                        <p class="dish-description">מרק עצמות חזיר עשיר</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪72</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1553621042-f6e147245754?w=400" alt="סשימי" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">סשימי מיוחד</h3>
+                        <p class="dish-description">מבחר דגים טריים</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪95</span>
+                            <span class="dish-badge">מומלץ השף</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-content" id="thai">
+            <div class="dishes-grid">
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400" alt="פאד תאי" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">פאד תאי</h3>
+                        <p class="dish-description">אטריות מוקפצות בסגנון תאילנדי</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪62</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=400" alt="קארי ירוק" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">קארי ירוק</h3>
+                        <p class="dish-description">קארי חריף עם חלב קוקוס</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪78</span>
+                            <span class="dish-badge">חריף</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1609501676725-7186f017a4b7?w=400" alt="סום טאם" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">סום טאם</h3>
+                        <p class="dish-description">סלט פפאיה ירוקה</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪48</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-content" id="korean">
+            <div class="dishes-grid">
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400" alt="ביביבמב" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">ביביבמב</h3>
+                        <p class="dish-description">קערת אורז עם ירקות וביצה</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪68</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1583224994533-1683655d7d51?w=400" alt="בולגוגי" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">בולגוגי</h3>
+                        <p class="dish-description">בשר בקר במרינדה קוריאנית</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪85</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1583224944844-5b268c057b72?w=400" alt="קימצ'י ג'יגה" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">קימצ'י ג'יגה</h3>
+                        <p class="dish-description">תבשיל קימצ'י חריף</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪58</span>
+                            <span class="dish-badge">חריף</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-content" id="vietnamese">
+            <div class="dishes-grid">
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400" alt="פו" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">פו בו</h3>
+                        <p class="dish-description">מרק בקר וייטנאמי</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪65</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1569562211093-4ed0d0758f12?w=400" alt="באן מי" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">באן מי</h3>
+                        <p class="dish-description">כריך וייטנאמי מסורתי</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪48</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1553163147-622ab57db678?w=400" alt="גוי קון" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">גוי קון</h3>
+                        <p class="dish-description">ספרינג רולס טריים</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪42</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-content" id="indian">
+            <div class="dishes-grid">
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400" alt="צ'יקן טיקה מסאלה" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">צ'יקן טיקה מסאלה</h3>
+                        <p class="dish-description">עוף ברוטב עגבניות קרמי</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪72</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1574484150042-e92263b93602?w=400" alt="פאלאק פאניר" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">פאלאק פאניר</h3>
+                        <p class="dish-description">גבינה הודית עם תרד</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪65</span>
+                            <span class="dish-badge">צמחוני</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dish-card">
+                    <img src="https://images.unsplash.com/photo-1596797038530-2c107229654b?w=400" alt="בריאני" class="dish-image">
+                    <div class="dish-info">
+                        <h3 class="dish-name">בריאני</h3>
+                        <p class="dish-description">אורז מתובל עם בשר</p>
+                        <div class="dish-footer">
+                            <span class="dish-price">₪78</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery -->
+    <section id="gallery" class="gallery">
+        <div class="section-header">
+            <h2 class="section-title">האווירה שלנו</h2>
+            <p class="section-subtitle">הציצו למסעדה ולמנות שלנו</p>
+        </div>
+        
+        <div class="gallery-container">
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600" alt="המסעדה">
+                <div class="gallery-overlay">
+                    <p class="gallery-caption">אווירה מודרנית ומזמינה</p>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600" alt="פינת ישיבה">
+                <div class="gallery-overlay">
+                    <p class="gallery-caption">פינות ישיבה נעימות</p>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1564759298141-241b8f110c97?w=600" alt="הבר">
+                <div class="gallery-overlay">
+                    <p class="gallery-caption">בר משקאות אסייתי</p>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600" alt="המטבח">
+                <div class="gallery-overlay">
+                    <p class="gallery-caption">מטבח פתוח</p>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=600" alt="הכניסה">
+                <div class="gallery-overlay">
+                    <p class="gallery-caption">כניסה מעוצבת</p>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600" alt="אירועים">
+                <div class="gallery-overlay">
+                    <p class="gallery-caption">חלל אירועים פרטי</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact & Reservation -->
+    <section id="contact" class="contact">
+        <div class="section-header">
+            <h2 class="section-title">בואו לבקר אותנו</h2>
+            <p class="section-subtitle">נשמח לארח אתכם לחוויה בלתי נשכחת</p>
+        </div>
+        
+        <div class="contact-container">
+            <div class="contact-info">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>כתובת</h3>
+                        <p>רחוב דיזנגוף 123, תל אביב</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>טלפון</h3>
+                        <p>03-1234567</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>שעות פעילות</h3>
+                        <p>ראשון-חמישי: 12:00-23:00<br>
+                        שישי-שבת: 12:00-24:00</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>אימייל</h3>
+                        <p>info@sumo-restaurant.co.il</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="reservation" class="contact-form">
+                <h3 style="margin-bottom: 1.5rem; color: var(--dark);">הזמנת שולחן</h3>
+                <form id="reservationForm">
+                    <div class="form-group">
+                        <label for="name">שם מלא</label>
+                        <input type="text" id="name" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">טלפון</label>
+                        <input type="tel" id="phone" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date">תאריך</label>
+                        <input type="date" id="date" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="time">שעה</label>
+                        <input type="time" id="time" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="guests">מספר סועדים</label>
+                        <select id="guests" class="form-control" required>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7+">7+</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-calendar-check"></i> שלח הזמנה
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">סומו</div>
+            <p style="margin-bottom: 1rem;">חוויה אסייתית אותנטית במרכז תל אביב</p>
+            
+            <div class="footer-social">
+                <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-tiktok"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 סומו מטבח אסייתי. כל הזכויות שמורות.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Preloader - hide immediately if page takes too long
+        setTimeout(() => {
+            const preloader = document.getElementById('preloader');
+            if (preloader) {
+                preloader.classList.add('hide');
+            }
+        }, 1500);
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const preloader = document.getElementById('preloader');
+                if (preloader) {
+                    preloader.classList.add('hide');
+                }
+            }, 300);
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Mobile menu toggle
+        const navToggler = document.getElementById('navToggler');
+        const navMenu = document.getElementById('navMenu');
+        const hamburger = document.getElementById('hamburger');
+
+        navToggler.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        });
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile menu if open
+                    navMenu.classList.remove('active');
+                    hamburger.classList.remove('active');
+                }
+            });
+        });
+
+        // Menu tabs
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const menuContents = document.querySelectorAll('.menu-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                
+                // Remove active class from all
+                tabBtns.forEach(b => b.classList.remove('active'));
+                menuContents.forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked
+                btn.classList.add('active');
+                document.getElementById(tab).classList.add('active');
+            });
+        });
+
+        // Form submission
+        document.getElementById('reservationForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('ההזמנה נשלחה בהצלחה! נחזור אליך בהקדם.');
+            e.target.reset();
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeInUp 0.6s ease forwards';
+                }
+            });
+        }, observerOptions);
+
+        // Observe elements
+        document.querySelectorAll('.cuisine-card, .dish-card, .gallery-item, .info-card').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

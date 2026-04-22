@@ -1,0 +1,461 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ settings.careers_page_hero_title_he if language == 'he' else settings.careers_page_hero_title_en }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block description %}{{ settings.careers_page_hero_subtitle_he if language == 'he' else settings.careers_page_hero_subtitle_en }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .careers-hero {
+        position: relative;
+        height: 60vh;
+        min-height: 400px;
+        background: linear-gradient(135deg, #1a3a6e 0%, #2c5282 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .careers-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('{{ url_for("static", filename="uploads/" + settings.careers_image) if settings.careers_image else "" }}') center/cover;
+        opacity: 0.2;
+        z-index: 0;
+    }
+    
+    .careers-hero-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        color: white;
+        max-width: 800px;
+        padding: 2rem;
+    }
+    
+    .careers-hero-title {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .careers-hero-subtitle {
+        font-size: 1.5rem;
+        font-weight: 300;
+        margin-bottom: 2rem;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .btn-cta {
+        background: #dc3545;
+        color: white;
+        padding: 1rem 3rem;
+        font-size: 1.2rem;
+        border-radius: 50px;
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-cta:hover {
+        background: #c82333;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+    }
+    
+    .careers-positions-section {
+        padding: 5rem 0;
+        background: #f8f9fa;
+    }
+    
+    .section-title {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a3a6e;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .section-subtitle {
+        font-size: 1.1rem;
+        color: #666;
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto 3rem;
+        line-height: 1.8;
+    }
+    
+    .position-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .position-card:hover {
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        transform: translateY(-5px);
+    }
+    
+    .position-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a3a6e;
+        margin-bottom: 1rem;
+    }
+    
+    .position-meta {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .position-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    .position-meta-item i {
+        color: #dc3545;
+    }
+    
+    .position-description {
+        color: #374151;
+        line-height: 1.8;
+        margin-bottom: 1rem;
+    }
+    
+    .position-requirements {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .position-requirements h4 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1a3a6e;
+        margin-bottom: 0.75rem;
+    }
+    
+    .position-requirements ul {
+        margin: 0;
+        padding-right: 1.5rem;
+        list-style: none;
+    }
+    
+    .position-requirements ul[dir="ltr"] {
+        padding-left: 1.5rem;
+        padding-right: 0;
+    }
+    
+    .position-requirements li {
+        margin-bottom: 0.5rem;
+        position: relative;
+        padding-right: 1.5rem;
+    }
+    
+    .position-requirements li[dir="ltr"] {
+        padding-left: 1.5rem;
+        padding-right: 0;
+    }
+    
+    .position-requirements li::before {
+        content: '•';
+        position: absolute;
+        right: 0;
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .position-requirements li[dir="ltr"]::before {
+        left: 0;
+        right: auto;
+    }
+    
+    .no-positions {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+        font-size: 1.1rem;
+    }
+    
+    .contact-cta-section {
+        background: linear-gradient(135deg, #1a3a6e 0%, #2c5282 100%);
+        color: white;
+        padding: 5rem 0;
+        text-align: center;
+    }
+    
+    .contact-cta-title {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .contact-cta-subtitle {
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+    }
+    
+    @media (max-width: 768px) {
+        .careers-hero {
+            padding-top: 70px;
+            min-height: 450px;
+        }
+        
+        .careers-hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .careers-hero-subtitle {
+            font-size: 1.2rem;
+        }
+        
+        .section-title {
+            font-size: 2rem;
+        }
+        
+        .position-meta {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+    
+    /* Contact Form Styles */
+    .contact-cta-section .card {
+        background: white;
+        border: none;
+        border-radius: 12px;
+    }
+    
+    .contact-cta-section .form-label {
+        color: #374151;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .contact-cta-section .form-control,
+    .contact-cta-section select.form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        color: #1f2937;
+    }
+    
+    .contact-cta-section .form-control:focus,
+    .contact-cta-section select.form-control:focus {
+        border-color: #1a3a6e;
+        box-shadow: 0 0 0 0.2rem rgba(26, 58, 110, 0.15);
+        outline: none;
+    }
+    
+    .btn-cta {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2.5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="careers-hero">
+    <div class="careers-hero-content">
+        <h1 class="careers-hero-title">{{ settings.careers_page_hero_title_he if language == 'he' else settings.careers_page_hero_title_en }}</h1>
+        <p class="careers-hero-subtitle">{{ settings.careers_page_hero_subtitle_he if language == 'he' else settings.careers_page_hero_subtitle_en }}</p>
+        <a href="#contact-section" class="btn btn-cta">{{ 'הגישו מועמדות' if language == 'he' else 'Apply Now' }}</a>
+    </div>
+</section>
+
+<!-- Positions Section -->
+<section class="careers-positions-section">
+    <div class="container">
+        <h2 class="section-title">{{ settings.careers_page_positions_title_he if language == 'he' else settings.careers_page_positions_title_en }}</h2>
+        <p class="section-subtitle">{{ settings.careers_page_positions_subtitle_he if language == 'he' else settings.careers_page_positions_subtitle_en }}</p>
+        
+        {% if positions %}
+            {% for position in positions %}
+            <div class="position-card">
+                <h3 class="position-title">{{ position.title_he if language == 'he' else position.title_en }}</h3>
+                
+                <div class="position-meta">
+                    {% if position.location_he or position.location_en %}
+                    <div class="position-meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ position.location_he if language == 'he' else position.location_en }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if position.employment_type_he or position.employment_type_en %}
+                    <div class="position-meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ position.employment_type_he if language == 'he' else position.employment_type_en }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if position.description_he or position.description_en %}
+                <div class="position-description">
+                    {{ (position.description_he if language == 'he' else position.description_en) | sanitize_html | safe }}
+                </div>
+                {% endif %}
+                
+                {% if position.requirements_he or position.requirements_en %}
+                <div class="position-requirements">
+                    <h4>{{ 'דרישות התפקיד:' if language == 'he' else 'Requirements:' }}</h4>
+                    <div dir="{{ 'rtl' if language == 'he' else 'ltr' }}">
+                        {{ (position.requirements_he if language == 'he' else position.requirements_en) | sanitize_html | safe }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <a href="#contact-section" class="btn btn-cta" onclick="selectPosition({{ position.id }}, '{{ position.title_he if language == 'he' else position.title_en }}')">
+                    {{ 'הגש מועמדות למשרה זו' if language == 'he' else 'Apply for this Position' }}
+                </a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-positions">
+                <i class="fas fa-briefcase fa-3x mb-3" style="color: #cbd5e0;"></i>
+                <p>{{ 'אין משרות פתוחות כרגע. אנא בדקו שוב בהמשך.' if language == 'he' else 'No open positions at the moment. Please check back later.' }}</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Contact Form Section -->
+<section class="contact-cta-section" id="contact-section">
+    <div class="container">
+        <h2 class="contact-cta-title">{{ settings.careers_page_cta_title_he if language == 'he' else settings.careers_page_cta_title_en }}</h2>
+        <p class="contact-cta-subtitle">{{ settings.careers_page_cta_subtitle_he if language == 'he' else settings.careers_page_cta_subtitle_en }}</p>
+        
+        <div class="row mt-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        {% if success %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            {{ 'תודה רבה! מועמדותך נקלטה ונחזור אליך בהקדם' if language == 'he' else 'Thank you! Your application was received and we will contact you soon' }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if error %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+                        
+                        <form method="POST" action="{{ url_for('careers_page') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="position_id" id="position_id" value="">
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'שם מלא *' if language == 'he' else 'Full Name *' }}</label>
+                                    <input type="text" class="form-control" name="name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'טלפון *' if language == 'he' else 'Phone *' }}</label>
+                                    <input type="tel" class="form-control" name="phone" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">{{ 'אימייל *' if language == 'he' else 'Email *' }}</label>
+                                <input type="email" class="form-control" name="email" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">{{ 'משרה מבוקשת *' if language == 'he' else 'Position *' }}</label>
+                                <select class="form-control" name="position_select" id="position_select" required>
+                                    <option value="">{{ 'בחר משרה...' if language == 'he' else 'Select position...' }}</option>
+                                    {% for position in positions %}
+                                    <option value="{{ position.id }}">{{ position.title_he if language == 'he' else position.title_en }}</option>
+                                    {% endfor %}
+                                    <option value="other">{{ 'אחר / שליחת קורות חיים כללי' if language == 'he' else 'Other / General Application' }}</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3" id="other_position_div" style="display: none;">
+                                <label class="form-label">{{ 'ציין משרה אחרת' if language == 'he' else 'Specify Other Position' }}</label>
+                                <input type="text" class="form-control" name="position_other" id="position_other">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">{{ 'מכתב מקדים / הודעה *' if language == 'he' else 'Cover Letter / Message *' }}</label>
+                                <textarea class="form-control" name="message" rows="5" required placeholder="{{ 'ספר/י לנו מדוע את/ה מתאים/ה לתפקיד...' if language == 'he' else 'Tell us why you are a good fit for this role...' }}"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-cta w-100">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                {{ 'שלח מועמדות' if language == 'he' else 'Submit Application' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    // Pre-select position when clicking "Apply" button on a position card
+    function selectPosition(positionId, positionTitle) {
+        document.getElementById('position_select').value = positionId;
+        document.getElementById('position_id').value = positionId;
+    }
+    
+    // Show/hide "Other position" input based on selection
+    document.getElementById('position_select').addEventListener('change', function() {
+        const otherDiv = document.getElementById('other_position_div');
+        const otherInput = document.getElementById('position_other');
+        const positionIdInput = document.getElementById('position_id');
+        
+        if (this.value === 'other') {
+            otherDiv.style.display = 'block';
+            otherInput.required = true;
+            positionIdInput.value = '';
+        } else {
+            otherDiv.style.display = 'none';
+            otherInput.required = false;
+            positionIdInput.value = this.value;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends "admin/base.html" %}
+
+{% block title %}מפתחות API{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-key me-2"></i>מפתחות API</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createKeyModal">
+            <i class="fas fa-plus me-1"></i> יצירת מפתח חדש
+        </button>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        מפתחות API משמשים לחיבור אפליקציית ההדפסה של Android לשרת. כל מכשיר יכול לקבל מפתח ייחודי לזיהוי ומעקב.
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>שם</th>
+                            <th>מפתח</th>
+                            <th>סניף</th>
+                            <th>סטטוס</th>
+                            <th>נוצר</th>
+                            <th>שימוש אחרון</th>
+                            <th>הערות</th>
+                            <th style="width:50px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if keys %}
+                        {% for k in keys %}
+                        <tr class="{{ 'table-secondary text-muted' if not k.is_active else '' }}">
+                            <td class="fw-bold">{{ k.name }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <code class="api-key-display" id="key-{{ k.id }}" style="font-size: 0.8rem;">{{ k.key[:8] }}••••••••</code>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="toggleKey({{ k.id }}, '{{ k.key }}')" title="הצג/הסתר">
+                                        <i class="fas fa-eye" id="eye-{{ k.id }}"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="copyKey('{{ k.key }}')" title="העתק">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary py-0 px-1" onclick="showQR('{{ k.key }}', '{{ k.name }}')" title="הצג QR">
+                                        <i class="fas fa-qrcode"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                {% if k.branch %}
+                                <span class="badge bg-primary">{{ k.branch.name_he }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">כל הסניפים</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if k.is_active %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>פעיל</span>
+                                {% else %}
+                                <span class="badge bg-danger"><i class="fas fa-ban me-1"></i>מבוטל</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ k.created_at.strftime('%d/%m/%Y %H:%M') if k.created_at else '-' }}</small>
+                                {% if k.created_by %}
+                                <br><small class="text-muted">ע"י {{ k.created_by }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if k.last_used_at %}
+                                <small>{{ k.last_used_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                {% else %}
+                                <small class="text-muted">לא שימש עדיין</small>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ k.notes or '' }}</small></td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-dark" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        {% if k.is_active %}
+                                        <li>
+                                            <form method="POST" action="{{ url_for('admin.revoke_api_key', key_id=k.id) }}" onsubmit="return confirm('לבטל את המפתח \'{{ k.name }}\'?')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="dropdown-item text-warning">
+                                                    <i class="fas fa-ban me-2"></i>ביטול מפתח
+                                                </button>
+                                            </form>
+                                        </li>
+                                        {% else %}
+                                        <li>
+                                            <form method="POST" action="{{ url_for('admin.activate_api_key', key_id=k.id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="dropdown-item text-success">
+                                                    <i class="fas fa-check-circle me-2"></i>הפעלה מחדש
+                                                </button>
+                                            </form>
+                                        </li>
+                                        {% endif %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="POST" action="{{ url_for('admin.delete_api_key', key_id=k.id) }}" onsubmit="return confirm('למחוק לצמיתות את המפתח \'{{ k.name }}\'? פעולה זו בלתי הפיכה.')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="fas fa-trash me-2"></i>מחיקה
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="fas fa-key fa-3x mb-3 d-block"></i>
+                                <p>אין מפתחות API. צור מפתח חדש כדי לחבר מכשירים.</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createKeyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.create_api_key') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>יצירת מפתח API חדש</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">שם המפתח <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder='לדוגמה: "טאבלט קופה 1" או "מכשיר מטבח ראמה"' required>
+                        <div class="form-text">שם מזהה למפתח — לדוגמה שם המכשיר או המיקום</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">סניף</label>
+                        <select name="branch_id" class="form-select">
+                            <option value="">כל הסניפים</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}">{{ b.name_he }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">ניתן להגביל את המפתח לסניף מסוים</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">הערות</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="הערות חופשיות (אופציונלי)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-key me-1"></i>צור מפתח</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-qrcode me-2"></i>QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="fw-bold mb-2" id="qrKeyName"></p>
+                <div id="qrCanvas" style="display:inline-block;"></div>
+                <p class="text-muted mt-2" style="font-size:12px;">סרוק עם אפליקציית ההדפסה בטאבלט</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+function showQR(key, name) {
+    document.getElementById('qrKeyName').textContent = name;
+    var container = document.getElementById('qrCanvas');
+    container.innerHTML = '';
+    var qr = qrcode(0, 'M');
+    qr.addData(key);
+    qr.make();
+    container.innerHTML = qr.createSvgTag(6, 0);
+    var modal = new bootstrap.Modal(document.getElementById('qrModal'));
+    modal.show();
+}
+
+function toggleKey(id, fullKey) {
+    var el = document.getElementById('key-' + id);
+    var eye = document.getElementById('eye-' + id);
+    if (el.dataset.visible === 'true') {
+        el.textContent = fullKey.substring(0, 8) + '••••••••';
+        el.dataset.visible = 'false';
+        eye.className = 'fas fa-eye';
+    } else {
+        el.textContent = fullKey;
+        el.dataset.visible = 'true';
+        eye.className = 'fas fa-eye-slash';
+    }
+}
+
+function copyKey(key) {
+    navigator.clipboard.writeText(key).then(function() {
+        var toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 p-3';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = '<div class="alert alert-success alert-dismissible fade show py-2 px-3" role="alert"><i class="fas fa-check me-1"></i>המפתח הועתק!<button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button></div>';
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 2000);
+    });
+}
+</script>
+{% endblock %}

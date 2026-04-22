@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>הגדרות — לוח הזמנות</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#060d1a;--card:#112036;--card2:#172844;--border:#1e3a5f;--primary:#6366f1;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--text:#f0f6ff;--muted:#6b8cae;}
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+    .top-bar{background:#0d1b2e;border-bottom:2px solid var(--border);padding:10px 14px;
+             position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:10px;}
+    .back-btn{background:var(--card2);border:1px solid var(--border);color:var(--muted);
+              border-radius:10px;padding:8px 14px;font-size:.85rem;font-weight:700;
+              text-decoration:none;display:flex;align-items:center;gap:6px;
+              transition:all .15s;font-family:'Heebo',sans-serif;cursor:pointer;flex-shrink:0;}
+    .back-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .page-title{font-size:1rem;font-weight:900;}
+    .top-right{display:flex;gap:6px;margin-right:auto;}
+    .icon-btn{background:var(--card2);border:1px solid var(--border);color:var(--muted);
+              border-radius:9px;padding:7px 12px;font-size:.82rem;font-weight:700;
+              text-decoration:none;display:flex;align-items:center;gap:5px;cursor:pointer;
+              font-family:'Heebo',sans-serif;transition:all .15s;white-space:nowrap;}
+    .icon-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .icon-btn.red:hover{border-color:var(--danger);color:var(--danger);}
+
+    /* ── Tab bar ── */
+    .tab-bar{display:flex;gap:0;background:#0d1b2e;border-bottom:2px solid var(--border);
+             overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 8px;}
+    .tab-bar::-webkit-scrollbar{display:none;}
+    .tab-btn{background:none;border:none;color:var(--muted);font-family:'Heebo',sans-serif;
+             font-size:.82rem;font-weight:700;padding:12px 18px;cursor:pointer;white-space:nowrap;
+             border-bottom:3px solid transparent;transition:all .15s;position:relative;}
+    .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+    .tab-btn:hover{color:var(--text);}
+    .tab-btn i{margin-left:6px;font-size:.78rem;}
+    .tab-pane{display:none;padding:14px;padding-bottom:40px;}
+    .tab-pane.active{display:block;}
+
+    .content{display:flex;flex-direction:column;}
+
+    .section-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:14px;}
+    .sec-header{padding:12px 16px;border-bottom:1px solid var(--border);
+                display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:800;font-size:.9rem;}
+    .sec-header-left{display:flex;align-items:center;gap:8px;}
+    .sec-header i{color:var(--primary);}
+    .sec-body{padding:14px 16px;}
+
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(30,58,95,.6);}
+    .toggle-row:last-child{border-bottom:none;}
+    .toggle-label{font-size:.88rem;font-weight:700;}
+    .toggle-sub{font-size:.74rem;color:var(--muted);margin-top:2px;}
+    .big-toggle{position:relative;width:50px;height:26px;flex-shrink:0;}
+    .big-toggle input{opacity:0;width:0;height:0;}
+    .big-toggle .slider{position:absolute;inset:0;background:#1e3a5f;border-radius:26px;cursor:pointer;transition:.3s;}
+    .big-toggle .slider:before{content:'';position:absolute;height:18px;width:18px;left:4px;bottom:4px;background:#6b8cae;border-radius:50%;transition:.3s;}
+    .big-toggle input:checked+.slider{background:var(--primary);}
+    .big-toggle input:checked+.slider:before{transform:translateX(24px);background:#fff;}
+
+    .dark-input{background:var(--card2);border:1px solid var(--border);color:var(--text);
+                border-radius:10px;padding:8px 12px;font-family:'Heebo',sans-serif;font-size:.9rem;width:100%;}
+    .dark-input:focus{outline:none;border-color:var(--primary);}
+    .save-btn{background:var(--primary);color:#fff;border:none;border-radius:10px;
+              padding:9px 18px;font-size:.85rem;font-weight:700;font-family:'Heebo',sans-serif;
+              cursor:pointer;transition:opacity .15s;flex-shrink:0;}
+    .save-btn:hover{opacity:.85;}
+    .save-btn.success{background:var(--success);}
+
+    .wh-grid{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+    .wh-header{background:var(--card2);padding:7px 10px;font-size:.72rem;font-weight:800;color:var(--muted);border-bottom:1px solid var(--border);}
+    .wh-cell{padding:9px 10px;border-bottom:1px solid rgba(30,58,95,.5);display:flex;align-items:center;}
+    .wh-row:last-child .wh-cell{border-bottom:none;}
+    .wh-row{display:contents;}
+    .wh-row.is-today .wh-cell{background:rgba(99,102,241,.08);}
+    .wh-row.is-closed .wh-cell{opacity:.5;}
+    .day-name{font-size:.85rem;font-weight:800;white-space:nowrap;}
+    .today-badge{display:inline-block;background:var(--primary);color:#fff;border-radius:4px;
+                 padding:0px 5px;font-size:.62rem;font-weight:700;margin-right:5px;vertical-align:middle;}
+    .time-input{background:var(--card2);border:1px solid var(--border);color:var(--text);
+                border-radius:8px;padding:6px 8px;font-size:.85rem;font-family:'Heebo',sans-serif;
+                width:100%;text-align:center;font-variant-numeric:tabular-nums;appearance:none;-webkit-appearance:none;}
+    .time-input:focus{outline:none;border-color:var(--primary);}
+    .time-input:disabled{opacity:.35;cursor:not-allowed;}
+    .time-input option{background:var(--card2);color:var(--text);}
+    .wh-save-row{padding:12px 16px;border-top:1px solid var(--border);}
+
+    .toast-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);
+               background:#0d1b2e;border:1px solid var(--primary);color:var(--text);
+               padding:10px 20px;border-radius:12px;font-size:.88rem;z-index:999;
+               opacity:0;transition:all .25s;pointer-events:none;}
+    .toast-bar.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    .admin-link-card{background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.25);
+                     border-radius:14px;padding:14px 16px;}
+    .admin-link{color:#818cf8;text-decoration:none;font-size:.85rem;font-weight:700;
+                display:flex;align-items:center;gap:8px;}
+    .admin-link:hover{color:#a5b4fc;}
+
+    /* ── Dish management tab ── */
+    .dish-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+    @media(min-width:768px){.dish-grid{grid-template-columns:1fr 1fr;}}
+
+    .dish-card-m{background:var(--card);border:1px solid var(--border);border-radius:14px;
+                 overflow:hidden;transition:border-color .15s;position:relative;}
+    .dish-card-m:hover{border-color:rgba(99,102,241,.4);}
+    .dish-card-m.unavail{opacity:.55;}
+    .dish-top{display:flex;align-items:center;gap:12px;padding:14px 16px;}
+    .dish-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--card2);flex-shrink:0;}
+    .dish-thumb-placeholder{width:52px;height:52px;border-radius:10px;background:var(--card2);
+                            display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:1.1rem;flex-shrink:0;}
+    .dish-meta{flex:1;min-width:0;}
+    .dish-title{font-size:.92rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .dish-sub{font-size:.72rem;color:var(--muted);display:flex;gap:8px;align-items:center;margin-top:2px;}
+    .dish-price-tag{background:rgba(99,102,241,.15);color:#a5b4fc;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:800;}
+    .dish-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+    .dish-badge{font-size:.62rem;padding:2px 6px;border-radius:4px;font-weight:700;}
+    .dish-badge.extras{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.25);}
+    .dish-badge.variants{background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25);}
+    .dish-badge.time-badge{background:rgba(99,102,241,.12);color:#818cf8;border:1px solid rgba(99,102,241,.25);}
+
+    .dish-controls{display:flex;align-items:center;gap:8px;padding:0 16px 12px;flex-wrap:wrap;}
+    .day-chip{background:var(--card2);border:1.5px solid var(--border);color:var(--muted);
+              border-radius:6px;padding:3px 7px;font-size:.68rem;font-weight:800;
+              cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;min-width:24px;text-align:center;}
+    .day-chip.day-active{background:#1e1b4b;border-color:#6366f1;color:#a5b4fc;}
+    .day-chip:hover{border-color:#818cf8;}
+
+    .dish-actions{display:flex;gap:6px;padding:0 16px 14px;}
+    .action-pill{background:var(--card2);border:1px solid var(--border);color:var(--muted);
+                 border-radius:8px;padding:6px 12px;font-size:.72rem;font-weight:700;
+                 cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;
+                 display:flex;align-items:center;gap:5px;}
+    .action-pill:hover{border-color:var(--primary);color:var(--primary);}
+    .action-pill.primary{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#818cf8;}
+
+    /* ── Slide-up drawer ── */
+    .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;opacity:0;
+                    pointer-events:none;transition:opacity .25s;}
+    .drawer-overlay.open{opacity:1;pointer-events:auto;}
+    .drawer{position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--bg);
+            border-top-left-radius:22px;border-top-right-radius:22px;max-height:90vh;
+            overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.2,.8,.3,1);
+            border-top:2px solid var(--border);}
+    .drawer.open{transform:translateY(0);}
+    .drawer-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 0;}
+    .drawer-header{padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;
+                   border-bottom:1px solid var(--border);}
+    .drawer-title{font-size:1rem;font-weight:900;}
+    .drawer-close{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;}
+    .drawer-body{padding:16px 18px 30px;}
+
+    .field-group{margin-bottom:14px;}
+    .field-label{font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:5px;}
+    .field-row{display:flex;gap:8px;}
+    .field-row .dark-input{flex:1;}
+
+    .choice-row{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(30,58,95,.4);}
+    .choice-row:last-child{border-bottom:none;}
+    .choice-del{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;padding:4px;}
+
+    .group-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+    .group-head{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+    .group-head-title{font-size:.85rem;font-weight:800;display:flex;align-items:center;gap:6px;}
+    .group-head-meta{font-size:.68rem;color:var(--muted);}
+    .group-body{padding:0 14px 12px;display:none;}
+    .group-card.expanded .group-body{display:block;}
+    .group-card.expanded .group-head{border-bottom:1px solid var(--border);}
+
+    .add-btn{background:rgba(99,102,241,.08);border:1.5px dashed rgba(99,102,241,.4);color:#818cf8;
+             border-radius:10px;padding:10px;text-align:center;font-size:.82rem;font-weight:700;
+             cursor:pointer;font-family:'Heebo',sans-serif;transition:all .15s;width:100%;}
+    .add-btn:hover{background:rgba(99,102,241,.15);border-color:var(--primary);}
+
+    .price-row{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(30,58,95,.4);}
+    .price-row:last-child{border-bottom:none;}
+
+    /* ── Mobile (< 480px) ── */
+    @media(max-width:480px){
+      .top-bar{padding:8px 10px;}
+      .page-title{font-size:.88rem;}
+      .tab-btn{padding:10px 12px;font-size:.76rem;}
+      .tab-pane{padding:10px;}
+      .dish-top{padding:10px 12px;gap:8px;}
+      .dish-thumb,.dish-thumb-placeholder{width:44px;height:44px;}
+      .dish-title{font-size:.84rem;}
+      .dish-controls{padding:0 12px 8px;}
+      .dish-actions{padding:0 12px 10px;flex-wrap:wrap;}
+      .action-pill{font-size:.68rem;padding:5px 9px;}
+      .day-chip{padding:2px 5px;font-size:.64rem;min-width:22px;}
+      .drawer{max-height:92vh;}
+      .drawer-body{padding:12px 14px 24px;}
+      .field-row{flex-direction:column;gap:6px;}
+      .choice-row{flex-wrap:wrap;gap:6px;}
+      .choice-row .dark-input{min-width:0;}
+      .section-card{border-radius:12px;}
+      .sec-header{padding:10px 12px;font-size:.82rem;}
+      .sec-body{padding:10px 12px;}
+      .wh-grid{grid-template-columns:auto 1fr 1fr 40px;font-size:.78rem;}
+      .time-input{padding:5px 4px;font-size:.78rem;}
+    }
+
+    /* ── iPad / tablet (768–1024) ── */
+    @media(min-width:768px) and (max-width:1024px){
+      .content{max-width:800px;margin:0 auto;}
+      .dish-grid{grid-template-columns:1fr 1fr;}
+      .drawer{max-width:600px;margin:0 auto;left:50%;right:auto;transform:translateX(-50%) translateY(100%);}
+      .drawer.open{transform:translateX(-50%) translateY(0);}
+      .tab-btn{padding:12px 22px;font-size:.85rem;}
+    }
+
+    /* ── Desktop (> 1024) ── */
+    @media(min-width:1024px){
+      .content{max-width:900px;margin:0 auto;}
+      .dish-grid{grid-template-columns:1fr 1fr 1fr;}
+      .drawer{max-width:550px;margin:0 auto;left:50%;right:auto;transform:translateX(-50%) translateY(100%);}
+      .drawer.open{transform:translateX(-50%) translateY(0);}
+    }
+
+    /* ── iOS safe area ── */
+    @supports(padding-bottom: env(safe-area-inset-bottom)){
+      .tab-pane{padding-bottom:calc(40px + env(safe-area-inset-bottom));}
+      .drawer-body{padding-bottom:calc(30px + env(safe-area-inset-bottom));}
+    }
+
+    /* ── Touch friendliness ── */
+    .big-toggle,.day-chip,.action-pill,.save-btn,.add-btn,.tab-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;}
+    .big-toggle{min-height:26px;}
+    input[type="number"],input[type="text"],select,textarea{font-size:16px!important;}
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="{{ url_for('order_dashboard.orders') }}" class="back-btn"><i class="fas fa-arrow-right"></i> KDS</a>
+  <span class="page-title"><i class="fas fa-cog me-2" style="color:#6366f1;"></i>הגדרות</span>
+  <div class="top-right">
+    <a href="{{ url_for('order_dashboard.statistics') }}" class="icon-btn"><i class="fas fa-chart-bar"></i></a>
+    <a href="{{ url_for('order_dashboard.logout') }}" class="icon-btn red"><i class="fas fa-sign-out-alt"></i></a>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('general')"><i class="fas fa-sliders-h"></i>כללי</button>
+  <button class="tab-btn" onclick="switchTab('dishes')"><i class="fas fa-utensils"></i>מנות <span style="background:var(--primary);color:#fff;border-radius:10px;padding:0 6px;font-size:.65rem;margin-right:4px;">{{ order_dishes|length }}</span></button>
+  <button class="tab-btn" onclick="switchTab('hours')"><i class="fas fa-calendar-week"></i>שעות פעילות</button>
+  <button class="tab-btn" onclick="switchTab('messages')"><i class="fas fa-comment-dots"></i>הודעות</button>
+</div>
+
+<div class="content">
+
+  <!-- ═════════════════════  TAB: GENERAL  ═════════════════════ -->
+  <div class="tab-pane active" id="tab-general">
+
+    <div class="section-card">
+      <div class="sec-header">
+        <div class="sec-header-left"><i class="fas fa-power-off"></i> שירותים פעילים</div>
+      </div>
+      <div class="sec-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">הזמנות אונליין</div>
+            <div class="toggle-sub">כיבוי יסתיר את כפתור ההזמנה מהאתר</div>
+          </div>
+          <label class="big-toggle">
+            <input type="checkbox" id="tog-ordering" {% if settings.enable_online_ordering %}checked{% endif %}
+              onchange="toggle('toggle_ordering','tog-ordering')">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label"><i class="fas fa-motorcycle me-2" style="color:#818cf8;font-size:.85rem;"></i>משלוח</div>
+            <div class="toggle-sub">אפשר ללקוחות לבחור משלוח</div>
+          </div>
+          <label class="big-toggle">
+            <input type="checkbox" id="tog-delivery" {% if settings.enable_delivery %}checked{% endif %}
+              onchange="toggle('toggle_delivery','tog-delivery')">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label"><i class="fas fa-shopping-bag me-2" style="color:#4ade80;font-size:.85rem;"></i>איסוף עצמי</div>
+            <div class="toggle-sub">אפשר ללקוחות לאסוף מהמסעדה</div>
+          </div>
+          <label class="big-toggle">
+            <input type="checkbox" id="tog-pickup" {% if settings.enable_pickup %}checked{% endif %}
+              onchange="toggle('toggle_pickup','tog-pickup')">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="sec-header">
+        <div class="sec-header-left"><i class="fas fa-clock"></i> זמן אספקה משוער</div>
+      </div>
+      <div class="sec-body">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" class="dark-input" id="delivery-time" style="flex:1;"
+            value="{{ settings.estimated_delivery_time or '45-60' }}" placeholder="לדוגמה: 45-60">
+          <span style="font-size:.82rem;color:var(--muted);flex-shrink:0;">דקות</span>
+          <button class="save-btn" id="save-time-btn" onclick="saveDeliveryTime()">שמור</button>
+        </div>
+        <div style="font-size:.74rem;color:#4b7099;margin-top:6px;">יוצג ללקוחות בעמוד ההזמנה</div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="sec-body">
+        <div class="toggle-row" style="border-bottom:none;">
+          <div>
+            <div class="toggle-label"><i class="fas fa-link me-2" style="color:#818cf8;font-size:.85rem;"></i>שלח קישור מעקב הזמנה</div>
+            <div class="toggle-sub">כאשר פעיל, הלקוח מקבל קישור מעקב ב-SMS</div>
+          </div>
+          <label class="big-toggle">
+            <input type="checkbox" id="tog-tracking"
+              {% if not settings or settings.send_order_tracking_link is none or settings.send_order_tracking_link %}checked{% endif %}
+              onchange="toggleTracking()">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-link-card">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:10px;font-weight:700;">הגדרות נוספות — פאנל ניהול</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <a href="/admin/ordering-settings" target="_blank" class="admin-link">
+          <i class="fas fa-shopping-cart"></i> הגדרות הזמנות אונליין
+          <i class="fas fa-external-link-alt ms-auto" style="font-size:.65rem;opacity:.5;"></i>
+        </a>
+        <a href="/admin/working-hours" target="_blank" class="admin-link">
+          <i class="fas fa-clock"></i> ניהול שעות פעילות מלא
+          <i class="fas fa-external-link-alt ms-auto" style="font-size:.65rem;opacity:.5;"></i>
+        </a>
+        <a href="/admin/delivery-zones" target="_blank" class="admin-link">
+          <i class="fas fa-map-marker-alt"></i> אזורי משלוח ומחירים
+          <i class="fas fa-external-link-alt ms-auto" style="font-size:.65rem;opacity:.5;"></i>
+        </a>
+        <a href="/admin/ordering-settings" target="_blank" class="admin-link">
+          <i class="fas fa-credit-card"></i> הגדרות תשלום (HYP)
+          <i class="fas fa-external-link-alt ms-auto" style="font-size:.65rem;opacity:.5;"></i>
+        </a>
+        <a href="/admin/notification-settings" target="_blank" class="admin-link">
+          <i class="fas fa-bell"></i> הגדרות התראות
+          <i class="fas fa-external-link-alt ms-auto" style="font-size:.65rem;opacity:.5;"></i>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════════  TAB: DISHES  ═════════════════════ -->
+  <div class="tab-pane" id="tab-dishes">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:.82rem;color:var(--muted);font-weight:700;">
+        <i class="fas fa-utensils me-1"></i> {{ order_dishes|length }} מנות בעמוד הזמנות
+      </div>
+      <input type="text" class="dark-input" id="dish-search" placeholder="חפש מנה..."
+        oninput="filterDishes(this.value)" style="width:160px;padding:6px 10px;font-size:.78rem;">
+    </div>
+
+    <div class="dish-grid" id="dish-grid">
+      {% for dish in order_dishes %}
+      <div class="dish-card-m{% if not dish.is_available %} unavail{% endif %}" data-dish-id="{{ dish.id }}" data-name="{{ dish.name_he }}">
+        <div class="dish-top">
+          {% if dish.image_path %}
+          <img src="{{ dish.image_path }}" class="dish-thumb" alt="">
+          {% else %}
+          <div class="dish-thumb-placeholder"><i class="fas fa-utensils"></i></div>
+          {% endif %}
+          <div class="dish-meta">
+            <div class="dish-title">{{ dish.name_he }}</div>
+            <div class="dish-sub">
+              <span class="dish-price-tag">₪{{ '%.0f'|format(dish.base_price or 0) }}</span>
+              {% if dish.name_en %}<span style="opacity:.6;">{{ dish.name_en }}</span>{% endif %}
+            </div>
+            <div class="dish-badges">
+              {% if dish.option_groups|length > 0 %}
+              <span class="dish-badge extras"><i class="fas fa-plus-circle me-1"></i>{{ dish.option_groups|length }} קבוצות תוספות</span>
+              {% endif %}
+              {% if dish.price_options|length > 0 %}
+              <span class="dish-badge variants"><i class="fas fa-tags me-1"></i>{{ dish.price_options|length }} גדלים/מחירים</span>
+              {% endif %}
+              {% if dish.available_from_time or dish.available_to_time %}
+              <span class="dish-badge time-badge" id="time-badge-{{ dish.id }}"><i class="fas fa-clock me-1"></i>{% if dish.available_from_time and dish.available_to_time %}{{ dish.available_from_time }}–{{ dish.available_to_time }}{% elif dish.available_from_time %}מ-{{ dish.available_from_time }}{% elif dish.available_to_time %}עד {{ dish.available_to_time }}{% endif %}</span>
+              {% endif %}
+            </div>
+          </div>
+          <label class="big-toggle" style="width:44px;height:24px;flex-shrink:0;">
+            <input type="checkbox" {% if dish.is_available %}checked{% endif %}
+              onchange="toggleDishAvail({{ dish.id }}, this)">
+            <span class="slider" style="border-radius:24px;"></span>
+          </label>
+        </div>
+
+        <div class="dish-controls">
+          {% set day_labels = ['א','ב','ג','ד','ה','ו','ש'] %}
+          {% set days = dish.available_days or '1111111' %}
+          {% for i in range(7) %}
+          <button class="day-chip{% if days[i] == '1' %} day-active{% endif %}"
+            data-dish="{{ dish.id }}" data-day="{{ i }}"
+            onclick="toggleDay(this, {{ dish.id }})">{{ day_labels[i] }}</button>
+          {% endfor %}
+        </div>
+
+        <div class="dish-actions">
+          <button class="action-pill primary" onclick="openDishDrawer({{ dish.id }}, 'extras')">
+            <i class="fas fa-plus-circle"></i> תוספות
+          </button>
+          <button class="action-pill" onclick="openDishDrawer({{ dish.id }}, 'prices')">
+            <i class="fas fa-shekel-sign"></i> מחירים
+          </button>
+          <button class="action-pill" onclick="openDishDrawer({{ dish.id }}, 'edit')">
+            <i class="fas fa-edit"></i> עריכה
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not order_dishes %}
+      <div style="grid-column:1/-1;padding:40px 20px;text-align:center;color:var(--muted);">
+        <i class="fas fa-utensils" style="font-size:2rem;margin-bottom:10px;display:block;opacity:.3;"></i>
+        <div style="font-size:.9rem;font-weight:700;">אין מנות מסומנות להזמנות</div>
+        <div style="font-size:.78rem;margin-top:4px;">הפעילו "הצג בהזמנות" בעריכת מנה בפאנל הניהול</div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- ═════════════════════  TAB: WORKING HOURS  ═════════════════════ -->
+  <div class="tab-pane" id="tab-hours">
+
+    <div class="section-card">
+      <div class="sec-header">
+        <div class="sec-header-left"><i class="fas fa-calendar-week"></i> שעות פעילות</div>
+        {% if today_hours and not today_hours.is_closed %}
+        <span style="background:#052e16;border:1px solid #14532d;color:#4ade80;border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:700;">
+          <i class="fas fa-circle me-1" style="font-size:.55rem;"></i>פתוח {{ today_hours.open_time }}–{{ today_hours.close_time }}
+        </span>
+        {% elif today_hours and today_hours.is_closed %}
+        <span style="background:#450a0a;border:1px solid #7f1d1d;color:#f87171;border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:700;">
+          סגור היום
+        </span>
+        {% endif %}
+      </div>
+      <div class="sec-body" style="padding:0;">
+        <div class="wh-grid" id="wh-grid">
+          <div class="wh-header">יום</div>
+          <div class="wh-header">פתיחה</div>
+          <div class="wh-header">סגירה</div>
+          <div class="wh-header" style="text-align:center;">סגור</div>
+          {% for day in days_list %}
+          <div class="wh-cell {% if day.is_today %}is-today{% endif %}" style="{% if day.is_closed %}opacity:.55{% endif %}">
+            {% if day.is_today %}<span class="today-badge">היום</span>{% endif %}
+            <span class="day-name">{{ day.name }}</span>
+          </div>
+          <div class="wh-cell {% if day.is_today %}is-today{% endif %}">
+            <select class="time-input time-open" id="open_{{ day.day }}" {% if day.is_closed %}disabled{% endif %}>
+              {% for slot in time_slots %}
+              <option value="{{ slot }}" {% if slot == day.open_time %}selected{% endif %}>{{ slot }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="wh-cell {% if day.is_today %}is-today{% endif %}">
+            <select class="time-input time-close" id="close_{{ day.day }}" {% if day.is_closed %}disabled{% endif %}>
+              {% for slot in time_slots %}
+              <option value="{{ slot }}" {% if slot == day.close_time %}selected{% endif %}>{{ slot }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="wh-cell {% if day.is_today %}is-today{% endif %}" style="justify-content:center;">
+            <label class="big-toggle" style="width:40px;height:22px;">
+              <input type="checkbox" id="closed_{{ day.day }}" {% if day.is_closed %}checked{% endif %}
+                onchange="toggleClosed({{ day.day }}, this.checked)">
+              <span class="slider" style="border-radius:22px;"></span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="wh-save-row">
+        <button class="save-btn" id="save-wh-btn" onclick="saveWorkingHours()" style="width:100%;padding:11px;">
+          <i class="fas fa-save me-2"></i>שמור שעות פעילות
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════════  TAB: MESSAGES  ═════════════════════ -->
+  <div class="tab-pane" id="tab-messages">
+
+    <div class="section-card">
+      <div class="sec-header">
+        <div class="sec-header-left"><i class="fas fa-comment-dots"></i> הודעות שליטה בהזמנות</div>
+      </div>
+      <div class="sec-body" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label"><i class="fas fa-clock me-2" style="color:#818cf8;font-size:.85rem;"></i>אכוף שעות פעילות</div>
+            <div class="toggle-sub">חסום הזמנות מחוץ לשעות הפעילות</div>
+          </div>
+          <label class="big-toggle">
+            <input type="checkbox" id="tog-enforce-hours"
+              {% if settings and settings.enforce_ordering_hours %}checked{% endif %}
+              onchange="toggle('toggle_enforce_hours','tog-enforce-hours')">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div>
+          <div class="field-label"><i class="fas fa-pause-circle me-1" style="color:#f59e0b;"></i>הודעה כשהזמנות מוקפאות</div>
+          <textarea id="msg-paused" class="dark-input" rows="2"
+            style="resize:vertical;font-size:.83rem;line-height:1.5;">{{ (settings.ordering_paused_message if settings and settings.ordering_paused_message else 'מערכת ההזמנות מושהית זמנית. נשמח לקבל את הזמנתך בקרוב!') }}</textarea>
+        </div>
+        <div>
+          <div class="field-label"><i class="fas fa-store-slash me-1" style="color:#ef4444;"></i>הודעה כשהזמנות כבויות לחלוטין</div>
+          <textarea id="msg-closed" class="dark-input" rows="2"
+            style="resize:vertical;font-size:.83rem;line-height:1.5;">{{ (settings.ordering_closed_message if settings and settings.ordering_closed_message else 'מערכת ההזמנות אינה פעילה כרגע. אנא צרו קשר טלפוני.') }}</textarea>
+        </div>
+        <div>
+          <div class="field-label"><i class="fas fa-clock me-1" style="color:#6366f1;"></i>הודעה מחוץ לשעות הפעילות</div>
+          <textarea id="msg-outside" class="dark-input" rows="2"
+            style="resize:vertical;font-size:.83rem;line-height:1.5;">{{ (settings.ordering_outside_hours_message if settings and settings.ordering_outside_hours_message else 'המסעדה סגורה כרגע. ניתן להזמין בשעות הפעילות.') }}</textarea>
+        </div>
+        <button class="save-btn" id="save-msgs-btn" onclick="saveMessages()" style="width:100%;padding:10px;">
+          <i class="fas fa-save me-2"></i>שמור הודעות
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ═══ Drawer overlay ═══ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawer-title">עריכת מנה</span>
+    <button class="drawer-close" onclick="closeDrawer()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<div class="toast-bar" id="toast"></div>
+
+<script>
+const URLS = {
+  settings: '{{ url_for("order_dashboard.settings_page") }}',
+  toggleAvail: '{{ url_for("order_dashboard.toggle_dish_availability") }}',
+  updateDays: '{{ url_for("order_dashboard.update_dish_days") }}',
+  updateTimes: '{{ url_for("order_dashboard.update_dish_times") }}',
+  updatePrice: '{{ url_for("order_dashboard.update_dish_price") }}',
+  toggleTracking: '{{ url_for("order_dashboard.toggle_tracking_link") }}',
+  dishDetail: '{{ url_for("order_dashboard.dish_detail", item_id=0) }}'.replace('/0/', '/{id}/'),
+  saveOptionGroup: '{{ url_for("order_dashboard.save_option_group") }}',
+  deleteOptionGroup: '{{ url_for("order_dashboard.delete_option_group", group_id=0) }}'.replace('/0/', '/{id}/'),
+  savePriceVariant: '{{ url_for("order_dashboard.save_price_variant") }}',
+  deletePriceVariant: '{{ url_for("order_dashboard.delete_price_variant", variant_id=0) }}'.replace('/0/', '/{id}/')
+};
+
+function showToast(msg, ok) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = ok === false ? '#ef4444' : '#6366f1';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ── Tabs ── */
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabNames = ['general','dishes','hours','messages'];
+  const idx = tabNames.indexOf(name);
+  document.querySelectorAll('.tab-btn')[idx]?.classList.add('active');
+}
+
+/* ── General toggles ── */
+function toggle(action, checkboxId) {
+  const fd = new FormData();
+  fd.append('action', action);
+  fetch(URLS.settings, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => { if (d.success) showToast(d.enabled ? '✓ הופעל' : '✓ כובה'); });
+}
+
+function saveDeliveryTime() {
+  const btn = document.getElementById('save-time-btn');
+  const fd = new FormData();
+  fd.append('action', 'update_delivery_time');
+  fd.append('estimated_delivery_time', document.getElementById('delivery-time').value.trim());
+  fetch(URLS.settings, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => { if (d.success) { btn.textContent = '✓ נשמר'; btn.classList.add('success'); setTimeout(() => { btn.textContent = 'שמור'; btn.classList.remove('success'); }, 2000); } });
+}
+
+function toggleTracking() {
+  const fd = new FormData();
+  fetch(URLS.toggleTracking, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => { if (d.success) showToast(d.enabled ? '✓ קישור מעקב פעיל' : '✓ קישור מעקב כבוי'); });
+}
+
+/* ── Messages ── */
+function saveMessages() {
+  const btn = document.getElementById('save-msgs-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>שומר...';
+  const fd = new FormData();
+  fd.append('action', 'save_messages');
+  fd.append('ordering_paused_message', document.getElementById('msg-paused').value.trim());
+  fd.append('ordering_closed_message', document.getElementById('msg-closed').value.trim());
+  fd.append('ordering_outside_hours_message', document.getElementById('msg-outside').value.trim());
+  const eh = document.getElementById('tog-enforce-hours');
+  fd.append('enforce_ordering_hours', eh && eh.checked ? '1' : '0');
+  fetch(URLS.settings, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      if (d.success) { btn.innerHTML = '<i class="fas fa-check me-2"></i>נשמר!'; btn.style.background = 'var(--success)'; setTimeout(() => { btn.innerHTML = '<i class="fas fa-save me-2"></i>שמור הודעות'; btn.style.background = ''; }, 2000); }
+      else { btn.innerHTML = '<i class="fas fa-save me-2"></i>שמור הודעות'; showToast(d.error || 'שגיאה', false); }
+    });
+}
+
+/* ── Working Hours ── */
+function toggleClosed(day, isClosed) {
+  const o = document.getElementById('open_' + day);
+  const c = document.getElementById('close_' + day);
+  if (o) o.disabled = isClosed;
+  if (c) c.disabled = isClosed;
+}
+function saveWorkingHours() {
+  const btn = document.getElementById('save-wh-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>שומר...';
+  const fd = new FormData();
+  fd.append('action', 'save_working_hours');
+  for (let d = 0; d < 7; d++) {
+    fd.append('closed_' + d, document.getElementById('closed_' + d)?.checked ? '1' : '0');
+    fd.append('open_' + d, document.getElementById('open_' + d)?.value || '09:00');
+    fd.append('close_' + d, document.getElementById('close_' + d)?.value || '22:00');
+  }
+  fetch(URLS.settings, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      if (d.success) { btn.innerHTML = '<i class="fas fa-check me-2"></i>נשמר!'; btn.classList.add('success'); showToast('✓ שעות הפעילות עודכנו'); setTimeout(() => { btn.innerHTML = '<i class="fas fa-save me-2"></i>שמור שעות פעילות'; btn.classList.remove('success'); }, 2500); }
+      else { btn.innerHTML = '<i class="fas fa-save me-2"></i>שמור שעות פעילות'; showToast(d.message || 'שגיאה בשמירה', false); }
+    });
+}
+
+/* ── Dish controls ── */
+function toggleDishAvail(dishId, cb) {
+  const fd = new FormData();
+  fd.append('item_id', dishId);
+  fetch(URLS.toggleAvail, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        const card = cb.closest('.dish-card-m');
+        card.classList.toggle('unavail', !d.is_available);
+        showToast(d.is_available ? '✓ מנה זמינה' : '✓ מנה לא זמינה');
+      } else { cb.checked = !cb.checked; }
+    });
+}
+
+function toggleDay(btn, dishId) {
+  btn.classList.toggle('day-active');
+  const card = btn.closest('.dish-card-m');
+  const chips = card.querySelectorAll('.day-chip');
+  let days = '';
+  chips.forEach(c => { days += c.classList.contains('day-active') ? '1' : '0'; });
+  const fd = new FormData();
+  fd.append('item_id', dishId);
+  fd.append('available_days', days);
+  fetch(URLS.updateDays, { method:'POST', body:fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) showToast('✓ ימי הגשה עודכנו');
+      else { btn.classList.toggle('day-active'); showToast('שגיאה', false); }
+    });
+}
+
+function filterDishes(q) {
+  const cards = document.querySelectorAll('.dish-card-m');
+  const term = q.trim().toLowerCase();
+  cards.forEach(c => {
+    c.style.display = (!term || c.dataset.name.toLowerCase().includes(term)) ? '' : 'none';
+  });
+}
+
+/* ── Drawer ── */
+let currentDishId = null;
+let currentDishData = null;
+
+function openDrawer() {
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+}
+
+function openDishDrawer(dishId, section) {
+  currentDishId = dishId;
+  const body = document.getElementById('drawer-body');
+  body.innerHTML = '<div style="text-align:center;padding:30px;"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--primary);"></i></div>';
+  openDrawer();
+
+  fetch(URLS.dishDetail.replace('{id}', dishId))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) { body.innerHTML = '<div style="color:var(--danger);">שגיאה בטעינת נתונים</div>'; return; }
+      currentDishData = data;
+      document.getElementById('drawer-title').textContent = data.item.name_he;
+      if (section === 'extras') renderExtrasDrawer(data);
+      else if (section === 'prices') renderPricesDrawer(data);
+      else if (section === 'edit') renderEditDrawer(data);
+    });
+}
+
+/* ── Extras (option groups) drawer ── */
+function renderExtrasDrawer(data) {
+  const body = document.getElementById('drawer-body');
+  let html = '';
+
+  if (data.option_groups.length === 0) {
+    html += '<div style="text-align:center;padding:20px;color:var(--muted);"><i class="fas fa-plus-circle" style="font-size:1.5rem;display:block;margin-bottom:8px;opacity:.3;"></i>אין קבוצות תוספות עדיין</div>';
+  }
+
+  data.option_groups.forEach((g, gi) => {
+    const choicesHtml = g.choices.map((c, ci) => `
+      <div class="choice-row" data-choice-idx="${ci}">
+        <input class="dark-input" style="flex:2;padding:6px 8px;font-size:.8rem;" value="${esc(c.name_he)}" data-field="name_he" placeholder="שם בעברית">
+        <input class="dark-input" style="flex:1;padding:6px 8px;font-size:.8rem;direction:ltr;text-align:center;" value="${c.price_modifier}" data-field="price_modifier" placeholder="₪" type="number" step="1">
+        <label class="big-toggle" style="width:36px;height:20px;flex-shrink:0;" title="זמין">
+          <input type="checkbox" ${c.is_available ? 'checked' : ''} data-field="is_available">
+          <span class="slider" style="border-radius:20px;"></span>
+        </label>
+        <button class="choice-del" onclick="this.closest('.choice-row').remove()" title="מחק"><i class="fas fa-trash-alt"></i></button>
+      </div>
+    `).join('');
+
+    html += `
+      <div class="group-card${gi === 0 ? ' expanded' : ''}" data-group-id="${g.id}" data-group-idx="${gi}">
+        <div class="group-head" onclick="this.closest('.group-card').classList.toggle('expanded')">
+          <div class="group-head-title">
+            <i class="fas fa-chevron-down" style="font-size:.65rem;transition:transform .15s;"></i>
+            ${esc(g.name_he)}
+            ${g.is_required ? '<span style="color:#f59e0b;font-size:.65rem;">חובה</span>' : ''}
+          </div>
+          <div class="group-head-meta">${g.choices.length} אפשרויות · ${g.selection_type === 'single' ? 'בחירה אחת' : 'רב-בחירה'}</div>
+        </div>
+        <div class="group-body">
+          <div class="field-row" style="margin-bottom:8px;">
+            <div style="flex:1;">
+              <div class="field-label">שם קבוצה (עברית)</div>
+              <input class="dark-input grp-name-he" value="${esc(g.name_he)}" style="padding:6px 8px;font-size:.82rem;">
+            </div>
+            <div style="flex:1;">
+              <div class="field-label">שם (אנגלית)</div>
+              <input class="dark-input grp-name-en" value="${esc(g.name_en)}" style="padding:6px 8px;font-size:.82rem;">
+            </div>
+          </div>
+          <div class="field-row" style="margin-bottom:8px;gap:6px;">
+            <div>
+              <div class="field-label">סוג בחירה</div>
+              <select class="dark-input grp-sel-type" style="padding:6px 8px;font-size:.82rem;">
+                <option value="single" ${g.selection_type === 'single' ? 'selected' : ''}>בחירה אחת</option>
+                <option value="multiple" ${g.selection_type === 'multiple' ? 'selected' : ''}>רב-בחירה</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label">חובה?</div>
+              <select class="dark-input grp-required" style="padding:6px 8px;font-size:.82rem;">
+                <option value="0" ${!g.is_required ? 'selected' : ''}>לא</option>
+                <option value="1" ${g.is_required ? 'selected' : ''}>כן</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-label" style="margin-top:8px;">אפשרויות</div>
+          <div class="choices-list">${choicesHtml}</div>
+          <button class="add-btn" style="margin-top:8px;padding:7px;font-size:.75rem;" onclick="addChoiceRow(this)">
+            <i class="fas fa-plus me-1"></i> הוסף אפשרות
+          </button>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="save-btn" style="flex:1;padding:8px;font-size:.8rem;" onclick="saveGroup(this, ${g.id})">
+              <i class="fas fa-save me-1"></i> שמור קבוצה
+            </button>
+            <button class="save-btn" style="background:var(--danger);padding:8px 14px;font-size:.8rem;" onclick="deleteGroup(${g.id})">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+    <button class="add-btn" style="margin-top:6px;" onclick="addNewGroup()">
+      <i class="fas fa-plus-circle me-1"></i> הוסף קבוצת תוספות חדשה
+    </button>
+  `;
+
+  body.innerHTML = html;
+}
+
+function addChoiceRow(btn) {
+  const list = btn.previousElementSibling;
+  const idx = list.children.length;
+  const row = document.createElement('div');
+  row.className = 'choice-row';
+  row.dataset.choiceIdx = idx;
+  row.innerHTML = `
+    <input class="dark-input" style="flex:2;padding:6px 8px;font-size:.8rem;" data-field="name_he" placeholder="שם בעברית">
+    <input class="dark-input" style="flex:1;padding:6px 8px;font-size:.8rem;direction:ltr;text-align:center;" data-field="price_modifier" placeholder="₪" type="number" step="1" value="0">
+    <label class="big-toggle" style="width:36px;height:20px;flex-shrink:0;" title="זמין">
+      <input type="checkbox" checked data-field="is_available">
+      <span class="slider" style="border-radius:20px;"></span>
+    </label>
+    <button class="choice-del" onclick="this.closest('.choice-row').remove()" title="מחק"><i class="fas fa-trash-alt"></i></button>
+  `;
+  list.appendChild(row);
+}
+
+function addNewGroup() {
+  const body = document.getElementById('drawer-body');
+  const addBtn = body.querySelector('.add-btn:last-child');
+  const card = document.createElement('div');
+  card.className = 'group-card expanded';
+  card.dataset.groupId = 'new';
+  card.innerHTML = `
+    <div class="group-head" onclick="this.closest('.group-card').classList.toggle('expanded')">
+      <div class="group-head-title"><i class="fas fa-chevron-down" style="font-size:.65rem;"></i> קבוצה חדשה</div>
+      <div class="group-head-meta">0 אפשרויות</div>
+    </div>
+    <div class="group-body">
+      <div class="field-row" style="margin-bottom:8px;">
+        <div style="flex:1;">
+          <div class="field-label">שם קבוצה (עברית)</div>
+          <input class="dark-input grp-name-he" value="" style="padding:6px 8px;font-size:.82rem;" placeholder="לדוגמה: גודל">
+        </div>
+        <div style="flex:1;">
+          <div class="field-label">שם (אנגלית)</div>
+          <input class="dark-input grp-name-en" value="" style="padding:6px 8px;font-size:.82rem;" placeholder="e.g. Size">
+        </div>
+      </div>
+      <div class="field-row" style="margin-bottom:8px;gap:6px;">
+        <div>
+          <div class="field-label">סוג בחירה</div>
+          <select class="dark-input grp-sel-type" style="padding:6px 8px;font-size:.82rem;">
+            <option value="single">בחירה אחת</option>
+            <option value="multiple">רב-בחירה</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">חובה?</div>
+          <select class="dark-input grp-required" style="padding:6px 8px;font-size:.82rem;">
+            <option value="0">לא</option>
+            <option value="1">כן</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-label" style="margin-top:8px;">אפשרויות</div>
+      <div class="choices-list"></div>
+      <button class="add-btn" style="margin-top:8px;padding:7px;font-size:.75rem;" onclick="addChoiceRow(this)">
+        <i class="fas fa-plus me-1"></i> הוסף אפשרות
+      </button>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="save-btn" style="flex:1;padding:8px;font-size:.8rem;" onclick="saveGroup(this, null)">
+          <i class="fas fa-save me-1"></i> שמור קבוצה
+        </button>
+      </div>
+    </div>
+  `;
+  addBtn.before(card);
+}
+
+function saveGroup(btn, groupId) {
+  const card = btn.closest('.group-card');
+  const body = card.querySelector('.group-body');
+  const choices = [];
+  body.querySelectorAll('.choice-row').forEach((row, i) => {
+    choices.push({
+      id: currentDishData?.option_groups?.find(g => g.id === groupId)?.choices?.[i]?.id || null,
+      name_he: row.querySelector('[data-field="name_he"]').value,
+      name_en: row.querySelector('[data-field="name_he"]').value,
+      price_modifier: parseFloat(row.querySelector('[data-field="price_modifier"]').value) || 0,
+      is_available: row.querySelector('[data-field="is_available"]').checked,
+      display_order: i
+    });
+  });
+
+  const payload = {
+    id: groupId,
+    menu_item_id: currentDishId,
+    name_he: body.querySelector('.grp-name-he').value,
+    name_en: body.querySelector('.grp-name-en').value,
+    selection_type: body.querySelector('.grp-sel-type').value,
+    is_required: body.querySelector('.grp-required').value === '1',
+    choices: choices
+  };
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  fetch(URLS.saveOptionGroup, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      if (d.success) {
+        showToast('✓ קבוצת תוספות נשמרה');
+        openDishDrawer(currentDishId, 'extras');
+        refreshDishCard(currentDishId);
+      } else {
+        btn.innerHTML = '<i class="fas fa-save me-1"></i> שמור קבוצה';
+        showToast('שגיאה בשמירה', false);
+      }
+    });
+}
+
+function deleteGroup(groupId) {
+  if (!confirm('למחוק את קבוצת התוספות?')) return;
+  fetch(URLS.deleteOptionGroup.replace('{id}', groupId), { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        showToast('✓ קבוצה נמחקה');
+        openDishDrawer(currentDishId, 'extras');
+        refreshDishCard(currentDishId);
+      }
+    });
+}
+
+/* ── Prices drawer ── */
+function renderPricesDrawer(data) {
+  const body = document.getElementById('drawer-body');
+  let html = '';
+
+  html += `
+    <div class="field-group">
+      <div class="field-label">מחיר בסיס</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" class="dark-input" id="base-price-input" value="${data.item.base_price}" style="flex:1;padding:8px 10px;font-size:.9rem;direction:ltr;text-align:center;" step="1">
+        <span style="color:var(--muted);font-size:.85rem;">₪</span>
+        <button class="save-btn" style="padding:8px 16px;" onclick="saveBasePrice()">שמור</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
+    <div class="field-label" style="margin-bottom:8px;">גדלים / וריאציות מחיר</div>
+  `;
+
+  if (data.prices.length === 0) {
+    html += '<div style="text-align:center;padding:14px;color:var(--muted);font-size:.82rem;">אין גדלים נוספים</div>';
+  }
+
+  data.prices.forEach((p, i) => {
+    html += `
+      <div class="price-row" data-price-id="${p.id}">
+        <input class="dark-input" style="flex:2;padding:6px 8px;font-size:.8rem;" value="${esc(p.size_name_he)}" data-field="size_name_he" placeholder="שם (עברית)">
+        <input class="dark-input" style="flex:1;padding:6px 8px;font-size:.8rem;direction:ltr;text-align:center;" value="${p.price}" data-field="price" placeholder="₪" type="number" step="1">
+        <button class="save-btn" style="padding:5px 10px;font-size:.72rem;" onclick="savePriceVariant(this, ${p.id})"><i class="fas fa-save"></i></button>
+        <button class="choice-del" onclick="deletePriceVariant(${p.id})"><i class="fas fa-trash-alt"></i></button>
+      </div>
+    `;
+  });
+
+  html += `
+    <button class="add-btn" style="margin-top:10px;" onclick="addPriceVariantRow()">
+      <i class="fas fa-plus me-1"></i> הוסף גודל / וריאציה
+    </button>
+  `;
+
+  body.innerHTML = html;
+}
+
+function saveBasePrice() {
+  const price = parseFloat(document.getElementById('base-price-input').value) || 0;
+  const fd = new FormData();
+  fd.append('item_id', currentDishId);
+  fd.append('price', price);
+  fetch(URLS.updatePrice, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { showToast('✓ מחיר עודכן'); refreshDishCard(currentDishId); }
+      else showToast('שגיאה', false);
+    });
+}
+
+function addPriceVariantRow() {
+  const body = document.getElementById('drawer-body');
+  const addBtn = body.querySelector('.add-btn:last-child');
+  const row = document.createElement('div');
+  row.className = 'price-row';
+  row.dataset.priceId = 'new';
+  row.innerHTML = `
+    <input class="dark-input" style="flex:2;padding:6px 8px;font-size:.8rem;" data-field="size_name_he" placeholder="שם (עברית)">
+    <input class="dark-input" style="flex:1;padding:6px 8px;font-size:.8rem;direction:ltr;text-align:center;" data-field="price" placeholder="₪" type="number" step="1" value="0">
+    <button class="save-btn" style="padding:5px 10px;font-size:.72rem;" onclick="savePriceVariant(this, null)"><i class="fas fa-save"></i></button>
+    <button class="choice-del" onclick="this.closest('.price-row').remove()"><i class="fas fa-trash-alt"></i></button>
+  `;
+  addBtn.before(row);
+}
+
+function savePriceVariant(btn, variantId) {
+  const row = btn.closest('.price-row');
+  const payload = {
+    id: variantId,
+    menu_item_id: currentDishId,
+    size_name_he: row.querySelector('[data-field="size_name_he"]').value,
+    size_name_en: row.querySelector('[data-field="size_name_he"]').value,
+    price: parseFloat(row.querySelector('[data-field="price"]').value) || 0
+  };
+  btn.disabled = true;
+  fetch(URLS.savePriceVariant, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      if (d.success) { showToast('✓ וריאציה נשמרה'); openDishDrawer(currentDishId, 'prices'); refreshDishCard(currentDishId); }
+      else showToast('שגיאה', false);
+    });
+}
+
+function deletePriceVariant(variantId) {
+  if (!confirm('למחוק וריאציה זו?')) return;
+  fetch(URLS.deletePriceVariant.replace('{id}', variantId), { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { showToast('✓ וריאציה נמחקה'); openDishDrawer(currentDishId, 'prices'); refreshDishCard(currentDishId); }
+    });
+}
+
+/* ── Edit drawer ── */
+function renderEditDrawer(data) {
+  const body = document.getElementById('drawer-body');
+  body.innerHTML = `
+    <div class="field-group">
+      <div class="field-label">מחיר בסיס (₪)</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" class="dark-input" id="edit-price" value="${data.item.base_price}" style="flex:1;direction:ltr;text-align:center;" step="1">
+        <button class="save-btn" style="padding:8px 16px;" onclick="saveBasePrice2()">שמור</button>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">ימי הגשה</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="edit-days">
+        ${['א','ב','ג','ד','ה','ו','ש'].map((d,i) => `<button class="day-chip${data.item.available_days[i] === '1' ? ' day-active' : ''}" data-day="${i}" onclick="this.classList.toggle('day-active')">${d}</button>`).join('')}
+      </div>
+    </div>
+    <button class="save-btn" style="width:100%;padding:10px;margin-top:8px;" onclick="saveEditDays()">
+      <i class="fas fa-save me-2"></i>שמור ימי הגשה
+    </button>
+    <div style="border-top:1px solid var(--border);margin:18px 0 10px;"></div>
+    <div class="field-group">
+      <div class="field-label"><i class="fas fa-clock me-1" style="color:var(--primary);"></i> שעות זמינות</div>
+      <div class="field-desc" style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">הגדר מתי המנה זמינה. ניתן להגדיר רק שעת התחלה, רק שעת סיום, או שניהם.</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;">
+          <label style="font-size:.72rem;color:var(--muted);margin-bottom:4px;display:block;">זמין מהשעה</label>
+          <input type="time" class="dark-input" id="edit-from-time" value="${data.item.available_from_time || ''}" style="direction:ltr;text-align:center;font-size:16px!important;">
+        </div>
+        <div style="flex:1;min-width:120px;">
+          <label style="font-size:.72rem;color:var(--muted);margin-bottom:4px;display:block;">זמין עד השעה</label>
+          <input type="time" class="dark-input" id="edit-to-time" value="${data.item.available_to_time || ''}" style="direction:ltr;text-align:center;font-size:16px!important;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="save-btn" style="flex:1;padding:10px;" onclick="saveEditTimes()">
+          <i class="fas fa-save me-2"></i>שמור שעות
+        </button>
+        <button class="save-btn" style="padding:10px;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#f87171;" onclick="clearEditTimes()">
+          <i class="fas fa-times me-1"></i>נקה
+        </button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:18px 0 10px;"></div>
+    <a href="/admin/menu/item/edit/${data.item.id}" target="_blank" class="admin-link" style="justify-content:center;">
+      <i class="fas fa-external-link-alt"></i> פתח בעורך מלא (פאנל ניהול)
+    </a>
+  `;
+}
+
+function saveBasePrice2() {
+  const price = parseFloat(document.getElementById('edit-price').value) || 0;
+  const fd = new FormData();
+  fd.append('item_id', currentDishId);
+  fd.append('price', price);
+  fetch(URLS.updatePrice, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { showToast('✓ מחיר עודכן'); refreshDishCard(currentDishId); }
+      else showToast('שגיאה', false);
+    });
+}
+
+function saveEditDays() {
+  const chips = document.querySelectorAll('#edit-days .day-chip');
+  let days = '';
+  chips.forEach(c => { days += c.classList.contains('day-active') ? '1' : '0'; });
+  const fd = new FormData();
+  fd.append('item_id', currentDishId);
+  fd.append('available_days', days);
+  fetch(URLS.updateDays, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { showToast('✓ ימי הגשה עודכנו'); refreshDishCard(currentDishId); }
+      else showToast('שגיאה', false);
+    });
+}
+
+function saveEditTimes() {
+  const fromTime = document.getElementById('edit-from-time').value || '';
+  const toTime = document.getElementById('edit-to-time').value || '';
+  const fd = new FormData();
+  fd.append('item_id', currentDishId);
+  fd.append('available_from_time', fromTime);
+  fd.append('available_to_time', toTime);
+  fetch(URLS.updateTimes, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) { showToast('✓ שעות זמינות עודכנו'); refreshDishCard(currentDishId); }
+      else showToast('שגיאה', false);
+    });
+}
+
+function clearEditTimes() {
+  document.getElementById('edit-from-time').value = '';
+  document.getElementById('edit-to-time').value = '';
+  saveEditTimes();
+}
+
+function refreshDishCard(dishId) {
+  fetch(URLS.dishDetail.replace('{id}', dishId))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+      const card = document.querySelector(`.dish-card-m[data-dish-id="${dishId}"]`);
+      if (!card) return;
+      const priceTag = card.querySelector('.dish-price-tag');
+      if (priceTag) priceTag.textContent = '₪' + Math.round(data.item.base_price);
+      const badges = card.querySelector('.dish-badges');
+      if (badges) {
+        let bhtml = '';
+        if (data.option_groups.length > 0) bhtml += `<span class="dish-badge extras"><i class="fas fa-plus-circle me-1"></i>${data.option_groups.length} קבוצות תוספות</span>`;
+        if (data.prices.length > 0) bhtml += `<span class="dish-badge variants"><i class="fas fa-tags me-1"></i>${data.prices.length} גדלים/מחירים</span>`;
+        const ft = data.item.available_from_time, tt = data.item.available_to_time;
+        if (ft || tt) {
+          let tl = '';
+          if (ft && tt) tl = ft + '–' + tt;
+          else if (ft) tl = 'מ-' + ft;
+          else tl = 'עד ' + tt;
+          bhtml += `<span class="dish-badge time-badge" id="time-badge-${dishId}"><i class="fas fa-clock me-1"></i>${tl}</span>`;
+        }
+        badges.innerHTML = bhtml;
+      }
+      const dayChips = card.querySelectorAll('.dish-controls .day-chip');
+      dayChips.forEach((c, i) => {
+        if (data.item.available_days[i] === '1') c.classList.add('day-active');
+        else c.classList.remove('day-active');
+      });
+    });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+</script>
+</body>
+</html>

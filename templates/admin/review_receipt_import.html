@@ -1,0 +1,618 @@
+{% extends "admin/base.html" %}
+
+{% block title %}בדיקת קבלה - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Mobile-first design */
+    .review-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    /* Receipt image preview */
+    .receipt-preview-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .receipt-image {
+        width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    
+    /* Supplier section */
+    .supplier-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .confidence-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .confidence-high { background: #d4edda; color: #155724; }
+    .confidence-medium { background: #fff3cd; color: #856404; }
+    .confidence-low { background: #f8d7da; color: #721c24; }
+    
+    /* Items table */
+    .items-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .items-table th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: right;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: bold;
+    }
+    .items-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .items-table tr:hover {
+        background: #f8f9fa;
+    }
+    .items-table input,
+    .items-table select {
+        width: 100%;
+        padding: 6px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+    }
+    
+    /* Match indicator */
+    .match-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+    }
+    .match-indicator.matched { color: #28a745; }
+    .match-indicator.new { color: #ffc107; }
+    .match-indicator.unmatched { color: #dc3545; }
+    
+    /* Action bar */
+    .action-bar {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        border-top: 2px solid #dee2e6;
+        padding: 20px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 100;
+        display: flex;
+        gap: 15px;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+        .review-container { padding: 10px; }
+        .items-table { font-size: 12px; }
+        .items-table th,
+        .items-table td { padding: 8px 4px; }
+        .action-bar {
+            flex-direction: column;
+        }
+        .action-bar .btn {
+            width: 100%;
+        }
+    }
+    
+    /* Summary card */
+    .summary-card {
+        background: #e7f3ff;
+        border-right: 4px solid #1a3a6e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .summary-card .stat {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+    }
+    .summary-card .stat-value {
+        font-weight: bold;
+        color: #1a3a6e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-check-circle"></i> בדיקת קבלה</h2>
+        <a href="{{ url_for('admin.receipt_scanner') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right"></i> חזרה
+        </a>
+    </div>
+    
+    <!-- Summary -->
+    <div class="summary-card">
+        <h5><i class="fas fa-info-circle"></i> סיכום</h5>
+        <div class="stat">
+            <span>תאריך קבלה:</span>
+            <span class="stat-value">{{ receipt_import.receipt_date|il_time('%d/%m/%Y') if receipt_import.receipt_date else 'לא זוהה' }}</span>
+        </div>
+        <div class="stat">
+            <span>סה״כ פריטים:</span>
+            <span class="stat-value">{{ receipt_import.line_items|length }}</span>
+        </div>
+        <div class="stat">
+            <span>סה״כ סכום:</span>
+            <span class="stat-value">₪{{ "%.2f"|format(receipt_import.total_amount or 0) }}</span>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Receipt image -->
+        <div class="col-md-4">
+            <div class="receipt-preview-card">
+                <h5 class="mb-3">תמונת הקבלה</h5>
+                <img src="{{ url_for('static', filename=receipt_import.receipt.image_path.replace('static/', '')) }}" 
+                     alt="Receipt" 
+                     class="receipt-image">
+            </div>
+        </div>
+        
+        <!-- Form -->
+        <div class="col-md-8">
+            <form method="POST" action="{{ url_for('admin.approve_receipt_import', import_id=receipt_import.id) }}" id="review-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <!-- Supplier section -->
+                <div class="supplier-section">
+                    <h5 class="mb-3"><i class="fas fa-truck"></i> ספק</h5>
+                    
+                    {% if receipt_import.suggested_supplier %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-robot"></i> הבינה המלאכותית זיהתה: <strong>{{ receipt_import.suggested_supplier.name }}</strong>
+                        <span class="confidence-badge {% if receipt_import.supplier_confidence >= 0.8 %}confidence-high{% elif receipt_import.supplier_confidence >= 0.5 %}confidence-medium{% else %}confidence-low{% endif %}">
+                            דיוק: {{ (receipt_import.supplier_confidence * 100)|int }}%
+                        </span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">בחר ספק</label>
+                        <div class="d-flex gap-2">
+                            <select name="supplier_id" id="supplier-select" class="form-select" required>
+                                <option value="">-- בחר ספק --</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}" {% if receipt_import.suggested_supplier and supplier.id == receipt_import.suggested_supplier.id %}selected{% endif %}>
+                                    {{ supplier.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-primary" onclick="openNewSupplierModal()" style="white-space: nowrap;">
+                                <i class="fas fa-plus"></i> ספק חדש
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">תאריך קבלה</label>
+                            <input type="date" name="receipt_date" class="form-control" 
+                                   value="{{ receipt_import.receipt_date.isoformat() if receipt_import.receipt_date else '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">סה״כ סכום</label>
+                            <input type="number" name="total_amount" class="form-control" step="0.01"
+                                   value="{{ receipt_import.total_amount or 0 }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Items section -->
+                <div class="items-section">
+                    <h5 class="mb-3"><i class="fas fa-shopping-cart"></i> פריטים מהקבלה</h5>
+                    
+                    <div class="table-responsive">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%">שם המוצר</th>
+                                    <th style="width: 15%">כמות</th>
+                                    <th style="width: 15%">מחיר יחידה</th>
+                                    <th style="width: 15%">סה״כ</th>
+                                    <th style="width: 25%">התאמה למלאי</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in receipt_import.line_items %}
+                                <tr>
+                                    <td>
+                                        <input type="text" 
+                                               name="items[{{ loop.index0 }}][product_name]" 
+                                               value="{{ item.product_name }}"
+                                               required>
+                                        <input type="hidden" name="items[{{ loop.index0 }}][id]" value="{{ item.id }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" 
+                                               name="items[{{ loop.index0 }}][quantity]" 
+                                               value="{{ item.quantity }}"
+                                               step="0.01"
+                                               required>
+                                    </td>
+                                    <td>
+                                        <input type="number" 
+                                               name="items[{{ loop.index0 }}][unit_price]" 
+                                               value="{{ item.unit_price or 0 }}"
+                                               step="0.01">
+                                    </td>
+                                    <td>
+                                        <input type="number" 
+                                               name="items[{{ loop.index0 }}][total_price]" 
+                                               value="{{ item.total_price or 0 }}"
+                                               step="0.01"
+                                               readonly
+                                               style="background: #f8f9fa;">
+                                    </td>
+                                    <td>
+                                        <select name="items[{{ loop.index0 }}][stock_item_id]" class="form-select form-select-sm">
+                                            <option value="">פריט חדש</option>
+                                            {% for stock_item in stock_items %}
+                                            <option value="{{ stock_item.id }}" 
+                                                    {% if item.suggested_stock_item and stock_item.id == item.suggested_stock_item.id %}selected{% endif %}>
+                                                {{ stock_item.name_he }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        {% if item.suggested_stock_item %}
+                                        <span class="match-indicator matched">
+                                            <i class="fas fa-check-circle"></i> {{ (item.match_confidence * 100)|int }}%
+                                        </span>
+                                        {% else %}
+                                        <span class="match-indicator new">
+                                            <i class="fas fa-plus-circle"></i> חדש
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Action bar -->
+                <div class="action-bar">
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="rejectReceipt()">
+                            <i class="fas fa-times"></i> דחה קבלה
+                        </button>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-success btn-lg" name="action" value="approve">
+                            <i class="fas fa-check"></i> אשר ועדכן מלאי
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Supplier Modal -->
+<div class="modal fade" id="newSupplierModal" tabindex="-1" aria-labelledby="newSupplierModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content" style="border-radius: 12px; border: none;">
+            <div class="modal-header" style="background: #F7F5F0; border-bottom: 1px solid #E5E3DD;">
+                <h5 class="modal-title" id="newSupplierModalLabel" style="color: #2F2F2F; font-weight: 600;">
+                    <i class="fas fa-truck"></i> הוספת ספק חדש
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background: #FFFFFF;">
+                <!-- AI Detection Notice -->
+                <div id="ai-suggestion-notice" class="alert d-none" style="background: #E8F4F8; border: 1px solid #B8E0F0; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: start; gap: 0.5rem;">
+                        <i class="fas fa-magic" style="color: #0EA5E9; margin-top: 2px;"></i>
+                        <div style="flex: 1;">
+                            <strong style="color: #0369A1;">פרטים שזוהו אוטומטית</strong>
+                            <p style="margin: 0.25rem 0 0 0; color: #0C4A6E; font-size: 0.9rem;">
+                                הפרטים הבאים זוהו מהקבלה באמצעות בינה מלאכותית. אנא בדוק ותקן במידת הצורך.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="quick-supplier-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <div class="mb-3">
+                        <label for="supplier-name" class="form-label" style="color: #2F2F2F; font-weight: 600;">
+                            שם הספק <span style="color: #dc3545;">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="supplier-name" 
+                               name="name" 
+                               required
+                               style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="supplier-contact" class="form-label" style="color: #6B6B6B;">
+                            איש קשר (אופציונלי)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="supplier-contact" 
+                               name="contact_name"
+                               style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="supplier-phone" class="form-label" style="color: #6B6B6B;">
+                                טלפון (אופציונלי)
+                            </label>
+                            <input type="tel" 
+                                   class="form-control" 
+                                   id="supplier-phone" 
+                                   name="phone"
+                                   style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="supplier-email" class="form-label" style="color: #6B6B6B;">
+                                אימייל (אופציונלי)
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="supplier-email" 
+                                   name="email"
+                                   style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="supplier-address" class="form-label" style="color: #6B6B6B;">
+                            כתובת (אופציונלי)
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="supplier-address" 
+                               name="address"
+                               style="border: 1px solid #E5E3DD; border-radius: 8px; padding: 0.6rem;">
+                    </div>
+                    
+                    <div id="supplier-error-message" class="alert alert-danger d-none" role="alert" style="border-radius: 8px;">
+                        <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="background: #F7F5F0; border-top: 1px solid #E5E3DD;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+                    ביטול
+                </button>
+                <button type="button" class="btn btn-primary" id="save-supplier-btn" onclick="saveNewSupplier()" style="background: #C96F44; border: none; border-radius: 8px;">
+                    <i class="fas fa-save"></i> שמור ספק
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-calculate total price when quantity or unit price changes
+document.querySelectorAll('input[name*="[quantity]"], input[name*="[unit_price]"]').forEach(input => {
+    input.addEventListener('input', function() {
+        const row = this.closest('tr');
+        const qtyInput = row.querySelector('input[name*="[quantity]"]');
+        const priceInput = row.querySelector('input[name*="[unit_price]"]');
+        const totalInput = row.querySelector('input[name*="[total_price]"]');
+        
+        const qty = parseFloat(qtyInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const total = (qty * price).toFixed(2);
+        
+        totalInput.value = total;
+    });
+});
+
+function rejectReceipt() {
+    const reason = prompt('סיבת הדחייה (אופציונלי):');
+    if (reason !== null) {
+        const form = document.getElementById('review-form');
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'action';
+        input.value = 'reject';
+        form.appendChild(input);
+        
+        if (reason.trim()) {
+            const reasonInput = document.createElement('input');
+            reasonInput.type = 'hidden';
+            reasonInput.name = 'rejection_reason';
+            reasonInput.value = reason;
+            form.appendChild(reasonInput);
+        }
+        
+        form.submit();
+    }
+}
+
+// Quick Supplier Modal Functions
+function openNewSupplierModal() {
+    const modal = new bootstrap.Modal(document.getElementById('newSupplierModal'));
+    const form = document.getElementById('quick-supplier-form');
+    const aiNotice = document.getElementById('ai-suggestion-notice');
+    
+    // Reset form and hide errors
+    form.reset();
+    document.getElementById('supplier-error-message').classList.add('d-none');
+    
+    // Check if we have AI-suggested supplier details
+    {% if suggested_supplier_details %}
+    const suggestedDetails = {{ suggested_supplier_details|tojson }};
+    
+    // Pre-fill form with AI-detected data
+    if (suggestedDetails.name) {
+        document.getElementById('supplier-name').value = suggestedDetails.name;
+    }
+    if (suggestedDetails.contact_person) {
+        document.getElementById('supplier-contact').value = suggestedDetails.contact_person;
+    }
+    if (suggestedDetails.phone) {
+        document.getElementById('supplier-phone').value = suggestedDetails.phone;
+    }
+    if (suggestedDetails.email) {
+        document.getElementById('supplier-email').value = suggestedDetails.email;
+    }
+    if (suggestedDetails.address) {
+        document.getElementById('supplier-address').value = suggestedDetails.address;
+    }
+    {% endif %}
+    
+    // Always setup input listeners and update visibility
+    const fields = ['supplier-name', 'supplier-contact', 'supplier-phone', 'supplier-email', 'supplier-address'];
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.removeEventListener('input', updateAINoticeVisibility);
+            field.addEventListener('input', updateAINoticeVisibility);
+        }
+    });
+    
+    // Update notice visibility based on current field values
+    updateAINoticeVisibility();
+    
+    modal.show();
+}
+
+// Update AI notice visibility based on form content
+function updateAINoticeVisibility() {
+    const aiNotice = document.getElementById('ai-suggestion-notice');
+    
+    // Only show AI notice if we actually have AI-suggested details
+    {% if suggested_supplier_details %}
+    // Check if any fields have values
+    const hasValues = 
+        document.getElementById('supplier-name').value.trim() ||
+        document.getElementById('supplier-contact').value.trim() ||
+        document.getElementById('supplier-phone').value.trim() ||
+        document.getElementById('supplier-email').value.trim() ||
+        document.getElementById('supplier-address').value.trim();
+    
+    if (hasValues) {
+        aiNotice.classList.remove('d-none');
+    } else {
+        aiNotice.classList.add('d-none');
+    }
+    {% else %}
+    // No AI suggestions, always hide notice
+    aiNotice.classList.add('d-none');
+    {% endif %}
+}
+
+async function saveNewSupplier() {
+    const form = document.getElementById('quick-supplier-form');
+    const saveBtn = document.getElementById('save-supplier-btn');
+    const errorDiv = document.getElementById('supplier-error-message');
+    const errorText = document.getElementById('error-text');
+    
+    // Get form data
+    const formData = new FormData(form);
+    const name = formData.get('name').trim();
+    
+    // Validate
+    if (!name) {
+        errorText.textContent = 'שם הספק הוא שדה חובה';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Hide previous errors
+    errorDiv.classList.add('d-none');
+    
+    // Disable button and show loading
+    saveBtn.disabled = true;
+    const originalHTML = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> שומר...';
+    
+    try {
+        const response = await fetch('{{ url_for("admin.quick_create_supplier") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                csrf_token: formData.get('csrf_token'),
+                name: name,
+                contact_name: formData.get('contact_name') || '',
+                phone: formData.get('phone') || '',
+                email: formData.get('email') || '',
+                address: formData.get('address') || ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Add new supplier to dropdown
+            const select = document.getElementById('supplier-select');
+            const option = new Option(result.supplier.name, result.supplier.id, true, true);
+            select.add(option);
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('newSupplierModal'));
+            modal.hide();
+            
+            // Show success message (optional)
+            alert(`ספק "${result.supplier.name}" נוסף בהצלחה!`);
+        } else if (response.status === 409) {
+            // Duplicate supplier - focus existing one
+            errorText.textContent = result.error || 'ספק עם שם זה כבר קיים במערכת';
+            errorDiv.classList.remove('d-none');
+            
+            // Try to select existing supplier if ID provided
+            if (result.existing_id) {
+                const select = document.getElementById('supplier-select');
+                select.value = result.existing_id;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('newSupplierModal'));
+                modal.hide();
+            }
+        } else {
+            errorText.textContent = result.error || 'שגיאה ביצירת הספק';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Error creating supplier:', error);
+        errorText.textContent = 'שגיאה בתקשורת עם השרת';
+        errorDiv.classList.remove('d-none');
+    } finally {
+        // Re-enable button
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHTML;
+    }
+}
+</script>
+{% endblock %}

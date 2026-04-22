@@ -1,0 +1,96 @@
+{% extends "admin/base.html" %}
+
+{% block title %}כללי אפסל - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-chart-line me-2"></i>כללי אפסל (Upsell)</h1>
+    <a href="{{ url_for('admin.create_upsell_rule') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>כלל חדש
+    </a>
+</div>
+
+<p class="text-muted mb-3">הגדירו הצעות לפריטים נוספים שיוצגו ללקוח בדף התשלום. לדוגמה: "הוסף שתייה ב-₪5?"</p>
+
+{% if rules %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th style="width:20%;">טריגר</th>
+                <th style="width:20%;">פריט מוצע</th>
+                <th style="width:25%;">הודעה</th>
+                <th style="width:10%;">מחיר מיוחד</th>
+                <th style="width:10%;">סטטוס</th>
+                <th style="width:15%;">פעולות</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rule in rules %}
+            <tr>
+                <td>
+                    {% if rule.trigger_type == 'category' %}
+                    <span class="badge bg-info">קטגוריה #{{ rule.trigger_id }}</span>
+                    {% else %}
+                    <span class="badge bg-primary">פריט #{{ rule.trigger_id }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if rule.suggested_item %}
+                    {{ rule.suggested_item.name_he }}
+                    {% else %}
+                    <span class="text-muted">פריט לא נמצא</span>
+                    {% endif %}
+                </td>
+                <td>{{ rule.message_he or '—' }}</td>
+                <td>
+                    {% if rule.discounted_price %}₪{{ rule.discounted_price | int }}{% else %}—{% endif %}
+                </td>
+                <td>
+                    <span class="badge bg-{{ 'success' if rule.is_active else 'secondary' }}">
+                        {{ 'פעיל' if rule.is_active else 'לא פעיל' }}
+                    </span>
+                </td>
+                <td>
+                    <div class="action-menu">
+                        <button class="btn-dots" onclick="toggleActionMenu(event, this)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="action-dropdown">
+                            <a href="{{ url_for('admin.edit_upsell_rule', rule_id=rule.id) }}"><i class="fas fa-edit"></i> עריכה</a>
+                            <button onclick="toggleRule({{ rule.id }})">
+                                <i class="fas fa-toggle-{{ 'on' if rule.is_active else 'off' }}"></i>
+                                {{ 'השבת' if rule.is_active else 'הפעל' }}
+                            </button>
+                            <button class="delete-action" onclick="deleteRule({{ rule.id }})">
+                                <i class="fas fa-trash"></i> מחיקה
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="fas fa-chart-line fa-3x mb-3 d-block"></i>
+    <p>אין כללי אפסל עדיין. צרו את הכלל הראשון!</p>
+</div>
+{% endif %}
+
+<script>
+function toggleRule(id) {
+    fetch('/admin/upsell-rules/toggle/' + id, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''}})
+    .then(r => r.json())
+    .then(d => { if(d.success) location.reload(); });
+}
+function deleteRule(id) {
+    if(!confirm('למחוק את כלל האפסל?')) return;
+    fetch('/admin/upsell-rules/delete/' + id, {method:'POST', headers:{'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''}})
+    .then(r => r.json())
+    .then(d => { if(d.success) location.reload(); });
+}
+</script>
+{% endblock %}

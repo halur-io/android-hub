@@ -1,0 +1,408 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הודעות - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">הודעות יצירת קשר</h1>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-envelope me-2"></i> כל ההודעות
+    </div>
+    <div class="card-body">
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if active_tab == 'contact' %}active{% endif %}" 
+                   href="{{ url_for('admin.messages', tab='contact') }}" 
+                   role="tab">
+                    <i class="fas fa-envelope me-2"></i>
+                    הודעות יצירת קשר
+                    {% if contact_messages|selectattr('is_read', 'equalto', False)|list|length > 0 %}
+                    <span class="badge bg-warning text-dark ms-2">{{ contact_messages|selectattr('is_read', 'equalto', False)|list|length }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if active_tab == 'catering' %}active{% endif %}" 
+                   href="{{ url_for('admin.messages', tab='catering') }}" 
+                   role="tab">
+                    <i class="fas fa-utensils me-2"></i>
+                    פניות קייטרינג
+                    {% if catering_contacts|selectattr('is_read', 'equalto', False)|list|length > 0 %}
+                    <span class="badge bg-warning text-dark ms-2">{{ catering_contacts|selectattr('is_read', 'equalto', False)|list|length }}</span>
+                    {% endif %}
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if active_tab == 'careers' %}active{% endif %}" 
+                   href="{{ url_for('admin.messages', tab='careers') }}" 
+                   role="tab">
+                    <i class="fas fa-briefcase me-2"></i>
+                    מועמדויות לעבודה
+                    {% if career_applications|selectattr('is_read', 'equalto', False)|list|length > 0 %}
+                    <span class="badge bg-warning text-dark ms-2">{{ career_applications|selectattr('is_read', 'equalto', False)|list|length }}</span>
+                    {% endif %}
+                </a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Contact Messages Tab -->
+            <div class="tab-pane fade {% if active_tab == 'contact' %}show active{% endif %}">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>סטטוס</th>
+                                <th>שם</th>
+                                <th>אימייל</th>
+                                <th>טלפון</th>
+                                <th>הודעה</th>
+                                <th>תאריך</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for message in contact_messages %}
+                            <tr class="{{ '' if message.is_read else 'table-warning' }}">
+                                <td>
+                                    {% if message.is_read %}
+                                        <span class="badge bg-secondary">נקראה</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">חדשה</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ message.name }}</td>
+                                <td><a href="mailto:{{ message.email }}">{{ message.email }}</a></td>
+                                <td>{{ message.phone or '-' }}</td>
+                                <td>{{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}</td>
+                                <td>{{ message.created_at|il_time }}</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if not message.is_read %}
+                                            <li><a class="dropdown-item mark-read-contact" href="#" data-id="{{ message.id }}"><i class="fas fa-check me-2"></i>סמן כנקראה</a></li>
+                                            {% endif %}
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#forwardContactModal{{ message.id }}"><i class="fas fa-share me-2"></i>העבר</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete_contact_message', id=message.id) }}" onsubmit="return confirm('האם למחוק הודעה זו?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>מחק</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Forward Email Modal -->
+                            <div class="modal fade" id="forwardContactModal{{ message.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.forward_message', id=message.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">העבר הודעה</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p><strong>מאת:</strong> {{ message.name }}</p>
+                                                <p><strong>הודעה:</strong> {{ message.message[:100] }}...</p>
+                                                <hr>
+                                                <div class="mb-3">
+                                                    <label class="form-label">כתובת אימייל לשליחה:</label>
+                                                    <input type="email" name="email" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-paper-plane"></i> שלח
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% if not contact_messages %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">אין הודעות במערכת</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Catering Contacts Tab -->
+            <div class="tab-pane fade {% if active_tab == 'catering' %}show active{% endif %}">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>סטטוס</th>
+                                <th>שם</th>
+                                <th>אימייל</th>
+                                <th>טלפון</th>
+                                <th>סוג אירוע</th>
+                                <th>תאריך אירוע</th>
+                                <th>מספר אורחים</th>
+                                <th>תאריך פנייה</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contact in catering_contacts %}
+                            <tr class="{{ '' if contact.is_read else 'table-warning' }}">
+                                <td>
+                                    {% if contact.is_read %}
+                                        <span class="badge bg-secondary">נקראה</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">חדשה</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ contact.name }}</td>
+                                <td><a href="mailto:{{ contact.email }}">{{ contact.email }}</a></td>
+                                <td>{{ contact.phone or '-' }}</td>
+                                <td>{{ contact.event_type or '-' }}</td>
+                                <td>{{ contact.event_date or '-' }}</td>
+                                <td>{{ contact.guest_count or '-' }}</td>
+                                <td>{{ contact.created_at|il_time }}</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if not contact.is_read %}
+                                            <li><a class="dropdown-item mark-read-catering" href="#" data-id="{{ contact.id }}"><i class="fas fa-check me-2"></i>סמן כנקראה</a></li>
+                                            {% endif %}
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#forwardCateringModal{{ contact.id }}"><i class="fas fa-share me-2"></i>העבר</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete_catering_contact', id=contact.id) }}" onsubmit="return confirm('האם למחוק פנייה זו?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>מחק</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Forward Email Modal -->
+                            <div class="modal fade" id="forwardCateringModal{{ contact.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.forward_catering_contact', id=contact.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">העבר פנייה לקייטרינג</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p><strong>מאת:</strong> {{ contact.name }}</p>
+                                                <p><strong>סוג אירוע:</strong> {{ contact.event_type or '-' }}</p>
+                                                <p><strong>תאריך אירוע:</strong> {{ contact.event_date or '-' }}</p>
+                                                <hr>
+                                                <div class="mb-3">
+                                                    <label class="form-label">כתובת אימייל לשליחה:</label>
+                                                    <input type="email" name="email" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-paper-plane"></i> שלח
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% if not catering_contacts %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">אין פניות קייטרינג במערכת</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Career Applications Tab -->
+            <div class="tab-pane fade {% if active_tab == 'careers' %}show active{% endif %}">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>סטטוס</th>
+                                <th>שם</th>
+                                <th>אימייל</th>
+                                <th>טלפון</th>
+                                <th>משרה</th>
+                                <th>הודעה</th>
+                                <th>תאריך</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in career_applications %}
+                            <tr class="{{ '' if application.is_read else 'table-warning' }}">
+                                <td>
+                                    {% if application.is_read %}
+                                        <span class="badge bg-secondary">נקראה</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">חדשה</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ application.name }}</td>
+                                <td><a href="mailto:{{ application.email }}">{{ application.email }}</a></td>
+                                <td>{{ application.phone or '-' }}</td>
+                                <td>{{ application.position_applied or '-' }}</td>
+                                <td>{{ application.message[:100] if application.message else '-' }}{% if application.message and application.message|length > 100 %}...{% endif %}</td>
+                                <td>{{ application.created_at|il_time }}</td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            {% if not application.is_read %}
+                                            <li><a class="dropdown-item mark-read-career" href="#" data-id="{{ application.id }}"><i class="fas fa-check me-2"></i>סמן כנקראה</a></li>
+                                            {% endif %}
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#forwardCareerModal{{ application.id }}"><i class="fas fa-share me-2"></i>העבר</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="POST" action="{{ url_for('admin.delete_career_application', id=application.id) }}" onsubmit="return confirm('האם למחוק מועמדות זו?');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i>מחק</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Forward Email Modal -->
+                            <div class="modal fade" id="forwardCareerModal{{ application.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('admin.forward_career_application', id=application.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">העבר מועמדות</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p><strong>מאת:</strong> {{ application.name }}</p>
+                                                <p><strong>משרה:</strong> {{ application.position_applied }}</p>
+                                                <hr>
+                                                <div class="mb-3">
+                                                    <label class="form-label">כתובת אימייל לשליחה:</label>
+                                                    <input type="email" name="email" class="form-control" required>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-paper-plane"></i> שלח
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% if not career_applications %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">אין מועמדויות במערכת</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Mark Contact Message as Read
+document.querySelectorAll('.mark-read-contact').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/messages/mark-read/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה בעדכון');
+        }
+    });
+});
+
+// Mark Catering Contact as Read
+document.querySelectorAll('.mark-read-catering').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/catering-contacts/mark-read/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה בעדכון');
+        }
+    });
+});
+
+// Mark Career Application as Read
+document.querySelectorAll('.mark-read-career').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/career-applications/mark-read/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה בעדכון');
+        }
+    });
+});
+</script>
+{% endblock %}

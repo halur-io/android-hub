@@ -1,0 +1,268 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הגדרות תשלום - Payment Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+.payment-card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s;
+}
+
+.payment-card:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+
+.payment-card .card-header {
+    background: linear-gradient(135deg, #1a3a6e 0%, #2d5492 100%);
+    color: white;
+    font-weight: 600;
+    padding: 1.25rem 1.5rem;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.payment-card.active-provider .card-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.provider-toggle {
+    transform: scale(1.2);
+}
+
+.api-key-input {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.provider-logo {
+    width: 120px;
+    height: 60px;
+    object-fit: contain;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.info-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.save-button {
+    position: sticky;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    margin-top: 2rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-credit-card me-2"></i>הגדרות תשלום / Payment Settings</h1>
+    <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-right me-2"></i>חזרה להגדרות / Back to Settings
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>Configure Israeli payment providers for your restaurant's online ordering system.</strong>
+    <br>Enable providers and enter your API credentials from your merchant accounts.
+</div>
+
+<form method="POST" id="payment-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    
+    <!-- Grow Payment Provider -->
+    <div class="card payment-card {% if grow.is_active %}active-provider{% endif %}">
+        <div class="card-header">
+            <div>
+                <i class="fas fa-arrow-trend-up me-2"></i>
+                <strong>Grow (by Meshulam)</strong>
+                <span class="badge bg-light text-dark ms-2">Israeli Payment Gateway</span>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input provider-toggle" type="checkbox" name="grow_is_active" 
+                       id="grow_active" {% if grow.is_active %}checked{% endif %}>
+                <label class="form-check-label text-white ms-2" for="grow_active">
+                    {% if grow.is_active %}פעיל / Active{% else %}לא פעיל / Inactive{% endif %}
+                </label>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="info-badge mb-3">
+                        <i class="fas fa-link me-2"></i>
+                        <strong>API Documentation:</strong> 
+                        <a href="https://doc.meshulam.co.il/" target="_blank">doc.meshulam.co.il</a>
+                        &nbsp;|&nbsp;
+                        <strong>Register:</strong>
+                        <a href="https://grow.business/" target="_blank">grow.business</a>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><i class="fas fa-user me-2"></i>User ID / Business ID</label>
+                            <input type="text" class="form-control api-key-input" name="grow_user_id" 
+                                   value="{{ grow.merchant_id or '' }}" placeholder="Your Grow User ID">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><i class="fas fa-file-code me-2"></i>Page Code</label>
+                            <input type="text" class="form-control api-key-input" name="grow_page_code" 
+                                   value="{{ grow.api_key or '' }}" placeholder="Your Page Code">
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label"><i class="fas fa-key me-2"></i>API Key (Optional)</label>
+                            <input type="password" class="form-control api-key-input" name="grow_api_key" 
+                                   value="{{ grow.api_secret or '' }}" placeholder="Required for multi-account">
+                            <small class="text-muted">Only required for multi-account configurations</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">שם להצגה (עברית)</label>
+                            <input type="text" class="form-control" name="grow_display_name_he" 
+                                   value="{{ grow.display_name_he or 'כרטיס אשראי' }}" placeholder="כרטיס אשראי / Grow">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Display Name (English)</label>
+                            <input type="text" class="form-control" name="grow_display_name_en" 
+                                   value="{{ grow.display_name_en or 'Credit Card' }}" placeholder="Credit Card / Grow">
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Supported Payment Methods:</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary">Israeli Credit Cards</span>
+                            <span class="badge bg-primary">International Cards</span>
+                            <span class="badge bg-info">Bit</span>
+                            <span class="badge bg-info">Apple Pay</span>
+                            <span class="badge bg-info">Google Pay</span>
+                            <span class="badge bg-warning text-dark">Installments (Tashlumim)</span>
+                            <span class="badge bg-success">Recurring Payments</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Max Payment Provider -->
+    <div class="card payment-card {% if max_provider.is_active %}active-provider{% endif %}">
+        <div class="card-header">
+            <div>
+                <i class="fas fa-bolt me-2"></i>
+                <strong>Max</strong>
+                <span class="badge bg-light text-dark ms-2">Israeli Clearing & Payments</span>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input provider-toggle" type="checkbox" name="max_is_active" 
+                       id="max_active" {% if max_provider.is_active %}checked{% endif %}>
+                <label class="form-check-label text-white ms-2" for="max_active">
+                    {% if max_provider.is_active %}פעיל / Active{% else %}לא פעיל / Inactive{% endif %}
+                </label>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="info-badge mb-3">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Note:</strong> Max requires direct merchant account registration.
+                        &nbsp;|&nbsp;
+                        <strong>Website:</strong>
+                        <a href="https://businesslc.max.co.il/" target="_blank">businesslc.max.co.il</a>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>No Public API Documentation:</strong> You'll receive API credentials after opening a merchant account with Max. Contact their support for integration details.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><i class="fas fa-id-card me-2"></i>Masof (Terminal ID)</label>
+                            <input type="text" class="form-control api-key-input" name="max_masof" 
+                                   value="{{ max_provider.merchant_id or '' }}" placeholder="Your Max Masof Number">
+                            <small class="text-muted">Provided by Max after merchant approval</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><i class="fas fa-key me-2"></i>API Key</label>
+                            <input type="password" class="form-control api-key-input" name="max_api_key" 
+                                   value="{{ max_provider.api_key or '' }}" placeholder="Your Max API Key">
+                            <small class="text-muted">Request from Max merchant services</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">שם להצגה (עברית)</label>
+                            <input type="text" class="form-control" name="max_display_name_he" 
+                                   value="{{ max_provider.display_name_he or 'כרטיס אשראי (Max)' }}" placeholder="כרטיס אשראי">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Display Name (English)</label>
+                            <input type="text" class="form-control" name="max_display_name_en" 
+                                   value="{{ max_provider.display_name_en or 'Credit Card (Max)' }}" placeholder="Credit Card">
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Supported Payment Methods:</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary">Israeli Credit Cards</span>
+                            <span class="badge bg-primary">Isracard</span>
+                            <span class="badge bg-primary">Leumicard</span>
+                            <span class="badge bg-primary">Visa</span>
+                            <span class="badge bg-primary">MasterCard</span>
+                            <span class="badge bg-primary">Diners</span>
+                            <span class="badge bg-warning text-dark">Installments (2-12)</span>
+                            <span class="badge bg-success">Recurring Payments</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Save Button -->
+    <button type="submit" class="btn btn-danger btn-lg save-button">
+        <i class="fas fa-save me-2"></i> שמור הגדרות / Save Payment Settings
+    </button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update active/inactive label when toggle changes
+document.querySelectorAll('.provider-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const label = this.nextElementSibling;
+        const card = this.closest('.payment-card');
+        
+        if (this.checked) {
+            label.textContent = 'פעיל / Active';
+            card.classList.add('active-provider');
+        } else {
+            label.textContent = 'לא פעיל / Inactive';
+            card.classList.remove('active-provider');
+        }
+    });
+});
+</script>
+{% endblock %}

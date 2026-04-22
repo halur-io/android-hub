@@ -1,0 +1,143 @@
+{% extends "admin/base.html" %}
+
+{% block title %}הרשאות מערכת{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/permissions-sidebar.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="permissions-layout">
+    <aside class="permissions-sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-key"></i>
+            <span>{{ 'הרשאות' if (admin_language or 'he') == 'he' else 'Permissions' }}</span>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('admin.roles') }}" class="nav-back-link">
+                <i class="fas fa-arrow-right"></i>
+                {{ 'חזרה לתפקידים' if (admin_language or 'he') == 'he' else 'Back to Roles' }}
+            </a>
+            
+            <div class="nav-section-title">{{ 'קטגוריות' if (admin_language or 'he') == 'he' else 'Categories' }}</div>
+            
+            {% if permissions_by_category %}
+            {% for category, perms in permissions_by_category.items() %}
+            <div class="nav-item-group" data-category="{{ category }}">
+                <button class="nav-item-toggle" onclick="toggleSubmenu(this)">
+                    <span class="nav-item-icon">
+                        {% if 'users' in category.lower() %}
+                        <i class="fas fa-users"></i>
+                        {% elif 'orders' in category.lower() or 'הזמנות' in category %}
+                        <i class="fas fa-shopping-cart"></i>
+                        {% elif 'menu' in category.lower() or 'תפריט' in category %}
+                        <i class="fas fa-utensils"></i>
+                        {% elif 'settings' in category.lower() or 'הגדרות' in category %}
+                        <i class="fas fa-cog"></i>
+                        {% elif 'reports' in category.lower() or 'דוחות' in category %}
+                        <i class="fas fa-chart-bar"></i>
+                        {% elif 'roles' in category.lower() or 'תפקידים' in category %}
+                        <i class="fas fa-user-tag"></i>
+                        {% elif 'stock' in category.lower() or 'מלאי' in category %}
+                        <i class="fas fa-boxes"></i>
+                        {% elif 'branches' in category.lower() or 'סניפים' in category %}
+                        <i class="fas fa-store"></i>
+                        {% else %}
+                        <i class="fas fa-folder"></i>
+                        {% endif %}
+                    </span>
+                    <span class="nav-item-text">{{ category }}</span>
+                    <span class="nav-item-badge">{{ perms|length }}</span>
+                    <i class="fas fa-chevron-down nav-item-arrow"></i>
+                </button>
+                <div class="nav-submenu">
+                    {% for perm in perms %}
+                    <a href="#perm-{{ perm.name }}" class="submenu-item" onclick="showPermission('{{ perm.name }}', '{{ category }}')">
+                        <span class="submenu-dot {% if perm.is_active %}active{% else %}inactive{% endif %}"></span>
+                        <span class="submenu-text">{{ perm.display_name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="sidebar-stat">
+                <span class="stat-number">{% set total = namespace(count=0) %}{% if permissions_by_category %}{% for perms in permissions_by_category.values() %}{% set total.count = total.count + perms|length %}{% endfor %}{% endif %}{{ total.count }}</span>
+                <span class="stat-text">{{ 'הרשאות' if (admin_language or 'he') == 'he' else 'permissions' }}</span>
+            </div>
+        </div>
+    </aside>
+    
+    <main class="permissions-main">
+        <div class="main-header">
+            <h1>
+                <i class="fas fa-shield-alt"></i>
+                {{ 'הרשאות מערכת' if (admin_language or 'he') == 'he' else 'System Permissions' }}
+            </h1>
+            <p>{{ 'בחר קטגוריה מהתפריט לצפייה בהרשאות' if (admin_language or 'he') == 'he' else 'Select a category from the menu to view permissions' }}</p>
+        </div>
+        
+        <div id="permission-content" class="permission-content">
+            {% if permissions_by_category %}
+            <div class="welcome-state">
+                <i class="fas fa-hand-pointer"></i>
+                <h2>{{ 'בחר קטגוריה' if (admin_language or 'he') == 'he' else 'Select a Category' }}</h2>
+                <p>{{ 'לחץ על קטגוריה בתפריט הצד כדי לראות את ההרשאות שלה' if (admin_language or 'he') == 'he' else 'Click on a category in the sidebar to see its permissions' }}</p>
+            </div>
+            
+            {% for category, perms in permissions_by_category.items() %}
+            <div class="category-panel" id="panel-{{ category|replace(' ', '-') }}" style="display: none;">
+                <div class="panel-header">
+                    <h2>{{ category }}</h2>
+                    <span class="panel-count">{{ perms|length }} {{ 'הרשאות' if (admin_language or 'he') == 'he' else 'permissions' }}</span>
+                </div>
+                <div class="permissions-list">
+                    {% for perm in perms %}
+                    <div class="permission-card" id="perm-{{ perm.name }}">
+                        <div class="perm-header">
+                            <div class="perm-title">
+                                <span class="perm-status-dot {% if perm.is_active %}active{% else %}inactive{% endif %}"></span>
+                                <h3>{{ perm.display_name }}</h3>
+                            </div>
+                            <span class="perm-status-badge {% if perm.is_active %}active{% else %}inactive{% endif %}">
+                                {% if perm.is_active %}
+                                {{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}
+                                {% else %}
+                                {{ 'לא פעיל' if (admin_language or 'he') == 'he' else 'Inactive' }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="perm-body">
+                            <div class="perm-code-row">
+                                <span class="perm-label">{{ 'קוד:' if (admin_language or 'he') == 'he' else 'Code:' }}</span>
+                                <code class="perm-code">{{ perm.name }}</code>
+                            </div>
+                            {% if perm.description %}
+                            <div class="perm-description">
+                                <span class="perm-label">{{ 'תיאור:' if (admin_language or 'he') == 'he' else 'Description:' }}</span>
+                                <p>{{ perm.description }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-key"></i>
+                <h2>{{ 'אין הרשאות' if (admin_language or 'he') == 'he' else 'No Permissions' }}</h2>
+                <p>{{ 'לא נמצאו הרשאות במערכת' if (admin_language or 'he') == 'he' else 'No permissions found in the system' }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='admin/permissions-sidebar.js') }}"></script>
+{% endblock %}

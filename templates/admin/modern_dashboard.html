@@ -1,0 +1,566 @@
+{% extends "admin/base.html" %}
+
+{% block title %}לוח בקרה חכם - מערכת ניהול מתקדמת{% endblock %}
+
+{% block extra_css %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/modern-style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/dashboard-advanced.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+{% endblock %}
+
+{% block content %}
+<div class="modern-dashboard" id="dashboard">
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-bg"></div>
+        <div class="particles"></div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav glass-effect">
+        <div class="nav-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="חיפוש מהיר... (Ctrl+K)" id="globalSearch">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </div>
+        
+        <div class="nav-center">
+            <h1 class="dashboard-title animate__animated animate__fadeInDown">
+                <span class="greeting" id="greeting"></span>
+                <span class="business-name">מערכת ניהול חכמה</span>
+            </h1>
+        </div>
+        
+        <div class="nav-right">
+            <div class="weather-widget">
+                <i class="fas fa-cloud-sun"></i>
+                <span id="weather">26°C</span>
+            </div>
+            
+            <button class="icon-btn notification-btn" onclick="toggleNotifications()">
+                <i class="fas fa-bell"></i>
+                <span class="badge pulse">5</span>
+            </button>
+            
+            <button class="icon-btn theme-toggle" onclick="toggleTheme()">
+                <i class="fas fa-moon" id="themeIcon"></i>
+            </button>
+            
+            <div class="profile-dropdown">
+                <img src="https://ui-avatars.com/api/?name=Admin&background=6366f1&color=fff" alt="Profile" class="profile-img">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Sidebar Navigation Menu -->
+    <aside class="sidebar-menu" id="sidebarMenu">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-layer-group"></i> תפריט ראשי</h3>
+            <button class="close-sidebar" onclick="toggleSidebar()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <!-- Dashboard -->
+            <a href="/admin/microservices" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>דף הבית</span>
+            </a>
+            
+            <!-- Quick Actions Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-rocket"></i>
+                    <span>פעולות מהירות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/users" class="nav-item">
+                        <i class="fas fa-users"></i>
+                        <span>ניהול משתמשים</span>
+                        <span class="nav-badge" style="background: #ff4757;">חדש</span>
+                    </a>
+                    <a href="/admin/roles" class="nav-item">
+                        <i class="fas fa-user-shield"></i>
+                        <span>תפקידים והרשאות</span>
+                        <span class="nav-badge" style="background: #28a745;">חדש</span>
+                    </a>
+                    <a href="/admin/orders/new" class="nav-item">
+                        <i class="fas fa-plus"></i>
+                        <span>הזמנה חדשה</span>
+                    </a>
+                    <a href="/admin/payments/quick" class="nav-item">
+                        <i class="fas fa-bolt"></i>
+                        <span>תשלום מהיר</span>
+                    </a>
+                    <a href="/admin/delivery/assign" class="nav-item">
+                        <i class="fas fa-user-plus"></i>
+                        <span>הוסף שליח</span>
+                    </a>
+                    <a href="/admin/customers/add" class="nav-item">
+                        <i class="fas fa-user-circle"></i>
+                        <span>לקוח חדש</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Orders Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-receipt"></i>
+                    <span>הזמנות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/orders" class="nav-item">
+                        <span>הזמנות פעילות</span>
+                        <span class="nav-badge">24</span>
+                    </a>
+                    <a href="/admin/orders/history" class="nav-item">
+                        <span>היסטוריה</span>
+                    </a>
+                    <a href="/admin/orders/pending" class="nav-item">
+                        <span>ממתינות לאישור</span>
+                    </a>
+                    <a href="/admin/orders/reports" class="nav-item">
+                        <span>דוחות הזמנות</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Payments Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-credit-card"></i>
+                    <span>תשלומים</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/payments" class="nav-item">
+                        <span>עסקאות</span>
+                    </a>
+                    <a href="/admin/payments/providers" class="nav-item">
+                        <span>ספקי תשלום</span>
+                    </a>
+                    <a href="/admin/payments/reports" class="nav-item">
+                        <span>דוחות</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Kitchen & Delivery Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-utensils"></i>
+                    <span>מטבח ומשלוחים</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/kitchen" class="nav-item">
+                        <span>תצוגת מטבח</span>
+                        <span class="nav-badge">7</span>
+                    </a>
+                    <a href="/admin/delivery" class="nav-item">
+                        <span>ניהול שליחים</span>
+                    </a>
+                    <a href="/admin/delivery/zones" class="nav-item">
+                        <span>אזורי משלוח</span>
+                    </a>
+                    <a href="/admin/printer" class="nav-item">
+                        <span>הגדרות מדפסת</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Customers Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-users"></i>
+                    <span>לקוחות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/customers" class="nav-item">
+                        <span>רשימת לקוחות</span>
+                    </a>
+                    <a href="/admin/customers/reviews" class="nav-item">
+                        <span>ביקורות</span>
+                    </a>
+                    <a href="/admin/customers/loyalty" class="nav-item">
+                        <span>תוכנית נאמנות</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Operations Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-tasks"></i>
+                    <span>תפעול</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/checklist" class="nav-item">
+                        <i class="fas fa-clipboard-check"></i>
+                        <span>רשימות משימות</span>
+                        <span class="nav-badge-info" style="background: #8b5cf6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">חדש</span>
+                    </a>
+                    <a href="/admin/schedule" class="nav-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>לוח זמנים</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div class="nav-section">
+                <div class="nav-section-title" onclick="toggleSection(this)">
+                    <i class="fas fa-cog"></i>
+                    <span>הגדרות</span>
+                    <i class="fas fa-chevron-down section-arrow"></i>
+                </div>
+                <div class="nav-section-items">
+                    <a href="/admin/settings" class="nav-item">
+                        <span>הגדרות אתר</span>
+                        <span class="nav-badge-info" style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">חדש</span>
+                    </a>
+                    <a href="/admin/branches" class="nav-item">
+                        <span>סניפים</span>
+                    </a>
+                    <a href="/admin/menu" class="nav-item">
+                        <span>ניהול תפריט</span>
+                    </a>
+                    <a href="/admin/menu/settings" class="nav-item">
+                        <i class="fas fa-cogs"></i>
+                        <span>הגדרות תפריט</span>
+                    </a>
+                    <a href="/admin/users" class="nav-item">
+                        <i class="fas fa-users"></i>
+                        <span>ניהול משתמשים</span>
+                        <span class="nav-badge-info" style="background: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">חדש</span>
+                    </a>
+                    <a href="/admin/roles" class="nav-item">
+                        <i class="fas fa-user-shield"></i>
+                        <span>תפקידים והרשאות</span>
+                        <span class="nav-badge-info" style="background: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">חדש</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>יציאה</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main Dashboard Container -->
+    <div class="dashboard-content">
+        <!-- Live Stats Hero Section -->
+        <section class="hero-section animate__animated animate__fadeIn">
+            <div class="stats-grid">
+                <!-- Revenue Card -->
+                <div class="stat-card glass-card" data-tilt>
+                    <div class="stat-icon revenue">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>הכנסות היום</h3>
+                        <div class="stat-number">
+                            <span class="currency">₪</span>
+                            <span class="counter" data-target="12847">0</span>
+                        </div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> 23% מאתמול
+                        </div>
+                        <div class="mini-chart">
+                            <canvas id="revenueSparkline"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Orders Card -->
+                <div class="stat-card glass-card" data-tilt>
+                    <div class="stat-icon orders">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>הזמנות פעילות</h3>
+                        <div class="stat-number">
+                            <span class="counter" data-target="24">0</span>
+                        </div>
+                        <div class="stat-change">
+                            <i class="fas fa-clock"></i> זמן ממוצע: 18 דק'
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 65%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drivers Available Card -->
+                <div class="stat-card glass-card" data-tilt>
+                    <div class="stat-icon drivers">
+                        <i class="fas fa-motorcycle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>שליחים זמינים</h3>
+                        <div class="stat-number">
+                            <span class="counter" data-target="8">0</span>
+                            <span class="total">/12</span>
+                        </div>
+                        <div class="driver-status">
+                            <span class="status-dot online"></span> 8 פעיל
+                            <span class="status-dot busy"></span> 4 עסוק
+                        </div>
+                        <div class="circular-progress" data-percent="67">
+                            <svg>
+                                <circle cx="35" cy="35" r="35"></circle>
+                                <circle cx="35" cy="35" r="35" class="progress"></circle>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kitchen Queue Card -->
+                <div class="stat-card glass-card" data-tilt>
+                    <div class="stat-icon kitchen">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>תור במטבח</h3>
+                        <div class="stat-number">
+                            <span class="counter" data-target="7">0</span>
+                        </div>
+                        <div class="kitchen-timer">
+                            <i class="fas fa-stopwatch"></i> הבא: 3:45
+                        </div>
+                        <div class="heat-indicator">
+                            <span class="heat-level high"></span>
+                            <span class="heat-level high"></span>
+                            <span class="heat-level medium"></span>
+                            <span class="heat-level low"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Activity Timeline -->
+        <section class="timeline-section glass-card animate__animated animate__fadeInUp">
+            <div class="section-header">
+                <h2><i class="fas fa-stream"></i> פעילות בזמן אמת</h2>
+                <button class="btn-modern btn-sm" onclick="toggleAutoScroll()">
+                    <i class="fas fa-pause"></i> עצור גלילה
+                </button>
+            </div>
+            
+            <div class="activity-timeline" id="activityTimeline">
+                <div class="timeline-item new-order animate__animated animate__slideInRight">
+                    <span class="timeline-icon"><i class="fas fa-cart-plus"></i></span>
+                    <div class="timeline-content">
+                        <strong>הזמנה חדשה #1247</strong>
+                        <span class="timeline-meta">לפני 30 שניות • ₪156</span>
+                    </div>
+                    <span class="timeline-badge">חדש</span>
+                </div>
+                
+                <div class="timeline-item payment animate__animated animate__slideInRight">
+                    <span class="timeline-icon"><i class="fas fa-credit-card"></i></span>
+                    <div class="timeline-content">
+                        <strong>תשלום התקבל</strong>
+                        <span class="timeline-meta">לפני דקה • Apple Pay</span>
+                    </div>
+                </div>
+                
+                <div class="timeline-item delivery animate__animated animate__slideInRight">
+                    <span class="timeline-icon"><i class="fas fa-truck"></i></span>
+                    <div class="timeline-content">
+                        <strong>משלוח יצא</strong>
+                        <span class="timeline-meta">לפני 2 דקות • דוד השליח</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Map & Charts Grid -->
+        <div class="dashboard-grid">
+            <!-- Live Delivery Map -->
+            <section class="map-section glass-card animate__animated animate__fadeInLeft">
+                <div class="section-header">
+                    <h2><i class="fas fa-map-marked-alt"></i> מפת משלוחים חיה</h2>
+                    <div class="map-controls">
+                        <button class="btn-icon" onclick="centerMap()">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                        <button class="btn-icon" onclick="toggleHeatmap()">
+                            <i class="fas fa-fire-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="deliveryMap" class="live-map"></div>
+                <div class="map-legend">
+                    <span><i class="fas fa-circle text-success"></i> נמסר</span>
+                    <span><i class="fas fa-circle text-warning"></i> בדרך</span>
+                    <span><i class="fas fa-circle text-danger"></i> ממתין</span>
+                </div>
+            </section>
+
+            <!-- Revenue Analytics -->
+            <section class="chart-section glass-card animate__animated animate__fadeInRight">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-area"></i> ניתוח הכנסות</h2>
+                    <div class="chart-tabs">
+                        <button class="tab-btn active" data-period="today">היום</button>
+                        <button class="tab-btn" data-period="week">שבוע</button>
+                        <button class="tab-btn" data-period="month">חודש</button>
+                    </div>
+                </div>
+                <canvas id="revenueChart"></canvas>
+                <div class="chart-stats">
+                    <div class="chart-stat">
+                        <span class="label">ממוצע להזמנה</span>
+                        <span class="value">₪87</span>
+                    </div>
+                    <div class="chart-stat">
+                        <span class="label">שיא יומי</span>
+                        <span class="value">₪2,341</span>
+                    </div>
+                    <div class="chart-stat">
+                        <span class="label">צמיחה</span>
+                        <span class="value positive">+18%</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+
+
+        <!-- AI Assistant & Quick Actions -->
+        <div class="bottom-tools">
+            <!-- Floating Action Button -->
+            <div class="fab-container">
+                <button class="fab-main" onclick="toggleFAB()">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <div class="fab-options">
+                    <button class="fab-option" title="הזמנה חדשה">
+                        <i class="fas fa-cart-plus"></i>
+                    </button>
+                    <button class="fab-option" title="הוסף שליח">
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                    <button class="fab-option" title="הדפס דוח">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    <button class="fab-option" title="שלח הודעה">
+                        <i class="fas fa-envelope"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Assistant Chat -->
+            <div class="ai-assistant" id="aiAssistant">
+                <div class="ai-header">
+                    <i class="fas fa-robot"></i>
+                    <span>עוזר חכם</span>
+                    <button onclick="toggleAI()" class="close-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="ai-messages">
+                    <div class="ai-message">
+                        <span class="ai-icon">🤖</span>
+                        <p>שלום! אני כאן לעזור. איך אוכל לסייע?</p>
+                    </div>
+                </div>
+                <div class="ai-input">
+                    <input type="text" placeholder="שאל אותי משהו..." id="aiInput">
+                    <button onclick="sendToAI()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Panel -->
+        <div class="notification-panel" id="notificationPanel">
+            <div class="panel-header">
+                <h3>התראות</h3>
+                <button onclick="clearNotifications()" class="clear-btn">
+                    נקה הכל
+                </button>
+            </div>
+            <div class="notification-list">
+                <div class="notification-item unread">
+                    <div class="notification-icon order">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="notification-content">
+                        <strong>הזמנה חדשה התקבלה</strong>
+                        <p>הזמנה #1248 בסך ₪234</p>
+                        <span class="notification-time">לפני 2 דקות</span>
+                    </div>
+                </div>
+                
+                <div class="notification-item">
+                    <div class="notification-icon alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="notification-content">
+                        <strong>מלאי נמוך</strong>
+                        <p>קולה - נותרו 5 יחידות</p>
+                        <span class="notification-time">לפני 15 דקות</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal" id="shortcutsModal">
+        <div class="modal-content glass-card">
+            <h3>קיצורי מקלדת</h3>
+            <div class="shortcuts-grid">
+                <div class="shortcut">
+                    <kbd>Ctrl</kbd> + <kbd>K</kbd>
+                    <span>חיפוש מהיר</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Ctrl</kbd> + <kbd>N</kbd>
+                    <span>הזמנה חדשה</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Ctrl</kbd> + <kbd>D</kbd>
+                    <span>מצב כהה</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Esc</kbd>
+                    <span>סגור חלון</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- External Libraries -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/vanilla-tilt@1.7.0/dist/vanilla-tilt.min.js"></script>
+<script src="{{ url_for('static', filename='admin/dashboard-modern.js') }}"></script>
+<script src="{{ url_for('static', filename='admin/sidebar.js') }}"></script>
+{% endblock %}

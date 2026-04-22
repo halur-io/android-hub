@@ -1,0 +1,182 @@
+{% extends "admin/base.html" %}
+
+{% block title %}תנועות מלאי - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-exchange-alt me-2 text-primary"></i>תנועות מלאי
+            </h1>
+            <p class="text-muted mb-0">היסטוריית תנועות המלאי</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="addTransaction()">
+                <i class="fas fa-plus me-2"></i>רשום תנועה
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>סינון</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-2">
+                    <label class="form-label">סניף</label>
+                    <select class="form-select" id="branchFilter">
+                        <option value="">כל הסניפים</option>
+                        {% for branch in branches %}
+                        <option value="{{ branch.id }}" {% if branch.id == current_branch_id %}selected{% endif %}>
+                            {{ branch.name_he }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">סוג תנועה</label>
+                    <select class="form-select" id="typeFilter">
+                        <option value="">כל הסוגים</option>
+                        <option value="stock_in">כניסה למלאי</option>
+                        <option value="stock_out">יציאה מהמלאי</option>
+                        <option value="adjustment">התאמה</option>
+                        <option value="transfer">העברה</option>
+                        <option value="waste">פסולת</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">מתאריך</label>
+                    <input type="date" class="form-control" id="fromDate" value="{{ start_date.strftime('%Y-%m-%d') if start_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">עד תאריך</label>
+                    <input type="date" class="form-control" id="toDate" value="{{ end_date.strftime('%Y-%m-%d') if end_date }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-secondary" onclick="applyFilters()">
+                        <i class="fas fa-search me-1"></i>סנן
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>תנועות אחרונות</h5>
+        </div>
+        <div class="card-body">
+            {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>תאריך</th>
+                            <th>פריט</th>
+                            <th>סניף</th>
+                            <th>סוג תנועה</th>
+                            <th>כמות</th>
+                            <th>מחיר יחידה</th>
+                            <th>סה"כ</th>
+                            <th>הערות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.created_at|il_time }}</td>
+                            <td>
+                                {% if transaction.item %}
+                                <div>
+                                    <strong>{{ transaction.item.name_he }}</strong>
+                                    <br><small class="text-muted">{{ transaction.item.sku }}</small>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.branch %}
+                                <span class="badge bg-info">{{ transaction.branch.name_he }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.transaction_type == 'stock_in' %}
+                                <span class="badge bg-success"><i class="fas fa-arrow-down me-1"></i>כניסה</span>
+                                {% elif transaction.transaction_type == 'stock_out' %}
+                                <span class="badge bg-warning"><i class="fas fa-arrow-up me-1"></i>יציאה</span>
+                                {% elif transaction.transaction_type == 'adjustment' %}
+                                <span class="badge bg-info"><i class="fas fa-cog me-1"></i>התאמה</span>
+                                {% elif transaction.transaction_type == 'transfer' %}
+                                <span class="badge bg-primary"><i class="fas fa-exchange-alt me-1"></i>העברה</span>
+                                {% elif transaction.transaction_type == 'waste' %}
+                                <span class="badge bg-danger"><i class="fas fa-trash me-1"></i>פסולת</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="{% if transaction.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {% if transaction.quantity > 0 %}+{% endif %}{{ transaction.quantity }} 
+                                    {% if transaction.item %}{{ transaction.item.unit_he }}{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if transaction.unit_cost %}
+                                ₪{{ "%.2f"|format(transaction.unit_cost) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.total_cost %}
+                                ₪{{ "%.2f"|format(transaction.total_cost) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.notes %}
+                                <small>{{ transaction.notes[:50] }}{% if transaction.notes|length > 50 %}...{% endif %}</small>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">אין תנועות מלאי</h5>
+                <p class="text-muted">תנועות המלאי יופיעו כאן</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function addTransaction() {
+    alert('רישום תנועה חדשה - בפיתוח');
+}
+
+function applyFilters() {
+    const branchId = document.getElementById('branchFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    
+    let url = `{{ url_for('admin.stock_transactions') }}?`;
+    if (branchId) url += `branch_id=${branchId}&`;
+    if (type) url += `type=${type}&`;
+    if (fromDate) url += `from=${fromDate}&`;
+    if (toDate) url += `to=${toDate}&`;
+    
+    window.location.href = url;
+}
+</script>
+{% endblock %}

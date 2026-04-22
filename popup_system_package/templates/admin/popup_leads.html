@@ -1,0 +1,400 @@
+{% extends "admin/base.html" %}
+
+{% block title %}לידים מפופאפים{% endblock %}
+
+{% block extra_css %}
+<style>
+    .leads-container {
+        padding: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1B2951;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+    }
+    
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #f1f5f9;
+        color: #64748b;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-back:hover {
+        background: #e2e8f0;
+        color: #1B2951;
+    }
+    
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1B2951;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    
+    .table-title {
+        font-weight: 600;
+        color: #1B2951;
+    }
+    
+    .leads-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .leads-table th {
+        text-align: right;
+        padding: 1rem 1.5rem;
+        background: #f8fafc;
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.85rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .leads-table td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    
+    .leads-table tr:hover {
+        background: #fafbfc;
+    }
+    
+    .lead-email {
+        font-weight: 500;
+        color: #1B2951;
+    }
+    
+    .lead-phone {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    
+    .lead-name {
+        font-weight: 500;
+        color: #334155;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .badge-success {
+        background: #d1fae5;
+        color: #059669;
+    }
+    
+    .badge-neutral {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+    
+    .badge-popup {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    
+    .lead-date {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    
+    .consent-icons {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .consent-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+    
+    .consent-yes {
+        background: #d1fae5;
+        color: #059669;
+    }
+    
+    .consent-no {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #cbd5e1;
+        margin-bottom: 1.5rem;
+    }
+    
+    .empty-state h3 {
+        color: #1B2951;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+        color: #64748b;
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .pagination a, .pagination span {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .pagination a {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+    
+    .pagination a:hover {
+        background: #C75450;
+        color: white;
+    }
+    
+    .pagination .current {
+        background: #C75450;
+        color: white;
+    }
+    
+    .pagination .disabled {
+        background: #f8fafc;
+        color: #cbd5e1;
+        cursor: not-allowed;
+    }
+    
+    .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #10b981;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .btn-export:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leads-container">
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-users"></i>
+            לידים מפופאפים
+        </h1>
+        <a href="{{ url_for('admin.popups') }}" class="btn-back">
+            <i class="fas fa-arrow-right"></i>
+            חזרה לפופאפים
+        </a>
+    </div>
+    
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{{ leads.total }}</div>
+            <div class="stat-label">סה"כ לידים</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ leads.items|selectattr('is_subscribed')|list|length }}</div>
+            <div class="stat-label">נרשמו לניוזלטר</div>
+        </div>
+    </div>
+    
+    <div class="table-container">
+        <div class="table-header">
+            <span class="table-title"><i class="fas fa-list"></i> רשימת לידים</span>
+            <a href="{{ url_for('admin.export_popup_leads') }}" class="btn-export">
+                <i class="fas fa-file-excel"></i> ייצוא לאקסל
+            </a>
+        </div>
+        
+        {% if leads.items %}
+        <table class="leads-table">
+            <thead>
+                <tr>
+                    <th>שם</th>
+                    <th>אימייל</th>
+                    <th>טלפון</th>
+                    <th>מקור (פופאפ)</th>
+                    <th>תנאים</th>
+                    <th>קידום מכירות</th>
+                    <th>ניוזלטר</th>
+                    <th>מכשיר</th>
+                    <th>תאריך</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in leads.items %}
+                {% set consents = lead_consents.get(lead.id, {}) %}
+                <tr>
+                    <td class="lead-name">{{ lead.name or '-' }}</td>
+                    <td class="lead-email">{{ lead.email }}</td>
+                    <td class="lead-phone">{{ lead.phone or '-' }}</td>
+                    <td>
+                        {% if lead.popup_id and popup_names.get(lead.popup_id) %}
+                        <span class="badge badge-popup">{{ popup_names.get(lead.popup_id) }}</span>
+                        {% else %}
+                        <span class="badge badge-neutral">לא ידוע</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if consents.get('terms_of_use') %}
+                        <span class="consent-icon consent-yes" title="אישר תנאים"><i class="fas fa-check"></i></span>
+                        {% else %}
+                        <span class="consent-icon consent-no" title="לא אישר"><i class="fas fa-times"></i></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if consents.get('marketing_email') or consents.get('marketing_sms') %}
+                        <span class="consent-icon consent-yes" title="אישר קידום מכירות"><i class="fas fa-check"></i></span>
+                        {% else %}
+                        <span class="consent-icon consent-no" title="לא אישר"><i class="fas fa-times"></i></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if lead.is_subscribed %}
+                        <span class="badge badge-success"><i class="fas fa-check"></i> נרשם</span>
+                        {% else %}
+                        <span class="badge badge-neutral">לא</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if lead.device_type == 'mobile' %}
+                        <i class="fas fa-mobile-alt" title="נייד"></i>
+                        {% elif lead.device_type == 'tablet' %}
+                        <i class="fas fa-tablet-alt" title="טאבלט"></i>
+                        {% else %}
+                        <i class="fas fa-desktop" title="מחשב"></i>
+                        {% endif %}
+                    </td>
+                    <td class="lead-date">{{ lead.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if leads.pages > 1 %}
+        <div class="pagination">
+            {% if leads.has_prev %}
+            <a href="{{ url_for('admin.popup_leads', page=leads.prev_num) }}"><i class="fas fa-chevron-right"></i></a>
+            {% else %}
+            <span class="disabled"><i class="fas fa-chevron-right"></i></span>
+            {% endif %}
+            
+            {% for p in leads.iter_pages() %}
+                {% if p %}
+                    {% if p == leads.page %}
+                    <span class="current">{{ p }}</span>
+                    {% else %}
+                    <a href="{{ url_for('admin.popup_leads', page=p) }}">{{ p }}</a>
+                    {% endif %}
+                {% else %}
+                <span>...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if leads.has_next %}
+            <a href="{{ url_for('admin.popup_leads', page=leads.next_num) }}"><i class="fas fa-chevron-left"></i></a>
+            {% else %}
+            <span class="disabled"><i class="fas fa-chevron-left"></i></span>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>אין לידים עדיין</h3>
+            <p>כשמבקרים ימלאו את הטופס בפופאפ, הם יופיעו כאן</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ספקים - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 text-gray-800 mb-0">
+                <i class="fas fa-truck me-2 text-primary"></i>ניהול ספקים
+            </h1>
+            <p class="text-muted mb-0">רשימת ספקים למערכת המלאי</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="addNewSupplier()">
+                <i class="fas fa-plus me-2"></i>הוסף ספק חדש
+            </button>
+        </div>
+    </div>
+
+    <!-- Suppliers List -->
+    <div class="row">
+        {% if suppliers %}
+        {% for supplier in suppliers %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ supplier.name }}</h5>
+                    <div>
+                        {% if supplier.is_active %}
+                        <span class="badge bg-success">פעיל</span>
+                        {% else %}
+                        <span class="badge bg-secondary">לא פעיל</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-1">פרטי התקשרות</h6>
+                        {% if supplier.contact_person %}
+                        <p class="mb-1"><i class="fas fa-user me-2"></i>{{ supplier.contact_person }}</p>
+                        {% endif %}
+                        {% if supplier.phone %}
+                        <p class="mb-1"><i class="fas fa-phone me-2"></i>{{ supplier.phone }}</p>
+                        {% endif %}
+                        {% if supplier.email %}
+                        <p class="mb-1"><i class="fas fa-envelope me-2"></i>{{ supplier.email }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    {% if supplier.address %}
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-1">כתובת</h6>
+                        <p class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ supplier.address }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-1">תנאי אספקה</h6>
+                        {% if supplier.delivery_days %}
+                        <p class="mb-1"><i class="fas fa-calendar me-2"></i>{{ supplier.delivery_days }}</p>
+                        {% endif %}
+                        {% if supplier.delivery_time %}
+                        <p class="mb-1"><i class="fas fa-clock me-2"></i>{{ supplier.delivery_time }}</p>
+                        {% endif %}
+                        {% if supplier.minimum_order %}
+                        <p class="mb-1"><i class="fas fa-shopping-cart me-2"></i>הזמנה מינימלית: ₪{{ "%.2f"|format(supplier.minimum_order) }}</p>
+                        {% endif %}
+                        {% if supplier.payment_terms %}
+                        <p class="mb-1"><i class="fas fa-credit-card me-2"></i>תנאי תשלום: {{ supplier.payment_terms }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    {% if supplier.notes %}
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-1">הערות</h6>
+                        <p class="text-muted small">{{ supplier.notes[:100] }}{% if supplier.notes|length > 100 %}...{% endif %}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <div class="btn-group w-100">
+                        <button class="btn btn-outline-primary btn-sm" onclick="editSupplier({{ supplier.id }})">
+                            <i class="fas fa-edit me-1"></i>ערוך
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="viewSupplierItems({{ supplier.id }})">
+                            <i class="fas fa-boxes me-1"></i>פריטים
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="createOrder({{ supplier.id }})">
+                            <i class="fas fa-shopping-cart me-1"></i>הזמן
+                        </button>
+                        {% if supplier.is_active %}
+                        <button class="btn btn-outline-warning btn-sm" onclick="toggleSupplier({{ supplier.id }}, false)">
+                            <i class="fas fa-pause me-1"></i>השבת
+                        </button>
+                        {% else %}
+                        <button class="btn btn-outline-success btn-sm" onclick="toggleSupplier({{ supplier.id }}, true)">
+                            <i class="fas fa-play me-1"></i>הפעל
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteSupplier({{ supplier.id }}, '{{ supplier.name|replace("'", "\\'") }}')">
+                            <i class="fas fa-trash me-1"></i>מחק
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">אין ספקים רשומים</h5>
+                    <p class="text-muted">לחץ על "הוסף ספק חדש" כדי להתחיל</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function addNewSupplier() {
+    window.location.href = "{{ url_for('admin.add_supplier') }}";
+}
+
+function editSupplier(id) {
+    window.location.href = `/admin/stock-suppliers/${id}/edit`;
+}
+
+function viewSupplierItems(id) {
+    window.location.href = `/admin/stock-suppliers/${id}/items`;
+}
+
+function createOrder(id) {
+    // TODO: Implement order creation functionality
+    alert(`יצירת הזמנה לספק ${id} - יתווסף בעדכון הבא`);
+}
+
+function toggleSupplier(id, activate) {
+    const action = activate ? 'הפעלת' : 'השבתת';
+    if (confirm(`האם אתה בטוח שברצונך ${action} ספק זה?`)) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/stock-suppliers/${id}/toggle`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteSupplier(id, name) {
+    if (confirm(`האם אתה בטוח שברצונך למחוק את ספק "${name}"? פעולה זו אינה ניתנת לביטול.`)) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/stock-suppliers/${id}/delete`;
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

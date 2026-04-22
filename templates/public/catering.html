@@ -1,0 +1,410 @@
+{% extends "public/base.html" %}
+
+{% block title %}{{ settings.catering_page_hero_title_he if language == 'he' else settings.catering_page_hero_title_en }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block description %}{{ settings.catering_page_hero_subtitle_he if language == 'he' else settings.catering_page_hero_subtitle_en }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .catering-hero {
+        position: relative;
+        height: 60vh;
+        min-height: 400px;
+        background: linear-gradient(135deg, #1a3a6e 0%, #2c5282 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .catering-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('{{ url_for("static", filename="uploads/" + settings.catering_image) if settings.catering_image else "" }}') center/cover;
+        opacity: 0.2;
+        z-index: 0;
+    }
+    
+    .catering-hero-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        color: white;
+        max-width: 800px;
+        padding: 2rem;
+    }
+    
+    .catering-hero-title {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .catering-hero-subtitle {
+        font-size: 1.5rem;
+        font-weight: 300;
+        margin-bottom: 2rem;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .btn-cta {
+        background: #dc3545;
+        color: white;
+        padding: 1rem 3rem;
+        font-size: 1.2rem;
+        border-radius: 50px;
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-cta:hover {
+        background: #c82333;
+        color: white;
+        transform: scale(1.05);
+        box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+    }
+    
+    .catering-gallery-section {
+        padding: 5rem 0;
+        background: #f8f9fa;
+    }
+    
+    .section-title {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a3a6e;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    
+    .section-subtitle {
+        font-size: 1.1rem;
+        color: #666;
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto 3rem;
+        line-height: 1.8;
+    }
+    
+    .gallery-grid {
+        display: flex;
+        gap: 2rem;
+        margin-top: 3rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 1rem;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .gallery-grid::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .gallery-grid::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .gallery-grid::-webkit-scrollbar-thumb {
+        background: #1a3a6e;
+        border-radius: 10px;
+    }
+    
+    .gallery-grid::-webkit-scrollbar-thumb:hover {
+        background: #dc3545;
+    }
+    
+    .gallery-item {
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        height: 350px;
+        min-width: 300px;
+        flex-shrink: 0;
+        background: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .gallery-item:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    
+    .gallery-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .gallery-item.placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+        border: 2px dashed #ccc;
+    }
+    
+    .gallery-item.placeholder i {
+        font-size: 4rem;
+        color: #999;
+    }
+    
+    .gallery-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        color: white;
+        padding: 2rem 1.5rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .contact-cta-section {
+        background: linear-gradient(135deg, #1a3a6e 0%, #2c5282 100%);
+        color: white;
+        padding: 5rem 0;
+        text-align: center;
+    }
+    
+    .contact-cta-title {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .contact-cta-subtitle {
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+    }
+    
+    @media (max-width: 768px) {
+        .catering-hero {
+            padding-top: 70px; /* Add space for fixed mobile navbar */
+            min-height: 450px;
+        }
+        
+        .catering-hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .catering-hero-subtitle {
+            font-size: 1.2rem;
+        }
+        
+        .section-title {
+            font-size: 2rem;
+        }
+        
+        .gallery-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .gallery-item {
+            height: 250px;
+        }
+    }
+    
+    /* Contact Form Styles */
+    .contact-cta-section .card {
+        background: white;
+        border: none;
+        border-radius: 12px;
+    }
+    
+    .contact-cta-section .form-label {
+        color: #374151;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .contact-cta-section .form-control,
+    .contact-cta-section select.form-control {
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        color: #1f2937;
+    }
+    
+    .contact-cta-section .form-control:focus,
+    .contact-cta-section select.form-control:focus {
+        border-color: #1a3a6e;
+        box-shadow: 0 0 0 0.2rem rgba(26, 58, 110, 0.15);
+        outline: none;
+    }
+    
+    .btn-cta {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: none;
+        padding: 1rem 2.5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="catering-hero">
+    <div class="catering-hero-content">
+        <h1 class="catering-hero-title">{{ settings.catering_page_hero_title_he if language == 'he' else settings.catering_page_hero_title_en }}</h1>
+        <p class="catering-hero-subtitle">{{ settings.catering_page_hero_subtitle_he if language == 'he' else settings.catering_page_hero_subtitle_en }}</p>
+        <a href="#contact-section" class="btn btn-cta">{{ 'צרו קשר' if language == 'he' else 'Contact Us' }}</a>
+    </div>
+</section>
+
+<!-- Gallery Section -->
+<section class="catering-gallery-section">
+    <div class="container">
+        <h2 class="section-title">{{ settings.catering_page_gallery_title_he if language == 'he' else settings.catering_page_gallery_title_en }}</h2>
+        <p class="section-subtitle">{{ settings.catering_page_gallery_subtitle_he if language == 'he' else settings.catering_page_gallery_subtitle_en }}</p>
+        
+        <div class="gallery-grid">
+            {% if gallery_images %}
+                {% for image in gallery_images %}
+                <div class="gallery-item">
+                    <img src="{{ image.file_path }}" 
+                         alt="{{ image.alt_text_he if language == 'he' else image.alt_text_en or 'Catering photo' }}"
+                         loading="lazy">
+                    {% if image.caption_he or image.caption_en %}
+                    <div class="gallery-caption">
+                        {{ image.caption_he if language == 'he' else image.caption_en }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Placeholder images when no gallery images are uploaded -->
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+                <div class="gallery-item placeholder">
+                    <i class="fas fa-image"></i>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Contact Form Section -->
+<section class="contact-cta-section" id="contact-section">
+    <div class="container">
+        <h2 class="contact-cta-title">{{ settings.catering_page_cta_title_he if language == 'he' else settings.catering_page_cta_title_en }}</h2>
+        <p class="contact-cta-subtitle">{{ settings.catering_page_cta_subtitle_he if language == 'he' else settings.catering_page_cta_subtitle_en }}</p>
+        
+        <div class="row mt-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        {% if success %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            {{ 'תודה רבה! פנייתך נקלטה ונחזור אליך בהקדם' if language == 'he' else 'Thank you! We received your inquiry and will contact you soon' }}
+                        </div>
+                        {% endif %}
+                        
+                        {% if error %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+                        
+                        <form method="POST" action="{{ url_for('catering_page') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'שם מלא *' if language == 'he' else 'Full Name *' }}</label>
+                                    <input type="text" class="form-control" name="name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'טלפון *' if language == 'he' else 'Phone *' }}</label>
+                                    <input type="tel" class="form-control" name="phone" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'אימייל *' if language == 'he' else 'Email *' }}</label>
+                                    <input type="email" class="form-control" name="email" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'תאריך האירוע (משוער)' if language == 'he' else 'Event Date (Estimated)' }}</label>
+                                    <input type="text" class="form-control" name="event_date" placeholder="{{ 'לדוגמה: 15/06/2025' if language == 'he' else 'e.g., June 15, 2025' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'סוג האירוע' if language == 'he' else 'Event Type' }}</label>
+                                    <select class="form-control" name="event_type">
+                                        <option value="">{{ 'בחר...' if language == 'he' else 'Select...' }}</option>
+                                        <option value="wedding">{{ 'חתונה' if language == 'he' else 'Wedding' }}</option>
+                                        <option value="corporate">{{ 'אירוע עסקי' if language == 'he' else 'Corporate Event' }}</option>
+                                        <option value="birthday">{{ 'יום הולדת' if language == 'he' else 'Birthday Party' }}</option>
+                                        <option value="bar_mitzvah">{{ 'בר/בת מצווה' if language == 'he' else 'Bar/Bat Mitzvah' }}</option>
+                                        <option value="other">{{ 'אחר' if language == 'he' else 'Other' }}</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">{{ 'מספר אורחים (משוער)' if language == 'he' else 'Guest Count (Estimated)' }}</label>
+                                    <input type="number" class="form-control" name="guest_count" min="1" placeholder="{{ '50' if language == 'he' else '50' }}">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">{{ 'הודעה / פרטים נוספים *' if language == 'he' else 'Message / Additional Details *' }}</label>
+                                <textarea class="form-control" name="message" rows="4" required placeholder="{{ 'ספרו לנו עוד על האירוע שלכם...' if language == 'he' else 'Tell us more about your event...' }}"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-cta w-100">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                {{ 'שלח פנייה' if language == 'he' else 'Send Inquiry' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

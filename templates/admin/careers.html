@@ -1,0 +1,302 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'ניהול משרות' if (admin_language or 'he') == 'he' else 'Careers Management' }} - {{ 'ניהול' if (admin_language or 'he') == 'he' else 'Admin' }}{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1><i class="fas fa-briefcase me-2"></i>{{ 'ניהול משרות' if (admin_language or 'he') == 'he' else 'Careers Management' }}</h1>
+    <p class="text-muted">{{ 'ניהול משרות פתוחות ומועמדויות' if (admin_language or 'he') == 'he' else 'Manage open positions and applications' }}</p>
+</div>
+
+{% if message %}
+<div class="alert alert-{{ message_type }} alert-dismissible fade show">
+    <i class="fas fa-{{ 'check' if message_type == 'success' else 'exclamation-triangle' }}-circle me-2"></i>
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>{{ 'משרות פתוחות' if (admin_language or 'he') == 'he' else 'Open Positions' }}</h5>
+        <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addPositionModal">
+            <i class="fas fa-plus me-1"></i>{{ 'הוסף משרה' if (admin_language or 'he') == 'he' else 'Add Position' }}
+        </button>
+    </div>
+    <div class="card-body">
+        {% if positions %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>{{ 'כותרת' if (admin_language or 'he') == 'he' else 'Title' }}</th>
+                        <th>{{ 'מיקום' if (admin_language or 'he') == 'he' else 'Location' }}</th>
+                        <th>{{ 'סוג משרה' if (admin_language or 'he') == 'he' else 'Type' }}</th>
+                        <th>{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</th>
+                        <th>{{ 'סדר הצגה' if (admin_language or 'he') == 'he' else 'Order' }}</th>
+                        <th>{{ 'פעולות' if (admin_language or 'he') == 'he' else 'Actions' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for position in positions %}
+                    <tr>
+                        <td>
+                            <strong>{{ position.title_he }}</strong><br>
+                            <small class="text-muted">{{ position.title_en }}</small>
+                        </td>
+                        <td>{{ position.location_he or position.location_en or '-' }}</td>
+                        <td>{{ position.employment_type_he or position.employment_type_en or '-' }}</td>
+                        <td>
+                            {% if position.is_active %}
+                            <span class="badge bg-success">{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ 'לא פעיל' if (admin_language or 'he') == 'he' else 'Inactive' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ position.display_order }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary" onclick="editPosition({{ position.id }}, {{ position.to_json() | tojson }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" onclick="deletePosition({{ position.id }}, '{{ position.title_en }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-briefcase fa-3x mb-3 text-muted"></i>
+            <p class="text-muted">{{ 'אין משרות פתוחות כרגע. לחץ "הוסף משרה" להתחיל' if (admin_language or 'he') == 'he' else 'No positions yet. Click "Add Position" to start' }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Position Modal -->
+<div class="modal fade" id="addPositionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.careers_add') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ 'הוסף משרה חדשה' if (admin_language or 'he') == 'he' else 'Add New Position' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'כותרת (עברית) *' if (admin_language or 'he') == 'he' else 'Title (Hebrew) *' }}</label>
+                            <input type="text" class="form-control" name="title_he" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'כותרת (אנגלית) *' if (admin_language or 'he') == 'he' else 'Title (English) *' }}</label>
+                            <input type="text" class="form-control" name="title_en" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'מיקום (עברית)' if (admin_language or 'he') == 'he' else 'Location (Hebrew)' }}</label>
+                            <input type="text" class="form-control" name="location_he">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'מיקום (אנגלית)' if (admin_language or 'he') == 'he' else 'Location (English)' }}</label>
+                            <input type="text" class="form-control" name="location_en">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סוג משרה (עברית)' if (admin_language or 'he') == 'he' else 'Employment Type (Hebrew)' }}</label>
+                            <input type="text" class="form-control" name="employment_type_he" placeholder="{{ 'משרה מלאה, משרה חלקית' if (admin_language or 'he') == 'he' else 'Full-time, Part-time' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סוג משרה (אנגלית)' if (admin_language or 'he') == 'he' else 'Employment Type (English)' }}</label>
+                            <input type="text" class="form-control" name="employment_type_en" placeholder="Full-time, Part-time">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'תיאור (עברית)' if (admin_language or 'he') == 'he' else 'Description (Hebrew)' }}</label>
+                        <textarea class="form-control" name="description_he" rows="3"></textarea>
+                        <small class="text-muted">{{ 'ניתן להשתמש ב-HTML' if (admin_language or 'he') == 'he' else 'HTML supported' }}</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'תיאור (אנגלית)' if (admin_language or 'he') == 'he' else 'Description (English)' }}</label>
+                        <textarea class="form-control" name="description_en" rows="3"></textarea>
+                        <small class="text-muted">HTML supported</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'דרישות (עברית)' if (admin_language or 'he') == 'he' else 'Requirements (Hebrew)' }}</label>
+                        <textarea class="form-control" name="requirements_he" rows="3"></textarea>
+                        <small class="text-muted">{{ 'רשימת דרישות (HTML או רשימה מסומנת)' if (admin_language or 'he') == 'he' else 'List of requirements (HTML or bullet points)' }}</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'דרישות (אנגלית)' if (admin_language or 'he') == 'he' else 'Requirements (English)' }}</label>
+                        <textarea class="form-control" name="requirements_en" rows="3"></textarea>
+                        <small class="text-muted">List of requirements (HTML or bullet points)</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סדר הצגה' if (admin_language or 'he') == 'he' else 'Display Order' }}</label>
+                            <input type="number" class="form-control" name="display_order" value="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</label>
+                            <select class="form-control" name="is_active">
+                                <option value="1">{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</option>
+                                <option value="0">{{ 'לא פעיל' if (admin_language or 'he') == 'he' else 'Inactive' }}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                    <button type="submit" class="btn btn-primary">{{ 'הוסף משרה' if (admin_language or 'he') == 'he' else 'Add Position' }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Position Modal -->
+<div class="modal fade" id="editPositionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('admin.careers_edit') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="position_id" id="edit_position_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ 'ערוך משרה' if (admin_language or 'he') == 'he' else 'Edit Position' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'כותרת (עברית) *' if (admin_language or 'he') == 'he' else 'Title (Hebrew) *' }}</label>
+                            <input type="text" class="form-control" name="title_he" id="edit_title_he" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'כותרת (אנגלית) *' if (admin_language or 'he') == 'he' else 'Title (English) *' }}</label>
+                            <input type="text" class="form-control" name="title_en" id="edit_title_en" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'מיקום (עברית)' if (admin_language or 'he') == 'he' else 'Location (Hebrew)' }}</label>
+                            <input type="text" class="form-control" name="location_he" id="edit_location_he">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'מיקום (אנגלית)' if (admin_language or 'he') == 'he' else 'Location (English)' }}</label>
+                            <input type="text" class="form-control" name="location_en" id="edit_location_en">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סוג משרה (עברית)' if (admin_language or 'he') == 'he' else 'Employment Type (Hebrew)' }}</label>
+                            <input type="text" class="form-control" name="employment_type_he" id="edit_employment_type_he">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סוג משרה (אנגלית)' if (admin_language or 'he') == 'he' else 'Employment Type (English)' }}</label>
+                            <input type="text" class="form-control" name="employment_type_en" id="edit_employment_type_en">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'תיאור (עברית)' if (admin_language or 'he') == 'he' else 'Description (Hebrew)' }}</label>
+                        <textarea class="form-control" name="description_he" id="edit_description_he" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'תיאור (אנגלית)' if (admin_language or 'he') == 'he' else 'Description (English)' }}</label>
+                        <textarea class="form-control" name="description_en" id="edit_description_en" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'דרישות (עברית)' if (admin_language or 'he') == 'he' else 'Requirements (Hebrew)' }}</label>
+                        <textarea class="form-control" name="requirements_he" id="edit_requirements_he" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'דרישות (אנגלית)' if (admin_language or 'he') == 'he' else 'Requirements (English)' }}</label>
+                        <textarea class="form-control" name="requirements_en" id="edit_requirements_en" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סדר הצגה' if (admin_language or 'he') == 'he' else 'Display Order' }}</label>
+                            <input type="number" class="form-control" name="display_order" id="edit_display_order">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ 'סטטוס' if (admin_language or 'he') == 'he' else 'Status' }}</label>
+                            <select class="form-control" name="is_active" id="edit_is_active">
+                                <option value="1">{{ 'פעיל' if (admin_language or 'he') == 'he' else 'Active' }}</option>
+                                <option value="0">{{ 'לא פעיל' if (admin_language or 'he') == 'he' else 'Inactive' }}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'ביטול' if (admin_language or 'he') == 'he' else 'Cancel' }}</button>
+                    <button type="submit" class="btn btn-primary">{{ 'שמור שינויים' if (admin_language or 'he') == 'he' else 'Save Changes' }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editPosition(id, data) {
+    document.getElementById('edit_position_id').value = id;
+    document.getElementById('edit_title_he').value = data.title_he;
+    document.getElementById('edit_title_en').value = data.title_en;
+    document.getElementById('edit_location_he').value = data.location_he || '';
+    document.getElementById('edit_location_en').value = data.location_en || '';
+    document.getElementById('edit_employment_type_he').value = data.employment_type_he || '';
+    document.getElementById('edit_employment_type_en').value = data.employment_type_en || '';
+    document.getElementById('edit_description_he').value = data.description_he || '';
+    document.getElementById('edit_description_en').value = data.description_en || '';
+    document.getElementById('edit_requirements_he').value = data.requirements_he || '';
+    document.getElementById('edit_requirements_en').value = data.requirements_en || '';
+    document.getElementById('edit_display_order').value = data.display_order;
+    document.getElementById('edit_is_active').value = data.is_active ? '1' : '0';
+    
+    new bootstrap.Modal(document.getElementById('editPositionModal')).show();
+}
+
+function deletePosition(id, title) {
+    if (confirm('{{ "האם למחוק את המשרה" if (admin_language or 'he') == 'he' else "Delete position" }} "' + title + '"?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("admin.careers_delete") }}';
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'position_id';
+        idInput.value = id;
+        form.appendChild(idInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="{{ admin_language or 'he' }}" dir="{{ 'rtl' if (admin_language or 'he') == 'he' else 'ltr' }}">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-X1V6VK3PXE"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-X1V6VK3PXE');
+    </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Admin Panel - SUMO{% endblock %}</title>
+    {% block extra_head %}{% endblock %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sumo-coral: #C75450;
+            --sumo-navy: #1B2951;
+        }
+        
+        body {
+            font-family: 'Heebo', sans-serif;
+            background: #f8f9fa;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
+            background: var(--sumo-navy);
+            color: white;
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 250px;
+            z-index: 100;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 15px 20px;
+            border-radius: 0;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            padding-right: 30px;
+        }
+        
+        .sidebar .nav-link.active {
+            background: var(--sumo-coral);
+            color: white;
+        }
+        
+        .main-content {
+            margin-right: 250px;
+            padding: 30px;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 0 20px rgba(0,0,0,0.08);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .card-header {
+            background: white;
+            border-bottom: 2px solid var(--sumo-coral);
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        
+        .btn-primary {
+            background: var(--sumo-coral);
+            border-color: var(--sumo-coral);
+        }
+        
+        .btn-primary:hover {
+            background: #a63c38;
+        }
+        
+        /* Modern Dashboard Styles */
+        .dashboard-header-modern {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .dashboard-title-modern {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--sumo-navy);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .dashboard-subtitle {
+            color: #6b7280;
+            margin: 0.5rem 0 0 0;
+            font-size: 1.1rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .current-time {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: var(--sumo-coral);
+            font-weight: 600;
+        }
+        
+        .user-welcome {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            font-size: 1rem;
+        }
+        
+        .stats-grid-modern {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .stat-card-modern {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card-modern:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        
+        .stat-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            background: var(--sumo-coral);
+        }
+        
+        .stat-content {
+            flex: 1;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--sumo-navy);
+            margin: 0 0 0.5rem 0;
+        }
+        
+        .stat-label {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin: 0 0 0.25rem 0;
+        }
+        
+        .stat-detail {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+        
+        .stat-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--sumo-coral);
+        }
+        
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .activity-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+        }
+        
+        .activity-header {
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .activity-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--sumo-navy);
+        }
+        
+        .activity-count {
+            background: var(--sumo-coral);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .activity-content {
+            padding: 2rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #9ca3af;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .section-header {
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--sumo-navy);
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .section-description {
+            color: #6b7280;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        .quick-actions-section {
+            margin-bottom: 3rem;
+        }
+        
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .quick-action-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .quick-action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .action-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            background: var(--sumo-coral);
+        }
+        
+        .action-content {
+            flex: 1;
+        }
+        
+        .action-content h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            color: var(--sumo-navy);
+        }
+        
+        .action-content p {
+            color: #6b7280;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        
+        .action-arrow {
+            color: #9ca3af;
+            font-size: 1.2rem;
+        }
+        
+        .feature-section {
+            margin-bottom: 3rem;
+        }
+        
+        .feature-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1.5rem;
+            color: white;
+            background: var(--sumo-coral);
+        }
+        
+        .feature-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0 0 0.75rem 0;
+            color: var(--sumo-navy);
+        }
+        
+        .feature-card p {
+            color: #6b7280;
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .welcome-info {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            margin-bottom: 2rem;
+        }
+        
+        .welcome-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+        
+        .welcome-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+        
+        .welcome-text h4 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0 0 1rem 0;
+            color: var(--sumo-navy);
+        }
+        
+        .credentials-info p {
+            margin: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .credentials-info .label {
+            font-weight: 600;
+            color: var(--sumo-navy);
+        }
+        
+        .credentials-info code {
+            background: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--sumo-coral);
+        }
+        
+        .security-note {
+            color: #f59e0b;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .stats-grid-modern {
+                grid-template-columns: 1fr;
+            }
+            
+            .activity-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-cards-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .welcome-content {
+                flex-direction: column;
+            }
+        }
+            border-color: #a63c38;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--sumo-coral), var(--sumo-navy));
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card h3 {
+            font-size: 2rem;
+            margin: 0;
+        }
+        
+        .stat-card p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        
+        .table {
+            font-size: 0.95rem;
+        }
+        
+        .badge {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+        }
+        
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1001;
+            background: var(--sumo-coral);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-toggle {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+                box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .mobile-overlay.show {
+                display: block;
+            }
+            
+            .main-content {
+                margin-right: 0;
+                padding: 80px 15px 20px 15px;
+            }
+            
+            .card {
+                margin-bottom: 20px;
+            }
+            
+            .table-responsive {
+                font-size: 0.85rem;
+            }
+            
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .stat-card {
+                margin-bottom: 15px;
+                padding: 15px;
+            }
+            
+            .stat-card h3 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 80px 10px 15px 10px;
+            }
+            
+            .sidebar {
+                width: 280px;
+            }
+            
+            .table-responsive {
+                font-size: 0.8rem;
+            }
+            
+            .btn-group-vertical .btn {
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Mobile toggle button -->
+    <button class="mobile-toggle" id="mobileToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Mobile overlay -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+    
+    <div class="sidebar" id="sidebar">
+        <div class="p-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 class="mb-0">SUMO Admin</h4>
+                <button class="btn btn-sm btn-outline-light d-md-none" id="closeSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- Language Switcher -->
+            <div class="btn-group btn-group-sm w-100">
+                <a href="{{ url_for('admin.set_language', lang='he') }}" 
+                   class="btn btn-outline-light {% if (admin_language or 'he') == 'he' %}active{% endif %}">
+                    עברית
+                </a>
+                <a href="{{ url_for('admin.set_language', lang='en') }}" 
+                   class="btn btn-outline-light {% if (admin_language or 'he') == 'en' %}active{% endif %}">
+                    English
+                </a>
+            </div>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+                <i class="fas fa-dashboard me-2"></i> {{ 'לוח בקרה' if (admin_language or 'he') == 'he' else 'Dashboard' }}
+            </a>
+            {% if has_permission('checklists.view') %}
+            <a class="nav-link {% if request.endpoint == 'admin.checklist' %}active{% endif %}" href="{{ url_for('admin.checklist') }}">
+                <i class="fas fa-clipboard-check me-2"></i> {{ 'רשימות משימות' if (admin_language or 'he') == 'he' else 'Task Lists' }}
+            </a>
+            {% endif %}
+            {% if has_permission('menu.view') %}
+            <a class="nav-link {% if request.endpoint == 'admin.menu_wizard' %}active{% endif %}" href="{{ url_for('admin.menu_wizard') }}">
+                <i class="fas fa-magic me-2"></i> {{ 'אשף תפריט' if (admin_language or 'he') == 'he' else 'Menu Wizard' }}
+            </a>
+            {% endif %}
+            {% if has_permission('stock.view') %}
+            <a class="nav-link {% if 'stock' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.stock_management') }}">
+                <i class="fas fa-boxes me-2"></i> {{ 'ניהול מלאי' if (admin_language or 'he') == 'he' else 'Stock Management' }}
+            </a>
+            {% endif %}
+            {% if has_permission('users.view') %}
+            <a class="nav-link {% if request.endpoint in ['admin.users', 'admin.edit_user', 'admin.add_user'] %}active{% endif %}" href="{{ url_for('admin.users') }}">
+                <i class="fas fa-users me-2"></i> {{ 'ניהול משתמשים' if (admin_language or 'he') == 'he' else 'User Management' }}
+            </a>
+            {% endif %}
+            {% if has_permission('roles.view') %}
+            <a class="nav-link {% if request.endpoint in ['admin.roles', 'admin.edit_role', 'admin.create_role', 'admin.permissions'] %}active{% endif %}" href="{{ url_for('admin.roles') }}">
+                <i class="fas fa-user-shield me-2"></i> {{ 'ניהול תפקידים' if (admin_language or 'he') == 'he' else 'Role Management' }}
+            </a>
+            {% endif %}
+            {% if has_permission('settings.view') %}
+            <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
+                <i class="fas fa-cog me-2"></i> {{ 'הגדרות אתר' if (admin_language or 'he') == 'he' else 'Site Settings' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.payment_settings' %}active{% endif %}" href="{{ url_for('admin.payment_settings') }}">
+                <i class="fas fa-credit-card me-2"></i> {{ 'הגדרות תשלום' if (admin_language or 'he') == 'he' else 'Payment Settings' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.media' %}active{% endif %}" href="{{ url_for('admin.media') }}">
+                <i class="fas fa-images me-2"></i> {{ 'מדיה' if (admin_language or 'he') == 'he' else 'Media' }}
+            </a>
+            {% endif %}
+            {% if has_permission('branches.view') %}
+            <a class="nav-link {% if request.endpoint == 'admin.branches' %}active{% endif %}" href="{{ url_for('admin.branches') }}">
+                <i class="fas fa-store me-2"></i> {{ 'סניפים' if (admin_language or 'he') == 'he' else 'Branches' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.delivery_zones', 'admin.edit_delivery_zone'] %}active{% endif %}" href="{{ url_for('admin.delivery_zones') }}">
+                <i class="fas fa-truck me-2"></i> {{ 'אזורי משלוח' if (admin_language or 'he') == 'he' else 'Delivery Zones' }}
+            </a>
+            {% endif %}
+            {% if has_permission('menu.view') %}
+            <a class="nav-link {% if request.endpoint == 'admin.menu' %}active{% endif %}" href="{{ url_for('admin.menu') }}">
+                <i class="fas fa-utensils me-2"></i> {{ 'תפריט' if (admin_language or 'he') == 'he' else 'Menu' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.deals', 'admin.create_deal', 'admin.edit_deal'] %}active{% endif %}" href="{{ url_for('admin.deals') }}">
+                <i class="fas fa-tags me-2"></i> {{ deals_label_he if (admin_language or 'he') == 'he' else deals_label_en }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.global_options', 'admin.edit_global_option_group'] %}active{% endif %}" href="{{ url_for('admin.global_options') }}">
+                <i class="fas fa-layer-group me-2"></i> {{ 'תבניות אפשרויות' if (admin_language or 'he') == 'he' else 'Option Templates' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.upsell_rules', 'admin.create_upsell_rule', 'admin.edit_upsell_rule'] %}active{% endif %}" href="{{ url_for('admin.upsell_rules') }}">
+                <i class="fas fa-chart-line me-2"></i> {{ 'אפסל' if (admin_language or 'he') == 'he' else 'Upsell' }}
+            </a>
+            {% endif %}
+            {% if has_permission('settings.view') %}
+            <a class="nav-link {% if request.endpoint == 'admin.gallery' %}active{% endif %}" href="{{ url_for('admin.gallery') }}">
+                <i class="fas fa-photo-video me-2"></i> {{ 'גלריה' if (admin_language or 'he') == 'he' else 'Gallery' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.messages' %}active{% endif %}" href="{{ url_for('admin.messages') }}">
+                <i class="fas fa-envelope me-2"></i> {{ 'הודעות' if (admin_language or 'he') == 'he' else 'Messages' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.newsletter' %}active{% endif %}" href="{{ url_for('admin.newsletter') }}">
+                <i class="fas fa-newspaper me-2"></i> {{ 'ניוזלטר' if (admin_language or 'he') == 'he' else 'Newsletter' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.reservations' %}active{% endif %}" href="{{ url_for('admin.reservations') }}">
+                <i class="fas fa-calendar-check me-2"></i> {{ 'הזמנות' if (admin_language or 'he') == 'he' else 'Reservations' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.popups', 'admin.create_popup', 'admin.edit_popup'] %}active{% endif %}" href="{{ url_for('admin.popups') }}">
+                <i class="fas fa-window-restore me-2"></i> {{ 'פופאפים' if (admin_language or 'he') == 'he' else 'Popups' }}
+            </a>
+            {% endif %}
+            {% if has_permission('system.admin') %}
+            <hr class="my-3">
+            <small class="text-muted px-3 text-uppercase" style="font-size:.65rem;letter-spacing:1px;">{{ 'תפעול ומערכת' if (admin_language or 'he') == 'he' else 'Operations & System' }}</small>
+            <a class="nav-link {% if request.endpoint in ['admin.time_logs', 'admin.time_log_clock_out', 'admin.time_log_auto_close'] %}active{% endif %}" href="{{ url_for('admin.time_logs') }}">
+                <i class="fas fa-user-clock me-2"></i> {{ 'מעקב שעות' if (admin_language or 'he') == 'he' else 'Time Tracking' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.sms_center' %}active{% endif %}" href="{{ url_for('admin.sms_center') }}">
+                <i class="fas fa-sms me-2"></i> {{ 'מרכז SMS' if (admin_language or 'he') == 'he' else 'SMS Center' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.enrolled_devices', 'admin.manager_pins'] %}active{% endif %}" href="{{ url_for('admin.enrolled_devices') }}">
+                <i class="fas fa-tablet-alt me-2"></i> {{ 'מכשירים ו-PIN' if (admin_language or 'he') == 'he' else 'Devices & PINs' }}
+            </a>
+            {% endif %}
+            {% if has_permission('kitchen.view') or has_permission('system.admin') %}
+            <hr class="my-3">
+            <small class="text-muted px-3 text-uppercase" style="font-size:.65rem;letter-spacing:1px;">{{ 'הזמנות אונליין' if (admin_language or 'he') == 'he' else 'Online Orders' }}</small>
+            <a class="nav-link {% if request.endpoint == 'admin.food_orders_list' %}active{% endif %}" href="{{ url_for('admin.food_orders_list') }}">
+                <i class="fas fa-shopping-bag me-2"></i> {{ 'ניהול הזמנות' if (admin_language or 'he') == 'he' else 'Manage Orders' }}
+            </a>
+            <a class="nav-link" href="/order-dashboard/login" target="_blank">
+                <i class="fas fa-tv me-2"></i> {{ 'מסך מטבח (KDS)' if (admin_language or 'he') == 'he' else 'Kitchen Display (KDS)' }}
+            </a>
+            {% endif %}
+            {% if has_permission('system.admin') %}
+            <hr class="my-3">
+            <a class="nav-link {% if request.endpoint == 'admin.microservices_dashboard' %}active{% endif %}" href="{{ url_for('admin.microservices_dashboard') }}">
+                <i class="fas fa-microchip me-2"></i> {{ 'מערכת הזמנות' if (admin_language or 'he') == 'he' else 'Ordering System' }}
+            </a>
+            <a class="nav-link {% if request.endpoint == 'admin.system_config' %}active{% endif %}" href="{{ url_for('admin.system_config') }}">
+                <i class="fas fa-cogs me-2"></i> {{ 'הגדרות מערכת' if (admin_language or 'he') == 'he' else 'System Settings' }}
+            </a>
+            {% endif %}
+            {% if has_permission('kitchen.manage') %}
+            <a class="nav-link {% if request.endpoint in ['admin.printers', 'admin.add_printer', 'admin.edit_printer'] %}active{% endif %}" href="{{ url_for('admin.printers') }}">
+                <i class="fas fa-print me-2"></i> {{ 'ניהול מדפסות' if (admin_language or 'he') == 'he' else 'Printer Management' }}
+            </a>
+            <a class="nav-link {% if request.endpoint in ['admin.api_keys', 'admin.create_api_key'] %}active{% endif %}" href="{{ url_for('admin.api_keys') }}">
+                <i class="fas fa-key me-2"></i> {{ 'מפתחות API' if (admin_language or 'he') == 'he' else 'API Keys' }}
+            </a>
+            {% endif %}
+            <hr class="my-3">
+            <a class="nav-link" href="{{ url_for('admin.logout') }}">
+                <i class="fas fa-sign-out-alt me-2"></i> {{ 'יציאה' if (admin_language or 'he') == 'he' else 'Logout' }}
+            </a>
+        </nav>
+    </div>
+    
+    <div class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        // Mobile navigation functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileToggle = document.getElementById('mobileToggle');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            const sidebar = document.getElementById('sidebar');
+            const closeSidebar = document.getElementById('closeSidebar');
+            
+            function openSidebar() {
+                sidebar.classList.add('show');
+                mobileOverlay.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+            
+            function closeSidebarFunc() {
+                sidebar.classList.remove('show');
+                mobileOverlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', openSidebar);
+            }
+            
+            if (mobileOverlay) {
+                mobileOverlay.addEventListener('click', closeSidebarFunc);
+            }
+            
+            if (closeSidebar) {
+                closeSidebar.addEventListener('click', closeSidebarFunc);
+            }
+            
+            // Close sidebar when clicking on nav links on mobile
+            const navLinks = document.querySelectorAll('.sidebar .nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        closeSidebarFunc();
+                    }
+                });
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    closeSidebarFunc();
+                }
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

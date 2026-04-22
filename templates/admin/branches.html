@@ -1,0 +1,150 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול סניפים - Admin Panel{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">ניהול סניפים</h1>
+
+<div class="mb-3">
+    <a href="{{ url_for('admin.edit_branch') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i> הוסף סניף חדש
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-store me-2"></i> רשימת סניפים
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>שם הסניף</th>
+                        <th>כתובת</th>
+                        <th>טלפון</th>
+                        <th>סטטוס</th>
+                        <th>תשלום</th>
+                        <th>סטטוס הזמנות</th>
+                        <th>סדר תצוגה</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for branch in branches %}
+                    <tr>
+                        <td>{{ branch.name_he }} / {{ branch.name_en }}</td>
+                        <td>{{ branch.address_he }}</td>
+                        <td>{{ branch.phone }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if branch.is_active else 'secondary' }}">
+                                {{ 'פעיל' if branch.is_active else 'לא פעיל' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if branch.has_payment_config %}
+                                <span class="badge bg-success" title="{{ branch.payment_provider|upper }}: מוגדר">
+                                    <i class="fas fa-check-circle me-1"></i>{{ branch.payment_provider|upper }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark" title="הגדרות תשלום חסרות — ישתמש בהגדרות גלובליות">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>גלובלי
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select class="form-select form-select-sm ordering-status-select" data-branch-id="{{ branch.id }}" style="width:auto;min-width:120px;">
+                                <option value="open" {% if (branch.ordering_status or 'open') == 'open' %}selected{% endif %}>🟢 פתוח</option>
+                                <option value="busy" {% if (branch.ordering_status or 'open') == 'busy' %}selected{% endif %}>🟡 עמוס</option>
+                                <option value="closed" {% if (branch.ordering_status or 'open') == 'closed' %}selected{% endif %}>🔴 סגור</option>
+                            </select>
+                        </td>
+                        <td>{{ branch.display_order }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('admin.branch_menu', branch_id=branch.id) }}">
+                                            <i class="fas fa-utensils me-2"></i> תפריט
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('admin.edit_branch', id=branch.id) }}">
+                                            <i class="fas fa-edit me-2"></i> ערוך
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger delete-branch" href="#" data-id="{{ branch.id }}">
+                                            <i class="fas fa-trash me-2"></i> מחק
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not branches %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">אין סניפים במערכת</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.ordering-status-select').forEach(sel => {
+    sel.addEventListener('change', async function() {
+        const branchId = this.dataset.branchId;
+        const status = this.value;
+        try {
+            const response = await fetch(`/admin/branches/${branchId}/ordering-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ordering_status: status})
+            });
+            const data = await response.json();
+            if (!data.success) alert(data.error || 'שגיאה');
+        } catch (error) {
+            alert('שגיאה בעדכון סטטוס');
+        }
+    });
+});
+
+document.querySelectorAll('.delete-branch').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        if (!confirm('האם אתה בטוח שברצונך למחוק סניף זה?')) return;
+        
+        const id = this.dataset.id;
+        
+        try {
+            const response = await fetch(`/admin/branches/delete/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            alert('שגיאה במחיקה');
+        }
+    });
+});
+</script>
+{% endblock %}

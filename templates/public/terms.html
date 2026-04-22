@@ -1,0 +1,184 @@
+{% extends 'public/base.html' %}
+
+{% block title %}{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }} - {{ settings.site_name_he if language == 'he' else settings.site_name_en }}{% endblock %}
+
+{% block description %}{{ 'תנאי השימוש באתר מסעדת סומו - הזמנות, תשלומים ומדיניות ביטולים' if language == 'he' else 'SUMO Restaurant Terms of Use - orders, payments and cancellation policy' }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title animate-fade-in">{{ 'תנאי שימוש' if language == 'he' else 'Terms of Use' }}</h1>
+        <p class="page-subtitle animate-fade-in-delay">{{ settings.site_name_he if language == 'he' else settings.site_name_en }}</p>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="terms-content card shadow-sm p-5">
+                    {% if terms %}
+                        {{ terms.content_he|safe if language == 'he' else terms.content_en|safe }}
+                    {% else %}
+                        {% if language == 'he' %}
+                        <h3>תנאי שימוש</h3>
+                        <p><small>תאריך עדכון: נובמבר 2024</small></p>
+                        
+                        <h4>1. כללי</h4>
+                        <p>תנאי שימוש אלה חלים על כל השימוש באתר האינטרנט של {{ settings.site_name_he }}. השימוש באתר מהווה הסכמה לתנאים אלה.</p>
+                        
+                        <h4>2. שימוש מורשה</h4>
+                        <p>האתר מיועד לשימוש אישי ולא מסחרי. אסור:</p>
+                        <ul>
+                            <li>להשתמש באתר למטרות בלתי חוקיות</li>
+                            <li>להפר את זכויות הקניין הרוחני שלנו</li>
+                            <li>לפגוע בפעולה התקינה של האתר</li>
+                        </ul>
+                        
+                        <h4>3. הזמנות ותשלומים</h4>
+                        <p>כל ההזמנות כפופות לזמינות. אנו שומרים את הזכות לסרב או לבטל הזמנות. התשלום מתבצע בעת ההזמנה או עם האיסוף/משלוח.</p>
+                        
+                        <h4>4. ביטולים והחזרות</h4>
+                        <p>ביטול הזמנה אפשרי בהתאם למדיניות הביטולים שלנו. אנא צור קשר מיד לביטול הזמנה.</p>
+                        
+                        <h4>5. אחריות</h4>
+                        <p>אנו עושים מאמץ להציג מידע מדויק באתר, אך אינו אחראים לטעויות או השמטות.</p>
+                        
+                        <h4>6. קניין רוחני</h4>
+                        <p>כל התוכן באתר, כולל טקסט, תמונות, לוגו ועיצוב, הוא בבעלותנו ומוגן בזכויות יוצרים.</p>
+                        
+                        <h4>7. שינויים בתנאי השימוש</h4>
+                        <p>אנו שומרים את הזכות לעדכן את תנאי השימוש בכל עת. המשך השימוש באתר מהווה הסכמה לתנאים המעודכנים.</p>
+                        
+                        <h4>8. צור קשר</h4>
+                        <p>לשאלות לגבי תנאי השימוש, אנא <a href="{{ url_for('contact_page') }}">צור קשר</a>.</p>
+                        
+                        <p class="mt-4"><small>תנאי שימוש אלה כפופים לחוקי מדינת ישראל.</small></p>
+                        {% else %}
+                        <h3>Terms of Use</h3>
+                        <p><small>Last Updated: November 2024</small></p>
+                        
+                        <h4>1. General</h4>
+                        <p>These Terms of Use apply to all use of {{ settings.site_name_en }}'s website. By using this website, you agree to these terms.</p>
+                        
+                        <h4>2. Permitted Use</h4>
+                        <p>This website is intended for personal, non-commercial use. You may not:</p>
+                        <ul>
+                            <li>Use the website for illegal purposes</li>
+                            <li>Infringe on our intellectual property rights</li>
+                            <li>Interfere with the proper functioning of the website</li>
+                        </ul>
+                        
+                        <h4>3. Orders and Payments</h4>
+                        <p>All orders are subject to availability. We reserve the right to refuse or cancel orders. Payment is made at the time of order or upon pickup/delivery.</p>
+                        
+                        <h4>4. Cancellations and Returns</h4>
+                        <p>Order cancellation is possible in accordance with our cancellation policy. Please contact us immediately to cancel an order.</p>
+                        
+                        <h4>5. Liability</h4>
+                        <p>We make every effort to present accurate information on the website, but we are not responsible for errors or omissions.</p>
+                        
+                        <h4>6. Intellectual Property</h4>
+                        <p>All content on the website, including text, images, logo, and design, is our property and protected by copyright.</p>
+                        
+                        <h4>7. Changes to Terms of Use</h4>
+                        <p>We reserve the right to update the Terms of Use at any time. Continued use of the website constitutes acceptance of the updated terms.</p>
+                        
+                        <h4>8. Contact Us</h4>
+                        <p>For questions about the Terms of Use, please <a href="{{ url_for('contact_page') }}">contact us</a>.</p>
+                        
+                        <p class="mt-4"><small>These Terms of Use are subject to the laws of the State of Israel.</small></p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-{{ 'right' if language == 'he' else 'left' }} me-2"></i>
+                        {{ 'חזרה לדף הבית' if language == 'he' else 'Back to Home' }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.page-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 6rem 0 4rem;
+    margin-top: 70px;
+    text-align: center;
+}
+
+.page-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.page-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.terms-content {
+    background: white;
+    border-radius: 15px;
+    line-height: 1.8;
+}
+
+.terms-content h3 {
+    color: var(--primary-color);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.terms-content h4 {
+    color: var(--primary-color);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.2rem;
+}
+
+.terms-content p {
+    margin-bottom: 1rem;
+    color: var(--text-dark);
+}
+
+.terms-content ul {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+}
+
+.terms-content ul li {
+    margin-bottom: 0.5rem;
+}
+
+.terms-content small {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        padding: 5rem 0 3rem;
+        margin-top: 60px;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .page-subtitle {
+        font-size: 1rem;
+    }
+    
+    .terms-content {
+        padding: 2rem !important;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,293 @@
+/* Hero Section - Sushi Room Inspired */
+.hero-new {
+  min-height: 100vh;
+  position: relative;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Background and Overlay */
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('/static/images/hero-bg.png') center/cover;
+  z-index: 0;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, 
+    rgba(0, 0, 0, 0.85) 0%, 
+    rgba(0, 0, 0, 0.9) 50%,
+    rgba(0, 0, 0, 0.85) 100%);
+}
+
+/* Subtle animated pattern */
+.hero-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 50%, transparent 40%, rgba(255, 255, 255, 0.01) 70%),
+    radial-gradient(circle at 80% 80%, transparent 40%, rgba(255, 255, 255, 0.01) 70%);
+  animation: subtle-float 30s ease-in-out infinite;
+}
+
+/* Content Container */
+.hero-content-new {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 900px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.hero-welcome-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+}
+
+/* Logo Section */
+.logo-container {
+  margin-bottom: 2rem;
+}
+
+.hero-logo {
+  width: 160px;
+  height: auto;
+  filter: brightness(1.1);
+  animation: fadeIn 1.5s ease;
+}
+
+/* Welcome Text */
+.welcome-text {
+  color: white;
+  animation: fadeInUp 1s ease;
+}
+
+.welcome-text h1 {
+  font-size: 2.5rem;
+  font-weight: 300;
+  margin-bottom: 0.5rem;
+  letter-spacing: 2px;
+  color: #f0f0f0;
+  text-transform: uppercase;
+}
+
+.divider {
+  color: rgba(239, 91, 91, 0.8);
+  margin: 0 1rem;
+  font-size: 2rem;
+  font-weight: 200;
+}
+
+.welcome-text h2 {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-bottom: 2rem;
+  color: rgba(239, 91, 91, 0.9);
+  letter-spacing: 1px;
+}
+
+.description {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: #e0e0e0;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.subdescription {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #b0b0b0;
+  line-height: 1.5;
+}
+
+.quality {
+  font-size: 1rem;
+  color: #999;
+  font-style: italic;
+  margin-bottom: 2rem;
+}
+
+/* Hero Main Actions - Simplified Design */
+.hero-main-actions {
+  margin-top: 3rem;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeInUp 1.2s ease;
+}
+
+.main-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 18px 40px;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.main-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(239, 91, 91, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.5s ease, height 0.5s ease;
+}
+
+.main-action-btn:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.main-action-btn:hover {
+  transform: translateY(-3px);
+  border-color: rgba(239, 91, 91, 0.5);
+  box-shadow: 0 10px 30px rgba(239, 91, 91, 0.2);
+}
+
+.main-action-btn i {
+  font-size: 1.3rem;
+}
+
+.main-action-btn.primary {
+  background: rgba(239, 91, 91, 0.1);
+  border-color: rgba(239, 91, 91, 0.4);
+}
+
+.main-action-btn.primary:hover {
+  background: rgba(239, 91, 91, 0.2);
+  border-color: rgba(239, 91, 91, 0.6);
+  box-shadow: 0 10px 30px rgba(239, 91, 91, 0.3);
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  animation: bounce 2s infinite;
+  cursor: pointer;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+@keyframes subtle-float {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.05) rotate(5deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-content-new {
+    padding: 1.5rem;
+  }
+
+  .welcome-text h1 {
+    font-size: 1.8rem;
+  }
+
+  .welcome-text h2 {
+    font-size: 1.4rem;
+  }
+
+  .description {
+    font-size: 1.1rem;
+  }
+
+  .subdescription {
+    font-size: 0.95rem;
+  }
+
+  /* Main action buttons responsive */
+  .hero-main-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .main-action-btn {
+    width: 250px;
+    padding: 16px 30px;
+    font-size: 1rem;
+  }
+  
+  .main-action-btn i {
+    font-size: 1.2rem;
+  }
+
+  .hero-logo {
+    width: 120px;
+  }
+}

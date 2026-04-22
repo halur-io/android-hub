@@ -1,0 +1,396 @@
+import os
+import logging
+import time
+from flask import Flask, make_response, request, redirect, url_for
+from flask_mail import Mail
+from flask_wtf.csrf import CSRFProtect
+from database import init_db
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Create Flask app
+app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
+
+# Configure Flask-Mail
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@sumo-restaurant.co.il')
+
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
+# Initialize extensions
+mail = Mail(app)
+csrf = CSRFProtect(app)
+# Exempt admin API endpoints from CSRF
+csrf.exempt('admin.toggle_dietary_property')
+csrf.exempt('admin.delete_dietary_property')
+
+# Exempt menu parsing routes from CSRF
+csrf.exempt('admin.parse_word_menu')
+csrf.exempt('admin.process_menu_selection')
+csrf.exempt('admin.parse_word_menu_demo')
+
+# Exempt gallery upload from CSRF (uses custom CSRF handling)
+csrf.exempt('admin.upload_single_gallery')
+csrf.exempt('admin.upload_media')
+
+# Exempt API blueprint from CSRF
+try:
+    from api_routes import api_bp
+    app.register_blueprint(api_bp)
+    csrf.exempt(api_bp)
+    logging.info("API blueprint registered and exempted from CSRF")
+except Exception as e:
+    logging.error(f"Error registering API blueprint: {e}")
+
+try:
+    from api.v1 import api_v1
+    app.register_blueprint(api_v1)
+    csrf.exempt(api_v1)
+    logging.info("API v1 blueprint registered")
+except Exception as e:
+    logging.error(f"Error registering API v1 blueprint: {e}")
+
+# Register Swagger UI for API documentation at /api/docs
+try:
+    from flask_swagger_ui import get_swaggerui_blueprint
+    from swagger_spec import get_apispec
+    from flask import jsonify as _sw_jsonify
+
+    _DOCS_MASTER_KEY = os.environ.get('PRINT_AGENT_KEY', '')
+
+    def _is_valid_api_key(token):
+        if not token:
+            return False
+        if _DOCS_MASTER_KEY and token == _DOCS_MASTER_KEY:
+            return True
+        from models import ApiKey
+        return ApiKey.query.filter_by(key=token, is_active=True).first() is not None
+
+    @app.route('/api/docs/openapi.json')
+    def swagger_spec_json():
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            tok = request.args.get('key') or ''
+            sess_tok = session.get('_docs_token', '')
+            if not (_is_valid_api_key(tok) or _is_valid_api_key(sess_tok)):
+                return _sw_jsonify({"error": "unauthorized"}), 401
+        return _sw_jsonify(get_apispec())
+
+    SWAGGER_URL = '/api/docs'
+    API_URL = '/api/docs/openapi.json'
+    swaggerui_blueprint = get_swaggerui_blueprint(
+        SWAGGER_URL,
+        API_URL,
+        config={'app_name': "SUMO Print Hub API"},
+    )
+    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+    csrf.exempt(swaggerui_blueprint)
+
+    @app.before_request
+    def _protect_swagger_docs():
+        from flask_login import current_user
+        if request.path.startswith('/api/docs'):
+            if current_user.is_authenticated:
+                return None
+            token = request.args.get('key', '')
+            if _is_valid_api_key(token):
+                session['_docs_token'] = token
+                return None
+            if _is_valid_api_key(session.get('_docs_token', '')):
+                return None
+            return _sw_jsonify({"error": "Unauthorized. Add ?key=YOUR_API_KEY to the URL."}), 401
+
+    logging.info("Swagger UI registered at /api/docs (token or admin auth)")
+except Exception as e:
+    logging.error(f"Error registering Swagger UI: {e}")
+    import traceback
+    traceback.print_exc()
+
+
+# Initialize Flask-Login
+from flask_login import LoginManager
+login_manager = LoginManager(app)
+login_manager.login_view = 'admin.login'
+login_manager.login_message = 'Please log in to access this page.'
+
+@login_manager.user_loader
+def load_user(user_id):
+    from models import AdminUser
+    return AdminUser.query.get(int(user_id))
+
+# Initialize database
+init_db(app)
+
+# Add cache busting for static files
+@app.after_request
+def add_cache_control_headers(response):
+    # Add cache busting headers for HTML pages to prevent caching
+    if response.content_type and 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+# Add version for cache busting
+app.config['CACHE_BUSTER'] = str(int(time.time()))
+
+# Make cache buster available in templates
+@app.context_processor
+def inject_cache_buster():
+    return dict(cache_version=app.config['CACHE_BUSTER'])
+
+# Make site settings available in all templates
+@app.context_processor
+def inject_site_settings():
+    from models import SiteSettings
+    try:
+        settings = SiteSettings.query.first()
+        if not settings:
+            settings = SiteSettings()
+        return dict(site_settings=settings)
+    except:
+        return dict(site_settings=None)
+
+# Make permission functions available in templates
+@app.context_processor
+def inject_permissions():
+    from permissions import has_permission, has_role, has_any_permission
+    return dict(
+        has_permission=has_permission,
+        has_role=has_role,
+        has_any_permission=has_any_permission
+    )
+
+# Add custom Jinja2 filters
+import json
+from datetime import datetime, timedelta
+
+def _to_israel_time(dt):
+    if dt is None:
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+        utc_tz = ZoneInfo('UTC')
+        il_tz = ZoneInfo('Asia/Jerusalem')
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=utc_tz)
+        return dt.astimezone(il_tz)
+    except Exception:
+        return dt + timedelta(hours=3)
+
+@app.template_filter('il_time')
+def il_time_filter(dt, fmt='%d/%m/%Y %H:%M'):
+    if dt is None:
+        return '-'
+    converted = _to_israel_time(dt)
+    return converted.strftime(fmt)
+
+@app.template_filter('il_time_short')
+def il_time_short_filter(dt):
+    if dt is None:
+        return '-'
+    converted = _to_israel_time(dt)
+    return converted.strftime('%d/%m %H:%M')
+
+@app.template_filter('il_hour')
+def il_hour_filter(dt):
+    if dt is None:
+        return ''
+    converted = _to_israel_time(dt)
+    return converted.strftime('%H:%M')
+
+@app.template_filter('fromjson')
+def fromjson_filter(value):
+    if not value or value == '[]' or value == '{}':
+        return []
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+# Short display number helper (T/D/TB) with legacy fallback. Required by
+# ops/customer templates — fail fast on import errors so problems surface
+# immediately rather than silently rendering blanks.
+from services.display_number import disp_num as _disp_num
+app.jinja_env.globals['disp_num'] = _disp_num
+@app.template_filter('disp_num')
+def disp_num_filter(order):
+    return _disp_num(order)
+
+# Import routes  
+from routes import *
+# Note: Popup API routes are exempted from CSRF using decorators in routes.py
+
+# Register admin blueprint
+try:
+    from admin_routes import admin_bp
+    app.register_blueprint(admin_bp)
+    # Exempt quick supplier creation from CSRF (already protected by login/permissions)
+    csrf.exempt('admin.quick_create_supplier')
+    # Exempt bulk operations from CSRF (protected by login + permissions)
+    csrf.exempt('admin.bulk_delete_items')
+    csrf.exempt('admin.bulk_delete_suppliers')
+    csrf.exempt('admin.bulk_delete_categories')
+    csrf.exempt('admin.bulk_edit_items')
+    logging.info("Admin bulk operations exempted from CSRF")
+except Exception as e:
+    print(f"Error registering admin blueprint: {e}")
+
+# Register microservices blueprints
+try:
+    from services.config.config_service import config_bp
+    from services.auth.auth_service import auth_bp
+    from services.order.order_service import order_bp as microservice_order_bp
+    from services.delivery.delivery_service import delivery_bp
+    from services.kitchen.kitchen_service import kitchen_bp
+    from services.payment.payment_service import payment_bp
+    
+    app.register_blueprint(config_bp)
+    csrf.exempt(auth_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(microservice_order_bp)
+    app.register_blueprint(delivery_bp)
+    app.register_blueprint(kitchen_bp)
+    app.register_blueprint(payment_bp)
+    
+    logging.info("All microservices registered successfully")
+except Exception as e:
+    logging.error(f"Error registering microservices: {e}")
+
+# Register standalone order service (public ordering + KDS dashboard)
+try:
+    from models import (
+        Branch, BranchMenuItem, WorkingHours, MenuCategory, MenuItem, MenuItemPrice,
+        MenuItemOptionGroup, MenuItemOptionChoice, FoodOrder, FoodOrderItem,
+        ManagerPIN, SiteSettings, Coupon, CouponUsage, Deal, UpsellRule,
+        OrderActivityLog, SMSLog, TimeLog,
+        GlobalOptionGroup, GlobalOptionChoice, GlobalOptionGroupLink
+    )
+    from services.order.order_service import DeliveryZone
+    from database import db as order_db
+
+    order_models = {
+        'Branch': Branch,
+        'BranchMenuItem': BranchMenuItem,
+        'WorkingHours': WorkingHours,
+        'MenuCategory': MenuCategory,
+        'MenuItem': MenuItem,
+        'MenuItemPrice': MenuItemPrice,
+        'MenuItemOptionGroup': MenuItemOptionGroup,
+        'MenuItemOptionChoice': MenuItemOptionChoice,
+        'DeliveryZone': DeliveryZone,
+        'FoodOrder': FoodOrder,
+        'FoodOrderItem': FoodOrderItem,
+        'ManagerPIN': ManagerPIN,
+        'SiteSettings': SiteSettings,
+        'Coupon': Coupon,
+        'CouponUsage': CouponUsage,
+        'Deal': Deal,
+        'GlobalOptionGroup': GlobalOptionGroup,
+        'GlobalOptionChoice': GlobalOptionChoice,
+        'GlobalOptionGroupLink': GlobalOptionGroupLink,
+        'UpsellRule': UpsellRule,
+        'OrderActivityLog': OrderActivityLog,
+        'SMSLog': SMSLog,
+        'TimeLog': TimeLog,
+    }
+
+    def get_site_settings():
+        return SiteSettings.query.first()
+
+    from standalone_order_service.sms_helpers import create_sender_from_env
+    send_sms_fn = create_sender_from_env()
+
+    from standalone_order_service.notifications import OrderNotifier
+    notifier = OrderNotifier(
+        send_sms=send_sms_fn,
+        send_telegram=None,
+        db=order_db,
+        SMSLog=SMSLog,
+    )
+
+    from standalone_order_service.hyp_payment import HYPPayment
+    hyp = HYPPayment()
+
+    from services.maxpay import MaxPayService
+    max_pay = MaxPayService()
+
+    from standalone_order_service.order_routes import create_order_blueprint
+    food_order_bp = create_order_blueprint(
+        db=order_db,
+        models=order_models,
+        notifier=notifier,
+        hyp_payment=hyp,
+        get_settings=get_site_settings,
+        max_payment=max_pay,
+    )
+    app.register_blueprint(food_order_bp)
+    with app.app_context():
+        csrf.exempt(app.view_functions.get('order_page.validate_coupon', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.upsell_suggestions', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.order_start_checkout', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.send_otp', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.verify_otp', lambda: None))
+        csrf.exempt(app.view_functions.get('order_page.complete_onboarding', lambda: None))
+
+    from standalone_order_service.kds_routes import create_kds_blueprint
+    kds_bp = create_kds_blueprint(
+        db=order_db,
+        models=order_models,
+        send_sms=send_sms_fn,
+        get_settings=get_site_settings,
+        clear_cache=None,
+    )
+    app.register_blueprint(kds_bp)
+    csrf.exempt(kds_bp)  # Flask-WTF requires blueprint-level exempt; origin validation enforced via before_request in kds_routes.py
+
+    logging.info("Standalone order service registered: /order and /order-dashboard")
+except Exception as e:
+    logging.error(f"Error registering standalone order service: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    from ops_routes import ops_bp
+    app.register_blueprint(ops_bp)
+    csrf.exempt(ops_bp)  # Flask-WTF requires blueprint-level exempt; origin validation enforced via before_request in ops_routes.py
+    logging.info("Ops dashboard registered: /ops")
+except Exception as e:
+    logging.error(f"Error registering ops blueprint: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    with app.app_context():
+        from models import SMSTemplate
+        SMSTemplate.seed_defaults()
+except Exception as e:
+    logging.debug(f"SMS template seeding: {e}")
+
+_last_stale_check = 0
+
+@app.before_request
+def _auto_close_stale_shifts():
+    global _last_stale_check
+    now = time.time()
+    if now - _last_stale_check < 300:
+        return
+    _last_stale_check = now
+    try:
+        from models import TimeLog
+        closed = TimeLog.auto_close_stale()
+        if closed:
+            from database import db as _db
+            _db.session.commit()
+            logging.info(f"Auto-closed {closed} stale time log(s)")
+    except Exception:
+        pass
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')

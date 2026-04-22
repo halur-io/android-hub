@@ -1,0 +1,1672 @@
+{% extends "admin/base.html" %}
+
+{% block title %}ניהול מלאי - Sumo Asian Kitchen{% endblock %}
+
+{% block head %}
+{{ super() }}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Clean, Elegant Mobile-First Design */
+    :root {
+        --bg-main: #F7F5F0;
+        --bg-card: #FFFFFF;
+        --text-primary: #2F2F2F;
+        --text-secondary: #6B6B6B;
+        --accent-primary: #C96F44;
+        --accent-secondary: #6B8F71;
+        --accent-danger: #dc3545;
+        --border-color: #E5E3DD;
+    }
+    
+    .stock-simple {
+        background: var(--bg-main);
+        min-height: 100vh;
+        padding: 0;
+    }
+    
+    /* Sticky Header with Stats and Actions */
+    .sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    /* Simple Stats Row */
+    .stats-row {
+        display: flex;
+        padding: 1rem;
+        gap: 1rem;
+        background: var(--bg-card);
+    }
+    
+    .stat-item {
+        flex: 1;
+        text-align: center;
+        padding: 0.75rem 0.5rem;
+        background: var(--bg-main);
+        border-radius: 8px;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    
+    /* Clean Tabs */
+    .tabs-row {
+        display: flex;
+        padding: 0 1rem;
+        gap: 0.5rem;
+        background: var(--bg-card);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .tabs-row::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .tab-link {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-decoration: none;
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+        transition: all 0.2s;
+    }
+    
+    .tab-link.active {
+        color: var(--accent-primary);
+        border-bottom-color: var(--accent-primary);
+    }
+    
+    /* Toolbar */
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: var(--bg-card);
+        border-top: 1px solid var(--border-color);
+        gap: 0.5rem;
+    }
+    
+    /* Segmented Control for View Mode */
+    .segmented-control {
+        display: inline-flex;
+        background: var(--bg-main);
+        border-radius: 8px;
+        padding: 0.25rem;
+    }
+    
+    .segment-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .segment-btn.active {
+        background: white;
+        color: var(--text-primary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .action-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: var(--accent-primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    
+    .action-btn-secondary {
+        background: var(--accent-secondary);
+    }
+    
+    /* Content Area */
+    .content-area {
+        padding: 1rem;
+    }
+    
+    /* Card View */
+    .card-grid {
+        display: grid;
+        gap: 0.75rem;
+    }
+    
+    .item-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1rem;
+        transition: all 0.2s;
+        position: relative;
+    }
+    
+    .item-card:active {
+        transform: scale(0.98);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .item-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        flex: 1;
+    }
+    
+    .item-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+        background: var(--bg-main);
+        color: var(--text-secondary);
+        border-radius: 12px;
+        font-weight: 600;
+    }
+    
+    .item-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .detail-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .detail-row i {
+        width: 16px;
+        color: var(--accent-secondary);
+        font-size: 0.85rem;
+    }
+    
+    /* Action Buttons for Cards */
+    .item-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .btn-edit, .btn-delete {
+        flex: 1;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+    }
+    
+    .btn-edit {
+        background: var(--accent-secondary);
+        color: white;
+    }
+    
+    .btn-delete {
+        background: transparent;
+        color: var(--accent-danger);
+        border: 1px solid var(--accent-danger);
+    }
+    
+    /* List View */
+    .list-view {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .list-item {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: background 0.2s;
+    }
+    
+    .list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .list-item:active {
+        background: var(--bg-main);
+    }
+    
+    .list-item-main {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .list-item-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.25rem 0;
+    }
+    
+    .list-item-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    .list-item-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--accent-primary);
+        white-space: nowrap;
+    }
+    
+    .list-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .btn-icon-edit {
+        background: var(--accent-secondary);
+        color: white;
+    }
+    
+    .btn-icon-delete {
+        background: transparent;
+        color: var(--accent-danger);
+        border: 1px solid var(--accent-danger);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-secondary);
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        color: var(--border-color);
+        margin-bottom: 1rem;
+    }
+    
+    /* Responsive */
+    @media (min-width: 768px) {
+        .content-area {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+        
+        .card-grid {
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        
+        .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .list-item:hover {
+            background: var(--bg-main);
+        }
+        
+        .btn-edit:hover {
+            background: var(--accent-secondary);
+            opacity: 0.9;
+        }
+        
+        .btn-delete:hover {
+            background: var(--accent-danger);
+            color: white;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stock-simple">
+    <!-- Sticky Header -->
+    <div class="sticky-header">
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-item">
+                <span class="stat-number">{{ stock_count }}</span>
+                <span class="stat-label">פריטים</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ supplier_count }}</span>
+                <span class="stat-label">ספקים</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ category_count }}</span>
+                <span class="stat-label">קטגוריות</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ receipt_count or 0 }}</span>
+                <span class="stat-label">קבלות</span>
+            </div>
+        </div>
+        
+        <!-- Tabs Row -->
+        <div class="tabs-row">
+            <a href="{{ url_for('admin.stock_management', view='items', mode=view_mode) }}" 
+               class="tab-link {{ 'active' if current_view == 'items' else '' }}">
+                פריטי מלאי
+            </a>
+            <a href="{{ url_for('admin.stock_management', view='suppliers', mode=view_mode) }}" 
+               class="tab-link {{ 'active' if current_view == 'suppliers' else '' }}">
+                ספקים
+            </a>
+            <a href="{{ url_for('admin.stock_management', view='categories', mode=view_mode) }}" 
+               class="tab-link {{ 'active' if current_view == 'categories' else '' }}">
+                קטגוריות
+            </a>
+            <a href="{{ url_for('admin.stock_management', view='receipts', mode='card') }}" 
+               class="tab-link {{ 'active' if current_view == 'receipts' else '' }}">
+                קבלות
+            </a>
+        </div>
+        
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <!-- Select All Checkbox -->
+                <label style="display: flex; align-items: center; cursor: pointer; margin-left: 0.5rem;">
+                    <input type="checkbox" id="select-all-checkbox" style="width: 18px; height: 18px; cursor: pointer; margin-left: 0.3rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap;">בחר הכל</span>
+                </label>
+                
+                <div class="segmented-control">
+                    <a href="{{ url_for('admin.stock_management', view=current_view, mode='card', supplier_id=selected_supplier) }}" 
+                       class="segment-btn {{ 'active' if view_mode == 'card' else '' }}">
+                        <i class="fas fa-th"></i>
+                        <span class="d-none d-sm-inline">כרטיסים</span>
+                    </a>
+                    <a href="{{ url_for('admin.stock_management', view=current_view, mode='list', supplier_id=selected_supplier) }}" 
+                       class="segment-btn {{ 'active' if view_mode == 'list' else '' }}">
+                        <i class="fas fa-list"></i>
+                        <span class="d-none d-sm-inline">רשימה</span>
+                    </a>
+                </div>
+                
+                {% if current_view == 'items' %}
+                    <select id="supplier-filter" class="form-select form-select-sm" style="width: auto; max-width: 200px; font-size: 0.85rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px;">
+                        <option value="">כל הספקים</option>
+                        {% for supplier in all_suppliers %}
+                        <option value="{{ supplier.id }}" {% if selected_supplier == supplier.id %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if current_view == 'items' %}
+                    <a href="{{ url_for('admin.receipt_scanner') }}" class="action-btn" style="background: #007bff;">
+                        <i class="fas fa-camera"></i>
+                        <span class="d-none d-sm-inline">סרוק קבלה</span>
+                    </a>
+                    <a href="{{ url_for('admin.export_stock_items') }}?format=excel&supplier_id={{ selected_supplier or '' }}" class="action-btn action-btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="d-none d-md-inline">ייצוא</span>
+                    </a>
+                    <a href="{{ url_for('admin.add_stock_item') }}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline">הוסף</span>
+                    </a>
+                {% elif current_view == 'suppliers' %}
+                    <a href="{{ url_for('admin.export_suppliers') }}?format=excel" class="action-btn action-btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="d-none d-md-inline">ייצוא</span>
+                    </a>
+                    <a href="{{ url_for('admin.add_supplier') }}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline">הוסף</span>
+                    </a>
+                {% elif current_view == 'categories' %}
+                    <a href="{{ url_for('admin.export_categories') }}?format=excel" class="action-btn action-btn-secondary">
+                        <i class="fas fa-download"></i>
+                        <span class="d-none d-md-inline">ייצוא</span>
+                    </a>
+                    <a href="{{ url_for('admin.add_stock_category') }}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-sm-inline">הוסף</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bulk Action Toolbar (hidden by default, shown when items selected) -->
+    <div id="bulk-action-toolbar" style="display: none; position: sticky; top: 80px; z-index: 100; background: var(--accent-primary); color: white; padding: 1rem; border-radius: 8px; margin: 1rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="selection-count" style="font-weight: 700; font-size: 1.1rem;">0 נבחרו</span>
+                <button onclick="clearSelection()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+                    <i class="fas fa-times"></i> נקה בחירה
+                </button>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button id="bulk-edit-btn" onclick="showBulkEditModal()" style="background: white; color: var(--accent-primary); border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; display: none;">
+                    <i class="fas fa-edit"></i> ערוך
+                </button>
+                <button onclick="showBulkDeleteConfirm()" style="background: var(--accent-danger); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-trash"></i> מחק
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Content Area -->
+    <div class="content-area">
+        {% if current_view == 'items' %}
+            <!-- Stock Items -->
+            {% if items %}
+                {% if view_mode == 'card' %}
+                    <!-- Card View -->
+                    <div class="card-grid">
+                        {% for item_data in items %}
+                        {% set item = item_data.item %}
+                        <div class="item-card" style="position: relative;">
+                            <input type="checkbox" class="item-checkbox" data-id="{{ item.id }}" data-type="item" style="position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; cursor: pointer; z-index: 10;">
+                            <div class="item-header">
+                                <h3 class="item-title" style="padding-left: 30px;">{{ item.name_he }}</h3>
+                                {% if item_data.is_low_stock %}
+                                <span class="item-badge" style="background-color: var(--accent-danger);">מלאי נמוך</span>
+                                {% else %}
+                                <span class="item-badge">מלאי</span>
+                                {% endif %}
+                            </div>
+                            <div class="item-details">
+                                <div class="detail-row" style="font-weight: 700; color: var(--accent-primary); font-size: 1.1rem;">
+                                    <i class="fas fa-boxes"></i>
+                                    <span>{{ "%.1f"|format(item_data.total_available) }} {{ item.unit_he }}</span>
+                                </div>
+                                {% if item.category %}
+                                <div class="detail-row">
+                                    <i class="fas fa-tag"></i>
+                                    <span>{{ item.category.name_he }}</span>
+                                </div>
+                                {% endif %}
+                                {% if item.primary_supplier %}
+                                <div class="detail-row">
+                                    <i class="fas fa-truck"></i>
+                                    <span>{{ item.primary_supplier.name }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="detail-row">
+                                    <i class="fas fa-shekel-sign"></i>
+                                    <span>₪{{ "%.2f"|format(item.cost_per_unit or 0) }} / {{ item.unit_he }}</span>
+                                </div>
+                            </div>
+                            <div class="item-actions">
+                                <button class="btn-edit btn-view-item" style="background: #007bff;" data-item='{{ {
+                                    "id": item.id,
+                                    "name_he": item.name_he,
+                                    "name_en": item.name_en or "",
+                                    "total_available": item_data.total_available|float,
+                                    "unit_he": item.unit_he,
+                                    "category_name_he": item.category.name_he if item.category else "",
+                                    "supplier_name": item.primary_supplier.name if item.primary_supplier else "",
+                                    "minimum_stock": item.minimum_stock|int if item.minimum_stock else 0,
+                                    "branches": item_data.branches
+                                }|tojson }}'>
+                                    <i class="fas fa-eye"></i>
+                                    <span>צפה</span>
+                                </button>
+                                <a href="{{ url_for('admin.edit_stock_item', item_id=item.id, view='items', mode='card') }}" class="btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                    <span>ערוך</span>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <!-- List View -->
+                    <div class="list-view">
+                        {% for item_data in items %}
+                        {% set item = item_data.item %}
+                        <div class="list-item">
+                            <input type="checkbox" class="item-checkbox" data-id="{{ item.id }}" data-type="item" style="width: 20px; height: 20px; cursor: pointer; margin-left: 12px;">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">
+                                    {{ item.name_he }}
+                                    {% if item_data.is_low_stock %}
+                                    <span class="item-badge" style="background-color: var(--accent-danger); font-size: 0.7rem; padding: 0.15rem 0.4rem; margin-right: 0.3rem;">נמוך</span>
+                                    {% endif %}
+                                </h4>
+                                <div class="list-item-subtitle">
+                                    <strong style="color: var(--accent-primary);">{{ "%.1f"|format(item_data.total_available) }} {{ item.unit_he }}</strong> • 
+                                    {{ item.category.name_he if item.category else 'ללא קטגוריה' }} • 
+                                    {{ item.primary_supplier.name if item.primary_supplier else 'ללא ספק' }}
+                                </div>
+                            </div>
+                            <div class="list-item-value">
+                                ₪{{ "%.2f"|format(item.cost_per_unit or 0) }}
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('admin.edit_stock_item', item_id=item.id, view='items', mode='list') }}" class="btn-icon btn-icon-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_item', item_id=item.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק פריט זה?');">
+                                    <button type="submit" class="btn-icon btn-icon-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-boxes"></i>
+                    <h4>אין פריטי מלאי</h4>
+                    <p>התחל בהוספת פריטים למערכת</p>
+                </div>
+            {% endif %}
+        
+        {% elif current_view == 'suppliers' %}
+            <!-- Suppliers -->
+            {% if suppliers %}
+                {% if view_mode == 'card' %}
+                    <!-- Card View -->
+                    <div class="card-grid">
+                        {% for supplier_info in suppliers %}
+                        {% set supplier = supplier_info.supplier %}
+                        {% set item_count = supplier_info.item_count %}
+                        <div class="item-card" style="position: relative;">
+                            <input type="checkbox" class="item-checkbox" data-id="{{ supplier.id }}" data-type="supplier" style="position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; cursor: pointer; z-index: 10;">
+                            <div class="item-header">
+                                <h3 class="item-title" style="padding-left: 30px;">{{ supplier.name }}</h3>
+                                <span class="item-badge" style="background: var(--accent-primary);">{{ item_count }} פריטים</span>
+                            </div>
+                            <div class="item-details">
+                                {% if supplier.contact_person %}
+                                <div class="detail-row">
+                                    <i class="fas fa-user"></i>
+                                    <span>{{ supplier.contact_person }}</span>
+                                </div>
+                                {% endif %}
+                                {% if supplier.phone %}
+                                <div class="detail-row">
+                                    <i class="fas fa-phone"></i>
+                                    <span>{{ supplier.phone }}</span>
+                                </div>
+                                {% endif %}
+                                {% if supplier.email %}
+                                <div class="detail-row">
+                                    <i class="fas fa-envelope"></i>
+                                    <span>{{ supplier.email }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="item-actions">
+                                <button class="btn-edit btn-view-supplier" style="background: #007bff;" data-supplier='{{ {
+                                    "id": supplier.id,
+                                    "name": supplier.name,
+                                    "contact_person": supplier.contact_person or "",
+                                    "phone": supplier.phone or "",
+                                    "email": supplier.email or "",
+                                    "address": supplier.address or "",
+                                    "payment_terms": supplier.payment_terms or "",
+                                    "notes": supplier.notes or ""
+                                }|tojson }}'>
+                                    <i class="fas fa-eye"></i>
+                                    <span>צפה</span>
+                                </button>
+                                <a href="{{ url_for('admin.edit_supplier', supplier_id=supplier.id) }}" class="btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                    <span>ערוך</span>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <!-- List View -->
+                    <div class="list-view">
+                        {% for supplier_info in suppliers %}
+                        {% set supplier = supplier_info.supplier %}
+                        {% set item_count = supplier_info.item_count %}
+                        <div class="list-item">
+                            <input type="checkbox" class="item-checkbox" data-id="{{ supplier.id }}" data-type="supplier" style="width: 20px; height: 20px; cursor: pointer; margin-left: 12px;">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">{{ supplier.name }}</h4>
+                                <div class="list-item-subtitle">
+                                    <strong>{{ item_count }} פריטים</strong> • 
+                                    {{ supplier.contact_person or 'ללא איש קשר' }} • 
+                                    {{ supplier.phone or 'ללא טלפון' }}
+                                </div>
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('admin.edit_supplier', supplier_id=supplier.id) }}" class="btn-icon btn-icon-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.delete_supplier', supplier_id=supplier.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק ספק זה?');">
+                                    <button type="submit" class="btn-icon btn-icon-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-truck"></i>
+                    <h4>אין ספקים</h4>
+                    <p>התחל בהוספת ספקים למערכת</p>
+                </div>
+            {% endif %}
+        
+        {% elif current_view == 'categories' %}
+            <!-- Categories -->
+            {% if categories %}
+                {% if view_mode == 'card' %}
+                    <!-- Card View -->
+                    <div class="card-grid">
+                        {% for category in categories %}
+                        <div class="item-card" style="position: relative;">
+                            <input type="checkbox" class="item-checkbox" data-id="{{ category.id }}" data-type="category" style="position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; cursor: pointer; z-index: 10;">
+                            <div class="item-header">
+                                <h3 class="item-title" style="padding-left: 30px;">{{ category.name_he }}</h3>
+                                <span class="item-badge">קטגוריה</span>
+                            </div>
+                            <div class="item-details">
+                                {% if category.name_en %}
+                                <div class="detail-row">
+                                    <i class="fas fa-language"></i>
+                                    <span>{{ category.name_en }}</span>
+                                </div>
+                                {% endif %}
+                                {% if category.description %}
+                                <div class="detail-row">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>{{ category.description }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="item-actions">
+                                <a href="{{ url_for('admin.edit_stock_category', category_id=category.id, view='categories', mode='card') }}" class="btn-edit">
+                                    <i class="fas fa-edit"></i>
+                                    <span>ערוך</span>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_category', category_id=category.id) }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?');">
+                                    <button type="submit" class="btn-delete" style="width: 100%;">
+                                        <i class="fas fa-trash"></i>
+                                        <span>מחק</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <!-- List View -->
+                    <div class="list-view">
+                        {% for category in categories %}
+                        <div class="list-item">
+                            <input type="checkbox" class="item-checkbox" data-id="{{ category.id }}" data-type="category" style="width: 20px; height: 20px; cursor: pointer; margin-left: 12px;">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">{{ category.name_he }}</h4>
+                                <div class="list-item-subtitle">
+                                    {{ category.name_en or 'ללא שם באנגלית' }}
+                                </div>
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('admin.edit_stock_category', category_id=category.id, view='categories', mode='list') }}" class="btn-icon btn-icon-edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.delete_stock_category', category_id=category.id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('האם אתה בטוח שברצונך למחוק קטגוריה זו?');">
+                                    <button type="submit" class="btn-icon btn-icon-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-tags"></i>
+                    <h4>אין קטגוריות</h4>
+                    <p>התחל בהוספת קטגוריות למערכת</p>
+                </div>
+            {% endif %}
+        
+        {% elif current_view == 'receipts' %}
+            {% if receipts is not none %}
+                <!-- Individual Receipt List for Supplier -->
+                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <a href="{{ url_for('admin.stock_management', view='receipts') }}" class="btn-icon btn-icon-edit">
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                    <h3 style="margin: 0; color: var(--text-primary);">קבלות - {{ selected_supplier_name }}</h3>
+                </div>
+                
+                {% if receipts %}
+                    <div class="list-view">
+                        {% for receipt in receipts %}
+                        <div class="list-item">
+                            <div class="list-item-main">
+                                <h4 class="list-item-title">
+                                    <i class="fas fa-receipt" style="color: var(--accent-secondary);"></i>
+                                    קבלה #{{ receipt.receipt_number or receipt.id }}
+                                </h4>
+                                <div class="list-item-subtitle">
+                                    <span><i class="fas fa-calendar"></i> {{ receipt.receipt_date|il_time('%d/%m/%Y') if receipt.receipt_date else 'ללא תאריך' }}</span>
+                                    <span style="margin: 0 0.5rem;">•</span>
+                                    <span style="font-weight: 700; color: var(--accent-primary);"><i class="fas fa-shekel-sign"></i> ₪{{ "%.2f"|format(receipt.total_amount or 0) }}</span>
+                                    {% if receipt.is_verified %}
+                                    <span style="margin: 0 0.5rem;">•</span>
+                                    <span style="color: #28a745;"><i class="fas fa-check-circle"></i> מאומת</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="list-item-actions">
+                                <a href="{{ url_for('static', filename=receipt.image_path.replace('static/', '')) }}" target="_blank" class="btn-icon btn-icon-view">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <h4>אין קבלות</h4>
+                        <p>לא נמצאו קבלות עבור ספק זה</p>
+                    </div>
+                {% endif %}
+            {% else %}
+                <!-- Receipts - Supplier Grouped View -->
+                {% if receipt_groups %}
+                    <div class="card-grid">
+                        {% for group in receipt_groups %}
+                        <div class="item-card">
+                            <div class="item-header">
+                                <h3 class="item-title">{{ group.supplier_name or 'ללא ספק' }}</h3>
+                                <span class="item-badge" style="background: #007bff;">קבלות</span>
+                            </div>
+                            <div class="item-details">
+                                <div class="detail-row" style="font-weight: 700; color: var(--accent-primary);">
+                                    <i class="fas fa-receipt"></i>
+                                    <span>{{ group.count }} קבלות</span>
+                                </div>
+                                <div class="detail-row">
+                                    <i class="fas fa-shekel-sign"></i>
+                                    <span>סה"כ: ₪{{ "%.2f"|format(group.total_amount) }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>אחרונה: {{ group.latest_date|il_time('%d/%m/%Y') if group.latest_date else 'לא ידוע' }}</span>
+                                </div>
+                            </div>
+                            <div class="item-actions">
+                                <a href="{{ url_for('admin.stock_management', view='receipts', mode='list', supplier_id=group.supplier_id) }}" class="btn-edit" style="flex: 1;">
+                                    <i class="fas fa-folder-open"></i>
+                                    <span>צפה בקבלות</span>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <h4>אין קבלות</h4>
+                        <p>התחל בסריקת קבלות למערכת</p>
+                        <div style="margin-top: 1rem;">
+                            <a href="{{ url_for('admin.receipt_scanner') }}" class="action-btn" style="background: #007bff;">
+                                <i class="fas fa-camera"></i>
+                                <span>סרוק קבלה</span>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Detail View Modal -->
+<div id="detail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; overflow-y: auto;">
+    <div style="min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: var(--bg-card); border-radius: 12px; max-width: 500px; width: 100%; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="padding: 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="modal-title" style="margin: 0; color: var(--text-primary);"></h3>
+                <button onclick="closeDetailModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-content" style="padding: 1.25rem; max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Elegant Confirmation Modal -->
+<div id="confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; backdrop-filter: blur(4px); animation: fadeIn 0.2s ease;">
+    <div style="min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: var(--bg-card); border-radius: 16px; max-width: 420px; width: 100%; margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; overflow: hidden;">
+            <!-- Icon Header -->
+            <div style="padding: 2rem 1.5rem 1rem; text-align: center; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                <div style="width: 64px; height: 64px; margin: 0 auto; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3);">
+                    <i class="fas fa-trash-alt" style="font-size: 28px; color: white;"></i>
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 1.5rem;">
+                <h3 style="margin: 0 0 1rem; color: var(--text-primary); font-size: 1.35rem; font-weight: 700; text-align: center;" id="confirm-title">
+                    אישור מחיקה
+                </h3>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 1rem; line-height: 1.6; text-align: center;" id="confirm-message">
+                    האם אתה בטוח שברצונך למחוק את הפריטים הנבחרים?
+                </p>
+                
+                <!-- Warning notice -->
+                <div style="margin-top: 1rem; padding: 0.875rem; background: rgba(220, 53, 69, 0.1); border-right: 3px solid #dc3545; border-radius: 8px;">
+                    <p style="margin: 0; color: var(--text-primary); font-size: 0.875rem; font-weight: 500;">
+                        <i class="fas fa-exclamation-triangle" style="margin-left: 0.5rem; color: #dc3545;"></i>
+                        פעולה זו אינה ניתנת לביטול
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="padding: 0 1.5rem 1.5rem; display: flex; gap: 0.75rem;">
+                <button onclick="closeConfirmModal()" type="button" style="flex: 1; padding: 0.875rem; border: 2px solid var(--border-color); background: var(--bg-main); color: var(--text-primary); border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fas fa-times" style="margin-left: 0.5rem;"></i>
+                    ביטול
+                </button>
+                <button onclick="confirmBulkDelete()" type="button" style="flex: 1; padding: 0.875rem; border: none; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);">
+                    <i class="fas fa-check" style="margin-left: 0.5rem;"></i>
+                    אישור מחיקה
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div id="success-toast" style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #28a745 0%, #218838 100%); color: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(40, 167, 69, 0.4); z-index: 10001; animation: slideDown 0.3s ease; min-width: 300px; text-align: center;">
+    <i class="fas fa-check-circle" style="margin-left: 0.5rem; font-size: 1.2rem;"></i>
+    <span id="success-message">הפעולה בוצעה בהצלחה</span>
+</div>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes slideDown {
+    from { 
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+#confirm-modal button:hover {
+    transform: translateY(-2px);
+}
+
+#confirm-modal button:active {
+    transform: translateY(0);
+}
+</style>
+
+<!-- Bulk Edit Modal -->
+<div id="bulk-edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; overflow-y: auto;">
+    <div style="min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div style="background: var(--bg-card); border-radius: 12px; max-width: 500px; width: 100%; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <!-- Header -->
+            <div style="padding: 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.25rem;">
+                    <i class="fas fa-edit"></i> עריכה קבוצתית
+                </h3>
+                <button onclick="closeBulkEditModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 1.25rem;">
+                <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    בחר את השדות שברצונך לעדכן. רק שדות שנבחרו יעודכנו.
+                </p>
+                
+                <!-- Category Selection -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600; font-size: 0.9rem;">
+                        קטגוריה:
+                    </label>
+                    <select id="bulk-category" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-main); color: var(--text-primary);">
+                        <option value="">-- ללא שינוי --</option>
+                        {% for category in all_categories %}
+                        <option value="{{ category.id }}">{{ category.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Supplier Selection -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600; font-size: 0.9rem;">
+                        ספק ראשי:
+                    </label>
+                    <select id="bulk-supplier" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-main); color: var(--text-primary);">
+                        <option value="">-- ללא שינוי --</option>
+                        {% for supplier in all_suppliers %}
+                        <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Minimum Stock -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 600; font-size: 0.9rem;">
+                        מלאי מינימום:
+                    </label>
+                    <input type="number" id="bulk-min-stock" step="0.1" min="0" placeholder="השאר ריק לאי-שינוי" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-main); color: var(--text-primary);">
+                </div>
+                
+                <!-- Buttons -->
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                    <button type="button" onclick="closeBulkEditModal()" style="padding: 0.75rem 1.5rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-secondary);">
+                        ביטול
+                    </button>
+                    <button type="button" onclick="event.preventDefault(); performBulkEdit();" style="padding: 0.75rem 1.5rem; background: var(--accent-primary); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; color: white;">
+                        <i class="fas fa-save"></i> שמור שינויים
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function closeDetailModal() {
+    document.getElementById('detail-modal').style.display = 'none';
+}
+
+function showItemDetail(itemData) {
+    const modal = document.getElementById('detail-modal');
+    const title = document.getElementById('modal-title');
+    const content = document.getElementById('modal-content');
+    
+    title.innerHTML = '<i class="fas fa-box"></i> ' + itemData.name_he;
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+    
+    html += '<div><strong style="color: var(--text-secondary);">שם באנגלית:</strong><br>' + (itemData.name_en || 'לא הוזן') + '</div>';
+    
+    html += '<div><strong style="color: var(--text-secondary);">כמות זמינה:</strong><br><span style="font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);">' + itemData.total_available + '</span></div>';
+    
+    if (itemData.unit_he) {
+        html += '<div><strong style="color: var(--text-secondary);">יחידה:</strong><br>' + itemData.unit_he + '</div>';
+    }
+    
+    if (itemData.category_name_he) {
+        html += '<div><strong style="color: var(--text-secondary);">קטגוריה:</strong><br>' + itemData.category_name_he + '</div>';
+    }
+    
+    if (itemData.supplier_name) {
+        html += '<div><strong style="color: var(--text-secondary);">ספק ראשי:</strong><br>' + itemData.supplier_name + '</div>';
+    }
+    
+    if (itemData.minimum_stock) {
+        html += '<div><strong style="color: var(--text-secondary);">מלאי מינימום:</strong><br>' + itemData.minimum_stock + '</div>';
+    }
+    
+    if (itemData.branches && itemData.branches.length > 0) {
+        html += '<div><strong style="color: var(--text-secondary);">פילוח לפי סניפים:</strong>';
+        html += '<div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">';
+        itemData.branches.forEach(branch => {
+            html += '<div style="padding: 0.5rem; background: var(--bg-main); border-radius: 6px;">';
+            html += '<strong>' + branch.name + ':</strong> ' + branch.available + ' זמין';
+            html += '</div>';
+        });
+        html += '</div></div>';
+    }
+    
+    // Add audit timeline section
+    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';
+    html += '<h4 style="margin: 0 0 1rem 0; color: var(--text-primary); font-size: 1.1rem;"><i class="fas fa-history"></i> היסטוריית שינויים</h4>';
+    html += '<div id="audit-timeline"></div>';
+    html += '</div>';
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+    modal.style.display = 'block';
+    
+    // Load audit history
+    loadAuditHistory('stock_item', itemData.id);
+}
+
+function showSupplierDetail(supplierData) {
+    const modal = document.getElementById('detail-modal');
+    const title = document.getElementById('modal-title');
+    const content = document.getElementById('modal-content');
+    
+    title.innerHTML = '<i class="fas fa-truck"></i> ' + supplierData.name;
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+    
+    if (supplierData.contact_person) {
+        html += '<div><strong style="color: var(--text-secondary);">איש קשר:</strong><br>' + supplierData.contact_person + '</div>';
+    }
+    
+    if (supplierData.phone) {
+        html += '<div><strong style="color: var(--text-secondary);">טלפון:</strong><br><a href="tel:' + supplierData.phone + '" style="color: var(--accent-primary);">' + supplierData.phone + '</a></div>';
+    }
+    
+    if (supplierData.email) {
+        html += '<div><strong style="color: var(--text-secondary);">אימייל:</strong><br><a href="mailto:' + supplierData.email + '" style="color: var(--accent-primary);">' + supplierData.email + '</a></div>';
+    }
+    
+    if (supplierData.address) {
+        html += '<div><strong style="color: var(--text-secondary);">כתובת:</strong><br>' + supplierData.address + '</div>';
+    }
+    
+    if (supplierData.payment_terms) {
+        html += '<div><strong style="color: var(--text-secondary);">תנאי תשלום:</strong><br>' + supplierData.payment_terms + '</div>';
+    }
+    
+    if (supplierData.notes) {
+        html += '<div><strong style="color: var(--text-secondary);">הערות:</strong><br>' + supplierData.notes + '</div>';
+    }
+    
+    // Add quick action buttons section
+    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';
+    html += '<h4 style="margin: 0 0 0.75rem 0; color: var(--text-primary); font-size: 1.1rem;"><i class="fas fa-bolt"></i> פעולות מהירות</h4>';
+    html += '<div style="display: flex; gap: 0.5rem;">';
+    html += '<a href="/admin/stock-management?view=receipts&mode=list&supplier_id=' + supplierData.id + '" style="flex: 1; padding: 0.75rem; background: var(--accent-primary); color: white; border-radius: 8px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 600;">';
+    html += '<i class="fas fa-receipt"></i>';
+    html += '<span>צפה בכל הקבלות</span>';
+    html += '</a>';
+    html += '</div>';
+    html += '</div>';
+    
+    // Add audit timeline section
+    html += '<div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">';
+    html += '<h4 style="margin: 0 0 1rem 0; color: var(--text-primary); font-size: 1.1rem;"><i class="fas fa-history"></i> היסטוריית שינויים</h4>';
+    html += '<div id="audit-timeline"></div>';
+    html += '</div>';
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+    modal.style.display = 'block';
+    
+    // Load audit history
+    loadAuditHistory('supplier', supplierData.id);
+}
+
+// Load and display audit history
+function loadAuditHistory(entityType, entityId) {
+    const timelineEl = document.getElementById('audit-timeline');
+    if (!timelineEl) return;
+    
+    // Show loading state
+    timelineEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> טוען...</div>';
+    
+    // Fetch audit history
+    fetch(`/admin/api/audit/${entityType}/${entityId}?per_page=10`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.entries.length > 0) {
+                let html = '<div style="display: flex; flex-direction: column; gap: 0.75rem;">';
+                
+                data.data.entries.forEach(entry => {
+                    html += '<div style="padding: 0.75rem; background: var(--bg-main); border-radius: 8px; border-right: 3px solid var(--accent-primary);">';
+                    
+                    // Header with action and user
+                    html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">';
+                    html += '<div>';
+                    
+                    // Action badge
+                    let actionColor = entry.action === 'create' ? '#28a745' : entry.action === 'update' ? '#007bff' : '#dc3545';
+                    html += '<span style="background: ' + actionColor + '; color: white; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">' + entry.action_display_he + '</span>';
+                    
+                    html += '<span style="margin-right: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">על ידי ' + entry.user_name + '</span>';
+                    html += '</div>';
+                    
+                    // Timestamp
+                    html += '<div style="color: var(--text-secondary); font-size: 0.75rem;">';
+                    html += '<i class="far fa-clock"></i> ' + entry.performed_at_display;
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    // Changes details
+                    if (entry.changes && Object.keys(entry.changes).length > 0) {
+                        html += '<div style="margin-top: 0.5rem; font-size: 0.875rem;">';
+                        
+                        // For create/delete, show new_values or old_values
+                        if (entry.changes.new_values) {
+                            html += '<div style="color: var(--text-secondary); margin-bottom: 0.25rem;">פריט נוצר עם ערכים:</div>';
+                            Object.keys(entry.changes.new_values).forEach(key => {
+                                html += '<div style="margin-right: 1rem; color: var(--text-primary);">';
+                                html += '<strong>' + formatFieldName(key) + ':</strong> ' + entry.changes.new_values[key];
+                                html += '</div>';
+                            });
+                        } else if (entry.changes.old_values) {
+                            html += '<div style="color: var(--text-secondary);">פריט נמחק</div>';
+                        } else {
+                            // For updates, show field changes
+                            Object.keys(entry.changes).forEach(field => {
+                                const change = entry.changes[field];
+                                html += '<div style="margin-bottom: 0.25rem;">';
+                                html += '<strong>' + formatFieldName(field) + ':</strong> ';
+                                html += '<span style="color: #dc3545; text-decoration: line-through;">' + (change.old || 'ריק') + '</span> ';
+                                html += '<i class="fas fa-arrow-left" style="color: var(--accent-primary); font-size: 0.75rem; margin: 0 0.25rem;"></i> ';
+                                html += '<span style="color: #28a745; font-weight: 600;">' + (change.new || 'ריק') + '</span>';
+                                html += '</div>';
+                            });
+                        }
+                        
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                });
+                
+                html += '</div>';
+                
+                // Show total if more entries exist
+                if (data.data.total > data.data.entries.length) {
+                    html += '<div style="text-align: center; margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">';
+                    html += 'מוצג ' + data.data.entries.length + ' מתוך ' + data.data.total + ' שינויים';
+                    html += '</div>';
+                }
+                
+                timelineEl.innerHTML = html;
+            } else {
+                timelineEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.875rem;">אין שינויים להצגה</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading audit history:', error);
+            timelineEl.innerHTML = '<div style="text-align: center; padding: 1rem; color: #dc3545; font-size: 0.875rem;">שגיאה בטעינת היסטוריה</div>';
+        });
+}
+
+// Format field names for display
+function formatFieldName(fieldName) {
+    const fieldMap = {
+        'name_he': 'שם עברית',
+        'name_en': 'שם אנגלית',
+        'name': 'שם',
+        'contact_person': 'איש קשר',
+        'phone': 'טלפון',
+        'email': 'אימייל',
+        'address': 'כתובת',
+        'payment_terms': 'תנאי תשלום',
+        'notes': 'הערות',
+        'unit_he': 'יחידה',
+        'unit_en': 'Unit',
+        'minimum_stock': 'מלאי מינימום',
+        'cost_per_unit': 'עלות/יח\'',
+        'category_id': 'קטגוריה',
+        'primary_supplier_id': 'ספק',
+        'is_active': 'פעיל'
+    };
+    return fieldMap[fieldName] || fieldName;
+}
+
+// Close modal on outside click - check if click is on the overlay itself
+const modal = document.getElementById('detail-modal');
+if (modal) {
+    modal.addEventListener('click', function(e) {
+        // Only close if clicking the overlay background, not the content
+        if (e.target === this) {
+            closeDetailModal();
+        }
+    });
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.keyCode === 27) {
+        const modal = document.getElementById('detail-modal');
+        if (modal && modal.style.display !== 'none') {
+            closeDetailModal();
+        }
+    }
+});
+
+// Smooth scroll for active tab
+document.addEventListener('DOMContentLoaded', function() {
+    const activeTab = document.querySelector('.tab-link.active');
+    if (activeTab) {
+        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    
+    // Item detail view buttons
+    document.querySelectorAll('.btn-view-item').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            try {
+                const itemData = JSON.parse(this.dataset.item);
+                showItemDetail(itemData);
+            } catch (err) {
+                console.error('Error parsing item data:', err);
+            }
+        });
+    });
+    
+    // Supplier detail view buttons
+    document.querySelectorAll('.btn-view-supplier').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            try {
+                const supplierData = JSON.parse(this.dataset.supplier);
+                showSupplierDetail(supplierData);
+            } catch (err) {
+                console.error('Error parsing supplier data:', err);
+            }
+        });
+    });
+    
+    // Supplier filter handler
+    const supplierFilter = document.getElementById('supplier-filter');
+    if (supplierFilter) {
+        supplierFilter.addEventListener('change', function() {
+            const supplierId = this.value;
+            const currentView = '{{ current_view }}';
+            const viewMode = '{{ view_mode }}';
+            
+            // Build URL with supplier filter
+            let url = new URL(window.location.origin + '{{ url_for("admin.stock_management") }}');
+            url.searchParams.set('view', currentView);
+            url.searchParams.set('mode', viewMode);
+            if (supplierId) {
+                url.searchParams.set('supplier_id', supplierId);
+            }
+            
+            // Redirect to filtered view
+            window.location.href = url.toString();
+        });
+    }
+    
+    // Haptic feedback for touch devices
+    if ('vibrate' in navigator) {
+        document.querySelectorAll('.action-btn, .segment-btn, .tab-link, .item-card, .list-item, .btn-edit, .btn-delete').forEach(el => {
+            el.addEventListener('touchstart', () => {
+                navigator.vibrate(10);
+            });
+        });
+    }
+    
+    // Bulk selection management
+    setupBulkSelection();
+});
+
+// Bulk selection setup
+function setupBulkSelection() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    
+    // Individual checkbox change
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateBulkToolbar);
+    });
+    
+    // Select all checkbox
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updateBulkToolbar();
+        });
+    }
+}
+
+// Update bulk action toolbar based on selection
+function updateBulkToolbar() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    const count = checkboxes.length;
+    const toolbar = document.getElementById('bulk-action-toolbar');
+    const countEl = document.getElementById('selection-count');
+    const editBtn = document.getElementById('bulk-edit-btn');
+    const currentView = '{{ current_view }}';
+    
+    if (count > 0) {
+        toolbar.style.display = 'block';
+        countEl.textContent = count + ' נבחרו';
+        
+        // Show edit button only for items
+        if (currentView === 'items' && editBtn) {
+            editBtn.style.display = 'inline-block';
+        }
+    } else {
+        toolbar.style.display = 'none';
+    }
+}
+
+// Clear all selections
+function clearSelection() {
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    document.getElementById('select-all-checkbox').checked = false;
+    updateBulkToolbar();
+}
+
+// Get selected IDs
+function getSelectedIds() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+}
+
+// Get selected type (from any checked checkbox)
+function getSelectedType() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    if (checkboxes.length === 0) return null;
+    
+    // Get type from first checked checkbox
+    const type = checkboxes[0].dataset.type;
+    console.log('Selected type:', type, 'from', checkboxes.length, 'checkboxes');
+    return type;
+}
+
+// Store current deletion data
+let pendingDelete = { ids: [], type: null };
+
+// Show elegant bulk delete confirmation
+function showBulkDeleteConfirm() {
+    const ids = getSelectedIds();
+    const type = getSelectedType();
+    
+    if (ids.length === 0) {
+        showToast('אנא בחר פריטים למחיקה', 'warning');
+        return;
+    }
+    
+    // Store for confirmation
+    pendingDelete = { ids, type };
+    
+    const typeDisplay = {
+        'item': 'פריטים',
+        'supplier': 'ספקים',
+        'category': 'קטגוריות'
+    };
+    
+    // Update modal content
+    document.getElementById('confirm-message').textContent = 
+        `האם אתה בטוח שברצונך למחוק ${ids.length} ${typeDisplay[type]}? פעולה זו תמחק את הרשומות לצמיתות מהמערכת.`;
+    
+    // Show modal
+    document.getElementById('confirm-modal').style.display = 'block';
+}
+
+// Close confirmation modal
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').style.display = 'none';
+    pendingDelete = { ids: [], type: null };
+}
+
+// Confirm and execute bulk delete
+function confirmBulkDelete() {
+    console.log('Confirming delete with:', pendingDelete);
+    const ids = pendingDelete.ids;
+    const type = pendingDelete.type;
+    closeConfirmModal();
+    console.log('About to delete:', ids.length, 'items of type:', type);
+    performBulkDelete(ids, type);
+}
+
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('success-toast');
+    const messageEl = document.getElementById('success-message');
+    
+    messageEl.textContent = message;
+    
+    // Update colors based on type
+    if (type === 'warning') {
+        toast.style.background = 'linear-gradient(135deg, #ffc107 0%, #ff9800 100%)';
+    } else if (type === 'error') {
+        toast.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+    } else {
+        toast.style.background = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
+    }
+    
+    toast.style.display = 'block';
+    
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3000);
+}
+
+// Get CSRF token
+function getCSRFToken() {
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    return tokenMeta ? tokenMeta.content : '';
+}
+
+// Perform bulk delete
+function performBulkDelete(ids, type) {
+    console.log('performBulkDelete called with ids:', ids, 'type:', type);
+    
+    // Map entity types to correct plural forms
+    const endpointMap = {
+        'item': '/admin/bulk-delete-items',
+        'supplier': '/admin/bulk-delete-suppliers',
+        'category': '/admin/bulk-delete-categories'
+    };
+    
+    const endpoint = endpointMap[type];
+    console.log('Endpoint for type', type, ':', endpoint);
+    
+    if (!endpoint) {
+        console.error('Unknown entity type:', type);
+        showToast('שגיאה: סוג ישות לא ידוע', 'error');
+        return;
+    }
+    
+    const csrfToken = getCSRFToken();
+    
+    // Use FormData for Flask-WTF compatibility
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('ids', JSON.stringify(ids));
+    
+    fetch(endpoint, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            console.error('Server returned error:', response.status, response.statusText);
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            const typeDisplay = {
+                'item': 'פריטים',
+                'supplier': 'ספקים',
+                'category': 'קטגוריות'
+            };
+            showToast(`${data.deleted_count} ${typeDisplay[type]} נמחקו בהצלחה`, 'success');
+            clearSelection();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showToast('שגיאה: ' + (data.message || 'לא ניתן למחוק'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('שגיאה במחיקה: ' + error.message, 'error');
+    });
+}
+
+// Show bulk edit modal (items only)
+function showBulkEditModal() {
+    const ids = getSelectedIds();
+    
+    if (ids.length === 0) {
+        alert('אנא בחר פריטים לעריכה');
+        return;
+    }
+    
+    document.getElementById('bulk-edit-modal').style.display = 'block';
+}
+
+// Close bulk edit modal
+function closeBulkEditModal() {
+    document.getElementById('bulk-edit-modal').style.display = 'none';
+}
+
+// Perform bulk edit
+function performBulkEdit() {
+    const ids = getSelectedIds();
+    const category = document.getElementById('bulk-category').value;
+    const supplier = document.getElementById('bulk-supplier').value;
+    const minStock = document.getElementById('bulk-min-stock').value;
+    
+    // Build update object (only include fields that have values)
+    const updates = {};
+    if (category) updates.category_id = parseInt(category);
+    if (supplier) updates.primary_supplier_id = parseInt(supplier);
+    if (minStock) updates.minimum_stock = parseFloat(minStock);
+    
+    if (Object.keys(updates).length === 0) {
+        alert('אנא בחר לפחות שדה אחד לעדכון');
+        return false;
+    }
+    
+    const csrfToken = getCSRFToken();
+    
+    // Use FormData for Flask-WTF compatibility
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('ids', JSON.stringify(ids));
+    formData.append('updates', JSON.stringify(updates));
+    
+    fetch('/admin/bulk-edit-items', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert(`${data.updated_count} פריטים עודכנו בהצלחה`);
+            closeBulkEditModal();
+            window.location.reload();
+        } else {
+            alert('שגיאה: ' + (data.message || 'לא ניתן לעדכן'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('שגיאה בעדכון: ' + error.message);
+    });
+    
+    return false; // Prevent any default action
+}
+</script>
+{% endblock %}

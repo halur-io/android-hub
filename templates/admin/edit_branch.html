@@ -1,0 +1,567 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'עריכת סניף' if branch.id else 'הוספת סניף חדש' }} - Admin Panel{% endblock %}
+
+{% block extra_head %}
+<style>
+    .branch-page .section-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+        transition: box-shadow .2s;
+    }
+    .branch-page .section-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    }
+    .branch-page .section-header {
+        background: #fff;
+        border-bottom: 1px solid #eee;
+        padding: .9rem 1.25rem;
+        font-weight: 600;
+        font-size: .95rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .branch-page .section-header .section-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .85rem;
+        flex-shrink: 0;
+    }
+    .branch-page .section-body {
+        padding: 1.25rem;
+        background: #fff;
+    }
+    .branch-page .form-label {
+        font-weight: 500;
+        font-size: .85rem;
+        color: #555;
+        margin-bottom: .35rem;
+    }
+    .branch-page .form-control,
+    .branch-page .form-select {
+        border-radius: 8px;
+        border-color: #ddd;
+        font-size: .9rem;
+        padding: .5rem .75rem;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .branch-page .form-control:focus,
+    .branch-page .form-select:focus {
+        border-color: var(--sumo-coral);
+        box-shadow: 0 0 0 3px rgba(199,84,80,.12);
+    }
+    .branch-page .toggle-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+    .branch-page .toggle-pill {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: .5rem 1rem;
+        transition: all .2s;
+        cursor: pointer;
+        user-select: none;
+    }
+    .branch-page .toggle-pill:has(input:checked) {
+        background: #e8f5e9;
+        border-color: #a5d6a7;
+    }
+    .branch-page .toggle-pill input {
+        accent-color: #43a047;
+    }
+    .branch-page .toggle-pill .pill-label {
+        font-size: .85rem;
+        font-weight: 500;
+    }
+    .branch-page .status-select {
+        max-width: 320px;
+    }
+    .branch-page .payment-provider-card {
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        transition: border-color .3s, background .3s;
+        position: relative;
+    }
+    .branch-page .payment-provider-card.active {
+        border-color: var(--sumo-coral);
+        background: #fff5f5;
+    }
+    .branch-page .payment-provider-card.inactive {
+        opacity: .55;
+        background: #fafafa;
+    }
+    .branch-page .provider-title {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin-bottom: .85rem;
+        font-weight: 600;
+        font-size: .9rem;
+    }
+    .branch-page .cred-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: .75rem;
+    }
+    .branch-page .wh-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .branch-page .wh-table th {
+        font-size: .8rem;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        padding: .5rem .4rem;
+        border-bottom: 2px solid #eee;
+    }
+    .branch-page .wh-table td {
+        padding: .4rem;
+        vertical-align: middle;
+    }
+    .branch-page .wh-table .day-name {
+        font-weight: 500;
+        font-size: .9rem;
+        min-width: 55px;
+    }
+    .branch-page .wh-table input[type="time"] {
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        padding: .35rem .5rem;
+        font-size: .85rem;
+        max-width: 130px;
+    }
+    .branch-page .wh-table .closed-toggle {
+        width: 42px;
+        height: 22px;
+        appearance: none;
+        background: #ccc;
+        border-radius: 12px;
+        position: relative;
+        cursor: pointer;
+        transition: background .2s;
+        border: none;
+        outline: none;
+    }
+    .branch-page .wh-table .closed-toggle:focus-visible {
+        box-shadow: 0 0 0 3px rgba(229,57,53,.4);
+    }
+    .branch-page .wh-table .closed-toggle:checked {
+        background: #e53935;
+    }
+    .branch-page .wh-table .closed-toggle::after {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        top: 2px;
+        right: 20px;
+        transition: transform .2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .branch-page .wh-table .closed-toggle:checked::after {
+        transform: translateX(20px);
+    }
+    .branch-page .wh-table tr.day-closed td {
+        opacity: .4;
+    }
+    .branch-page .wh-table tr.day-closed .day-name {
+        text-decoration: line-through;
+    }
+    .branch-page .btn-actions {
+        display: flex;
+        gap: .75rem;
+        flex-wrap: wrap;
+        padding: 1rem 0;
+    }
+    .branch-page .btn-save {
+        background: var(--sumo-coral);
+        border: none;
+        color: #fff;
+        border-radius: 10px;
+        padding: .65rem 2rem;
+        font-weight: 600;
+        font-size: .95rem;
+        transition: background .2s, transform .1s;
+    }
+    .branch-page .btn-save:hover {
+        background: #b34440;
+    }
+    .branch-page .btn-save:active {
+        transform: scale(.98);
+    }
+    .branch-page .btn-cancel {
+        background: #f0f0f0;
+        border: none;
+        color: #555;
+        border-radius: 10px;
+        padding: .65rem 1.5rem;
+        font-weight: 500;
+        font-size: .95rem;
+        transition: background .2s;
+    }
+    .branch-page .btn-cancel:hover {
+        background: #e0e0e0;
+    }
+    .branch-page .page-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 1.5rem;
+    }
+    .branch-page .page-title .title-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--sumo-coral), #e57373);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    .branch-page .info-hint {
+        background: #f0f7ff;
+        border: 1px solid #bddeff;
+        border-radius: 8px;
+        padding: .65rem 1rem;
+        font-size: .82rem;
+        color: #1565c0;
+    }
+    .branch-page .collapsible-header {
+        cursor: pointer;
+        user-select: none;
+    }
+    .branch-page .section-header button.collapse-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        width: 100%;
+        text-align: inherit;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+    }
+    .branch-page .section-header button.collapse-btn:focus-visible {
+        outline: 2px solid var(--sumo-coral);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+    .branch-page .collapse-btn .chevron {
+        transition: transform .3s;
+        font-size: .75rem;
+        color: #aaa;
+    }
+    .branch-page .collapse-btn[aria-expanded="true"] .chevron {
+        transform: rotate(180deg);
+    }
+    @media (max-width: 768px) {
+        .branch-page .cred-grid {
+            grid-template-columns: 1fr;
+        }
+        .branch-page .page-title {
+            font-size: 1.15rem;
+        }
+        .branch-page .btn-actions {
+            flex-direction: column;
+        }
+        .branch-page .btn-save,
+        .branch-page .btn-cancel {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="branch-page">
+
+    <div class="page-title">
+        <span class="title-icon"><i class="fas fa-store"></i></span>
+        {{ 'עריכת סניף' if branch.id else 'הוספת סניף חדש' }}
+        {% if branch.id %}
+            <small class="text-muted" style="font-size:.65em; font-weight:400;">ID: {{ branch.id }}</small>
+        {% endif %}
+    </div>
+
+    <form method="POST" id="branchForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-icon" style="background:#e3f2fd; color:#1565c0;"><i class="fas fa-info-circle"></i></span>
+                פרטי סניף
+            </div>
+            <div class="section-body">
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <label class="form-label">שם הסניף (עברית) *</label>
+                        <input type="text" class="form-control" name="name_he" value="{{ branch.name_he or '' }}" required>
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label">Branch Name (English) *</label>
+                        <input type="text" class="form-control" name="name_en" value="{{ branch.name_en or '' }}" required>
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label">כתובת (עברית)</label>
+                        <input type="text" class="form-control" name="address_he" value="{{ branch.address_he or '' }}">
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label">Address (English)</label>
+                        <input type="text" class="form-control" name="address_en" value="{{ branch.address_en or '' }}">
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label">טלפון</label>
+                        <input type="text" class="form-control" name="phone" value="{{ branch.phone or '' }}" dir="ltr">
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label">אימייל</label>
+                        <input type="email" class="form-control" name="email" value="{{ branch.email or '' }}" dir="ltr">
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <label class="form-label">סדר תצוגה</label>
+                        <input type="number" class="form-control" name="display_order" value="{{ branch.display_order or 0 }}">
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label"><i class="fab fa-waze me-1" style="color:#30c8ff;"></i> קישור Waze</label>
+                        <input type="url" class="form-control" name="waze_link" value="{{ branch.waze_link or '' }}" dir="ltr" placeholder="https://waze.com/...">
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label"><i class="fas fa-map-marker-alt me-1" style="color:#ea4335;"></i> קישור Google Maps</label>
+                        <input type="url" class="form-control" name="google_maps_link" value="{{ branch.google_maps_link or '' }}" dir="ltr" placeholder="https://maps.google.com/...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-icon" style="background:#e8f5e9; color:#2e7d32;"><i class="fas fa-sliders-h"></i></span>
+                הגדרות ותפעול
+            </div>
+            <div class="section-body">
+                <div class="toggle-row mb-3">
+                    <label class="toggle-pill">
+                        <input type="checkbox" name="is_active" id="is_active" {% if branch.is_active or not branch.id %}checked{% endif %}>
+                        <span class="pill-label"><i class="fas fa-power-off me-1"></i> סניף פעיל</span>
+                    </label>
+                    <label class="toggle-pill">
+                        <input type="checkbox" name="enable_delivery" id="enable_delivery" {% if branch.enable_delivery or (not branch.id and branch.enable_delivery is none) %}checked{% endif %}>
+                        <span class="pill-label"><i class="fas fa-motorcycle me-1"></i> משלוחים</span>
+                    </label>
+                    <label class="toggle-pill">
+                        <input type="checkbox" name="enable_pickup" id="enable_pickup" {% if branch.enable_pickup or (not branch.id and branch.enable_pickup is none) %}checked{% endif %}>
+                        <span class="pill-label"><i class="fas fa-shopping-bag me-1"></i> איסוף עצמי</span>
+                    </label>
+                </div>
+
+                <label class="form-label">סטטוס הזמנות</label>
+                <select class="form-select status-select" name="ordering_status">
+                    <option value="open" {% if (branch.ordering_status or 'open') == 'open' %}selected{% endif %}>🟢 פתוח — מקבל הזמנות</option>
+                    <option value="busy" {% if (branch.ordering_status or 'open') == 'busy' %}selected{% endif %}>🟡 עמוס — סגור זמנית</option>
+                    <option value="closed" {% if (branch.ordering_status or 'open') == 'closed' %}selected{% endif %}>🔴 סגור — לא מקבל הזמנות</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <button type="button" class="collapse-btn" data-bs-toggle="collapse" data-bs-target="#paymentBody" aria-expanded="{{ 'true' if branch.id and (branch.hyp_terminal or branch.max_api_key) else 'false' }}" aria-controls="paymentBody">
+                    <span class="section-icon" style="background:#fce4ec; color:#c62828;"><i class="fas fa-credit-card"></i></span>
+                    <span class="flex-grow-1">
+                        הגדרות תשלום
+                        {% if branch.id %}
+                            {% if branch.has_payment_config %}
+                                <span class="badge bg-success ms-2" style="font-size:.7rem;"><i class="fas fa-check-circle me-1"></i>מוגדר</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark ms-2" style="font-size:.7rem;"><i class="fas fa-exclamation-triangle me-1"></i>גלובלי</span>
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                    <i class="fas fa-chevron-down chevron"></i>
+                </button>
+            </div>
+            <div class="collapse {% if branch.id and (branch.hyp_terminal or branch.max_api_key) %}show{% endif %}" id="paymentBody">
+                <div class="section-body">
+                    <div class="mb-3">
+                        <label class="form-label">ספק תשלום מועדף</label>
+                        <select class="form-select" name="payment_provider" id="payment_provider" onchange="togglePaymentSections()" style="max-width:280px;">
+                            <option value="hyp" {% if not branch.payment_provider or branch.payment_provider == 'hyp' %}selected{% endif %}>HYP (Yaad Pay)</option>
+                            <option value="max" {% if branch.payment_provider == 'max' %}selected{% endif %}>MAX Pay</option>
+                        </select>
+                    </div>
+
+                    <div id="hyp-section" class="payment-provider-card">
+                        <div class="provider-title">
+                            <i class="fas fa-shield-alt text-primary"></i>
+                            HYP (Yaad Pay)
+                            {% if branch.id and branch.hyp_terminal and branch.hyp_api_key and branch.hyp_passp %}
+                                <span class="badge bg-success" style="font-size:.7rem;"><i class="fas fa-check me-1"></i>3/3</span>
+                            {% elif branch.id and (branch.hyp_terminal or branch.hyp_api_key or branch.hyp_passp) %}
+                                <span class="badge bg-danger" style="font-size:.7rem;"><i class="fas fa-times me-1"></i>חלקי</span>
+                            {% endif %}
+                        </div>
+                        <div class="cred-grid">
+                            <div>
+                                <label class="form-label">Terminal (Masof)</label>
+                                <input type="text" class="form-control" name="hyp_terminal" value="{{ branch.hyp_terminal or '' }}" placeholder="מספר מסוף" dir="ltr">
+                            </div>
+                            <div>
+                                <label class="form-label">API Key</label>
+                                <input type="text" class="form-control" name="hyp_api_key" value="{{ branch.hyp_api_key or '' }}" placeholder="מפתח API" dir="ltr">
+                            </div>
+                            <div>
+                                <label class="form-label">PassP (Password)</label>
+                                <input type="password" class="form-control" name="hyp_passp" value="{{ branch.hyp_passp or '' }}" placeholder="סיסמה" dir="ltr">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="max-section" class="payment-provider-card">
+                        <div class="provider-title">
+                            <i class="fas fa-credit-card text-success"></i>
+                            MAX Pay
+                            {% if branch.id and branch.max_api_url and branch.max_api_key and branch.max_merchant_id %}
+                                <span class="badge bg-success" style="font-size:.7rem;"><i class="fas fa-check me-1"></i>3/3</span>
+                            {% elif branch.id and (branch.max_api_url or branch.max_api_key or branch.max_merchant_id) %}
+                                <span class="badge bg-danger" style="font-size:.7rem;"><i class="fas fa-times me-1"></i>חלקי</span>
+                            {% endif %}
+                        </div>
+                        <div class="cred-grid">
+                            <div>
+                                <label class="form-label">API URL</label>
+                                <input type="url" class="form-control" name="max_api_url" value="{{ branch.max_api_url or '' }}" placeholder="https://..." dir="ltr">
+                            </div>
+                            <div>
+                                <label class="form-label">API Key</label>
+                                <input type="text" class="form-control" name="max_api_key" value="{{ branch.max_api_key or '' }}" placeholder="מפתח API" dir="ltr">
+                            </div>
+                            <div>
+                                <label class="form-label">Merchant ID</label>
+                                <input type="text" class="form-control" name="max_merchant_id" value="{{ branch.max_merchant_id or '' }}" placeholder="מזהה סוחר" dir="ltr">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-hint">
+                        <i class="fas fa-info-circle me-1"></i>
+                        אם השדות ריקים, המערכת תשתמש בהגדרות הגלובליות. כל סניף יכול לעבוד עם חשבון תשלום נפרד.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <button type="button" class="collapse-btn" data-bs-toggle="collapse" data-bs-target="#hoursBody" aria-expanded="{% if branch.id %}true{% else %}false{% endif %}" aria-controls="hoursBody">
+                    <span class="section-icon" style="background:#fff3e0; color:#e65100;"><i class="fas fa-clock"></i></span>
+                    <span class="flex-grow-1">שעות פעילות</span>
+                    <i class="fas fa-chevron-down chevron"></i>
+                </button>
+            </div>
+            <div class="collapse {% if branch.id %}show{% endif %}" id="hoursBody">
+                <div class="section-body" style="padding:.75rem 1rem;">
+                    <div class="table-responsive">
+                        <table class="wh-table">
+                            <thead>
+                                <tr>
+                                    <th>יום</th>
+                                    <th>פתיחה</th>
+                                    <th>סגירה</th>
+                                    <th style="text-align:center;">סגור</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'] %}
+                                {% set day_icons = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'] %}
+                                {% for i in range(7) %}
+                                {% set wh = branch.working_hours[i] if branch.id and i < branch.working_hours|length else None %}
+                                <tr class="{% if wh and wh.is_closed %}day-closed{% endif %}" id="day-row-{{ i }}">
+                                    <td class="day-name">{{ days[i] }}</td>
+                                    <td>
+                                        <input type="time" name="open_time_{{ i }}" id="open_time_{{ i }}" value="{{ wh.open_time if wh else '12:00' }}" aria-label="שעת פתיחה {{ days[i] }}">
+                                    </td>
+                                    <td>
+                                        <input type="time" name="close_time_{{ i }}" id="close_time_{{ i }}" value="{{ wh.close_time if wh else '23:00' }}" aria-label="שעת סגירה {{ days[i] }}">
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <input type="checkbox" class="closed-toggle" name="is_closed_{{ i }}" id="is_closed_{{ i }}" {% if wh and wh.is_closed %}checked{% endif %} onchange="toggleDayRow({{ i }}, this.checked)" aria-label="סגור ביום {{ days[i] }}">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-actions">
+            <button type="submit" class="btn btn-save">
+                <i class="fas fa-save me-2"></i> שמור סניף
+            </button>
+            <a href="{{ url_for('admin.branches') }}" class="btn btn-cancel">
+                <i class="fas fa-arrow-right me-2"></i> חזרה
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePaymentSections() {
+    var provider = document.getElementById('payment_provider').value;
+    var hypSection = document.getElementById('hyp-section');
+    var maxSection = document.getElementById('max-section');
+    if (provider === 'max') {
+        maxSection.classList.add('active');
+        maxSection.classList.remove('inactive');
+        hypSection.classList.add('inactive');
+        hypSection.classList.remove('active');
+    } else {
+        hypSection.classList.add('active');
+        hypSection.classList.remove('inactive');
+        maxSection.classList.add('inactive');
+        maxSection.classList.remove('active');
+    }
+}
+
+function toggleDayRow(i, closed) {
+    var row = document.getElementById('day-row-' + i);
+    if (closed) {
+        row.classList.add('day-closed');
+    } else {
+        row.classList.remove('day-closed');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    togglePaymentSections();
+});
+</script>
+{% endblock %}

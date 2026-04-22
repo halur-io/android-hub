@@ -1,0 +1,2914 @@
+{% extends "admin/base.html" %}
+
+{% block title %}אשף תפריט - Admin Panel{% endblock %}
+
+{% block extra_head %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- Menu Wizard Scripts -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Clean Header */
+.clean-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 20px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.clean-header h1 {
+    color: var(--sumo-coral);
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+.clean-header p {
+    color: #666;
+    margin: 10px 0 0 0;
+    font-size: 1.1rem;
+}
+
+/* Main Action Cards */
+.main-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.action-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.action-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    text-decoration: none;
+    color: inherit;
+}
+
+.primary-card {
+    border-color: var(--sumo-coral);
+    background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.primary-card:hover {
+    border-color: var(--sumo-coral);
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+}
+
+.secondary-card {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #fff 0%, #f0f8ff 100%);
+}
+
+.secondary-card:hover {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+}
+
+.menu-card {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #fff 0%, #f8fff9 100%);
+}
+
+.menu-card:hover {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+}
+
+.card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.primary-card .card-icon {
+    background: var(--sumo-coral);
+    color: white;
+}
+
+.secondary-card .card-icon {
+    background: #007bff;
+    color: white;
+}
+
+.menu-card .card-icon {
+    background: #28a745;
+    color: white;
+}
+
+.card-content h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.card-content p {
+    margin: 0;
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+/* Dropdown Management Container */
+.management-section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.dropdown-toggle-custom {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.dropdown-toggle-custom:hover {
+    background: #5a6268;
+}
+
+.dropdown-menu-custom {
+    display: none;
+    margin-top: 15px;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
+.dropdown-menu-custom.show {
+    display: block;
+}
+
+.management-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.management-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.management-btn:hover {
+    background: #e9ecef;
+    text-decoration: none;
+    color: #333;
+    transform: translateY(-1px);
+}
+
+.management-btn i {
+    width: 16px;
+    text-align: center;
+}
+
+/* Current Templates Display */
+.templates-preview {
+    margin-top: 30px;
+}
+
+.template-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.template-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.template-info h5 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.template-info p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.template-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .main-actions {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .action-card {
+        padding: 20px;
+    }
+    
+    .management-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .template-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .template-actions {
+        justify-content: center;
+    }
+    
+    /* Basic Mobile Wizard Optimization */
+    .modal-xl {
+        max-width: 95vw;
+        margin: 10px;
+    }
+    
+    .wizard-steps {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .wizard-steps .step {
+        padding: 6px 10px;
+        font-size: 11px;
+        text-align: center;
+    }
+    
+    /* Basic form improvements */
+    .form-control,
+    .form-select {
+        font-size: 16px;
+        padding: 10px;
+    }
+    
+    .btn {
+        padding: 10px 15px;
+        margin-bottom: 8px;
+    }
+    
+    /* Simple grid fixes */
+    .items-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Touch-friendly */
+    .clickable {
+        min-height: 44px;
+    }
+}
+
+/* RTL Support */
+[dir="rtl"] .action-card {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dropdown-toggle-custom {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .management-btn {
+    flex-direction: row-reverse;
+}
+
+/* Wizard Step Styles */
+.step {
+    padding: 10px 15px;
+    color: #6c757d;
+    font-size: 14px;
+    border-radius: 20px;
+    transition: all 0.3s;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.step.active {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+}
+
+.step.clickable {
+    cursor: pointer;
+}
+
+.step.clickable:hover:not(.active) {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    color: #495057;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Clean Header -->
+    <div class="clean-header">
+        <h1><i class="fas fa-magic me-3"></i>אשף תפריט</h1>
+        <p>יצירה ועיצוב תפריטי מסעדה מותאמים אישית לכל סניף</p>
+    </div>
+
+    <!-- Main Action Cards -->
+    <div class="main-actions">
+        <!-- Create New Menu Card -->
+        <a href="#" class="action-card primary-card" onclick="createNewMenu()">
+            <div class="card-icon">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="card-content">
+                <h3>יצירת תפריט חדש</h3>
+                <p>התחל ביצירת תפריט מותאם אישית עם בחירת קטגוריות, מנות ועיצוב מקצועי להדפסה</p>
+            </div>
+        </a>
+
+        <!-- Saved Templates Card -->
+        <a href="#" class="action-card secondary-card" onclick="showSavedTemplates()">
+            <div class="card-icon">
+                <i class="fas fa-bookmark"></i>
+            </div>
+            <div class="card-content">
+                <h3>תבניות שמורות</h3>
+                <p>גש לתבניות תפריט שמורות וטען הגדרות קודמות ליצירה מהירה של תפריטים חדשים</p>
+            </div>
+        </a>
+
+        <!-- Print Management Card -->
+        <a href="#" class="action-card menu-card" onclick="togglePrintManagement()">
+            <div class="card-icon">
+                <i class="fas fa-print"></i>
+            </div>
+            <div class="card-content">
+                <h3>ניהול הדפסות</h3>
+                <p>הגדרות הדפסה מתקדמות, תבניות עיצוב והתאמות למדפסות שונות</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Dropdown Management Section -->
+    <div class="management-section">
+        <button class="dropdown-toggle-custom" onclick="toggleDropdown()" id="managementDropdown">
+            <span><i class="fas fa-cogs me-2"></i>כלי ניהול מתקדם</span>
+            <i class="fas fa-chevron-down transition-transform" id="dropdownIcon"></i>
+        </button>
+        
+        <div class="dropdown-menu-custom" id="managementMenu">
+            <div class="management-buttons">
+                <a href="#" class="management-btn" onclick="manageCategories()">
+                    <i class="fas fa-tags"></i>
+                    <span>ניהול קטגוריות</span>
+                </a>
+                <a href="#" class="management-btn" onclick="viewSavedMenus(event)">
+                    <i class="fas fa-save"></i>
+                    <span>תפריטים שמורים</span>
+                </a>
+                <a href="#" class="management-btn" onclick="managePrintConfigs()">
+                    <i class="fas fa-cog"></i>
+                    <span>הגדרות הדפסה</span>
+                </a>
+                <a href="#" class="management-btn" onclick="exportMenuData()">
+                    <i class="fas fa-download"></i>
+                    <span>ייצוא נתונים</span>
+                </a>
+                <a href="#" class="management-btn" onclick="menuStatistics()">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>סטטיסטיקות</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Templates Preview -->
+    <div class="templates-preview" id="templatesSection" style="display: none;">
+        <h4><i class="fas fa-bookmark me-2"></i>תבניות קיימות</h4>
+        <div id="templatesList">
+            <!-- Templates will be loaded here dynamically -->
+        </div>
+    </div>
+
+    <!-- Saved Menus Preview -->
+    <div class="templates-preview" id="savedMenusSection" style="display: none;">
+        <h4><i class="fas fa-save me-2"></i>תפריטים שמורים</h4>
+        <div id="savedMenusList">
+            <!-- Saved menus will be loaded here dynamically -->
+        </div>
+    </div>
+</div>
+
+<!-- Create Menu Modal -->
+<div class="modal fade" id="createMenuModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-magic me-2"></i>יצירת תפריט חדש
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Wizard Steps -->
+                <div class="wizard-progress bg-light p-3">
+                    <div class="progress mb-2">
+                        <div class="progress-bar bg-primary" id="wizardProgress" style="width: 20%"></div>
+                    </div>
+                    <div class="wizard-steps d-flex justify-content-between">
+                        <span class="step active clickable" data-step="1" onclick="goToStep(1)">
+                            <i class="fas fa-info-circle me-1"></i>פרטים בסיסיים
+                        </span>
+                        <span class="step clickable" data-step="2" onclick="goToStep(2)">
+                            <i class="fas fa-tags me-1"></i>בחירת קטגוריות
+                        </span>
+                        <span class="step clickable" data-step="3" onclick="goToStep(3)">
+                            <i class="fas fa-utensils me-1"></i>בחירת מנות
+                        </span>
+                        <span class="step clickable" data-step="4" onclick="goToStep(4)">
+                            <i class="fas fa-palette me-1"></i>עיצוב מתקדם
+                        </span>
+                        <span class="step clickable" data-step="5" onclick="goToStep(5)">
+                            <i class="fas fa-print me-1"></i>הגדרות והדפסה
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Basic Info -->
+                <div class="wizard-step" id="step1" style="display: block;">
+                    <div class="p-4">
+                        <h4 class="mb-4">פרטים בסיסיים לתפריט</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">שם התפריט *</label>
+                                    <input type="text" class="form-control" id="menuName" placeholder="לדוגמה: תפריט ראמה - סתיו 2025">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">סניף *</label>
+                                    <select class="form-select" id="branchSelect" required>
+                                        <option value="">בחר סניף...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">תיאור (אופציונלי)</label>
+                                    <textarea class="form-control" id="menuDescription" rows="3" placeholder="תיאור קצר של התפריט..."></textarea>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="saveAsTemplate">
+                                    <label class="form-check-label" for="saveAsTemplate">
+                                        שמור כתבנית לשימוש עתידי
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Category Selection -->
+                <div class="wizard-step" id="step2" style="display: none;">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0">בחירת קטגוריות</h4>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="selectAllCategories()">
+                                    <i class="fas fa-check-double me-1"></i>בחר הכל
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="clearAllCategories()">
+                                    <i class="fas fa-times me-1"></i>נקה הכל
+                                </button>
+                            </div>
+                        </div>
+                        <div id="categoriesGrid" class="row g-3">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Item Selection -->
+                <div class="wizard-step" id="step3" style="display: none;">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0">בחירת מנות</h4>
+                            <div class="d-flex gap-3 align-items-center">
+                                <!-- View Toggle -->
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="viewMode" id="cardView" autocomplete="off" checked>
+                                    <label class="btn btn-outline-primary btn-sm" for="cardView">
+                                        <i class="fas fa-th-large me-1"></i>כרטיסים
+                                    </label>
+                                    <input type="radio" class="btn-check" name="viewMode" id="listView" autocomplete="off">
+                                    <label class="btn btn-outline-primary btn-sm" for="listView">
+                                        <i class="fas fa-list me-1"></i>רשימה
+                                    </label>
+                                </div>
+                                
+                                <!-- Global Selection Controls -->
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-success btn-sm" onclick="selectAllItemsGlobal()">
+                                        <i class="fas fa-check-double me-1"></i>בחר הכל
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="clearAllItemsGlobal()">
+                                        <i class="fas fa-times me-1"></i>נקה הכל
+                                    </button>
+                                </div>
+                                
+                                <!-- Search -->
+                                <div class="input-group" style="width: 300px;">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="itemSearch" placeholder="חיפוש מנות...">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="itemsContainer">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                בחר קטגוריות בשלב הקודם כדי לראות את המנות הזמינות
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Advanced Styling -->
+                <div class="wizard-step" id="step4" style="display: none;">
+                    <div class="p-4">
+                        <h4 class="mb-4">עיצוב מתקדם ופריסת דפים</h4>
+                        
+                        <!-- Page Layout Section -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary">
+                                    <i class="fas fa-file-alt me-2"></i>פריסת דפים וקטגוריות מתקדמת
+                                </h5>
+                                <p class="text-muted small mb-3">תכנן את פריסת התפריט - קבע דפים, סדר קטגוריות ועמודות</p>
+                                
+                                <div class="card">
+                                    <div class="card-body">
+                                        <!-- Page Groups Management -->
+                                        <div class="mb-4">
+                                            <h6 class="fw-bold">קיבוץ קטגוריות לדפים:</h6>
+                                            <p class="text-muted small">גרור קטגוריות לארגן אותן בדפים שונים</p>
+                                            <div id="pageGroupsContainer">
+                                                <!-- Page groups will be loaded here -->
+                                            </div>
+                                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addNewPage()">
+                                                <i class="fas fa-plus me-1"></i>הוסף דף חדש
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Column Layout Settings -->
+                                        <div class="mb-3">
+                                            <h6 class="fw-bold">הגדרות עמודות לכל קטגוריה:</h6>
+                                            <div id="categoryColumnSettings">
+                                                <!-- Column settings will be loaded here -->
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="showMenuTitle" checked>
+                                                    <label class="form-check-label" for="showMenuTitle">
+                                                        הצג שם התפריט בראש הדף
+                                                    </label>
+                                                </div>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="addPageNumbers">
+                                                    <label class="form-check-label" for="addPageNumbers">
+                                                        הוסף מספרי דפים
+                                                    </label>
+                                                </div>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="addHeaders">
+                                                    <label class="form-check-label" for="addHeaders">
+                                                        הוסף כותרת עליונה לכל דף
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="addFooters">
+                                                    <label class="form-check-label" for="addFooters">
+                                                        הוסף כותרת תחתונה לכל דף
+                                                    </label>
+                                                </div>
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="separateIndexPage">
+                                                    <label class="form-check-label" for="separateIndexPage">
+                                                        צור דף תוכן עניינים נפרד
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Styling Options Section -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5 class="text-success">
+                                    <i class="fas fa-palette me-2"></i>צבעים וטיפוגרפיה
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">ערכת צבעים</label>
+                                    <select class="form-select" id="colorScheme">
+                                        <option value="restaurant" selected>מסעדה קלאסית (כחול-אדום)</option>
+                                        <option value="elegant">אלגנטי (זהב-שחור)</option>
+                                        <option value="modern">מודרני (אפור-כתום)</option>
+                                        <option value="fresh">טרי (ירוק-לימון)</option>
+                                        <option value="warm">חם (חום-בז')</option>
+                                        <option value="custom">מותאם אישית</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3" id="customColors" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="form-label">צבע ראשי</label>
+                                            <input type="color" class="form-control form-control-color" id="primaryColor" value="#1B2951">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">צבע משני</label>
+                                            <input type="color" class="form-control form-control-color" id="secondaryColor" value="#C75450">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">גופן ראשי</label>
+                                    <select class="form-select" id="primaryFont">
+                                        <option value="Heebo" selected>Heebo (מומלץ לעברית)</option>
+                                        <option value="Assistant">Assistant</option>
+                                        <option value="Rubik">Rubik</option>
+                                        <option value="Varela Round">Varela Round</option>
+                                        <option value="Open Sans">Open Sans</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">גודל גופן בסיסי</label>
+                                    <select class="form-select" id="baseFontSize">
+                                        <option value="small">קטן (10pt)</option>
+                                        <option value="medium" selected>בינוני (12pt)</option>
+                                        <option value="large">גדול (14pt)</option>
+                                        <option value="extra-large">גדול מאוד (16pt)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="text-info">
+                                    <i class="fas fa-icons me-2"></i>איקונים ועיטורים
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">סגנון איקונים לקטגוריות</label>
+                                    <select class="form-select" id="iconStyle">
+                                        <option value="solid" selected>מלא (Solid)</option>
+                                        <option value="regular">קווי (Regular)</option>
+                                        <option value="light">דק (Light)</option>
+                                        <option value="duotone">דו-צבעוני (Duotone)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showCategoryIcons" checked>
+                                    <label class="form-check-label" for="showCategoryIcons">
+                                        הצג איקונים בקטגוריות
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="addDecorators">
+                                    <label class="form-check-label" for="addDecorators">
+                                        הוסף עיטורי מסגרת
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="addDividers">
+                                    <label class="form-check-label" for="addDividers">
+                                        הוסף קווי הפרדה בין קטגוריות
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">רווח בין מנות</label>
+                                    <select class="form-select" id="itemSpacing">
+                                        <option value="compact">קומפקטי</option>
+                                        <option value="normal" selected>רגיל</option>
+                                        <option value="relaxed">נינוח</option>
+                                        <option value="spacious">מרווח</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Style Preview Section -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5 class="text-warning">
+                                    <i class="fas fa-eye me-2"></i>תצוגה מקדימה
+                                </h5>
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <div id="stylePreview" class="border rounded p-3" style="min-height: 150px; background: #f8f9fa;">
+                                            <p class="text-muted">התצוגה המקדימה תעודכן כאשר תבחר אפשרויות עיצוב</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Print Settings -->
+                <div class="wizard-step" id="step5" style="display: none;">
+                    <div class="p-4">
+                        <h4 class="mb-4">הגדרות הדפסה וסיכום</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>עיצוב תפריט</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">מספר עמודות</label>
+                                    <select class="form-select" id="layoutColumns">
+                                        <option value="1">עמודה אחת</option>
+                                        <option value="2" selected>שתי עמודות</option>
+                                        <option value="3">שלוש עמודות</option>
+                                    </select>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showPrices" checked>
+                                    <label class="form-check-label" for="showPrices">
+                                        הצג מחירים
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showDescriptions" checked>
+                                    <label class="form-check-label" for="showDescriptions">
+                                        הצג תיאורי מנות
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>הגדרות הדפסה</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">גודל נייר</label>
+                                    <select class="form-select" id="paperSize">
+                                        <option value="A4" selected>A4</option>
+                                        <option value="A3">A3</option>
+                                        <option value="Letter">Letter</option>
+                                    </select>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showBranchInfo" checked>
+                                    <label class="form-check-label" for="showBranchInfo">
+                                        הצג פרטי סניף
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="showDate" checked>
+                                    <label class="form-check-label" for="showDate">
+                                        הצג תאריך יצירה
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6>סיכום בחירות:</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <span class="badge bg-primary me-2" id="selectedCategoriesCount">0</span>קטגוריות נבחרו
+                                </div>
+                                <div class="col-6">
+                                    <span class="badge bg-success me-2" id="selectedItemsCount">0</span>מנות נבחרו
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="prevStepBtn" onclick="previousStep()">
+                    <i class="fas fa-arrow-right me-1"></i>קודם
+                </button>
+                <button type="button" class="btn btn-primary" id="nextStepBtn" onclick="nextStep()">
+                    הבא<i class="fas fa-arrow-left ms-1"></i>
+                </button>
+                <button type="button" class="btn btn-success" id="createMenuBtn" onclick="createMenu()" style="display: none;">
+                    <i class="fas fa-magic me-1"></i>צור תפריט
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Editor Modal -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">עריכת תבנית</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">שם התבנית</label>
+                    <input type="text" class="form-control" id="templateName">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">תיאור</label>
+                    <textarea class="form-control" id="templateDescription" rows="3"></textarea>
+                </div>
+                <div id="templatePreview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                <button type="button" class="btn btn-primary" onclick="saveTemplate()">שמור תבנית</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Preview Modal -->
+<div class="modal fade" id="printPreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">תצוגה מקדימה להדפסה</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="printPreviewContent" class="print-preview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">סגור</button>
+                <button type="button" class="btn btn-primary" onclick="printMenu()">
+                    <i class="fas fa-print me-1"></i>הדפס
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Global variables
+let currentTemplates = [];
+let dropdownOpen = false;
+let wizardData = {
+    currentStep: 1,
+    menuName: '',
+    branchId: null,
+    selectedCategories: [],
+    selectedItems: [],
+    selectedItemsSet: new Set(),
+    layoutSettings: {},
+    printSettings: {}
+};
+let allCategories = [];
+let allBranches = [];
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Use preloaded data instead of making API calls
+    allBranches = {{ branches|tojson }};
+    allCategories = {{ categories|tojson }};
+    currentTemplates = {{ templates|tojson }};
+    
+    // Initialize UI components
+    initializeBranchSelect();
+    displayTemplates(currentTemplates);
+    
+    // Add live preview updates for menu name
+    const menuNameInput = document.getElementById('menuName');
+    if (menuNameInput) {
+        menuNameInput.addEventListener('input', function() {
+            wizardData.menuName = this.value;
+            if (wizardData.currentStep >= 4) {
+                setTimeout(updateStylePreview, 100);
+            }
+        });
+    }
+});
+
+// API Functions
+async function makeApiCall(url, options = {}) {
+    try {
+        const defaultOptions = {
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            }
+        };
+        
+        const response = await fetch(url, { ...defaultOptions, ...options });
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+    }
+}
+
+function initializeBranchSelect() {
+    const branchSelect = document.getElementById('branchSelect');
+    if (branchSelect && allBranches) {
+        branchSelect.innerHTML = '<option value="">בחר סניף...</option>' +
+            allBranches.map(branch => 
+                `<option value="${branch.id}">${branch.name_he}</option>`
+            ).join('');
+    }
+}
+
+async function loadBranches() {
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/branches');
+        allBranches = data.branches;
+        initializeBranchSelect();
+    } catch (error) {
+        console.error('Error loading branches:', error);
+        showNotification('שגיאה בטעינת סניפים', 'error');
+    }
+}
+
+async function loadCategories() {
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/categories');
+        allCategories = data.categories;
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        showNotification('שגיאה בטעינת קטגוריות', 'error');
+    }
+}
+
+async function loadSavedTemplates() {
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/templates');
+        currentTemplates = data.templates;
+        displayTemplates(currentTemplates);
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        showNotification('שגיאה בטעינת תבניות', 'error');
+    }
+}
+
+// Toggle dropdown menu
+function toggleDropdown() {
+    const menu = document.getElementById('managementMenu');
+    const icon = document.getElementById('dropdownIcon');
+    
+    dropdownOpen = !dropdownOpen;
+    
+    if (dropdownOpen) {
+        menu.classList.add('show');
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        menu.classList.remove('show');
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('managementDropdown');
+    const menu = document.getElementById('managementMenu');
+    
+    if (!dropdown.contains(event.target) && !menu.contains(event.target)) {
+        if (dropdownOpen) {
+            toggleDropdown();
+        }
+    }
+});
+
+// Main action functions
+function createNewMenu() {
+    // Reset wizard data
+    wizardData = {
+        currentStep: 1,
+        menuName: '',
+        branchId: null,
+        selectedCategories: [],
+        selectedItems: [],
+        selectedItemsSet: new Set(),
+        layoutSettings: {},
+        printSettings: {}
+    };
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('createMenuModal'));
+    modal.show();
+    
+    // Reset to first step
+    goToStep(1);
+}
+
+function showSavedTemplates() {
+    const section = document.getElementById('templatesSection');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        loadSavedTemplates();
+        section.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+function togglePrintManagement() {
+    showNotification('ניהול הדפסות יתווסף בקרוב', 'info');
+}
+
+// Wizard Navigation
+function nextStep() {
+    if (validateCurrentStep()) {
+        if (wizardData.currentStep < 5) {
+            goToStep(wizardData.currentStep + 1);
+            
+            // Update preview when moving to styling step
+            if (wizardData.currentStep === 4) {
+                setTimeout(updateStylePreview, 100);
+            }
+        }
+    }
+}
+
+function previousStep() {
+    if (wizardData.currentStep > 1) {
+        goToStep(wizardData.currentStep - 1);
+    }
+}
+
+function goToStep(stepNumber) {
+    // Hide all steps
+    document.querySelectorAll('.wizard-step').forEach(step => {
+        step.style.display = 'none';
+    });
+    
+    // Show current step
+    document.getElementById(`step${stepNumber}`).style.display = 'block';
+    
+    // Update progress
+    const progress = (stepNumber / 5) * 100;
+    document.getElementById('wizardProgress').style.width = `${progress}%`;
+    
+    // Update step indicators
+    document.querySelectorAll('.wizard-steps .step').forEach((step, index) => {
+        step.classList.toggle('active', index + 1 === stepNumber);
+    });
+    
+    // Update buttons
+    document.getElementById('prevStepBtn').style.display = stepNumber === 1 ? 'none' : 'inline-block';
+    document.getElementById('nextStepBtn').style.display = stepNumber === 5 ? 'none' : 'inline-block';
+    document.getElementById('createMenuBtn').style.display = stepNumber === 5 ? 'inline-block' : 'none';
+    
+    wizardData.currentStep = stepNumber;
+    
+    // Load step-specific content
+    if (stepNumber === 2) {
+        loadCategoriesForSelection();
+    } else if (stepNumber === 3) {
+        loadItemsForSelection();
+    } else if (stepNumber === 4) {
+        loadStylingOptions();
+    } else if (stepNumber === 5) {
+        updateSummary();
+    }
+}
+
+function validateCurrentStep() {
+    switch (wizardData.currentStep) {
+        case 1:
+            const menuName = document.getElementById('menuName').value.trim();
+            const branchId = document.getElementById('branchSelect').value;
+            
+            if (!menuName) {
+                showNotification('אנא הזן שם לתפריט', 'error');
+                return false;
+            }
+            if (!branchId) {
+                showNotification('אנא בחר סניף', 'error');
+                return false;
+            }
+            
+            wizardData.menuName = menuName;
+            wizardData.branchId = parseInt(branchId);
+            return true;
+            
+        case 2:
+            if (wizardData.selectedCategories.length === 0) {
+                showNotification('אנא בחר לפחות קטגוריה אחת', 'error');
+                return false;
+            }
+            return true;
+            
+        case 3:
+            if (wizardData.selectedItems.length === 0) {
+                showNotification('אנא בחר לפחות מנה אחת', 'error');
+                return false;
+            }
+            return true;
+            
+        case 4:
+            // Validate styling options - always valid as defaults are provided
+            collectStylingData();
+            return true;
+            
+        default:
+            return true;
+    }
+}
+
+// Category Selection Functions
+function loadCategoriesForSelection() {
+    const grid = document.getElementById('categoriesGrid');
+    
+    if (allCategories.length === 0) {
+        grid.innerHTML = '<div class="col-12"><div class="alert alert-warning">לא נמצאו קטגוריות פעילות במערכת</div></div>';
+        return;
+    }
+    
+    grid.innerHTML = allCategories.map(category => `
+        <div class="col-md-4 col-sm-6">
+            <div class="card category-card" onclick="toggleCategory(${category.id})">
+                <div class="card-body text-center">
+                    <div class="form-check position-absolute top-0 end-0 m-2">
+                        <input class="form-check-input" type="checkbox" id="cat_${category.id}">
+                    </div>
+                    <div class="category-icon mb-2" style="color: ${category.color || '#007bff'};">
+                        <i class="fas fa-${category.icon || 'utensils'} fa-2x"></i>
+                    </div>
+                    <h6 class="card-title">${category.name_he}</h6>
+                    <p class="card-text small text-muted">${category.items_count} מנות</p>
+                    ${category.description_he ? `<p class="card-text small">${category.description_he}</p>` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleCategory(categoryId) {
+    // Ensure categoryId is a number for consistent type handling
+    categoryId = parseInt(categoryId);
+    
+    const checkbox = document.getElementById(`cat_${categoryId}`);
+    if (!checkbox) {
+        console.error(`ERROR: Checkbox not found for category ${categoryId}`);
+        return;
+    }
+    
+    // Browser's default click behavior already toggled the checkbox
+    if (checkbox.checked) {
+        if (!wizardData.selectedCategories.includes(categoryId)) {
+            wizardData.selectedCategories.push(categoryId);
+        }
+    } else {
+        wizardData.selectedCategories = wizardData.selectedCategories.filter(id => id !== categoryId);
+    }
+    
+    updateCategoryCard(categoryId, checkbox.checked);
+}
+
+function updateCategoryCard(categoryId, selected) {
+    const card = document.querySelector(`#cat_${categoryId}`).closest('.category-card');
+    if (selected) {
+        card.classList.add('border-primary', 'bg-light');
+    } else {
+        card.classList.remove('border-primary', 'bg-light');
+    }
+}
+
+function selectAllCategories() {
+    allCategories.forEach(category => {
+        const checkbox = document.getElementById(`cat_${category.id}`);
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+            wizardData.selectedCategories.push(category.id);
+            updateCategoryCard(category.id, true);
+        }
+    });
+}
+
+function clearAllCategories() {
+    wizardData.selectedCategories = [];
+    allCategories.forEach(category => {
+        const checkbox = document.getElementById(`cat_${category.id}`);
+        if (checkbox) {
+            checkbox.checked = false;
+            updateCategoryCard(category.id, false);
+        }
+    });
+}
+
+// Item Selection Functions
+function loadItemsForSelection() {
+    const container = document.getElementById('itemsContainer');
+    
+    if (wizardData.selectedCategories.length === 0) {
+        container.innerHTML = '<div class="alert alert-warning">אנא בחר קטגוריות בשלב הקודם</div>';
+        return;
+    }
+    
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    renderItemsWithCurrentView(selectedCategoryData);
+    
+    // Add search functionality
+    const searchInput = document.getElementById('itemSearch');
+    if (searchInput) {
+        searchInput.oninput = function() {
+            filterItems(this.value);
+        };
+    }
+    
+    // Add view mode change listeners
+    document.getElementById('cardView').addEventListener('change', function() {
+        if (this.checked) {
+            renderItemsWithCurrentView(selectedCategoryData);
+        }
+    });
+    
+    document.getElementById('listView').addEventListener('change', function() {
+        if (this.checked) {
+            renderItemsWithCurrentView(selectedCategoryData);
+        }
+    });
+}
+
+function renderItemsWithCurrentView(selectedCategoryData) {
+    const container = document.getElementById('itemsContainer');
+    const isListView = document.getElementById('listView')?.checked;
+    
+    if (isListView) {
+        renderItemsListView(selectedCategoryData, container);
+    } else {
+        renderItemsCardView(selectedCategoryData, container);
+    }
+    
+    // Restore selection state after rendering
+    setTimeout(() => {
+        restoreItemSelectionState();
+    }, 100);
+}
+
+function restoreItemSelectionState() {
+    if (!wizardData.selectedItemsSet) {
+        wizardData.selectedItemsSet = new Set(wizardData.selectedItems || []);
+    }
+    
+    wizardData.selectedItemsSet.forEach(itemId => {
+        const checkbox = document.getElementById(`item_${itemId}`);
+        if (checkbox) {
+            checkbox.checked = true;
+            updateItemCard(itemId, true);
+        }
+    });
+}
+
+function renderItemsCardView(selectedCategoryData, container) {
+    container.innerHTML = selectedCategoryData.map(category => `
+        <div class="category-section mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
+                    ${category.name_he} (${category.items.length} מנות)
+                </h5>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="selectAllItems(${category.id})">
+                        בחר הכל
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearCategoryItems(${category.id})">
+                        נקה
+                    </button>
+                </div>
+            </div>
+            <div class="row g-2">
+                ${category.items.map(item => `
+                    <div class="col-md-6">
+                        <div class="card item-card" onclick="toggleItem(${item.id})">
+                            <div class="card-body">
+                                <div class="form-check position-absolute top-0 end-0 m-2">
+                                    <input class="form-check-input" type="checkbox" id="item_${item.id}">
+                                </div>
+                                <h6 class="card-title">${item.name_he}</h6>
+                                ${item.description_he ? `<p class="card-text small">${item.description_he}</p>` : ''}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-success fw-bold">₪${item.base_price}</span>
+                                    <div class="dietary-properties">
+                                        ${item.dietary_properties.map(prop => `
+                                            <span class="badge me-1" style="background-color: ${prop.color};">
+                                                <i class="fas fa-${prop.icon}"></i>
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderItemsListView(selectedCategoryData, container) {
+    container.innerHTML = selectedCategoryData.map(category => `
+        <div class="category-section mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
+                    ${category.name_he} (${category.items.length} מנות)
+                </h5>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="selectAllItems(${category.id})">
+                        בחר הכל
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearCategoryItems(${category.id})">
+                        נקה
+                    </button>
+                </div>
+            </div>
+            <div class="list-group">
+                ${category.items.map(item => `
+                    <div class="list-group-item list-group-item-action item-list" onclick="toggleItem(${item.id})" style="cursor: pointer;">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="form-check me-3">
+                                    <input class="form-check-input" type="checkbox" id="item_${item.id}">
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">${item.name_he}</h6>
+                                    ${item.description_he ? `<p class="mb-1 text-muted small">${item.description_he}</p>` : ''}
+                                    <div class="dietary-properties">
+                                        ${item.dietary_properties.map(prop => `
+                                            <span class="badge me-1" style="background-color: ${prop.color};">
+                                                <i class="fas fa-${prop.icon}"></i> ${prop.name_he}
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-success fw-bold">₪${item.base_price}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Centralized item selection state management
+function setItemSelected(itemId, selected) {
+    // Ensure selectedItems is a Set for reliable state management
+    if (!wizardData.selectedItemsSet) {
+        wizardData.selectedItemsSet = new Set(wizardData.selectedItems || []);
+    }
+    
+    if (selected) {
+        wizardData.selectedItemsSet.add(itemId);
+    } else {
+        wizardData.selectedItemsSet.delete(itemId);
+    }
+    
+    // Update the array from the Set to maintain backward compatibility
+    wizardData.selectedItems = Array.from(wizardData.selectedItemsSet);
+    
+    // Update UI elements with error checking
+    const checkbox = document.getElementById(`item_${itemId}`);
+    console.log(`Looking for item ${itemId}, found checkbox:`, checkbox);
+    
+    if (checkbox) {
+        checkbox.checked = selected;
+        updateItemCard(itemId, selected);
+    } else {
+        // Checkbox not found - might be in different view mode or not rendered yet
+        console.warn(`Checkbox for item ${itemId} not found in DOM`);
+    }
+    
+    updateSummary();
+    
+    // Update preview if we're on the styling step
+    if (wizardData.currentStep >= 4) {
+        setTimeout(updateStylePreview, 50);
+    }
+}
+
+function toggleItem(itemId) {
+    const checkbox = document.getElementById(`item_${itemId}`);
+    const currentlySelected = wizardData.selectedItemsSet ? 
+        wizardData.selectedItemsSet.has(itemId) : 
+        wizardData.selectedItems.includes(itemId);
+    
+    setItemSelected(itemId, !currentlySelected);
+}
+
+function updateItemCard(itemId, selected) {
+    const checkbox = document.getElementById(`item_${itemId}`);
+    if (checkbox) {
+        // Handle both card view and list view
+        const cardElement = checkbox.closest('.item-card');
+        const listElement = checkbox.closest('.item-list');
+        
+        if (cardElement) {
+            if (selected) {
+                cardElement.classList.add('border-success', 'bg-light');
+            } else {
+                cardElement.classList.remove('border-success', 'bg-light');
+            }
+        }
+        
+        if (listElement) {
+            if (selected) {
+                listElement.classList.add('active');
+            } else {
+                listElement.classList.remove('active');
+            }
+        }
+    }
+}
+
+function selectAllItems(categoryId) {
+    const category = allCategories.find(cat => cat.id === categoryId);
+    if (category) {
+        category.items.forEach(item => {
+            setItemSelected(item.id, true);
+        });
+    }
+}
+
+function clearCategoryItems(categoryId) {
+    const category = allCategories.find(cat => cat.id === categoryId);
+    if (category) {
+        category.items.forEach(item => {
+            setItemSelected(item.id, false);
+        });
+    }
+}
+
+// Global item selection functions
+function selectAllItemsGlobal() {
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    selectedCategoryData.forEach(category => {
+        category.items.forEach(item => {
+            setItemSelected(item.id, true);
+        });
+    });
+    
+    showNotification('כל המנות נבחרו בהצלחה', 'success');
+}
+
+function clearAllItemsGlobal() {
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    selectedCategoryData.forEach(category => {
+        category.items.forEach(item => {
+            setItemSelected(item.id, false);
+        });
+    });
+    
+    showNotification('כל המנות בוטלו', 'info');
+}
+
+function filterItems(searchTerm) {
+    searchTerm = searchTerm.toLowerCase();
+    
+    // Handle both card view and list view
+    const cards = document.querySelectorAll('.item-card');
+    const listItems = document.querySelectorAll('.item-list');
+    
+    // Filter cards (card view)
+    cards.forEach(card => {
+        const title = card.querySelector('.card-title').textContent.toLowerCase();
+        const description = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
+        
+        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+            card.closest('.col-md-6').style.display = 'block';
+        } else {
+            card.closest('.col-md-6').style.display = 'none';
+        }
+    });
+    
+    // Filter list items (list view)
+    listItems.forEach(listItem => {
+        const title = listItem.querySelector('h6').textContent.toLowerCase();
+        const description = listItem.querySelector('p')?.textContent.toLowerCase() || '';
+        
+        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+            listItem.style.display = 'block';
+        } else {
+            listItem.style.display = 'none';
+        }
+    });
+}
+
+// Styling Functions
+function loadStylingOptions() {
+    // Load page break options for categories
+    loadPageBreakOptions();
+    
+    // Set up color scheme change handler
+    const colorSchemeSelect = document.getElementById('colorScheme');
+    if (colorSchemeSelect) {
+        colorSchemeSelect.addEventListener('change', function() {
+            toggleCustomColors();
+            updateStylePreview();
+        });
+    }
+    
+    // Set up other change handlers for live preview
+    const styleInputs = ['primaryFont', 'baseFontSize', 'iconStyle', 'itemSpacing'];
+    styleInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('change', updateStylePreview);
+        }
+    });
+    
+    // Set up checkbox handlers
+    const checkboxes = ['showCategoryIcons', 'addDecorators', 'addDividers', 'showMenuTitle', 'addPageNumbers', 'addHeaders', 'addFooters', 'separateIndexPage'];
+    checkboxes.forEach(checkboxId => {
+        const checkbox = document.getElementById(checkboxId);
+        if (checkbox) {
+            checkbox.addEventListener('change', updateStylePreview);
+        }
+    });
+    
+    // Initial preview update
+    updateStylePreview();
+}
+
+function loadPageBreakOptions() {
+    loadPageGroups();
+    loadCategoryColumnSettings();
+}
+
+// Initialize page groups with first group containing all categories
+function loadPageGroups() {
+    const container = document.getElementById('pageGroupsContainer');
+    if (!container) return;
+    
+    if (wizardData.selectedCategories.length === 0) {
+        container.innerHTML = '<p class="text-muted small">בחר קטגוריות בשלב הקודם כדי לראות אפשרויות פריסה</p>';
+        return;
+    }
+    
+    // Initialize page groups if not exists OR if empty
+    if (!wizardData.pageGroups || wizardData.pageGroups.length === 0) {
+        wizardData.pageGroups = [{
+            id: 'page1',
+            name: 'דף 1',
+            categories: [...wizardData.selectedCategories]
+        }];
+    } else {
+        // Page groups exist from template - validate they contain valid categories
+        // Remove any categories that are no longer selected
+        wizardData.pageGroups = wizardData.pageGroups.map(group => ({
+            ...group,
+            categories: group.categories.filter(catId => wizardData.selectedCategories.includes(catId))
+        })).filter(group => group.categories.length > 0); // Remove empty groups
+        
+        // If all groups became empty, reinitialize
+        if (wizardData.pageGroups.length === 0) {
+            wizardData.pageGroups = [{
+                id: 'page1',
+                name: 'דף 1',
+                categories: [...wizardData.selectedCategories]
+            }];
+        }
+    }
+    
+    renderPageGroups();
+}
+
+function renderPageGroups() {
+    const container = document.getElementById('pageGroupsContainer');
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    container.innerHTML = wizardData.pageGroups.map((group, groupIndex) => {
+        const groupCategories = selectedCategoryData.filter(cat => 
+            group.categories.includes(cat.id)
+        );
+        
+        return `
+            <div class="page-group-card mb-3" data-group-id="${group.id}">
+                <div class="card border-primary">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-file-alt text-primary"></i>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="${group.name}" style="width: 120px;"
+                                   onchange="updatePageGroupName(${groupIndex}, this.value)">
+                        </div>
+                        <div>
+                            ${wizardData.pageGroups.length > 1 ? `
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="removePageGroup(${groupIndex})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="available-categories mb-2">
+                            <small class="text-muted">קטגוריות זמינות:</small>
+                            <div class="d-flex flex-wrap gap-1 mt-1" id="availableCategories_${groupIndex}">
+                                ${getAvailableCategories(groupIndex).map(cat => `
+                                    <span class="badge bg-secondary category-badge" 
+                                          draggable="true" 
+                                          data-category-id="${cat.id}"
+                                          ondragstart="dragCategory(event, ${cat.id})">
+                                        <i class="fas fa-${cat.icon || 'utensils'} me-1"></i>
+                                        ${cat.name_he}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="page-categories" 
+                             ondrop="dropCategory(event, ${groupIndex})" 
+                             ondragover="allowDrop(event)">
+                            <small class="text-muted">קטגוריות בדף:</small>
+                            <div class="d-flex flex-wrap gap-1 mt-1 min-height-40" 
+                                 style="min-height: 40px; border: 2px dashed #dee2e6; border-radius: 5px; padding: 5px;">
+                                ${groupCategories.map(cat => `
+                                    <span class="badge bg-primary category-badge" 
+                                          draggable="true" 
+                                          data-category-id="${cat.id}"
+                                          ondragstart="dragCategory(event, ${cat.id})">
+                                        <i class="fas fa-${cat.icon || 'utensils'} me-1"></i>
+                                        ${cat.name_he}
+                                        <i class="fas fa-times ms-1" 
+                                           onclick="removeCategoryFromPage(${groupIndex}, ${cat.id})"
+                                           style="cursor: pointer;"></i>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Drag and drop functions
+function dragCategory(event, categoryId) {
+    event.dataTransfer.setData('text/plain', categoryId);
+}
+
+function allowDrop(event) {
+    event.preventDefault();
+}
+
+function dropCategory(event, groupIndex) {
+    event.preventDefault();
+    const categoryId = parseInt(event.dataTransfer.getData('text/plain'));
+    
+    // Remove from all other groups
+    wizardData.pageGroups.forEach((group, index) => {
+        if (index !== groupIndex) {
+            group.categories = group.categories.filter(id => id !== categoryId);
+        }
+    });
+    
+    // Add to target group if not already there
+    if (!wizardData.pageGroups[groupIndex].categories.includes(categoryId)) {
+        wizardData.pageGroups[groupIndex].categories.push(categoryId);
+    }
+    
+    renderPageGroups();
+    updatePageBreakPreview();
+}
+
+function getAvailableCategories(excludeGroupIndex) {
+    const usedCategories = wizardData.pageGroups
+        .filter((_, index) => index !== excludeGroupIndex)
+        .flatMap(group => group.categories);
+    
+    return allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id) && 
+        !usedCategories.includes(cat.id)
+    );
+}
+
+function addNewPage() {
+    const newPageNum = wizardData.pageGroups.length + 1;
+    wizardData.pageGroups.push({
+        id: `page${newPageNum}`,
+        name: `דף ${newPageNum}`,
+        categories: []
+    });
+    renderPageGroups();
+}
+
+function removePageGroup(groupIndex) {
+    if (wizardData.pageGroups.length <= 1) return;
+    
+    // Move categories back to first group
+    const categoriesToMove = wizardData.pageGroups[groupIndex].categories;
+    wizardData.pageGroups[0].categories.push(...categoriesToMove);
+    
+    wizardData.pageGroups.splice(groupIndex, 1);
+    renderPageGroups();
+    updatePageBreakPreview();
+}
+
+function updatePageGroupName(groupIndex, newName) {
+    wizardData.pageGroups[groupIndex].name = newName;
+}
+
+function removeCategoryFromPage(groupIndex, categoryId) {
+    wizardData.pageGroups[groupIndex].categories = 
+        wizardData.pageGroups[groupIndex].categories.filter(id => id !== categoryId);
+    renderPageGroups();
+    updatePageBreakPreview();
+}
+
+// Load column settings for each category
+function loadCategoryColumnSettings() {
+    const container = document.getElementById('categoryColumnSettings');
+    if (!container) return;
+    
+    if (wizardData.selectedCategories.length === 0) {
+        container.innerHTML = '<p class="text-muted small">בחר קטגוריות בשלב הקודם</p>';
+        return;
+    }
+    
+    const selectedCategoryData = allCategories.filter(cat => 
+        wizardData.selectedCategories.includes(cat.id)
+    );
+    
+    // Initialize column settings if not exists
+    if (!wizardData.categoryColumnSettings) {
+        wizardData.categoryColumnSettings = {};
+        selectedCategoryData.forEach(cat => {
+            wizardData.categoryColumnSettings[cat.id] = {
+                columns: 1,
+                showItemsInOrder: true
+            };
+        });
+    }
+    
+    container.innerHTML = selectedCategoryData.map(category => `
+        <div class="row mb-2 p-2 border rounded">
+            <div class="col-md-4 d-flex align-items-center">
+                <i class="fas fa-${category.icon || 'utensils'} me-2" style="color: ${category.color || '#007bff'}"></i>
+                <strong>${category.name_he}</strong>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">מספר עמודות:</label>
+                <select class="form-select form-select-sm" 
+                        onchange="updateCategoryColumns(${category.id}, this.value)">
+                    <option value="1" ${wizardData.categoryColumnSettings[category.id]?.columns === 1 ? 'selected' : ''}>עמודה אחת</option>
+                    <option value="2" ${wizardData.categoryColumnSettings[category.id]?.columns === 2 ? 'selected' : ''}>שתי עמודות</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-check-sm mt-4">
+                    <input class="form-check-input" type="checkbox" 
+                           id="orderItems_${category.id}"
+                           ${wizardData.categoryColumnSettings[category.id]?.showItemsInOrder ? 'checked' : ''}
+                           onchange="updateCategoryOrdering(${category.id}, this.checked)">
+                    <label class="form-check-label small" for="orderItems_${category.id}">
+                        סדר מנות לפי סדר
+                    </label>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateCategoryColumns(categoryId, columns) {
+    if (!wizardData.categoryColumnSettings) {
+        wizardData.categoryColumnSettings = {};
+    }
+    if (!wizardData.categoryColumnSettings[categoryId]) {
+        wizardData.categoryColumnSettings[categoryId] = {};
+    }
+    wizardData.categoryColumnSettings[categoryId].columns = parseInt(columns);
+    updatePageBreakPreview();
+}
+
+function updateCategoryOrdering(categoryId, showInOrder) {
+    if (!wizardData.categoryColumnSettings) {
+        wizardData.categoryColumnSettings = {};
+    }
+    if (!wizardData.categoryColumnSettings[categoryId]) {
+        wizardData.categoryColumnSettings[categoryId] = {};
+    }
+    wizardData.categoryColumnSettings[categoryId].showItemsInOrder = showInOrder;
+    updatePageBreakPreview();
+}
+
+function updatePageBreakPreview() {
+    // Update the preview when page breaks are changed
+    updateStylePreview();
+}
+
+function toggleCustomColors() {
+    const colorScheme = document.getElementById('colorScheme').value;
+    const customColorsDiv = document.getElementById('customColors');
+    
+    if (colorScheme === 'custom') {
+        customColorsDiv.style.display = 'block';
+    } else {
+        customColorsDiv.style.display = 'none';
+        // Set predefined colors based on scheme
+        setColorScheme(colorScheme);
+    }
+}
+
+function setColorScheme(scheme) {
+    const colorSchemes = {
+        'restaurant': { primary: '#1B2951', secondary: '#C75450' },
+        'elegant': { primary: '#2D2D2D', secondary: '#DAA520' },
+        'modern': { primary: '#6C757D', secondary: '#FD7E14' },
+        'fresh': { primary: '#198754', secondary: '#FFC107' },
+        'warm': { primary: '#8B4513', secondary: '#F5DEB3' }
+    };
+    
+    if (colorSchemes[scheme]) {
+        document.getElementById('primaryColor').value = colorSchemes[scheme].primary;
+        document.getElementById('secondaryColor').value = colorSchemes[scheme].secondary;
+    }
+}
+
+function updateStylePreview() {
+    const preview = document.getElementById('stylePreview');
+    if (!preview) return;
+    
+    // Get current style settings
+    const colorScheme = document.getElementById('colorScheme').value;
+    const primaryColor = document.getElementById('primaryColor').value;
+    const secondaryColor = document.getElementById('secondaryColor').value;
+    const primaryFont = document.getElementById('primaryFont').value;
+    const baseFontSize = document.getElementById('baseFontSize').value;
+    const iconStyle = document.getElementById('iconStyle').value;
+    const showIcons = document.getElementById('showCategoryIcons').checked;
+    const addDividers = document.getElementById('addDividers').checked;
+    const addDecorators = document.getElementById('addDecorators') ? document.getElementById('addDecorators').checked : false;
+    const itemSpacing = document.getElementById('itemSpacing') ? document.getElementById('itemSpacing').value : 'normal';
+    
+    // Layout settings
+    const showPrices = wizardData.layoutSettings.show_prices !== false;
+    const showDescriptions = wizardData.layoutSettings.show_descriptions !== false;
+    
+    // Generate preview HTML
+    const fontSizes = {
+        'small': '10pt',
+        'medium': '12pt', 
+        'large': '14pt',
+        'extra-large': '16pt'
+    };
+    
+    const spacing = {
+        'compact': '5px',
+        'normal': '8px',
+        'relaxed': '12px',
+        'spacious': '16px'
+    };
+    
+    const currentColors = colorScheme === 'custom' ? 
+        { primary: primaryColor, secondary: secondaryColor } :
+        { primary: primaryColor, secondary: secondaryColor };
+    
+    const currentSpacing = spacing[itemSpacing] || spacing['normal'];
+    
+    // Generate content based on selected items
+    let previewContent = '';
+    
+    if (wizardData.selectedItems && wizardData.selectedItems.length > 0) {
+        // Show actual selected menu items
+        const selectedCategories = allCategories.filter(cat => 
+            wizardData.selectedCategories.includes(cat.id)
+        );
+        
+        for (const category of selectedCategories) {
+            const categoryItems = category.items.filter(item => 
+                wizardData.selectedItems.includes(item.id)
+            );
+            
+            if (categoryItems.length > 0) {
+                const iconClass = iconStyle === 'regular' ? 'far' : iconStyle === 'light' ? 'fal' : 'fas';
+                const categoryIcon = showIcons && category.icon ? 
+                    `<i class="${iconClass} fa-${category.icon}" style="margin-left: 8px;"></i>` : '';
+                
+                previewContent += `
+                    <div style="margin-bottom: ${currentSpacing};">
+                        <h4 style="color: ${currentColors.secondary}; margin-bottom: 8px; ${addDividers ? 'border-bottom: 1px solid #ddd; padding-bottom: 5px;' : ''}">
+                            ${categoryIcon}${category.name_he}
+                        </h4>
+                `;
+                
+                // Show up to 3 items per category in preview
+                const itemsToShow = categoryItems.slice(0, 3);
+                for (const item of itemsToShow) {
+                    const priceDisplay = showPrices && item.base_price ? 
+                        `<span style="color: ${currentColors.secondary}; font-weight: bold;">₪${Math.round(item.base_price)}</span>` : '';
+                    
+                    const descriptionDisplay = showDescriptions && item.description_he ? 
+                        `<div style="font-size: 0.9em; color: #666; margin-top: 2px;">${item.description_he}</div>` : '';
+                    
+                    previewContent += `
+                        <div style="margin-bottom: ${currentSpacing};">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>${item.name_he}</span>
+                                ${priceDisplay}
+                            </div>
+                            ${descriptionDisplay}
+                        </div>
+                    `;
+                }
+                
+                if (categoryItems.length > 3) {
+                    previewContent += `<div style="color: #999; font-style: italic; margin-bottom: ${currentSpacing};">... ועוד ${categoryItems.length - 3} מנות</div>`;
+                }
+                
+                previewContent += '</div>';
+            }
+        }
+    } else {
+        // Show sample content if no items selected
+        previewContent = `
+            <div style="margin-bottom: 15px;">
+                <h4 style="color: ${currentColors.secondary}; margin-bottom: 8px; ${addDividers ? 'border-bottom: 1px solid #ddd; padding-bottom: 5px;' : ''}">
+                    ${showIcons ? '<i class="fas fa-utensils" style="margin-left: 8px;"></i>' : ''}
+                    מנות עיקריות
+                </h4>
+                <div style="margin-bottom: ${currentSpacing};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>שניצל ירושלמי</span>
+                        ${showPrices ? `<span style="color: ${currentColors.secondary}; font-weight: bold;">₪65</span>` : ''}
+                    </div>
+                    ${showDescriptions ? '<div style="font-size: 0.9em; color: #666; margin-top: 2px;">שניצל עוף פרוס עם חומוס וסלט ירקות טריים</div>' : ''}
+                </div>
+                <div style="margin-bottom: ${currentSpacing};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>קבב בפיתה</span>
+                        ${showPrices ? `<span style="color: ${currentColors.secondary}; font-weight: bold;">₪45</span>` : ''}
+                    </div>
+                    ${showDescriptions ? '<div style="font-size: 0.9em; color: #666; margin-top: 2px;">קבב בקר טרי בפיתה עם טחינה וירקות</div>' : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    const decoratorStyle = addDecorators ? `
+        position: relative;
+        &::before {
+            content: "✦ ✧ ✦";
+            display: block;
+            text-align: center;
+            color: ${currentColors.secondary};
+            margin-bottom: 10px;
+        }
+    ` : '';
+    
+    const showMenuTitle = document.getElementById('showMenuTitle').checked;
+    const menuTitleHtml = showMenuTitle ? `
+        <h3 style="color: ${currentColors.primary}; text-align: center; margin-bottom: 15px; border-bottom: 2px solid ${currentColors.secondary}; padding-bottom: 8px;">
+            ${wizardData.menuName || 'תפריט מסעדה'} - תצוגה מקדימה
+        </h3>
+    ` : '';
+    
+    preview.innerHTML = `
+        <div style="font-family: '${primaryFont}', Arial; font-size: ${fontSizes[baseFontSize]}; color: ${currentColors.primary}; background: white; padding: 15px; border-radius: 8px; direction: rtl; text-align: right;">
+            ${addDecorators ? `<div style="text-align: center; color: ${currentColors.secondary}; margin-bottom: 10px;">✦ ✧ ✦</div>` : ''}
+            ${menuTitleHtml}
+            ${previewContent}
+            ${addDecorators ? `<div style="text-align: center; color: ${currentColors.secondary}; margin-top: 10px;">✦ ✧ ✦</div>` : ''}
+        </div>
+    `;
+}
+
+function collectStylingData() {
+    // Collect all styling data into wizardData
+    wizardData.styleSettings = {
+        colorScheme: document.getElementById('colorScheme').value,
+        primaryColor: document.getElementById('primaryColor').value,
+        secondaryColor: document.getElementById('secondaryColor').value,
+        primaryFont: document.getElementById('primaryFont').value,
+        baseFontSize: document.getElementById('baseFontSize').value,
+        iconStyle: document.getElementById('iconStyle').value,
+        showCategoryIcons: document.getElementById('showCategoryIcons').checked,
+        addDecorators: document.getElementById('addDecorators').checked,
+        addDividers: document.getElementById('addDividers').checked,
+        itemSpacing: document.getElementById('itemSpacing').value
+    };
+    
+    wizardData.pageSettings = {
+        showMenuTitle: document.getElementById('showMenuTitle').checked,
+        addPageNumbers: document.getElementById('addPageNumbers').checked,
+        addHeaders: document.getElementById('addHeaders').checked,
+        addFooters: document.getElementById('addFooters').checked,
+        separateIndexPage: document.getElementById('separateIndexPage').checked,
+        pageBreakCategories: getSelectedPageBreakCategories(),
+        pageGroups: wizardData.pageGroups || [],
+        categoryColumnSettings: wizardData.categoryColumnSettings || {}
+    };
+}
+
+function getSelectedPageBreakCategories() {
+    // Convert page groups to page break format
+    const pageBreakCategories = [];
+    
+    // First page doesn't need page break, subsequent pages do
+    for (let i = 1; i < wizardData.pageGroups.length; i++) {
+        const group = wizardData.pageGroups[i];
+        if (group.categories.length > 0) {
+            // Add page break before the first category of each new page
+            pageBreakCategories.push(group.categories[0]);
+        }
+    }
+    
+    return pageBreakCategories;
+}
+
+function updateSummary() {
+    document.getElementById('selectedCategoriesCount').textContent = wizardData.selectedCategories.length;
+    document.getElementById('selectedItemsCount').textContent = wizardData.selectedItems.length;
+}
+
+// Alias function for updateSummary - used in template loading
+function updateSelectedCount() {
+    updateSummary();
+}
+
+// Create Menu Function
+async function createMenu() {
+    try {
+        // Ensure we have current values from the form
+        const menuName = document.getElementById('menuName').value.trim();
+        const branchSelect = document.getElementById('branchSelect');
+        
+        // Get branch ID - check DOM first, then wizardData, ensuring we have a valid value
+        let currentBranchId = null;
+        if (branchSelect && branchSelect.value && branchSelect.value !== '') {
+            currentBranchId = parseInt(branchSelect.value);
+        } else if (wizardData.branchId) {
+            currentBranchId = parseInt(wizardData.branchId);
+        }
+        
+        
+        // Validate required fields
+        if (!menuName) {
+            showNotification('אנא הזן שם לתפריט', 'error');
+            return;
+        }
+        
+        if (!currentBranchId || isNaN(currentBranchId)) {
+            showNotification('חובה לבחור סניף', 'error');
+            return;
+        }
+        
+        if (!wizardData.selectedCategories || wizardData.selectedCategories.length === 0) {
+            showNotification('אנא בחר לפחות קטגוריה אחת', 'error');
+            return;
+        }
+        
+        if (!wizardData.selectedItems || wizardData.selectedItems.length === 0) {
+            showNotification('אנא בחר לפחות מנה אחת', 'error');
+            return;
+        }
+        
+        // Collect form data with advanced styling
+        const showMenuTitleValue = document.getElementById('showMenuTitle').checked;
+        
+        const menuData = {
+            name: menuName,
+            description: document.getElementById('menuDescription').value.trim(),
+            branch_id: currentBranchId,
+            categories: wizardData.selectedCategories,
+            items: wizardData.selectedItems,
+            layout: {
+                columns: parseInt(document.getElementById('layoutColumns').value),
+                show_prices: document.getElementById('showPrices').checked,
+                show_descriptions: document.getElementById('showDescriptions').checked
+            },
+            print_settings: {
+                paper_size: document.getElementById('paperSize').value,
+                show_branch_info: document.getElementById('showBranchInfo').checked,
+                show_date: document.getElementById('showDate').checked,
+                show_menu_title: showMenuTitleValue
+            },
+            style_settings: wizardData.styleSettings || {},
+            page_settings: wizardData.pageSettings || {},
+            save_as_template: document.getElementById('saveAsTemplate').checked,
+            template_name: document.getElementById('saveAsTemplate').checked ? 
+                `תבנית ${wizardData.menuName}` : ''
+        };
+        
+        const result = await makeApiCall('/admin/api/menu-wizard/create-menu', {
+            method: 'POST',
+            body: JSON.stringify(menuData)
+        });
+        
+        showNotification(result.message, 'success');
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('createMenuModal')).hide();
+        
+        // Refresh templates if template was saved
+        if (result.template_id) {
+            loadSavedTemplates();
+        }
+        
+        // Automatically load and show saved menus
+        setTimeout(() => {
+            viewSavedMenus();
+        }, 300);
+        
+        // Show print preview with current settings
+        setTimeout(() => {
+            const currentPrintSettings = {
+                print_settings: {
+                    show_menu_title: showMenuTitleValue,
+                    show_branch_info: document.getElementById('showBranchInfo').checked,
+                    show_date: document.getElementById('showDate').checked,
+                    paper_size: document.getElementById('paperSize').value
+                },
+                page_settings: wizardData.pageSettings || {},
+                style_settings: wizardData.styleSettings || {}
+            };
+            showPrintPreview(result.menu_id, currentPrintSettings);
+        }, 800);
+        
+    } catch (error) {
+        console.error('Error creating menu:', error);
+        showNotification(error.message || 'שגיאה ביצירת התפריט', 'error');
+    }
+}
+
+// Template Functions
+async function useTemplate(templateId) {
+    try {
+        const data = await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`);
+        const template = data.template;
+        
+        // Open wizard first to initialize the modal
+        createNewMenu();
+        
+        // Now load template data into wizard (after reset)
+        wizardData.selectedCategories = template.categories_config || [];
+        wizardData.selectedItems = template.items_config || [];
+        wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
+        wizardData.branchId = template.branch_id ? parseInt(template.branch_id) : null; // Set the branch ID properly as integer
+        
+        // Pre-fill form after wizard is opened with longer delay to ensure DOM is ready
+        setTimeout(() => {
+            // Set menu name
+            const menuNameInput = document.getElementById('menuName');
+            if (menuNameInput) {
+                menuNameInput.value = `${template.name} - עותק`;
+            }
+            
+            // Set branch selection - ensure both DOM and wizardData are set
+            if (template.branch_id) {
+                const branchSelect = document.getElementById('branchSelect');
+                if (branchSelect) {
+                    branchSelect.value = template.branch_id;
+                    // Trigger change event to ensure any event listeners are called
+                    branchSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                // Double-check wizardData has the branch set
+                wizardData.branchId = parseInt(template.branch_id);
+            }
+            
+            // Update the wizard display if needed
+            if (typeof updateSelectedCount === 'function') {
+                updateSelectedCount();
+            }
+        }, 250); // Increased delay to ensure DOM is fully ready
+        
+        showNotification('התבנית נטענה בהצלחה', 'success');
+    } catch (error) {
+        console.error('Error loading template:', error);
+        showNotification('שגיאה בטעינת התבנית', 'error');
+    }
+}
+
+async function editTemplate(templateId) {
+    try {
+        const data = await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`);
+        const template = data.template;
+        
+        document.getElementById('templateName').value = template.name;
+        document.getElementById('templateDescription').value = template.description || '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+        modal.show();
+        
+        // Store template ID for editing
+        window.currentEditingTemplate = templateId;
+    } catch (error) {
+        console.error('Error loading template for editing:', error);
+        showNotification('שגיאה בטעינת התבנית לעריכה', 'error');
+    }
+}
+
+async function deleteTemplate(templateId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק תבנית זו?')) {
+        return;
+    }
+    
+    try {
+        await makeApiCall(`/admin/api/menu-wizard/template/${templateId}`, {
+            method: 'DELETE'
+        });
+        
+        showNotification('התבנית נמחקה בהצלחה', 'success');
+        loadSavedTemplates();
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showNotification(error.message || 'שגיאה במחיקת התבנית', 'error');
+    }
+}
+
+// Display templates
+function displayTemplates(templates) {
+    const templatesList = document.getElementById('templatesList');
+    
+    if (templates.length === 0) {
+        templatesList.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-bookmark fa-3x mb-3"></i>
+                <p>אין תבניות שמורות עדיין</p>
+                <p class="small">התחל ביצירת תפריט חדש כדי לשמור תבנית</p>
+            </div>
+        `;
+        return;
+    }
+    
+    templatesList.innerHTML = templates.map(template => `
+        <div class="template-card">
+            <div class="template-info">
+                <h5>${template.name}</h5>
+                <p>${template.description || 'אין תיאור'} • סניף: ${template.branch_name} • נוצר: ${formatDate(template.created_at)}</p>
+                <small class="text-muted">${template.categories_count} קטגוריות, ${template.items_count} מנות</small>
+            </div>
+            <div class="template-actions">
+                <button class="btn btn-primary btn-sm" onclick="useTemplate(${template.id})">
+                    <i class="fas fa-play me-1"></i>השתמש
+                </button>
+                <button class="btn btn-info btn-sm" onclick="editTemplate(${template.id})">
+                    <i class="fas fa-edit me-1"></i>ערוך
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteTemplate(${template.id})">
+                    <i class="fas fa-trash me-1"></i>מחק
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Print Functions
+async function showPrintPreview(menuId, passedSettings = null) {
+    try {
+        // Use passed settings or collect current print settings from the form (if available)
+        let currentSettings = passedSettings || {};
+        
+        if (!passedSettings) {
+            // Check if we're in the wizard and have access to current form values
+            const showMenuTitleEl = document.getElementById('showMenuTitle');
+            const showBranchInfoEl = document.getElementById('showBranchInfo'); 
+            const showDateEl = document.getElementById('showDate');
+            
+            if (showMenuTitleEl) {
+                // We're in the wizard, collect current form settings
+                currentSettings = {
+                    print_settings: {
+                        show_menu_title: showMenuTitleEl.checked,
+                        show_branch_info: showBranchInfoEl ? showBranchInfoEl.checked : true,
+                        show_date: showDateEl ? showDateEl.checked : true,
+                        paper_size: document.getElementById('paperSize')?.value || 'A4'
+                    },
+                    page_settings: {
+                        pageGroups: wizardData.pageGroups || []
+                    },
+                    style_settings: wizardData.styleSettings || {}
+                };
+            }
+            // If not in wizard, use GET to load from database (don't send empty settings)
+        }
+        
+        // Use current settings for live preview when available
+        
+        // Use POST if we have current settings, otherwise GET for saved menu preview
+        const url = `/admin/api/menu-wizard/simple-print/${menuId}`;
+        const data = Object.keys(currentSettings).length > 0 
+            ? await makeApiCall(url, {
+                method: 'POST',
+                body: JSON.stringify(currentSettings)
+            })
+            : await makeApiCall(url);
+        
+        // Update print preview modal content
+        document.getElementById('printPreviewContent').innerHTML = data.html;
+        
+        // Show print preview modal
+        const modal = new bootstrap.Modal(document.getElementById('printPreviewModal'));
+        modal.show();
+        
+        // Store menu ID for printing
+        window.currentPrintMenuId = menuId;
+        window.currentPrintHtml = data.html;
+        
+    } catch (error) {
+        console.error('Error loading print preview:', error);
+        showNotification('שגיאה בטעינת תצוגה מקדימה', 'error');
+    }
+}
+
+// Simple mobile detection
+function isMobileDevice() {
+    return window.innerWidth <= 768;
+}
+
+function printMenu() {
+    if (!window.currentPrintHtml) {
+        showNotification('אין תוכן להדפסה', 'error');
+        return;
+    }
+
+    if (isMobileDevice()) {
+        // Mobile-friendly printing approach
+        printOnMobile();
+    } else {
+        // Desktop printing with popup window
+        printOnDesktop();
+    }
+}
+
+function printOnMobile() {
+    if (!window.currentPrintHtml) {
+        showNotification('אין תוכן להדפסה', 'error');
+        return;
+    }
+
+    // Simple mobile printing approach
+    try {
+        // Create a simple printable page
+        const printContent = window.currentPrintHtml;
+        const printWindow = window.open('', '_blank');
+        
+        if (printWindow) {
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html dir="rtl">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>תפריט</title>
+                    <style>
+                        body { font-family: Arial; direction: rtl; margin: 20px; }
+                        @media print { body { margin: 15mm; } }
+                    </style>
+                </head>
+                <body>${printContent}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+            setTimeout(() => {
+                printWindow.print();
+            }, 1000);
+        } else {
+            // Fallback: show instructions
+            showNotification('לחץ על תפריט שמור ובחר הדפסה או שמירה כ-PDF', 'info');
+        }
+    } catch (error) {
+        console.error('Mobile print error:', error);
+        showNotification('לחץ על תפריט שמור ובחר הדפסה', 'info');
+    }
+}
+
+function printOnDesktop() {
+    try {
+        // Open new window for printing
+        const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+        
+        if (!printWindow) {
+            // Fallback to mobile method if popup blocked
+            printOnMobile();
+            return;
+        }
+        
+        printWindow.document.write(window.currentPrintHtml);
+        printWindow.document.close();
+        
+        // Wait for content to load, then print
+        printWindow.onload = function() {
+            printWindow.print();
+            setTimeout(() => {
+                printWindow.close();
+            }, 1000);
+        };
+        
+        // Fallback if onload doesn't fire
+        setTimeout(() => {
+            try {
+                printWindow.print();
+                setTimeout(() => {
+                    printWindow.close();
+                }, 1000);
+            } catch (e) {
+                console.log('Print fallback executed');
+            }
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Desktop printing failed, using mobile method:', error);
+        printOnMobile();
+    }
+}
+
+// Saved Menus Functions
+async function viewSavedMenus(evt) {
+    // Prevent default link behavior
+    if (evt) evt.preventDefault();
+    
+    // Show the section immediately, before API call
+    document.getElementById('templatesSection').style.display = 'none';
+    document.getElementById('savedMenusSection').style.display = 'block';
+    document.getElementById('managementMenu').style.display = 'none';
+    
+    try {
+        const data = await makeApiCall('/admin/api/menu-wizard/saved-menus');
+        
+        // Validate response
+        if (!data || !Array.isArray(data.menus)) {
+            throw new Error('Invalid response format');
+        }
+        
+        displaySavedMenus(data.menus);
+        
+    } catch (error) {
+        console.error('Error loading saved menus:', error);
+        showNotification('שגיאה בטעינת תפריטים שמורים: ' + error.message, 'error');
+        
+        // Show error message in the panel
+        document.getElementById('savedMenusList').innerHTML = `
+            <div class="text-center text-danger p-4">
+                <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                <p>שגיאה בטעינת תפריטים שמורים</p>
+                <p class="small">${error.message}</p>
+                <button class="btn btn-primary btn-sm mt-2" onclick="viewSavedMenus()">נסה שנית</button>
+            </div>
+        `;
+    }
+}
+
+function displaySavedMenus(menus) {
+    const savedMenusList = document.getElementById('savedMenusList');
+    
+    if (menus.length === 0) {
+        savedMenusList.innerHTML = `
+            <div class="text-center text-muted p-4">
+                <i class="fas fa-save fa-3x mb-3"></i>
+                <p>אין תפריטים שמורים עדיין</p>
+                <p class="small">צור תפריט חדש כדי לשמור אותו</p>
+            </div>
+        `;
+        return;
+    }
+    
+    savedMenusList.innerHTML = menus.map(menu => `
+        <div class="template-card">
+            <div class="template-info">
+                <h5>${menu.name}</h5>
+                <p>סניף: ${menu.branch_name} • נוצר: ${formatDate(menu.date_created)}</p>
+                <small class="text-muted">${menu.categories_count} קטגוריות, ${menu.items_count} מנות</small>
+                ${menu.has_style_settings ? '<span class="badge bg-info ms-2">עיצוב מתקדם</span>' : ''}
+            </div>
+            <div class="template-actions">
+                <button class="btn btn-primary btn-sm" onclick="showPrintPreview(${menu.id})">
+                    <i class="fas fa-print me-1"></i>הדפס
+                </button>
+                <button class="btn btn-info btn-sm" onclick="loadSavedMenu(${menu.id})">
+                    <i class="fas fa-edit me-1"></i>ערוך
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteSavedMenu(${menu.id})">
+                    <i class="fas fa-trash me-1"></i>מחק
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadSavedMenu(menuId) {
+    try {
+        // Input validation
+        if (!menuId) {
+            showNotification('שגיאה: מזהה תפריט לא תקין', 'error');
+            return;
+        }
+        
+        const data = await makeApiCall(`/admin/api/menu-wizard/saved-menu/${menuId}`);
+        const menu = data.menu;
+        
+        // Load menu data into wizard
+        wizardData.menuName = menu.name;
+        wizardData.branchId = menu.branch_id;
+        wizardData.selectedCategories = menu.menu_content.categories || [];
+        wizardData.selectedItems = menu.menu_content.items || [];
+        wizardData.layoutSettings = menu.menu_content.layout || {};
+        wizardData.printSettings = menu.print_settings || {};
+        wizardData.styleSettings = menu.style_settings || {};
+        wizardData.pageSettings = menu.page_settings || {};
+        
+        showNotification('התפריט נטען בהצלחה!', 'success');
+        
+        // Refresh categories data to ensure counts are loaded BEFORE opening modal
+        await loadCategories();
+        
+        // Hide saved menus section
+        document.getElementById('savedMenusSection').style.display = 'none';
+        
+        // Open the create menu modal
+        const modal = new bootstrap.Modal(document.getElementById('createMenuModal'));
+        modal.show();
+        
+        // Restore UI state from the loaded menu data
+        setTimeout(() => {
+            // Set menu name
+            const menuNameInput = document.getElementById('menuName');
+            if (menuNameInput) {
+                menuNameInput.value = menu.name;
+            }
+            
+            // Set branch selection
+            if (menu.branch_id) {
+                const branchSelect = document.getElementById('branchSelect');
+                if (branchSelect) {
+                    branchSelect.value = menu.branch_id;
+                    branchSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            
+            // Update selected count
+            if (typeof updateSelectedCount === 'function') {
+                updateSelectedCount();
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error loading saved menu:', error);
+        showNotification('שגיאה בטעינת התפריט', 'error');
+    }
+}
+
+async function deleteSavedMenu(menuId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את התפריט הזה?')) {
+        return;
+    }
+    
+    try {
+        await makeApiCall(`/admin/api/menu-wizard/delete-menu/${menuId}`, {
+            method: 'DELETE'
+        });
+        
+        showNotification('התפריט נמחק בהצלחה', 'success');
+        
+        // Reload saved menus list
+        viewSavedMenus();
+        
+    } catch (error) {
+        console.error('Error deleting saved menu:', error);
+        showNotification('שגיאה במחיקת התפריט', 'error');
+    }
+}
+
+// Template Management Functions
+async function saveTemplate() {
+    try {
+        // Get template name from modal input
+        const templateNameInput = document.getElementById('templateName');
+        const templateDescInput = document.getElementById('templateDescription');
+        
+        if (!templateNameInput) {
+            showNotification('שגיאה: לא נמצא שדה שם התבנית', 'error');
+            return;
+        }
+        
+        const templateName = templateNameInput.value.trim();
+        if (!templateName) {
+            showNotification('חובה להזין שם לתבנית', 'error');
+            return;
+        }
+        
+        // Collect current wizard data
+        collectStylingData(); // Make sure all data is collected
+        
+        const templateData = {
+            name: templateName,
+            description: templateDescInput ? templateDescInput.value.trim() : '',
+            branch_id: wizardData.selectedBranch,
+            categories: wizardData.selectedCategories,
+            items: wizardData.selectedItems,
+            layout: {
+                show_prices: wizardData.showPrices,
+                show_descriptions: wizardData.showDescriptions,
+                columns: wizardData.columns
+            },
+            print_settings: wizardData.printSettings || {},
+            style_settings: wizardData.styleSettings || {},
+            page_settings: {
+                pageGroups: wizardData.pageGroups || [],
+                categoryColumnSettings: wizardData.categoryColumnSettings || {},
+                showMenuTitle: wizardData.showMenuTitle !== false
+            }
+        };
+        
+        const response = await fetch('/admin/api/menu-wizard/save-template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(templateData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(result.message || 'התבנית נשמרה בהצלחה!', 'success');
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
+            if (modal) {
+                modal.hide();
+            }
+            // Clear the form
+            templateNameInput.value = '';
+            if (templateDescInput) templateDescInput.value = '';
+            // Reload templates
+            loadSavedTemplates();
+        } else {
+            showNotification(result.error || 'שגיאה בשמירת התבנית', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving template:', error);
+        showNotification('שגיאה בשמירת התבנית', 'error');
+    }
+}
+
+async function editTemplate(templateId) {
+    try {
+        const response = await fetch(`/admin/api/menu-wizard/template/${templateId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const template = result.template;
+            
+            // Load template data into wizard
+            wizardData.selectedBranch = template.branch_id;
+            wizardData.selectedCategories = template.categories_config || [];
+            wizardData.selectedItems = template.items_config || [];
+            wizardData.selectedItemsSet = new Set(wizardData.selectedItems);
+            
+            // Update branch selection UI
+            if (wizardData.selectedBranch) {
+                const branchSelect = document.getElementById('branchSelect');
+                if (branchSelect) {
+                    branchSelect.value = wizardData.selectedBranch;
+                }
+            }
+            
+            // Load layout settings
+            const layout = template.layout_config || {};
+            wizardData.showPrices = layout.show_prices !== false;
+            wizardData.showDescriptions = layout.show_descriptions !== false;
+            wizardData.columns = layout.columns || 2;
+            
+            // Load page settings
+            const pageSettings = template.page_settings || {};
+            // IMPORTANT: Preserve page groups from template - don't set to empty array
+            if (pageSettings.pageGroups && pageSettings.pageGroups.length > 0) {
+                wizardData.pageGroups = pageSettings.pageGroups;
+                console.log('Loaded page groups from template:', wizardData.pageGroups);
+            } else {
+                // Will be initialized in loadPageGroups()
+                wizardData.pageGroups = null;
+            }
+            wizardData.categoryColumnSettings = pageSettings.categoryColumnSettings || {};
+            wizardData.showMenuTitle = pageSettings.showMenuTitle !== false;
+            
+            // UI elements for page settings will be restored when page groups are rendered
+            
+            // Load style and print settings
+            wizardData.styleSettings = template.style_config || {};
+            wizardData.printSettings = template.print_config || {};
+            
+            showNotification('התבנית נטענה בהצלחה!', 'success');
+            
+            // Hide the templates section
+            document.getElementById('templatesSection').style.display = 'none';
+            
+            // Open the create menu modal
+            const modal = new bootstrap.Modal(document.getElementById('createMenuModal'));
+            modal.show();
+            
+            // Go to step 2 to continue editing
+            wizardData.currentStep = 2;
+            goToStep(2);
+            
+            // Wait for modal to be shown, then update UI to reflect loaded selections
+            setTimeout(() => {
+                console.log('Starting UI restoration...'); 
+                console.log('Selected categories:', wizardData.selectedCategories);
+                console.log('Selected items:', wizardData.selectedItems);
+                
+                // Update category checkboxes and visual state
+                wizardData.selectedCategories.forEach(categoryId => {
+                    const checkbox = document.getElementById(`cat_${categoryId}`);
+                    console.log(`Looking for category ${categoryId}, found checkbox:`, checkbox);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        updateCategoryCard(categoryId, true);
+                        console.log(`Updated category ${categoryId}`);
+                    }
+                });
+                
+                // Update item checkboxes and visual state
+                wizardData.selectedItems.forEach(itemId => {
+                    const checkbox = document.getElementById(`item_${itemId}`);
+                    console.log(`Looking for item ${itemId}, found checkbox:`, checkbox);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        updateItemCard(itemId, true);
+                        console.log(`Updated item ${itemId}`);
+                    }
+                });
+                
+                // Update any UI counters or summaries
+                updateSelectedCount();
+                console.log('UI restoration completed');
+            }, 500);
+            
+        } else {
+            showNotification(result.error || 'שגיאה בטעינת התבנית', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading template:', error);
+        showNotification('שגיאה בטעינת התבנית', 'error');
+    }
+}
+
+async function deleteTemplate(templateId) {
+    if (!confirm('האם אתה בטוח שברצונך למחוק את התבנית?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/menu-wizard/template/${templateId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('התבנית נמחקה בהצלחה!', 'success');
+            loadSavedTemplates(); // Reload the templates list
+        } else {
+            showNotification(result.error || 'שגיאה במחיקת התבנית', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        showNotification('שגיאה במחיקת התבנית', 'error');
+    }
+}
+
+function getCsrfToken() {
+    const tokenElement = document.querySelector('meta[name="csrf-token"]');
+    return tokenElement ? tokenElement.getAttribute('content') : '';
+}
+
+// Management functions
+function manageCategories() {
+    window.location.href = '/admin/menu';
+}
+
+function managePrintConfigs() {
+    showNotification('ניהול הגדרות הדפסה מתקדמות יתווסף בקרוב', 'info');
+}
+
+function exportMenuData() {
+    showNotification('ייצוא נתוני תפריט יתווסף בקרוב', 'info');
+}
+
+function menuStatistics() {
+    showNotification('סטטיסטיקות תפריט יתווספו בקרוב', 'info');
+}
+
+// Utility functions
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('he-IL');
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+    // Using browser alert for now - will integrate with existing notification system later
+    const alertType = type === 'error' ? 'danger' : type;
+    
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${alertType} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Make functions globally accessible
+window.viewSavedMenus = viewSavedMenus;
+</script>
+{% endblock %}

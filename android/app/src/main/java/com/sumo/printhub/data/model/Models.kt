@@ -192,6 +192,14 @@ data class TestPrintResponse(
     val jobs: List<PrintJobBytes> = emptyList()
 )
 
+@Serializable
+data class PendingTestJobsResponse(
+    val ok: Boolean = false,
+    val error: String? = null,
+    val jobs: List<PrintJobBytes> = emptyList(),
+    @SerialName("job_ids") val jobIds: List<String> = emptyList()
+)
+
 data class PrintAttemptResult(
     val success: Boolean,
     val printersOk: List<String>,

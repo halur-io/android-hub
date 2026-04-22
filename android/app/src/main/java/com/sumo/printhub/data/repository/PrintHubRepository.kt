@@ -12,6 +12,7 @@ import com.sumo.printhub.data.model.Order
 import com.sumo.printhub.data.model.PrintAttemptResult
 import com.sumo.printhub.data.model.PrintJobBytes
 import com.sumo.printhub.data.model.PrintStatusRequest
+import com.sumo.printhub.data.model.PendingTestJobsResponse
 import com.sumo.printhub.print.TcpRelay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -235,6 +236,27 @@ class PrintHubRepository @Inject constructor(
         if (!resp.ok) return
         for (order in resp.orders) {
             handleOrder(order)
+        }
+        // Also drain any admin-triggered test print jobs queued for this device.
+        val deviceDbId = prefs.getDeviceDbId()
+        if (deviceDbId > 0) {
+            drainPendingTestJobs(deviceDbId)
+        }
+    }
+
+    private suspend fun drainPendingTestJobs(deviceDbId: Int) {
+        val resp = runCatching { api.fetchPendingTestJobs(deviceDbId) }.getOrNull() ?: return
+        if (!resp.ok || resp.jobs.isEmpty()) return
+        val result = printMutex.withLock { relayJobs(resp.jobs) }
+        val placeholder = Order(
+            id = 0,
+            orderNumber = "TEST",
+            displayNumber = "TEST",
+            orderType = "test"
+        )
+        recordPrintLog(placeholder, result)
+        if (!result.success) {
+            Log.w(TAG, "Pending test jobs relay failed: ${result.error}")
         }
     }
 

@@ -7,6 +7,7 @@ import com.sumo.printhub.data.model.DeviceRegisterResponse
 import com.sumo.printhub.data.model.GenericOk
 import com.sumo.printhub.data.model.HeartbeatResponse
 import com.sumo.printhub.data.model.OrderPrintEnvelope
+import com.sumo.printhub.data.model.PendingTestJobsResponse
 import com.sumo.printhub.data.model.PrintStatusRequest
 import com.sumo.printhub.data.model.TestPrintResponse
 import com.sumo.printhub.data.model.UnprintedOrdersResponse
@@ -152,12 +153,28 @@ class PrintHubApi @Inject constructor(
 
     suspend fun fetchPrintPayload(orderId: Int): OrderPrintEnvelope =
         withContext(Dispatchers.IO) {
-            val req = newRequest("/ops/api/orders/$orderId/print-payload").get().build()
+            val deviceDbId = prefs.getDeviceDbId()
+            val path = if (deviceDbId > 0)
+                "/ops/api/orders/$orderId/print-payload?device_id=$deviceDbId"
+            else
+                "/ops/api/orders/$orderId/print-payload"
+            val req = newRequest(path).get().build()
             http.newCall(req).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) OrderPrintEnvelope(ok = false, error = "HTTP ${resp.code}")
                 else runCatching { json.decodeFromString(OrderPrintEnvelope.serializer(), text) }
                     .getOrElse { OrderPrintEnvelope(ok = false, error = it.message) }
+            }
+        }
+
+    suspend fun fetchPendingTestJobs(deviceDbId: Int): PendingTestJobsResponse =
+        withContext(Dispatchers.IO) {
+            val req = newRequest("/ops/api/devices/$deviceDbId/pending-test-jobs").get().build()
+            http.newCall(req).execute().use { resp ->
+                val text = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) PendingTestJobsResponse(ok = false, error = "HTTP ${resp.code}")
+                else runCatching { json.decodeFromString(PendingTestJobsResponse.serializer(), text) }
+                    .getOrElse { PendingTestJobsResponse(ok = false, error = it.message) }
             }
         }
 

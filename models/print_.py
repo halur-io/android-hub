@@ -143,6 +143,7 @@ class PendingPrintJob(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.String(32), unique=True, nullable=False, index=True)
     branch_id = db.Column(db.Integer, nullable=False, index=True)
+    device_db_id = db.Column(db.Integer, nullable=True, index=True)
     job_type = db.Column(db.String(30), nullable=False, default='check_print')
     payload_json = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -4078,13 +4078,24 @@ def get_order_print_payload(order_id):
     """Server-rendered ESC/POS bytes for an order, ready for the Android relay
     to send straight to the printer(s). All RTL reversal, codepage selection,
     and encoding live on the server -- the client never builds bytes."""
-    if not _verify_print_api_key():
+    is_api_key_auth = _verify_print_api_key()
+    if not is_api_key_auth:
         pin = _get_ops_user()
         if not pin:
             return jsonify({'ok': False, 'error': 'unauthorized'}), 401
     order = FoodOrder.query.get(order_id)
     if not order:
         return jsonify({'ok': False, 'error': 'order not found'}), 404
+    if is_api_key_auth:
+        device_db_id = request.args.get('device_id', type=int)
+        if not device_db_id:
+            return jsonify({'ok': False, 'error': 'missing device_id parameter'}), 400
+        from models import PrintDevice
+        device = PrintDevice.query.get(device_db_id)
+        if not device:
+            return jsonify({'ok': False, 'error': 'device not found'}), 404
+        if order.branch_id and device.branch_id != order.branch_id:
+            return jsonify({'ok': False, 'error': 'branch mismatch — order does not belong to this device branch'}), 403
     jobs = _build_order_print_jobs(order)
     return jsonify({
         'ok': True,
@@ -4151,9 +4162,10 @@ def _build_test_print_envelope(branch_id):
 
 @ops_bp.route('/api/devices/<int:device_db_id>/test-print', methods=['POST'])
 def device_test_print(device_db_id):
-    """Queue a server-rendered test bon for every printer wired to the device's
-    branch. The Android Print Hub will pick the jobs up via SSE/poll and relay
-    them to the printers as raw TCP bytes."""
+    """Queue a server-rendered test bon targeted at this specific device.
+    When called by the Android app it also returns the jobs in the response
+    for immediate relay. When called by admin (web session) the jobs are
+    queued and Android picks them up via /pending-test-jobs polling."""
     is_api_key_auth = _verify_print_api_key()
     if not is_api_key_auth:
         if not _is_admin_session():
@@ -4168,14 +4180,54 @@ def device_test_print(device_db_id):
     if not jobs:
         return jsonify({'ok': False, 'error': 'לא נמצאה מדפסת לסניף'})
     for pj in jobs:
-        pj['type'] = 'print_order'
+        pj['type'] = 'test_print'
         pj['branch_id'] = device.branch_id
-        _queue_check_print(device.branch_id, pj)
+        pj['device_db_id'] = device_db_id
+        _queue_check_print(device.branch_id, pj, device_db_id=device_db_id)
     return jsonify({
         'ok': True,
         'message': f'{len(jobs)} בוני בדיקה נשלחו למדפסת',
         'jobs': jobs,
     })
+
+
+@ops_bp.route('/api/devices/<int:device_db_id>/pending-test-jobs', methods=['GET'])
+def get_device_pending_test_jobs(device_db_id):
+    """Device-scoped endpoint: Android polls this to pick up admin-triggered
+    test print jobs targeted at this specific device."""
+    if not _verify_print_api_key():
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    from models import PrintDevice
+    device = PrintDevice.query.get(device_db_id)
+    if not device:
+        return jsonify({'ok': False, 'error': 'device not found'}), 404
+    now = datetime.utcnow()
+    claim_cutoff = now - timedelta(seconds=CLAIM_TIMEOUT_SECONDS)
+    rows = PendingPrintJob.query.filter(
+        PendingPrintJob.device_db_id == device_db_id,
+        PendingPrintJob.branch_id == device.branch_id,
+        PendingPrintJob.job_type == 'test_print',
+        db.or_(
+            PendingPrintJob.claimed_at.is_(None),
+            PendingPrintJob.claimed_at < claim_cutoff,
+        )
+    ).order_by(PendingPrintJob.created_at.asc()).all()
+    jobs = []
+    job_ids = []
+    for r in rows:
+        try:
+            payload = json.loads(r.payload_json)
+            jobs.append(payload)
+            job_ids.append(r.job_id)
+            r.claimed_at = now
+            r.claimed_by = f'device:{device_db_id}'
+        except Exception:
+            pass
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return jsonify({'ok': True, 'jobs': jobs, 'job_ids': job_ids})
 
 
 def _is_admin_session():
@@ -4483,7 +4535,7 @@ def delete_order(order_id):
 _sse_subscribers = []
 _sse_lock = threading.Lock()
 
-def _queue_check_print(branch_id, job):
+def _queue_check_print(branch_id, job, device_db_id=None):
     import secrets as _secrets
     job_id = _secrets.token_hex(8)
     job['job_id'] = job_id
@@ -4492,6 +4544,7 @@ def _queue_check_print(branch_id, job):
         pj = PendingPrintJob(
             job_id=job_id,
             branch_id=branch_id,
+            device_db_id=device_db_id,
             job_type=job.get('type', 'check_print'),
             payload_json=json.dumps(job),
         )

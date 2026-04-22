@@ -4179,11 +4179,20 @@ def device_test_print(device_db_id):
     jobs = _build_test_print_envelope(device.branch_id)
     if not jobs:
         return jsonify({'ok': False, 'error': 'לא נמצאה מדפסת לסניף'})
-    for pj in jobs:
-        pj['type'] = 'test_print'
-        pj['branch_id'] = device.branch_id
-        pj['device_db_id'] = device_db_id
-        _queue_check_print(device.branch_id, pj, device_db_id=device_db_id)
+    if is_api_key_auth:
+        # Android called directly: return bytes for immediate relay.
+        # Do NOT queue — avoids double-print when the test-poll loop also drains.
+        for pj in jobs:
+            pj['type'] = 'test_print'
+            pj['branch_id'] = device.branch_id
+            pj['device_db_id'] = device_db_id
+    else:
+        # Admin web session: queue so Android picks them up via /pending-test-jobs.
+        for pj in jobs:
+            pj['type'] = 'test_print'
+            pj['branch_id'] = device.branch_id
+            pj['device_db_id'] = device_db_id
+            _queue_check_print(device.branch_id, pj, device_db_id=device_db_id)
     return jsonify({
         'ok': True,
         'message': f'{len(jobs)} בוני בדיקה נשלחו למדפסת',
